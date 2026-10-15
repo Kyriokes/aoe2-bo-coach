@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BoCoach.App/BoCoach.App.csproj" />
+    <Project Path="src/BoCoach.Core/BoCoach.Core.csproj" />
+    <Project Path="src/BoCoach.Vision/BoCoach.Vision.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BoCoach.Core.Tests/BoCoach.Core.Tests.csproj" />
+    <Project Path="tests/BoCoach.Vision.Tests/BoCoach.Vision.Tests.csproj" />
+  </Folder>
+</Solution>
