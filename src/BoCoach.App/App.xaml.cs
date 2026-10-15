@@ -40,18 +40,29 @@ public partial class App : Application
 
         if (args.Contains("--calibration"))
         {
-            CaptureCalibrationAndExit(screenshot);
+            CaptureCalibrationAndExit(screenshot, Argument(args, "--background"));
             return;
         }
         CaptureAndExit(window, data, screenshot, Argument(args, "--bo"), Argument(args, "--open"), Argument(args, "--select"));
     }
 
-    /// <summary>Como <see cref="CaptureAndExit"/>, pero dibuja la ventana de calibración a 1920×1080 sobre fondo gris.</summary>
-    private void CaptureCalibrationAndExit(string path)
+    /// <summary>
+    /// Como <see cref="CaptureAndExit"/>, pero dibuja la ventana de calibración a 1920×1080, sobre fondo gris
+    /// o sobre una captura del juego (<c>--background captura.png</c>, ubicada arriba a la izquierda, 1:1).
+    /// </summary>
+    private void CaptureCalibrationAndExit(string path, string? background)
     {
+        Brush brush = background is null
+            ? new SolidColorBrush(Color.FromRgb(0x50, 0x55, 0x48))
+            : new ImageBrush(new BitmapImage(new Uri(Path.GetFullPath(background))))
+            {
+                Stretch = Stretch.None,
+                AlignmentX = AlignmentX.Left,
+                AlignmentY = AlignmentY.Top,
+            };
         var window = new Calibration.CalibrationWindow(Vision.Regions.RegionLayout.Default, new Vision.Capture.ScreenCapture(), ocr: null)
         {
-            Background = new SolidColorBrush(Color.FromRgb(0x50, 0x55, 0x48)),
+            Background = brush,
             ShowActivated = false,
             PlaceOverGame = false,
         };

@@ -10,9 +10,9 @@ public sealed class RegionLayoutTests : IDisposable
     public void Dispose() => File.Delete(_path);
 
     [Fact]
-    public void El_default_tiene_las_7_regiones()
+    public void El_default_tiene_las_9_regiones()
     {
-        Assert.Equal(7, RegionNames.All.Count);
+        Assert.Equal(9, RegionNames.All.Count);
         Assert.All(RegionNames.All, name => Assert.True(RegionLayout.Default.Regions.ContainsKey(name)));
         Assert.All(RegionNames.All, name => Assert.NotEqual(name, RegionNames.Label(name)));
     }
@@ -69,7 +69,7 @@ public sealed class RegionLayoutTests : IDisposable
         File.WriteAllText(_path, """{ "reference_resolution": [1920, 1080], "regions": { "food": [0.1, 0.1, 0.05, 0.02] } }""");
         var loaded = RegionLayout.LoadOrDefault(_path);
 
-        Assert.Equal(7, loaded.Regions.Count);
+        Assert.Equal(RegionNames.All.Count, loaded.Regions.Count);
         Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X);
     }
 

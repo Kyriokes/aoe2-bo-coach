@@ -13,8 +13,15 @@ public static class RegionNames
     public const string Stone = "stone";
     public const string Population = "population";
     public const string EventLog = "event_log";
+    public const string IdleVillagers = "idle_villagers";
+    public const string Age = "age";
 
-    public static IReadOnlyList<string> All { get; } = [Wood, Food, Gold, Stone, Population, Clock, EventLog];
+    /// <summary>
+    /// Cada caja de recurso toma el ícono, la cantidad de aldeanos que el HUD muestra debajo y el stock:
+    /// los dos números se separan por su posición dentro de la caja. Población igual: aldeanos y pop/máximo.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } =
+        [Wood, Food, Gold, Stone, Population, IdleVillagers, Age, Clock, EventLog];
 
     public static string Label(string name) => name switch
     {
@@ -25,6 +32,8 @@ public static class RegionNames
         Stone => "Piedra",
         Population => "Población",
         EventLog => "Log de eventos",
+        IdleVillagers => "Inactivos",
+        Age => "Edad",
         _ => name,
     };
 }
@@ -81,16 +90,21 @@ public sealed class RegionLayout
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BoCoach", "regions.json");
 
-    /// <summary>Punto de partida aproximado para la interfaz por defecto del juego; la calibración lo ajusta.</summary>
+    /// <summary>
+    /// Punto de partida: el HUD por defecto de AoE2:DE a 1920×1080, medido sobre una partida real.
+    /// La calibración lo ajusta.
+    /// </summary>
     public static RegionLayout Default { get; } = new(1920, 1080, new Dictionary<string, RegionRect>
     {
-        [RegionNames.Wood] = new(0.010, 0.004, 0.035, 0.022),
-        [RegionNames.Food] = new(0.060, 0.004, 0.035, 0.022),
-        [RegionNames.Gold] = new(0.110, 0.004, 0.035, 0.022),
-        [RegionNames.Stone] = new(0.160, 0.004, 0.035, 0.022),
-        [RegionNames.Population] = new(0.210, 0.004, 0.045, 0.022),
-        [RegionNames.Clock] = new(0.470, 0.040, 0.060, 0.025),
-        [RegionNames.EventLog] = new(0.005, 0.150, 0.250, 0.090),
+        [RegionNames.Wood] = new(0.0031, 0.0046, 0.0380, 0.0370),
+        [RegionNames.Food] = new(0.0495, 0.0046, 0.0370, 0.0370),
+        [RegionNames.Gold] = new(0.0932, 0.0046, 0.0370, 0.0370),
+        [RegionNames.Stone] = new(0.1396, 0.0046, 0.0365, 0.0370),
+        [RegionNames.Population] = new(0.1839, 0.0046, 0.0453, 0.0370),
+        [RegionNames.IdleVillagers] = new(0.2370, 0.0037, 0.0208, 0.0389),
+        [RegionNames.Age] = new(0.3070, 0.0080, 0.0580, 0.0220),
+        [RegionNames.Clock] = new(0.3839, 0.0037, 0.0313, 0.0167),
+        [RegionNames.EventLog] = new(0.0047, 0.1361, 0.2510, 0.0907),
     });
 
     public PixelRect PixelsOf(string region, int screenWidth, int screenHeight) =>

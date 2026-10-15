@@ -59,5 +59,7 @@ Ver `PLAN.md`, sección 10.
 - Fase 5 (economía v1) completa: RateObserver, EconomyAdvisor (estimación de aldeanos, demanda, déficit, greedy) y SuggestionGate.
 - Fase 4 (editor WPF) hecha y verificada por código (tests de ViewModels y capturas con --screenshot). La prueba de usabilidad del usuario (BO de 20 pasos en menos de 5 minutos) quedó pendiente; el usuario pidió seguir con la Fase 6.
 - main está al día hasta la Fase 6 (el usuario pidió explícitamente cada push a main, 2026-10-15).
+- HUD verificado con capturas del usuario: debajo de cada ícono de recurso está la cantidad de aldeanos en ese recurso, debajo del de población el total de aldeanos, y hay un ícono rojo con los inactivos. El OCR de Windows lee bien stock, población ("10/15"), edad ("Dark Age") y el log ("--Villager Created--"), pero NO el reloj (letra blanca con serif y borde) ni bien los números chicos de color: Fase 7 usa template matching.
+- Regiones: 9 (madera, comida, oro y piedra con ícono + aldeanos + stock; población; inactivos; edad; reloj; log). Defaults medidos sobre el HUD real a 1920×1080.
 - Fase 6 (captura y calibración): código hecho y testeado (ScreenCapture GDI, Png, RegionLayout, OcrReader, SessionRecorder, CalibrationWindow, barra con "Calibrar pantalla" y "Grabar partida", app.manifest PerMonitorV2). Falta del usuario: calibrar las 7 regiones en menos de 2 minutos con el juego abierto y grabar una partida de prueba.
 - Si el editor está abierto, `BoCoach.exe` de Debug queda bloqueado: compilar en Release o con `-o` a otra carpeta.

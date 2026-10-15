@@ -252,7 +252,8 @@ A completar relevando el log en partidas reales con `RecordSession`.
 `GameSnapshot` (lo leído en un instante) → `PlayerState` (lo acumulado):
 - stock por recurso, población actual y máxima, tiempo de partida
 - eventos confirmados (contadores por tipo)
-- aldeanos por recurso **estimados**: arranca con lo que dice el plan (`assign`) y se corrige con las tasas observadas
+- aldeanos por recurso: **los muestra el HUD** (el número chico debajo de cada ícono de recurso) y se leen directo; la estimación por tasas queda como respaldo si la lectura falla
+- aldeanos inactivos (ícono rojo del HUD) y edad actual ("Dark Age", "Feudal Age"...), que confirma las subidas de edad que el log no muestra
 - edad actual
 
 ### 6.4 Motor de build order
@@ -341,7 +342,7 @@ Cada fase termina con algo que se puede probar. Las fases 1 a 5 no necesitan el 
 | **3. Motor** | Tracker y Planner sobre snapshots simulados | Tests: partida perfecta, jugador atrasado, paso salteado, acción extra, corrección manual |
 | **4. Editor de BO** | Editor WPF con biblioteca local y vista previa de tiempos | Armar una BO de 20 pasos desde cero en menos de 5 minutos; la vista previa marca un bloqueo de población |
 | **5. Economía v1** | Tasas, déficits y asignador greedy | Escenario simulado "sobra madera" sugiere mover aldeanos a comida; sin oscilaciones en 5 min simulados |
-| **6. Captura + calibración** | UI de rectángulos, `regions.json`, `RecordSession` | Calibrar las 7 regiones en menos de 2 minutos; grabar una partida de prueba |
+| **6. Captura + calibración** | UI de rectángulos, `regions.json`, `RecordSession` | Calibrar las 9 regiones en menos de 2 minutos; grabar una partida de prueba |
 | **7. Visión** | OCR de números, OCR del log, suavizado | Sobre 2 partidas grabadas: más del 98% de lecturas correctas en comida, madera y población; más del 95% de eventos del log sin duplicados |
 | **8. Overlay + integración** | Loop completo en vivo con overlay y hotkeys | Una partida completa siguiendo la BO, CPU menor al 3%, RAM menor a 100 MB, sin interferir con mouse ni teclado |
 | **9. Refinamiento** | LP, bonificaciones por civ, oro y piedra, más eventos, instalador | Ejecutable que corre en otra PC sin instalar nada |
@@ -368,7 +369,8 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 | El log se superpone con chat u otros mensajes | Medio | Coincidencia aproximada contra frases conocidas; ignorar lo que no matchea |
 | Eventos repetidos (dos casas seguidas) se cuentan como uno | Medio | Rastrear posición de cada línea entre capturas |
 | Pantalla completa exclusiva impide la captura | Medio | Documentar el uso de ventana sin marco; probar `Windows.Graphics.Capture` |
-| Estimación de aldeanos por recurso imprecisa | Alto | Partir del plan, corregir con tasas observadas, permitir ajuste manual |
+| Estimación de aldeanos por recurso imprecisa | Bajo | El HUD muestra los aldeanos de cada recurso: se leen directo. Si la lectura falla, partir del plan y corregir con tasas observadas |
+| El OCR general no lee la letra del reloj ni los números chicos | Medio | Template matching de dígitos con plantillas sacadas de una grabación real (plan B de la sección 6.2) |
 | Un parche cambia el formato del `.dat` | Bajo | Versionar `game_data` por parche; actualizar `genieutils-py` |
 | Sugerencias que oscilan | Medio | Histéresis y una sola sugerencia a la vez |
 | La lógica del planner se duplica entre app y web | Medio | Decidir en la fase 10: backend en ASP.NET Core reutilizando `Core`, o simulación solo del lado de la app |

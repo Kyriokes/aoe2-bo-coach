@@ -38,7 +38,7 @@ public sealed class SessionRecorderTests : IDisposable
 
         var folder = recorder.Folder!;
         Assert.Equal(2, recorder.Frames);
-        Assert.Equal(2 * 7, Directory.EnumerateFiles(folder, "*.png").Count());
+        Assert.Equal(2 * RegionNames.All.Count, Directory.EnumerateFiles(folder, "*.png").Count());
         Assert.True(File.Exists(Path.Combine(folder, SessionRecorder.FileName(1, RegionNames.Clock))));
         var index = File.ReadAllLines(Path.Combine(folder, "frames.csv"));
         Assert.Equal(3, index.Length);
