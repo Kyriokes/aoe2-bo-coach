@@ -70,8 +70,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost
             missing.Add("Ctrl+Alt+C");
         if (!_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, Key.R, () => Tools.ToggleRecordingCommand.Execute(null)))
             missing.Add("Ctrl+Alt+R");
-        if (missing.Count > 0)
-            ViewModel.Status = $"Otro programa ya usa {string.Join(" y ", missing)}; usá los botones de arriba.";
+        ViewModel.Status = missing.Count > 0
+            ? $"Otro programa ya usa {string.Join(" y ", missing)}; usá los botones de arriba."
+            : "Atajos listos, también desde el juego: Ctrl+Alt+C calibra y Ctrl+Alt+R graba.";
     }
 
     // ---- Calibración y carpetas ----
