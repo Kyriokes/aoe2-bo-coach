@@ -43,8 +43,19 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost
 
     public RegionLayout? Calibrate(RegionLayout current)
     {
-        var window = new CalibrationWindow(current, new ScreenCapture(), OcrReader.TryCreate());
-        return window.ShowDialog() == true ? window.Layout : null;
+        // El editor se minimiza para que debajo de la capa transparente quede el juego, no esta ventana.
+        var previous = WindowState;
+        WindowState = WindowState.Minimized;
+        try
+        {
+            var window = new CalibrationWindow(current, new ScreenCapture(), OcrReader.TryCreate());
+            return window.ShowDialog() == true ? window.Layout : null;
+        }
+        finally
+        {
+            WindowState = previous;
+            Activate();
+        }
     }
 
     public void OpenFolder(string path) =>
