@@ -55,4 +55,5 @@ Ver `PLAN.md`, sección 10.
 - Fase 1 (datos del juego) completa: extractor, v8.9.json y tests de valores clave.
 - Fase 2 (modelo de BO) completa: serializador, validador, events.json y 3 BO de ejemplo.
 - Fase 3 (motor) completa: PlayerState, Tracker, Planner y LivePlan con tests de los 5 escenarios.
-- Fase actual: 5 (economía v1); después la 4 (editor WPF).
+- Fase 5 (economía v1) completa: RateObserver, EconomyAdvisor (estimación de aldeanos, demanda, déficit, greedy) y SuggestionGate.
+- Fase actual: 4 (editor de BO en WPF).
