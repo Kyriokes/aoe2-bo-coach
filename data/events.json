@@ -1,0 +1,18 @@
+{
+  // Frases del log de eventos del juego -> id de evento.
+  // Solo "House Built" y "Villager Created" están confirmadas en partida; el resto sigue
+  // el mismo patrón y hay que verificarlas con RecordSession (Fase 6).
+  "villager_created": ["Villager Created"],
+  "house_built": ["House Built"],
+  "mill_built": ["Mill Built"],
+  "lumber_camp_built": ["Lumber Camp Built"],
+  "mining_camp_built": ["Mining Camp Built"],
+  "farm_built": ["Farm Built"],
+  "dock_built": ["Dock Built"],
+  "barracks_built": ["Barracks Built"],
+  "archery_range_built": ["Archery Range Built"],
+  "stable_built": ["Stable Built"],
+  "blacksmith_built": ["Blacksmith Built"],
+  "market_built": ["Market Built"],
+  "town_center_built": ["Town Center Built"]
+}

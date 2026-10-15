@@ -25,6 +25,8 @@
   <!-- Datos reales del repo, copiados junto a los tests -->
   <ItemGroup>
     <None Include="..\..\data\game_data\*.json" Link="game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\events.json" Link="events.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\build_orders\*.json" Link="build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

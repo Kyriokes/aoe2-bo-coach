@@ -11,4 +11,12 @@ internal static class TestData
 
     /// <summary>game_data del último parche exportado.</summary>
     public static GameData GameData => Latest.Value;
+
+    private static readonly Lazy<EventCatalog> LazyEvents = new(() => EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json")));
+
+    public static EventCatalog Events => LazyEvents.Value;
+
+    public static string BuildOrdersDir => Path.Combine(AppContext.BaseDirectory, "build_orders");
+
+    public static IEnumerable<string> ExampleBuildOrders => Directory.EnumerateFiles(BuildOrdersDir, "*.json");
 }
