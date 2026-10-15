@@ -5,6 +5,7 @@
     <Project Path="src/BoCoach.Vision/BoCoach.Vision.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/BoCoach.App.Tests/BoCoach.App.Tests.csproj" />
     <Project Path="tests/BoCoach.Core.Tests/BoCoach.Core.Tests.csproj" />
     <Project Path="tests/BoCoach.Vision.Tests/BoCoach.Vision.Tests.csproj" />
   </Folder>

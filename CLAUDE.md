@@ -19,7 +19,7 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 - **Calibración manual:** el usuario ubica rectángulos semitransparentes sobre el HUD; las coordenadas se guardan relativas a la resolución.
 - **Log de eventos del juego** ("House Built", "Villager Created", al borde de la pantalla, dura unos 5 s y se desvanece) se usa para confirmar pasos. Leer a 2 capturas por segundo.
 - **Editor de BO dentro de la app** (Fase 4) con vista previa simulada. **Web con biblioteca para compartir** en la última fase (Fase 10). App y web usan el mismo formato JSON con `schema_version`.
-- **Git:** una rama por fase (`fase-N-<nombre>`) con commits chicos. Cuando se cumple el criterio de salida y el CI de la rama está en verde, se mergea a `main` localmente (`git merge --no-ff`) y se pushea. No hay `gh` ni conector de GitHub autenticado, así que no se crean PRs.
+- **Git:** una rama por fase (`fase-N-<nombre>`) con commits chicos. Cada fase sale de la anterior (ramas apiladas). El merge a `main` lo hace el usuario: el clasificador de permisos de Claude Code bloquea que Claude mergee o pushee a `main`. No hay `gh` ni conector de GitHub autenticado.
 - **Repo público con licencia MIT.** CI con GitHub Actions en `windows-latest` (build + test de toda la solución) en cada push a cualquier rama. Como el repo es público, el estado del CI se consulta sin autenticación: `curl -s "https://api.github.com/repos/Kyriokes/aoe2-bo-coach/actions/runs?per_page=3"`.
 - **Editor del usuario:** Cursor / VS Code (no hay Visual Studio instalado).
 
@@ -56,4 +56,6 @@ Ver `PLAN.md`, sección 10.
 - Fase 2 (modelo de BO) completa: serializador, validador, events.json y 3 BO de ejemplo.
 - Fase 3 (motor) completa: PlayerState, Tracker, Planner y LivePlan con tests de los 5 escenarios.
 - Fase 5 (economía v1) completa: RateObserver, EconomyAdvisor (estimación de aldeanos, demanda, déficit, greedy) y SuggestionGate.
-- Fase actual: 4 (editor de BO en WPF).
+- Fase 4 (editor WPF) hecha y verificada por código (tests de ViewModels y capturas con --screenshot). Falta la prueba de usabilidad del usuario: armar una BO de 20 pasos en menos de 5 minutos.
+- Pendiente del usuario: mergear a main. El clasificador de permisos bloquea que Claude haga merge o push a main; las ramas están apiladas (fase-0 → 1 → 2 → 3 → 5 → 4), así que mergear fase-4-editor trae todo.
+- Próxima fase: 6 (captura y calibración), después de la prueba de usabilidad.

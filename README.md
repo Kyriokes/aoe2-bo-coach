@@ -18,6 +18,16 @@ dotnet build BoCoach.slnx
 dotnet test BoCoach.slnx
 ```
 
+## Abrir el editor de build orders
+
+```bash
+dotnet run --project src/BoCoach.App
+```
+
+La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders` (la primera vez se copian las BO de ejemplo). Atajos: Ctrl+1 a Ctrl+4 agregan aldeanos, construcción, investigación o movimiento; Ctrl+D duplica el paso; Alt+↑/↓ lo mueve; Ctrl+Supr lo quita; Ctrl+S guarda. Los pasos también se reordenan arrastrando el ícono ⋮⋮.
+
+Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número]` la dibuja en un PNG con una biblioteca temporal.
+
 ## Regenerar los datos del juego (una vez por parche)
 
 `data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida.
@@ -39,6 +49,7 @@ Por defecto lee `H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2
 | `src/BoCoach.App` | `net10.0-windows10.0.19041.0` | App WPF: overlay, calibración, editor de BO y hotkeys. |
 | `tests/BoCoach.Core.Tests` | `net10.0` | Tests de `Core`, incluido uno que verifica que no dependa de Windows. |
 | `tests/BoCoach.Vision.Tests` | `net10.0-windows10.0.19041.0` | Tests de `Vision`. |
+| `tests/BoCoach.App.Tests` | `net10.0-windows10.0.19041.0` | Tests de los ViewModels del editor. |
 
 ## Licencia
 

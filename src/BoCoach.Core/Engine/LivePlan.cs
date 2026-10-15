@@ -11,11 +11,7 @@ public sealed record TargetDeviation(string What, double Estimated, double Targe
     public override string ToString() =>
         $"{Label(What)} estimada en {Clock(Estimated)}, objetivo {Clock(Target)}";
 
-    public static string Clock(double seconds)
-    {
-        var s = (int)Math.Round(seconds);
-        return $"{s / 60}:{s % 60:00}";
-    }
+    public static string Clock(double seconds) => GameClock.Format(seconds);
 
     private static string Label(string what) => what switch
     {
