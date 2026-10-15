@@ -15,7 +15,8 @@ public sealed class SessionRecorderTests : IDisposable
     private sealed class FakeScreen : IScreenSource
     {
         public List<PixelRect> Requests { get; } = [];
-        public (int Width, int Height) ScreenSize => (1920, 1080);
+        public PixelRect CaptureArea => new(0, 0, 1920, 1080);
+        public bool GameFound => true;
 
         public CapturedImage Capture(PixelRect rect)
         {
@@ -61,7 +62,8 @@ public sealed class SessionRecorderTests : IDisposable
         using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(recorder.Folder!, "session.json")));
         var root = json.RootElement;
 
-        Assert.Equal(1920, root.GetProperty("screen")[0].GetInt32());
+        Assert.Equal(1920, root.GetProperty("area")[2].GetInt32());
+        Assert.True(root.GetProperty("game_found").GetBoolean());
         Assert.Equal(500, root.GetProperty("interval_ms").GetInt32());
         var pixels = root.GetProperty("regions").GetProperty(RegionNames.Wood).GetProperty("pixels");
         Assert.Equal(RegionLayout.Default.PixelsOf(RegionNames.Wood, 1920, 1080).X, pixels[0].GetInt32());

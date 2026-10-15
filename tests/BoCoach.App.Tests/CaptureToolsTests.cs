@@ -15,7 +15,8 @@ public sealed class CaptureToolsTests : IDisposable
 
     private sealed class FakeScreen : IScreenSource
     {
-        public (int Width, int Height) ScreenSize => (2560, 1440);
+        public PixelRect CaptureArea => new(1920, 0, 2560, 1440);
+        public bool GameFound => true;
 
         public CapturedImage Capture(PixelRect rect) =>
             new(rect.Width, rect.Height, new byte[rect.Width * rect.Height * 4]);
@@ -89,6 +90,16 @@ public sealed class CaptureToolsTests : IDisposable
         var folder = Assert.Single(Directory.EnumerateDirectories(RecordingsRoot));
         Assert.True(File.Exists(Path.Combine(folder, "session.json")));
         Assert.True(Directory.EnumerateFiles(folder, "*.png").Count() >= 7);
+    }
+
+    [Fact]
+    public void Informa_donde_esta_el_juego()
+    {
+        var tools = Tools(new FakeHost());
+
+        tools.Tick();
+
+        Assert.Equal("Juego abierto: 2560×1440 en (1920, 0).", tools.GameStatus);
     }
 
     [Fact]

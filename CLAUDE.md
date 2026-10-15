@@ -16,7 +16,8 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 - **Python solo como herramienta offline** en `tools/extractor/`, para convertir el `.dat` del juego a `data/game_data/<version>.json` una vez por parche.
 - **Separación estricta:** `BoCoach.Core` (net10.0) es lógica pura, sin dependencias de Windows ni de UI. Motor y economía se testean con snapshots simulados. `ArquitecturaTests` en `Core.Tests` falla si `Core` referencia ensamblados de Windows o de la app.
 - **Solo lectura de pantalla.** Nunca leer memoria del proceso, inyectar código ni enviar inputs al juego.
-- **Calibración manual:** el usuario ubica rectángulos semitransparentes sobre el HUD; las coordenadas se guardan relativas a la resolución.
+- **Calibración manual:** el usuario ubica rectángulos semitransparentes sobre el HUD; las coordenadas se guardan relativas al área de cliente de la ventana del juego (proceso `AoE2DE_s` de Steam o `AoE2DE`), que se busca con GetClientRect/ClientToScreen (posición de la ventana, nunca memoria). Si el juego no está abierto, se usa la pantalla principal.
+- **Atajos globales** (RegisterHotKey): Ctrl+Alt+C calibrar, Ctrl+Alt+R grabar. Indicador "● Grabando" click-through arriba del juego.
 - **Log de eventos del juego** ("House Built", "Villager Created", al borde de la pantalla, dura unos 5 s y se desvanece) se usa para confirmar pasos. Leer a 2 capturas por segundo.
 - **Editor de BO dentro de la app** (Fase 4) con vista previa simulada. **Web con biblioteca para compartir** en la última fase (Fase 10). App y web usan el mismo formato JSON con `schema_version`.
 - **Git:** una rama por fase (`fase-N-<nombre>`) con commits chicos. Cada fase sale de la anterior (ramas apiladas). El push a `main` (fast-forward) funciona cuando el usuario lo pide explícitamente en el chat; por iniciativa propia lo bloquea el clasificador de permisos. No hay `gh` ni conector de GitHub autenticado.
@@ -25,7 +26,7 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 
 ## Entorno de desarrollo (verificado)
 - SDK .NET 10.0.203 fijado en `global.json` (también hay 5, 6, 8 y 9 instalados).
-- Windows 10 Enterprise LTSC 2021 (build 19044). OCR de Windows disponible en `en-US` y `es-MX`; el juego está en inglés, así que se usa `en-US`.
+- Windows 10 Enterprise LTSC 2021 (build 19044). Dos monitores de 1920×1080: DISPLAY1 principal en (0,0) y DISPLAY2 a la derecha en (1920,0). En el juego, "Full desktop" se estira a los dos monitores y es injugable: usar "Full screen" o "Windowed". OCR de Windows disponible en `en-US` y `es-MX`; el juego está en inglés, así que se usa `en-US`.
 - Python 3.12 con `genieutils-py` 0.1.2 en el venv `tools/extractor/.venv` (ignorado por git). Parsear el `.dat` tarda unos 30 s.
 - En el `.dat`, el TC que se construye es la base 621, que se apila en el TC real 109 (el que da población y entrena aldeanos); al subir de edad pasa a 71/141/142. El extractor los resuelve todos como `town_center`.
 - La tasa de granjero del `.dat` es 0,53 (sin caminatas); la efectiva ronda 0,32. El Planner tiene que usar eficiencias por fuente, no la tasa cruda.

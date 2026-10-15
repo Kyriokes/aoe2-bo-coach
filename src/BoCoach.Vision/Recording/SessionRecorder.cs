@@ -10,7 +10,7 @@ namespace BoCoach.Vision.Recording;
 /// Graba las regiones calibradas de una partida real, para poder correr después todo el pipeline sobre la
 /// grabación (ReplaySession) sin volver a jugar. Cada grabación es una carpeta con:
 /// <list type="bullet">
-/// <item><c>session.json</c>: pantalla, regiones (fracciones y píxeles) e intervalo.</item>
+/// <item><c>session.json</c>: zona del juego en pantalla, regiones (fracciones y píxeles absolutos) e intervalo.</item>
 /// <item><c>frames.csv</c>: número de captura y milisegundos desde el inicio.</item>
 /// <item><c>NNNNNN_region.png</c>: una imagen por región y captura.</item>
 /// </list>
@@ -25,7 +25,7 @@ public sealed class SessionRecorder : IDisposable
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private StreamWriter? _index;
-    private (int Width, int Height) _screen;
+    private PixelRect _area;
 
     public SessionRecorder(IScreenSource source, RegionLayout layout, string outputRoot, TimeSpan? interval = null)
     {
@@ -50,7 +50,7 @@ public sealed class SessionRecorder : IDisposable
     /// <summary>Crea la carpeta y escribe session.json, sin arrancar el temporizador (útil para tests).</summary>
     public void Open()
     {
-        _screen = _source.ScreenSize;
+        _area = _source.CaptureArea;
         Folder = Path.Combine(OutputRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
         var suffix = 1;
         while (Directory.Exists(Folder))
@@ -61,13 +61,14 @@ public sealed class SessionRecorder : IDisposable
         {
             schema_version = 1,
             started_at = DateTimeOffset.Now,
-            screen = new[] { _screen.Width, _screen.Height },
+            area = new[] { _area.X, _area.Y, _area.Width, _area.Height },
+            game_found = _source.GameFound,
             interval_ms = (int)_interval.TotalMilliseconds,
             regions = _layout.Regions.ToDictionary(
                 r => r.Key,
                 r =>
                 {
-                    var px = r.Value.ToPixels(_screen.Width, _screen.Height);
+                    var px = r.Value.ToPixels(_area);
                     return new
                     {
                         fraction = new[] { r.Value.X, r.Value.Y, r.Value.Width, r.Value.Height },
@@ -114,7 +115,7 @@ public sealed class SessionRecorder : IDisposable
             {
                 foreach (var (name, rect) in _layout.Regions)
                 {
-                    var image = _source.Capture(rect.ToPixels(_screen.Width, _screen.Height));
+                    var image = _source.Capture(rect.ToPixels(_area));
                     Png.Write(image, Path.Combine(Folder, FileName(frame, name)));
                 }
                 _index.WriteLine($"{frame},{time}");

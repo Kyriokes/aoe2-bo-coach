@@ -53,6 +53,7 @@ public partial class App : Application
         {
             Background = new SolidColorBrush(Color.FromRgb(0x50, 0x55, 0x48)),
             ShowActivated = false,
+            PlaceOverGame = false,
         };
         window.Width = 1920;
         window.Height = 1080;

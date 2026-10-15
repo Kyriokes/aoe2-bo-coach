@@ -38,12 +38,12 @@
             <DockPanel>
                 <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,18,0" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" />
-                    <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" />
+                    <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
+                    <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
                     <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
                 </StackPanel>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="{Binding CalibrationStatus}" Foreground="#C9C1B6" FontSize="12" />
+                    <TextBlock Foreground="#C9C1B6" FontSize="12"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
                     <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
                                Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
                         <TextBlock.Style>

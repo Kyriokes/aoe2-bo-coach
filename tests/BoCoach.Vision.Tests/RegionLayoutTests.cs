@@ -27,6 +27,16 @@ public sealed class RegionLayoutTests : IDisposable
     }
 
     [Fact]
+    public void Relativo_a_la_ventana_del_juego_en_el_segundo_monitor()
+    {
+        var area = new PixelRect(1920, 0, 1920, 1080);
+
+        var food = new RegionRect(0.5, 0.25, 0.1, 0.05).ToPixels(area);
+
+        Assert.Equal(new PixelRect(1920 + 960, 270, 192, 54), food);
+    }
+
+    [Fact]
     public void Los_pixeles_nunca_se_salen_de_la_pantalla()
     {
         var px = new RegionRect(0.99, 0.99, 0.2, 0.2).ToPixels(100, 100);

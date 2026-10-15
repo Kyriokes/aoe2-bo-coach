@@ -1,7 +1,9 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using BoCoach.Vision.Capture;
@@ -31,8 +33,11 @@ public partial class CalibrationWindow : Window
         [RegionNames.EventLog] = Color.FromRgb(0xC3, 0x8B, 0xE8),
     };
 
+    private static readonly IntPtr HwndTopmost = new(-1);
+
     private readonly IScreenSource _screen;
     private readonly OcrReader? _ocr;
+    private readonly PixelRect _area;
     private readonly Dictionary<string, RegionBox> _boxes = [];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private string? _selected;
@@ -44,15 +49,26 @@ public partial class CalibrationWindow : Window
         Layout = layout;
         _screen = screen;
         _ocr = ocr;
+        _area = screen.CaptureArea;
 
         Left = 0;
         Top = 0;
         Width = SystemParameters.PrimaryScreenWidth;
         Height = SystemParameters.PrimaryScreenHeight;
+        SourceInitialized += (_, _) =>
+        {
+            // Encima de la ventana del juego, en píxeles físicos (sirve en cualquier monitor).
+            if (PlaceOverGame)
+            {
+                var handle = new WindowInteropHelper(this).Handle;
+                SetWindowPos(handle, HwndTopmost, _area.X, _area.Y, _area.Width, _area.Height, 0);
+            }
+        };
 
-        StatusText.Text = ocr is null
-            ? "El OCR en inglés de Windows no está instalado: podés ubicar los rectángulos igual, pero sin lectura en vivo."
-            : "";
+        StatusText.Text = (screen.GameFound
+                ? $"Juego encontrado: {_area.Width}×{_area.Height} en ({_area.X}, {_area.Y})."
+                : "No encontré la ventana del juego: calibro sobre la pantalla principal. Abrí el juego y volvé a calibrar.")
+            + (ocr is null ? "\nEl OCR en inglés de Windows no está instalado: podés ubicar los rectángulos igual, pero sin lectura en vivo." : "");
 
         foreach (var name in RegionNames.All)
             _boxes[name] = CreateBox(name);
@@ -75,6 +91,13 @@ public partial class CalibrationWindow : Window
 
     /// <summary>Las regiones como quedaron (con la resolución de referencia al guardar).</summary>
     public RegionLayout Layout { get; private set; }
+
+    /// <summary>Si es false, la ventana queda donde se la ubique (para dibujarla a PNG en el modo captura).</summary>
+    public bool PlaceOverGame { get; init; } = true;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
 
     private sealed record RegionBox(Thumb Body, Thumb Grip, TextBlock Label, TextBlock Reading);
 
@@ -218,10 +241,10 @@ public partial class CalibrationWindow : Window
         _reading = true;
         try
         {
-            var (sw, sh) = _screen.ScreenSize;
+            var area = _area;
             foreach (var name in RegionNames.All)
             {
-                var image = _screen.Capture(Layout.PixelsOf(name, sw, sh));
+                var image = _screen.Capture(Layout.PixelsOf(name, area));
                 var text = (await _ocr.ReadAsync(image)).Trim();
                 var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                 _boxes[name].Reading.Text = lines.Length == 0
@@ -247,8 +270,7 @@ public partial class CalibrationWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        var (sw, sh) = _screen.ScreenSize;
-        Layout = Layout.WithReference(sw, sh);
+        Layout = Layout.WithReference(_area.Width, _area.Height);
         DialogResult = true;
     }
 

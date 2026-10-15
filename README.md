@@ -32,8 +32,8 @@ Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--
 
 En la barra de arriba de la app:
 
-- **Calibrar pantalla…** abre una capa transparente sobre el juego con un rectángulo por región (madera, comida, oro, piedra, población, reloj y log de eventos). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`. El juego tiene que estar en ventana sin bordes.
-- **Grabar partida** guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
+- **Calibrar pantalla…** (o **Ctrl+Alt+C** desde el juego) abre una capa transparente sobre la ventana del juego con un rectángulo por región (madera, comida, oro, piedra, población, reloj y log de eventos). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`, relativo a la ventana del juego, así anda en cualquier monitor y en modo ventana.
+- **Grabar partida** (o **Ctrl+Alt+R** desde el juego; arriba aparece "● Grabando") guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
 
 ## Regenerar los datos del juego (una vez por parche)
 

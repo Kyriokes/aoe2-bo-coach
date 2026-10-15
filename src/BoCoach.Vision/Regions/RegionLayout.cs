@@ -43,6 +43,13 @@ public readonly record struct RegionRect(double X, double Y, double Width, doubl
         return new PixelRect(x, y, Math.Clamp(right, x + 1, screenWidth) - x, Math.Clamp(bottom, y + 1, screenHeight) - y);
     }
 
+    /// <summary>Rectángulo absoluto en pantalla, relativo a la zona donde está el juego.</summary>
+    public PixelRect ToPixels(PixelRect area)
+    {
+        var local = ToPixels(area.Width, area.Height);
+        return local with { X = local.X + area.X, Y = local.Y + area.Y };
+    }
+
     /// <summary>Lo mismo dentro de la pantalla: sin salirse de los bordes y con un tamaño mínimo.</summary>
     public RegionRect Clamped(double minSize = 0.005)
     {
@@ -88,6 +95,9 @@ public sealed class RegionLayout
 
     public PixelRect PixelsOf(string region, int screenWidth, int screenHeight) =>
         Regions[region].ToPixels(screenWidth, screenHeight);
+
+    /// <summary>Rectángulo absoluto de una región dentro de la zona del juego.</summary>
+    public PixelRect PixelsOf(string region, PixelRect area) => Regions[region].ToPixels(area);
 
     public RegionLayout With(string region, RegionRect rect)
     {

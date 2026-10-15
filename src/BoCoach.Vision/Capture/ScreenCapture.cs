@@ -3,21 +3,26 @@ namespace BoCoach.Vision.Capture;
 /// <summary>De dónde salen las imágenes: la pantalla real o, en tests y replays, otra fuente.</summary>
 public interface IScreenSource
 {
-    /// <summary>Tamaño de la pantalla en píxeles físicos.</summary>
-    (int Width, int Height) ScreenSize { get; }
+    /// <summary>Zona de la pantalla donde está el juego, en píxeles físicos. Las regiones son relativas a ella.</summary>
+    PixelRect CaptureArea { get; }
+
+    /// <summary>True si <see cref="CaptureArea"/> es la ventana del juego (y no la pantalla principal por descarte).</summary>
+    bool GameFound { get; }
 
     CapturedImage Capture(PixelRect rect);
 }
 
 /// <summary>
-/// Captura de la pantalla principal con GDI (BitBlt), solo del rectángulo pedido.
+/// Captura de pantalla con GDI (BitBlt), solo del rectángulo pedido. Sigue a la ventana del juego, así anda
+/// en cualquier monitor y en modo ventana; si el juego no está abierto, usa la pantalla principal.
 /// Sin CAPTUREBLT, las ventanas transparentes (overlay y calibración) no salen en la captura.
 /// El proceso tiene que ser "DPI aware" para que las coordenadas sean píxeles físicos.
 /// </summary>
 public sealed class ScreenCapture : IScreenSource
 {
-    public (int Width, int Height) ScreenSize =>
-        (Gdi.GetSystemMetrics(Gdi.SmCxScreen), Gdi.GetSystemMetrics(Gdi.SmCyScreen));
+    public PixelRect CaptureArea => GameWindow.FindClientArea() ?? GameWindow.PrimaryScreen;
+
+    public bool GameFound => GameWindow.FindClientArea() is not null;
 
     public CapturedImage Capture(PixelRect rect)
     {

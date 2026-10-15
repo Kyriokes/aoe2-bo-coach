@@ -43,6 +43,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
 
     [ObservableProperty] public partial string RecordingStatus { get; set; } = "";
 
+    /// <summary>Si se encontró la ventana del juego y de qué tamaño (se actualiza en <see cref="Tick"/>).</summary>
+    [ObservableProperty] public partial string GameStatus { get; set; } = "";
+
     public string RecordButtonText => IsRecording ? "■ Detener grabación" : "● Grabar partida";
 
     public bool IsCalibrated => File.Exists(_regionsPath);
@@ -86,6 +89,11 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     /// <summary>La vista lo llama cada segundo para actualizar el estado de la grabación.</summary>
     public void Tick()
     {
+        var area = _screen.CaptureArea;
+        GameStatus = _screen.GameFound
+            ? $"Juego abierto: {area.Width}×{area.Height} en ({area.X}, {area.Y})."
+            : "Juego cerrado o minimizado.";
+
         if (_recorder is not { IsRecording: true } recorder)
             return;
         RecordingStatus = $"Grabando {GameClock.Format(recorder.Elapsed.TotalSeconds)} · {recorder.Frames} capturas"

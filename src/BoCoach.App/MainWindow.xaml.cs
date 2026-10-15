@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using BoCoach.App.Calibration;
 using BoCoach.App.Capture;
 using BoCoach.App.Editor;
+using BoCoach.App.Overlay;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
@@ -17,44 +18,86 @@ namespace BoCoach.App;
 public partial class MainWindow : Window, IDialogs, ICaptureHost
 {
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly ScreenCapture _screen = new();
+    private readonly RecordingIndicator _indicator = new();
+    private GlobalHotkeys? _hotkeys;
+    private bool _calibrating;
 
     public MainWindow(CoachData data)
     {
         InitializeComponent();
         ViewModel = new MainViewModel(data, this);
         DataContext = ViewModel;
-        Tools = new CaptureToolsViewModel(new ScreenCapture(), this);
+        Tools = new CaptureToolsViewModel(_screen, this);
         ToolsBar.DataContext = Tools;
 
-        _tick.Tick += (_, _) => Tools.Tick();
+        _tick.Tick += (_, _) =>
+        {
+            Tools.Tick();
+            if (Tools.IsRecording)
+                _indicator.SetText($"● {Tools.RecordingStatus}");
+        };
         _tick.Start();
+        Tools.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(CaptureToolsViewModel.IsRecording))
+                return;
+            if (Tools.IsRecording)
+                _indicator.ShowOver(_screen.CaptureArea, "● Grabando");
+            else
+                _indicator.Hide();
+        };
+        SourceInitialized += (_, _) => RegisterHotkeys();
         Closing += (_, _) => ViewModel.LeaveCurrent();
         Closed += (_, _) =>
         {
             _tick.Stop();
+            _hotkeys?.Dispose();
             Tools.Dispose();
+            _indicator.Close();
         };
     }
 
     public MainViewModel ViewModel { get; }
     public CaptureToolsViewModel Tools { get; }
 
+    /// <summary>Atajos que andan con el foco en el juego: calibrar y grabar sin salir con Alt+Tab.</summary>
+    private void RegisterHotkeys()
+    {
+        _hotkeys = new GlobalHotkeys(this);
+        var missing = new List<string>();
+        if (!_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, Key.C, () => { if (!_calibrating) Tools.CalibrateCommand.Execute(null); }))
+            missing.Add("Ctrl+Alt+C");
+        if (!_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, Key.R, () => Tools.ToggleRecordingCommand.Execute(null)))
+            missing.Add("Ctrl+Alt+R");
+        if (missing.Count > 0)
+            ViewModel.Status = $"Otro programa ya usa {string.Join(" y ", missing)}; usá los botones de arriba.";
+    }
+
     // ---- Calibración y carpetas ----
 
     public RegionLayout? Calibrate(RegionLayout current)
     {
-        // El editor se minimiza para que debajo de la capa transparente quede el juego, no esta ventana.
+        // Si se abrió desde el editor, se minimiza para que debajo de la capa transparente quede el juego.
+        // Si se abrió con el atajo desde el juego, el editor ya está atrás y no se toca.
+        var fromEditor = IsActive;
         var previous = WindowState;
-        WindowState = WindowState.Minimized;
+        if (fromEditor)
+            WindowState = WindowState.Minimized;
+        _calibrating = true;
         try
         {
-            var window = new CalibrationWindow(current, new ScreenCapture(), OcrReader.TryCreate());
+            var window = new CalibrationWindow(current, _screen, OcrReader.TryCreate());
             return window.ShowDialog() == true ? window.Layout : null;
         }
         finally
         {
-            WindowState = previous;
-            Activate();
+            _calibrating = false;
+            if (fromEditor)
+            {
+                WindowState = previous;
+                Activate();
+            }
         }
     }
 
