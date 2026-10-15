@@ -38,7 +38,42 @@ public partial class App : Application
             return;
         }
 
+        if (args.Contains("--calibration"))
+        {
+            CaptureCalibrationAndExit(screenshot);
+            return;
+        }
         CaptureAndExit(window, data, screenshot, Argument(args, "--bo"), Argument(args, "--open"), Argument(args, "--select"));
+    }
+
+    /// <summary>Como <see cref="CaptureAndExit"/>, pero dibuja la ventana de calibración a 1920×1080 sobre fondo gris.</summary>
+    private void CaptureCalibrationAndExit(string path)
+    {
+        var window = new Calibration.CalibrationWindow(Vision.Regions.RegionLayout.Default, new Vision.Capture.ScreenCapture(), ocr: null)
+        {
+            Background = new SolidColorBrush(Color.FromRgb(0x50, 0x55, 0x48)),
+            ShowActivated = false,
+        };
+        window.Width = 1920;
+        window.Height = 1080;
+        window.Left = -30000;
+        window.Show();
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+        {
+            Render(window, path);
+            window.Close();
+            Shutdown(0);
+        });
+    }
+
+    private static void Render(Window window, string path)
+    {
+        var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(window);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(path);
+        encoder.Save(file);
     }
 
     /// <summary>
@@ -68,14 +103,7 @@ public partial class App : Application
 
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
-            var width = (int)window.ActualWidth;
-            var height = (int)window.ActualHeight;
-            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(window);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using (var file = File.Create(path))
-                encoder.Save(file);
+            Render(window, path);
             Shutdown(0);
         });
     }

@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>BoCoach</AssemblyName>
     <Product>AoE2 BO Coach</Product>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

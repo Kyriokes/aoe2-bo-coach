@@ -1,0 +1,86 @@
+using System.Text.Json;
+using BoCoach.Vision.Capture;
+using BoCoach.Vision.Recording;
+using BoCoach.Vision.Regions;
+
+namespace BoCoach.Vision.Tests;
+
+public sealed class SessionRecorderTests : IDisposable
+{
+    private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("bocoach-rec-");
+
+    public void Dispose() => _root.Delete(recursive: true);
+
+    /// <summary>Pantalla falsa de 1920×1080 que recuerda qué rectángulos le pidieron.</summary>
+    private sealed class FakeScreen : IScreenSource
+    {
+        public List<PixelRect> Requests { get; } = [];
+        public (int Width, int Height) ScreenSize => (1920, 1080);
+
+        public CapturedImage Capture(PixelRect rect)
+        {
+            Requests.Add(rect);
+            return PngTests.Gradient(rect.Width, rect.Height);
+        }
+    }
+
+    [Fact]
+    public void Graba_una_imagen_por_region_y_captura_mas_el_indice()
+    {
+        var screen = new FakeScreen();
+        using var recorder = new SessionRecorder(screen, RegionLayout.Default, _root.FullName);
+
+        recorder.Open();
+        recorder.CaptureFrame();
+        recorder.CaptureFrame();
+        recorder.Stop();
+
+        var folder = recorder.Folder!;
+        Assert.Equal(2, recorder.Frames);
+        Assert.Equal(2 * 7, Directory.EnumerateFiles(folder, "*.png").Count());
+        Assert.True(File.Exists(Path.Combine(folder, SessionRecorder.FileName(1, RegionNames.Clock))));
+        var index = File.ReadAllLines(Path.Combine(folder, "frames.csv"));
+        Assert.Equal(3, index.Length);
+        Assert.Equal("frame,time_ms", index[0]);
+        Assert.StartsWith("0,", index[1]);
+        Assert.StartsWith("1,", index[2]);
+
+        var food = RegionLayout.Default.PixelsOf(RegionNames.Food, 1920, 1080);
+        Assert.Contains(food, screen.Requests);
+        var image = Png.Read(Path.Combine(folder, SessionRecorder.FileName(0, RegionNames.Food)));
+        Assert.Equal((food.Width, food.Height), (image.Width, image.Height));
+    }
+
+    [Fact]
+    public void Session_json_guarda_pantalla_y_regiones_en_pixeles()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
+        recorder.Open();
+        recorder.Stop();
+
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(recorder.Folder!, "session.json")));
+        var root = json.RootElement;
+
+        Assert.Equal(1920, root.GetProperty("screen")[0].GetInt32());
+        Assert.Equal(500, root.GetProperty("interval_ms").GetInt32());
+        var pixels = root.GetProperty("regions").GetProperty(RegionNames.Wood).GetProperty("pixels");
+        Assert.Equal(RegionLayout.Default.PixelsOf(RegionNames.Wood, 1920, 1080).X, pixels[0].GetInt32());
+    }
+
+    [Fact]
+    public async Task Con_el_temporizador_graba_hasta_que_se_detiene()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(50));
+
+        recorder.Start();
+        await Task.Delay(400);
+        recorder.Stop();
+        var frames = recorder.Frames;
+        await Task.Delay(150);
+
+        Assert.InRange(frames, 3, 12);
+        Assert.Equal(frames, recorder.Frames);
+        Assert.False(recorder.IsRecording);
+        Assert.Null(recorder.LastError);
+    }
+}

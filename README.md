@@ -28,6 +28,13 @@ La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders` (la primera vez se c
 
 Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número]` la dibuja en un PNG con una biblioteca temporal.
 
+## Calibrar la pantalla y grabar partidas
+
+En la barra de arriba de la app:
+
+- **Calibrar pantalla…** abre una capa transparente sobre el juego con un rectángulo por región (madera, comida, oro, piedra, población, reloj y log de eventos). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`. El juego tiene que estar en ventana sin bordes.
+- **Grabar partida** guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
+
 ## Regenerar los datos del juego (una vez por parche)
 
 `data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida.

@@ -33,6 +33,34 @@
             </DockPanel>
         </Border>
 
+        <!-- Herramientas de captura: calibrar la pantalla y grabar partidas -->
+        <Border x:Name="ToolsBar" DockPanel.Dock="Top" Background="#2B2622" Padding="12,7">
+            <DockPanel>
+                <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,18,0" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" />
+                    <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" />
+                    <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CalibrationStatus}" Foreground="#C9C1B6" FontSize="12" />
+                    <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
+                               Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#8CD17D" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                        <Setter Property="Foreground" Value="#F08070" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />

@@ -1,23 +1,54 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using BoCoach.App.Calibration;
+using BoCoach.App.Capture;
 using BoCoach.App.Editor;
+using BoCoach.Vision.Capture;
+using BoCoach.Vision.Ocr;
+using BoCoach.Vision.Regions;
 using Microsoft.Win32;
 
 namespace BoCoach.App;
 
-public partial class MainWindow : Window, IDialogs
+public partial class MainWindow : Window, IDialogs, ICaptureHost
 {
+    private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
+
     public MainWindow(CoachData data)
     {
         InitializeComponent();
         ViewModel = new MainViewModel(data, this);
         DataContext = ViewModel;
+        Tools = new CaptureToolsViewModel(new ScreenCapture(), this);
+        ToolsBar.DataContext = Tools;
+
+        _tick.Tick += (_, _) => Tools.Tick();
+        _tick.Start();
         Closing += (_, _) => ViewModel.LeaveCurrent();
+        Closed += (_, _) =>
+        {
+            _tick.Stop();
+            Tools.Dispose();
+        };
     }
 
     public MainViewModel ViewModel { get; }
+    public CaptureToolsViewModel Tools { get; }
+
+    // ---- Calibración y carpetas ----
+
+    public RegionLayout? Calibrate(RegionLayout current)
+    {
+        var window = new CalibrationWindow(current, new ScreenCapture(), OcrReader.TryCreate());
+        return window.ShowDialog() == true ? window.Layout : null;
+    }
+
+    public void OpenFolder(string path) =>
+        Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
 
     // ---- Reordenar pasos arrastrando ----
 

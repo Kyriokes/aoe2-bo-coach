@@ -1,0 +1,57 @@
+<Window x:Class="BoCoach.App.Calibration.CalibrationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Calibración · AoE2 BO Coach"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
+        FontFamily="Segoe UI" FontSize="13">
+
+    <Window.Resources>
+        <!-- Cuerpo del rectángulo: borde de color y un fondo casi invisible para poder agarrarlo -->
+        <ControlTemplate x:Key="BoxTemplate" TargetType="Thumb">
+            <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="#01000000" />
+        </ControlTemplate>
+        <ControlTemplate x:Key="GripTemplate" TargetType="Thumb">
+            <Border Background="{TemplateBinding BorderBrush}" CornerRadius="2" />
+        </ControlTemplate>
+        <Style x:Key="PanelButton" TargetType="Button">
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Canvas x:Name="Surface" />
+
+        <!-- Panel de instrucciones (se puede arrastrar desde el título) -->
+        <Border x:Name="InfoPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Width="460"
+                Background="#EE1E1A16" CornerRadius="8" Padding="20,16" TextElement.Foreground="#F4F2EE">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="PanelOffset" />
+            </Border.RenderTransform>
+            <StackPanel>
+                <Thumb x:Name="PanelHandle" Cursor="SizeAll" DragDelta="PanelHandle_DragDelta">
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <TextBlock Text="Calibración de la pantalla  ⋮⋮" FontSize="17" FontWeight="SemiBold" Background="Transparent" Foreground="#F4F2EE" />
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+                <TextBlock TextWrapping="Wrap" Margin="0,10,0,0" Foreground="#D8D2C8">
+                    Arrastrá cada rectángulo hasta que cubra solo el número (o el texto) que corresponde en el HUD del juego, y estiralo desde la esquina. Abajo de cada uno ves lo que lee el OCR en vivo: si coincide con lo que muestra el juego, está bien ubicado.
+                </TextBlock>
+                <TextBlock TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#A89F94" FontSize="12">
+                    Flechas: mover el rectángulo elegido 1 píxel · Shift + flechas: cambiar su tamaño · Enter: guardar · Esc: cancelar.
+                    El juego tiene que estar en modo ventana sin bordes (o pantalla completa no exclusiva).
+                </TextBlock>
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="#E0B070" FontSize="12" />
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <Button Content="Guardar" Style="{StaticResource PanelButton}" Click="Save_Click" IsDefault="True" FontWeight="SemiBold" />
+                    <Button Content="Restablecer" Style="{StaticResource PanelButton}" Click="Reset_Click" />
+                    <Button Content="Cancelar" Style="{StaticResource PanelButton}" Click="Cancel_Click" IsCancel="True" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

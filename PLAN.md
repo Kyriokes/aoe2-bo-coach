@@ -127,7 +127,7 @@ aoe2-bo-coach/
 │  │  ├─ BuildOrders/         # modelo, validación, serialización
 │  │  ├─ Engine/              # GameSnapshot, PlayerState, Tracker, Planner
 │  │  └─ Economy/             # Rates, Deficit, Allocator
-│  ├─ BoCoach.Vision/         # net10.0-windows10.0.19041.0: captura, preprocesado, OCR, suavizado
+│  ├─ BoCoach.Vision/         # net10.0-windows10.0.19041.0: captura, preprocesado, OCR, suavizado y grabación (Recording/SessionRecorder = RecordSession)
 │  └─ BoCoach.App/            # WPF, net10.0-windows10.0.19041.0
 │     ├─ Overlay/
 │     ├─ Calibration/         # UI de rectángulos
@@ -141,7 +141,7 @@ aoe2-bo-coach/
 │  ├─ extractor/              # Python: .dat → game_data/*.json
 │  │  ├─ extract.py
 │  │  └─ requirements.txt
-│  ├─ RecordSession/          # graba regiones de una partida real
+│  ├─ (RecordSession)         # quedó en BoCoach.Vision/Recording, con el botón "Grabar partida" de la app
 │  └─ ReplaySession/          # corre el pipeline sobre una grabación
 └─ web/                       # fase final: biblioteca de BO
 ```
