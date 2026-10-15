@@ -7,7 +7,8 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 - No uses guiones largos (—) en textos, usá comas.
 - Guiame paso a paso y no asumas lo que veo en una interfaz.
 - Antes de borrar código o archivos, preferí reordenar o mover.
-- Trabajamos por fases (ver `PLAN.md`, sección 7). No avances a la siguiente fase sin que se cumpla el criterio de salida de la actual y sin confirmarlo conmigo.
+- Trabajamos por fases (ver `PLAN.md`, sección 7). No avances a la siguiente fase sin que se cumpla el criterio de salida de la actual.
+- **Autonomía:** tenés permiso para avanzar fases, commitear, pushear y mergear a `main` sin preguntarme. Frená solo cuando un paso necesite algo que únicamente yo puedo hacer (jugar una partida, calibrar en pantalla, probar usabilidad, crear cuentas); en ese caso dejame instrucciones paso a paso.
 
 ## Decisiones tomadas
 - **Runtime 100% C# .NET 10 (LTS) + WPF.** Elegido por rendimiento: menos RAM, ejecutable más chico, OCR nativo de Windows (`Windows.Media.Ocr`), overlay y hotkeys con APIs Win32. No mezclar Python en runtime. Se pasó de .NET 8 a .NET 10 porque .NET 8 pierde soporte en noviembre de 2026.
@@ -18,8 +19,8 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 - **Calibración manual:** el usuario ubica rectángulos semitransparentes sobre el HUD; las coordenadas se guardan relativas a la resolución.
 - **Log de eventos del juego** ("House Built", "Villager Created", al borde de la pantalla, dura unos 5 s y se desvanece) se usa para confirmar pasos. Leer a 2 capturas por segundo.
 - **Editor de BO dentro de la app** (Fase 4) con vista previa simulada. **Web con biblioteca para compartir** en la última fase (Fase 10). App y web usan el mismo formato JSON con `schema_version`.
-- **Git:** una rama por fase (`fase-N-<nombre>`), commits chicos y PR a `main`. El merge lo hace el usuario desde GitHub cuando se cumple el criterio de salida. No hay `gh` instalado: guiar el PR paso a paso por la web.
-- **Repo público con licencia MIT.** CI con GitHub Actions en `windows-latest` (build + test de toda la solución).
+- **Git:** una rama por fase (`fase-N-<nombre>`) con commits chicos. Cuando se cumple el criterio de salida y el CI de la rama está en verde, se mergea a `main` localmente (`git merge --no-ff`) y se pushea. No hay `gh` ni conector de GitHub autenticado, así que no se crean PRs.
+- **Repo público con licencia MIT.** CI con GitHub Actions en `windows-latest` (build + test de toda la solución) en cada push a cualquier rama. Como el repo es público, el estado del CI se consulta sin autenticación: `curl -s "https://api.github.com/repos/Kyriokes/aoe2-bo-coach/actions/runs?per_page=3"`.
 - **Editor del usuario:** Cursor / VS Code (no hay Visual Studio instalado).
 
 ## Entorno de desarrollo (verificado)
@@ -48,4 +49,5 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 Ver `PLAN.md`, sección 10.
 
 ## Estado actual
-- Fase actual: 0 (setup del repo), en la rama `fase-0-setup`. Solución, 5 proyectos, tests de humo y CI armados; `dotnet test` en verde local. Falta: PR y CI en verde en GitHub.
+- Fase 0 (setup) completa: CI en verde en GitHub.
+- Fase actual: 1 (datos del juego).
