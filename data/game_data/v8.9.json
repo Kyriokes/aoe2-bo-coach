@@ -1,0 +1,665 @@
+{
+  "dat_version": "VER 8.9",
+  "entities": {
+    "villager": {
+      "kind": "unit",
+      "dat_id": 83,
+      "dat_name": "VMBAS",
+      "cost": {
+        "food": 50
+      },
+      "time": 25,
+      "age": "dark",
+      "made_in": "town_center",
+      "pop": 1
+    },
+    "militia": {
+      "kind": "unit",
+      "dat_id": 74,
+      "dat_name": "SPRMN",
+      "cost": {
+        "food": 50,
+        "gold": 20
+      },
+      "time": 21,
+      "age": "dark",
+      "made_in": "barracks",
+      "pop": 1
+    },
+    "spearman": {
+      "kind": "unit",
+      "dat_id": 93,
+      "dat_name": "PKEMN",
+      "cost": {
+        "food": 35,
+        "wood": 25
+      },
+      "time": 22,
+      "age": "feudal",
+      "made_in": "barracks",
+      "pop": 1
+    },
+    "archer": {
+      "kind": "unit",
+      "dat_id": 4,
+      "dat_name": "ARCHR",
+      "cost": {
+        "wood": 25,
+        "gold": 45
+      },
+      "time": 35,
+      "age": "feudal",
+      "made_in": "archery_range",
+      "pop": 1
+    },
+    "skirmisher": {
+      "kind": "unit",
+      "dat_id": 7,
+      "dat_name": "XBOWM",
+      "cost": {
+        "food": 25,
+        "wood": 35
+      },
+      "time": 26,
+      "age": "feudal",
+      "made_in": "archery_range",
+      "pop": 1
+    },
+    "scout_cavalry": {
+      "kind": "unit",
+      "dat_id": 448,
+      "dat_name": "SCOUT",
+      "cost": {
+        "food": 80
+      },
+      "time": 30,
+      "age": "feudal",
+      "made_in": "stable",
+      "pop": 1
+    },
+    "knight": {
+      "kind": "unit",
+      "dat_id": 38,
+      "dat_name": "KNGHT",
+      "cost": {
+        "food": 60,
+        "gold": 75
+      },
+      "time": 30,
+      "age": "castle",
+      "made_in": "stable",
+      "pop": 1
+    },
+    "monk": {
+      "kind": "unit",
+      "dat_id": 125,
+      "dat_name": "MONKX",
+      "cost": {
+        "gold": 100
+      },
+      "time": 51,
+      "age": "castle",
+      "made_in": "monastery",
+      "pop": 1
+    },
+    "fishing_ship": {
+      "kind": "unit",
+      "dat_id": 13,
+      "dat_name": "FSHSP",
+      "cost": {
+        "wood": 75
+      },
+      "time": 40,
+      "age": "dark",
+      "made_in": "dock",
+      "pop": 1
+    },
+    "trade_cart": {
+      "kind": "unit",
+      "dat_id": 128,
+      "dat_name": "TCART",
+      "cost": {
+        "wood": 100,
+        "gold": 50
+      },
+      "time": 51,
+      "age": "feudal",
+      "made_in": "market",
+      "pop": 1
+    },
+    "mangonel": {
+      "kind": "unit",
+      "dat_id": 280,
+      "dat_name": "MANGO",
+      "cost": {
+        "wood": 160,
+        "gold": 135
+      },
+      "time": 46,
+      "age": "castle",
+      "made_in": "siege_workshop",
+      "pop": 1
+    },
+    "town_center": {
+      "kind": "building",
+      "dat_id": 621,
+      "dat_name": "RTWC1X",
+      "cost": {
+        "wood": 275,
+        "stone": 100
+      },
+      "time": 150,
+      "age": "castle",
+      "pop_bonus": 5
+    },
+    "house": {
+      "kind": "building",
+      "dat_id": 70,
+      "dat_name": "HOUS",
+      "cost": {
+        "wood": 25
+      },
+      "time": 25,
+      "age": "dark",
+      "pop_bonus": 5
+    },
+    "mill": {
+      "kind": "building",
+      "dat_id": 68,
+      "dat_name": "MILL",
+      "cost": {
+        "wood": 100
+      },
+      "time": 35,
+      "age": "dark"
+    },
+    "lumber_camp": {
+      "kind": "building",
+      "dat_id": 562,
+      "dat_name": "SMIL",
+      "cost": {
+        "wood": 100
+      },
+      "time": 35,
+      "age": "dark"
+    },
+    "mining_camp": {
+      "kind": "building",
+      "dat_id": 584,
+      "dat_name": "MINE",
+      "cost": {
+        "wood": 100
+      },
+      "time": 35,
+      "age": "dark"
+    },
+    "farm": {
+      "kind": "building",
+      "dat_id": 50,
+      "dat_name": "FARM",
+      "cost": {
+        "wood": 60
+      },
+      "time": 15,
+      "age": "dark"
+    },
+    "dock": {
+      "kind": "building",
+      "dat_id": 45,
+      "dat_name": "DOCK",
+      "cost": {
+        "wood": 150
+      },
+      "time": 35,
+      "age": "dark"
+    },
+    "barracks": {
+      "kind": "building",
+      "dat_id": 12,
+      "dat_name": "Barracks Age1",
+      "cost": {
+        "wood": 175
+      },
+      "time": 50,
+      "age": "dark"
+    },
+    "archery_range": {
+      "kind": "building",
+      "dat_id": 87,
+      "dat_name": "ARRG",
+      "cost": {
+        "wood": 175
+      },
+      "time": 50,
+      "age": "feudal"
+    },
+    "stable": {
+      "kind": "building",
+      "dat_id": 101,
+      "dat_name": "STBL",
+      "cost": {
+        "wood": 175
+      },
+      "time": 50,
+      "age": "feudal"
+    },
+    "blacksmith": {
+      "kind": "building",
+      "dat_id": 103,
+      "dat_name": "BLAC",
+      "cost": {
+        "wood": 150
+      },
+      "time": 40,
+      "age": "feudal"
+    },
+    "market": {
+      "kind": "building",
+      "dat_id": 84,
+      "dat_name": "MRKT",
+      "cost": {
+        "wood": 175
+      },
+      "time": 60,
+      "age": "feudal"
+    },
+    "monastery": {
+      "kind": "building",
+      "dat_id": 104,
+      "dat_name": "CRCH",
+      "cost": {
+        "wood": 175
+      },
+      "time": 40,
+      "age": "castle"
+    },
+    "university": {
+      "kind": "building",
+      "dat_id": 209,
+      "dat_name": "UNIV",
+      "cost": {
+        "wood": 200
+      },
+      "time": 60,
+      "age": "castle"
+    },
+    "siege_workshop": {
+      "kind": "building",
+      "dat_id": 49,
+      "dat_name": "SIWS",
+      "cost": {
+        "wood": 200
+      },
+      "time": 40,
+      "age": "castle"
+    },
+    "palisade_wall": {
+      "kind": "building",
+      "dat_id": 72,
+      "dat_name": "WALL",
+      "cost": {
+        "wood": 3
+      },
+      "time": 7,
+      "age": "dark"
+    },
+    "stone_wall": {
+      "kind": "building",
+      "dat_id": 117,
+      "dat_name": "WALL2",
+      "cost": {
+        "stone": 5
+      },
+      "time": 10,
+      "age": "feudal"
+    },
+    "outpost": {
+      "kind": "building",
+      "dat_id": 598,
+      "dat_name": "WCTWX",
+      "cost": {
+        "wood": 25,
+        "stone": 5
+      },
+      "time": 15,
+      "age": "dark"
+    },
+    "watch_tower": {
+      "kind": "building",
+      "dat_id": 79,
+      "dat_name": "WCTW",
+      "cost": {
+        "stone": 125,
+        "wood": 35
+      },
+      "time": 80,
+      "age": "feudal"
+    },
+    "castle": {
+      "kind": "building",
+      "dat_id": 82,
+      "dat_name": "CSTL",
+      "cost": {
+        "stone": 650
+      },
+      "time": 200,
+      "age": "castle",
+      "pop_bonus": 20
+    },
+    "loom": {
+      "kind": "tech",
+      "dat_id": 22,
+      "dat_name": "Loom",
+      "cost": {
+        "gold": 50
+      },
+      "time": 25,
+      "made_in": "town_center",
+      "age": "dark"
+    },
+    "town_watch": {
+      "kind": "tech",
+      "dat_id": 8,
+      "dat_name": "Town Watch",
+      "cost": {
+        "food": 75
+      },
+      "time": 25,
+      "made_in": "town_center",
+      "age": "feudal"
+    },
+    "wheelbarrow": {
+      "kind": "tech",
+      "dat_id": 213,
+      "dat_name": "Wheel Barrow",
+      "cost": {
+        "food": 175,
+        "wood": 50
+      },
+      "time": 75,
+      "made_in": "town_center",
+      "age": "feudal"
+    },
+    "hand_cart": {
+      "kind": "tech",
+      "dat_id": 249,
+      "dat_name": "Hand Cart",
+      "cost": {
+        "food": 300,
+        "wood": 200
+      },
+      "time": 55,
+      "made_in": "town_center",
+      "age": "castle"
+    },
+    "double_bit_axe": {
+      "kind": "tech",
+      "dat_id": 202,
+      "dat_name": "Double Bit Axe",
+      "cost": {
+        "food": 100,
+        "wood": 50
+      },
+      "time": 25,
+      "made_in": "lumber_camp",
+      "age": "feudal"
+    },
+    "bow_saw": {
+      "kind": "tech",
+      "dat_id": 203,
+      "dat_name": "Bow Saw",
+      "cost": {
+        "food": 150,
+        "wood": 100
+      },
+      "time": 50,
+      "made_in": "lumber_camp",
+      "age": "castle"
+    },
+    "horse_collar": {
+      "kind": "tech",
+      "dat_id": 14,
+      "dat_name": "Horse collar",
+      "cost": {
+        "food": 75,
+        "wood": 75
+      },
+      "time": 20,
+      "made_in": "mill",
+      "age": "feudal"
+    },
+    "heavy_plow": {
+      "kind": "tech",
+      "dat_id": 13,
+      "dat_name": "Heavy plow",
+      "cost": {
+        "food": 125,
+        "wood": 125
+      },
+      "time": 40,
+      "made_in": "mill",
+      "age": "castle"
+    },
+    "gold_mining": {
+      "kind": "tech",
+      "dat_id": 55,
+      "dat_name": "Gold Mining",
+      "cost": {
+        "food": 100,
+        "wood": 75
+      },
+      "time": 30,
+      "made_in": "mining_camp",
+      "age": "feudal"
+    },
+    "gold_shaft_mining": {
+      "kind": "tech",
+      "dat_id": 182,
+      "dat_name": "Gold Shaft Mining",
+      "cost": {
+        "food": 175,
+        "wood": 75
+      },
+      "time": 75,
+      "made_in": "mining_camp",
+      "age": "castle"
+    },
+    "stone_mining": {
+      "kind": "tech",
+      "dat_id": 278,
+      "dat_name": "Stone Mining",
+      "cost": {
+        "food": 100,
+        "wood": 75
+      },
+      "time": 30,
+      "made_in": "mining_camp",
+      "age": "feudal"
+    },
+    "stone_shaft_mining": {
+      "kind": "tech",
+      "dat_id": 279,
+      "dat_name": "Stone Shaft Mining",
+      "cost": {
+        "food": 175,
+        "wood": 75
+      },
+      "time": 75,
+      "made_in": "mining_camp",
+      "age": "castle"
+    },
+    "feudal_age": {
+      "kind": "tech",
+      "dat_id": 101,
+      "dat_name": "Middle Age",
+      "cost": {
+        "food": 500
+      },
+      "time": 130,
+      "made_in": "town_center",
+      "age": "dark"
+    },
+    "castle_age": {
+      "kind": "tech",
+      "dat_id": 102,
+      "dat_name": "Feudal Age",
+      "cost": {
+        "food": 800,
+        "gold": 200
+      },
+      "time": 160,
+      "made_in": "town_center",
+      "age": "feudal"
+    },
+    "imperial_age": {
+      "kind": "tech",
+      "dat_id": 103,
+      "dat_name": "Imperial Age",
+      "cost": {
+        "food": 1000,
+        "gold": 800
+      },
+      "time": 190,
+      "made_in": "town_center",
+      "age": "castle"
+    },
+    "man_at_arms": {
+      "kind": "tech",
+      "dat_id": 222,
+      "dat_name": "Man-At-Arms",
+      "cost": {
+        "food": 100,
+        "gold": 40
+      },
+      "time": 40,
+      "made_in": "barracks",
+      "age": "feudal"
+    },
+    "crossbowman": {
+      "kind": "tech",
+      "dat_id": 100,
+      "dat_name": "Crossbow",
+      "cost": {
+        "food": 175,
+        "gold": 100
+      },
+      "time": 35,
+      "made_in": "archery_range",
+      "age": "castle"
+    },
+    "light_cavalry": {
+      "kind": "tech",
+      "dat_id": 254,
+      "dat_name": "Light Cavalry",
+      "cost": {
+        "food": 150,
+        "gold": 50
+      },
+      "time": 45,
+      "made_in": "stable",
+      "age": "castle"
+    },
+    "fletching": {
+      "kind": "tech",
+      "dat_id": 199,
+      "dat_name": "Fletching",
+      "cost": {
+        "food": 100,
+        "gold": 50
+      },
+      "time": 30,
+      "made_in": "blacksmith",
+      "age": "feudal"
+    },
+    "forging": {
+      "kind": "tech",
+      "dat_id": 67,
+      "dat_name": "Forging",
+      "cost": {
+        "food": 150
+      },
+      "time": 50,
+      "made_in": "blacksmith",
+      "age": "feudal"
+    },
+    "scale_mail_armor": {
+      "kind": "tech",
+      "dat_id": 74,
+      "dat_name": "Scale Mail Armor",
+      "cost": {
+        "food": 100
+      },
+      "time": 40,
+      "made_in": "blacksmith",
+      "age": "feudal"
+    },
+    "scale_barding_armor": {
+      "kind": "tech",
+      "dat_id": 81,
+      "dat_name": "Scale Barding Armor",
+      "cost": {
+        "food": 150
+      },
+      "time": 45,
+      "made_in": "blacksmith",
+      "age": "feudal"
+    },
+    "padded_archer_armor": {
+      "kind": "tech",
+      "dat_id": 211,
+      "dat_name": "Padded Archer Armor",
+      "cost": {
+        "food": 100
+      },
+      "time": 40,
+      "made_in": "blacksmith",
+      "age": "feudal"
+    },
+    "bloodlines": {
+      "kind": "tech",
+      "dat_id": 435,
+      "dat_name": "Bloodlines",
+      "cost": {
+        "food": 150,
+        "gold": 100
+      },
+      "time": 50,
+      "made_in": "stable",
+      "age": "feudal"
+    },
+    "husbandry": {
+      "kind": "tech",
+      "dat_id": 39,
+      "dat_name": "Husbandry",
+      "cost": {
+        "food": 150
+      },
+      "time": 40,
+      "made_in": "stable",
+      "age": "castle"
+    },
+    "coinage": {
+      "kind": "tech",
+      "dat_id": 23,
+      "dat_name": "Coinage",
+      "cost": {
+        "food": 200,
+        "gold": 100
+      },
+      "time": 70,
+      "made_in": "market",
+      "age": "castle"
+    }
+  },
+  "civ_overrides": {},
+  "gather_rates": {
+    "sheep": 0.33,
+    "hunt": 0.41,
+    "berries": 0.31,
+    "fish": 0.43,
+    "farm": 0.53,
+    "wood": 0.39,
+    "gold": 0.38,
+    "stone": 0.36
+  }
+}

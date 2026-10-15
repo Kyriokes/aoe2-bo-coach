@@ -26,7 +26,9 @@ Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla c
 ## Entorno de desarrollo (verificado)
 - SDK .NET 10.0.203 fijado en `global.json` (también hay 5, 6, 8 y 9 instalados).
 - Windows 10 Enterprise LTSC 2021 (build 19044). OCR de Windows disponible en `en-US` y `es-MX`; el juego está en inglés, así que se usa `en-US`.
-- Python 3.12 instalado, pero `genieutils-py` todavía no está instalado en ese Python (se resuelve en la Fase 1 con un venv en `tools/extractor/`).
+- Python 3.12 con `genieutils-py` 0.1.2 en el venv `tools/extractor/.venv` (ignorado por git). Parsear el `.dat` tarda unos 30 s.
+- En el `.dat`, el TC que se construye es la base 621, que se apila en el TC real 109 (el que da población y entrena aldeanos); al subir de edad pasa a 71/141/142. El extractor los resuelve todos como `town_center`.
+- La tasa de granjero del `.dat` es 0,53 (sin caminatas); la efectiva ronda 0,32. El Planner tiene que usar eficiencias por fuente, no la tasa cruda.
 
 ## Datos del juego (verificado)
 - Instalación: `H:\Steam\steamapps\common\AoE2DE`

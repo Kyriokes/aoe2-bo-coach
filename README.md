@@ -18,6 +18,18 @@ dotnet build BoCoach.slnx
 dotnet test BoCoach.slnx
 ```
 
+## Regenerar los datos del juego (una vez por parche)
+
+`data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida.
+
+```bash
+py -3.12 -m venv tools/extractor/.venv
+tools/extractor/.venv/Scripts/python -m pip install -r tools/extractor/requirements.txt
+tools/extractor/.venv/Scripts/python tools/extractor/extract.py
+```
+
+Por defecto lee `H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2_x2_p1.dat`; se cambia con `--dat`. Para agregar entidades, sumalas a `ENTIDADES` en `extract.py` por su id del `.dat`.
+
 ## Estructura
 
 | Proyecto | Target | Qué tiene |

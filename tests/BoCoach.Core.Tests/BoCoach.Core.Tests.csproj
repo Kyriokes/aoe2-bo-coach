@@ -22,4 +22,9 @@
     <ProjectReference Include="..\..\src\BoCoach.Core\BoCoach.Core.csproj" />
   </ItemGroup>
 
+  <!-- Datos reales del repo, copiados junto a los tests -->
+  <ItemGroup>
+    <None Include="..\..\data\game_data\*.json" Link="game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
