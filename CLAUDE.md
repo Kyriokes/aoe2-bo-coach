@@ -57,6 +57,6 @@ Ver `PLAN.md`, sección 10.
 - Fase 3 (motor) completa: PlayerState, Tracker, Planner y LivePlan con tests de los 5 escenarios.
 - Fase 5 (economía v1) completa: RateObserver, EconomyAdvisor (estimación de aldeanos, demanda, déficit, greedy) y SuggestionGate.
 - Fase 4 (editor WPF) hecha y verificada por código (tests de ViewModels y capturas con --screenshot). La prueba de usabilidad del usuario (BO de 20 pasos en menos de 5 minutos) quedó pendiente; el usuario pidió seguir con la Fase 6.
-- main está al día hasta la Fase 4 (el usuario pidió explícitamente el push a main, 2026-10-15).
+- main está al día hasta la Fase 6 (el usuario pidió explícitamente cada push a main, 2026-10-15).
 - Fase 6 (captura y calibración): código hecho y testeado (ScreenCapture GDI, Png, RegionLayout, OcrReader, SessionRecorder, CalibrationWindow, barra con "Calibrar pantalla" y "Grabar partida", app.manifest PerMonitorV2). Falta del usuario: calibrar las 7 regiones en menos de 2 minutos con el juego abierto y grabar una partida de prueba.
 - Si el editor está abierto, `BoCoach.exe` de Debug queda bloqueado: compilar en Release o con `-o` a otra carpeta.
