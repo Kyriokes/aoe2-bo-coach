@@ -7,7 +7,7 @@
   "description": "Exploradores en Feudal para Arabia. 21 aldeanos y el explorador inicial; Feudal a 22 de población.",
   "tags": ["feudal", "scouts", "arabia"],
   "steps": [
-    { "id": "s1", "do": "build", "what": "house", "count": 2, "assign": "sheep", "confirm_by": "house_built", "note": "Los 3 aldeanos iniciales hacen 2 casas y van a las ovejas" },
+    { "id": "s1", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep", "confirm_by": "house_built", "note": "Los 3 aldeanos iniciales hacen 2 casas y van a las ovejas" },
     { "id": "s2", "do": "train", "what": "villager", "count": 6, "assign": "sheep" },
     { "id": "s3", "do": "train", "what": "villager", "count": 4, "assign": "wood" },
     { "id": "s4", "do": "build", "what": "lumber_camp", "from": "wood", "assign": "wood", "confirm_by": "lumber_camp_built", "note": "Lo hace el primer aldeano de madera" },

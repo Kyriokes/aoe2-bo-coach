@@ -52,8 +52,14 @@ public sealed record Step
     /// </summary>
     public GatherSource? Assign { get; init; }
 
-    /// <summary>Move: de dónde salen los aldeanos. Build: de dónde salen los constructores (null = aldeanos nuevos o iniciales).</summary>
+    /// <summary>Move: de dónde salen los aldeanos. Build: de dónde salen los constructores (null = aldeanos sin tarea, como los iniciales).</summary>
     public GatherSource? From { get; init; }
+
+    /// <summary>
+    /// Build: cuántos aldeanos construyen juntos (por defecto 1). En granjas cada aldeano hace la suya,
+    /// así que por defecto son tantos como granjas.
+    /// </summary>
+    public int? Builders { get; init; }
 
     /// <summary>Ids de pasos que tienen que estar hechos antes.</summary>
     public IReadOnlyList<string> After { get; init; } = [];

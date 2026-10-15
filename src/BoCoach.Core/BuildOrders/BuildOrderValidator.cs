@@ -94,6 +94,10 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             error(id, $"'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {step.AtPop}).");
         if (step.AtTime is < 0)
             error(id, $"'at_time' no puede ser negativo (es {step.AtTime}).");
+        if (step.Builders is not null && step.Do != StepAction.Build)
+            error(id, "'builders' solo se usa en pasos 'build'.");
+        else if (step.Builders is < 1)
+            error(id, $"'builders' tiene que ser 1 o más (es {step.Builders}).");
 
         foreach (var dep in step.After)
         {

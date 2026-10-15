@@ -7,7 +7,7 @@
   "description": "Dos galerías de tiro con arco en Feudal. 22 aldeanos y el explorador; Feudal a 23 de población.",
   "tags": ["feudal", "archers", "arabia"],
   "steps": [
-    { "id": "s1", "do": "build", "what": "house", "count": 2, "assign": "sheep", "confirm_by": "house_built", "note": "Los 3 aldeanos iniciales hacen 2 casas y van a las ovejas" },
+    { "id": "s1", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep", "confirm_by": "house_built", "note": "Los 3 aldeanos iniciales hacen 2 casas y van a las ovejas" },
     { "id": "s2", "do": "train", "what": "villager", "count": 6, "assign": "sheep" },
     { "id": "s3", "do": "train", "what": "villager", "count": 4, "assign": "wood" },
     { "id": "s4", "do": "build", "what": "lumber_camp", "from": "wood", "assign": "wood", "confirm_by": "lumber_camp_built" },
@@ -19,13 +19,14 @@
     { "id": "s10", "do": "build", "what": "house", "from": "wood", "assign": "wood", "confirm_by": "house_built" },
     { "id": "s11", "do": "train", "what": "villager", "count": 3, "assign": "wood" },
     { "id": "s12", "do": "research", "what": "loom" },
-    { "id": "s13", "do": "research", "what": "feudal_age", "at_pop": 23, "note": "Mientras sube: cuartel, campamento minero y 4 de madera al oro" },
+    { "id": "s13", "do": "research", "what": "feudal_age", "at_pop": 23, "note": "Mientras sube: cuartel, campamento minero y 2 de ovejas al oro" },
     { "id": "s14", "do": "build", "what": "barracks", "from": "wood", "assign": "wood", "confirm_by": "barracks_built" },
     { "id": "s15", "do": "build", "what": "mining_camp", "from": "wood", "assign": "gold", "confirm_by": "mining_camp_built" },
-    { "id": "s16", "do": "move", "count": 3, "from": "wood", "assign": "gold" },
+    { "id": "s16", "do": "move", "count": 2, "from": "sheep", "assign": "gold" },
     { "id": "s17", "do": "build", "what": "archery_range", "count": 2, "from": "wood", "assign": "wood", "after": ["s13"], "confirm_by": "archery_range_built" },
-    { "id": "s18", "do": "build", "what": "house", "from": "wood", "assign": "wood", "confirm_by": "house_built" },
-    { "id": "s19", "do": "train", "what": "archer", "count": 6 }
+    { "id": "s18", "do": "build", "what": "house", "count": 2, "from": "wood", "assign": "wood", "confirm_by": "house_built" },
+    { "id": "s19", "do": "train", "what": "villager", "count": 3, "assign": "gold" },
+    { "id": "s20", "do": "train", "what": "archer", "count": 6 }
   ],
   "targets": {
     "feudal_click_time": 570,

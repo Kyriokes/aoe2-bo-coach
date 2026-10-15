@@ -52,4 +52,7 @@ Ver `PLAN.md`, sección 10.
 
 ## Estado actual
 - Fase 0 (setup) completa: CI en verde en GitHub.
-- Fase actual: 1 (datos del juego).
+- Fase 1 (datos del juego) completa: extractor, v8.9.json y tests de valores clave.
+- Fase 2 (modelo de BO) completa: serializador, validador, events.json y 3 BO de ejemplo.
+- Fase 3 (motor) completa: PlayerState, Tracker, Planner y LivePlan con tests de los 5 escenarios.
+- Fase actual: 5 (economía v1); después la 4 (editor WPF).

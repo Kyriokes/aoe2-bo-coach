@@ -1,0 +1,471 @@
+using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
+
+namespace BoCoach.Core.Engine;
+
+/// <summary>Desde dónde simula el Planner: el inicio de la partida (editor) o el estado actual (en vivo).</summary>
+/// <param name="IdleVillagers">Aldeanos sin tarea (al inicio, los 3 que arrancan).</param>
+/// <param name="Buildings">Edificios terminados, por clave de entidad.</param>
+public sealed record PlanStart(
+    double Time,
+    ResourceAmounts Stock,
+    int Population,
+    int PopulationCap,
+    Age Age,
+    IReadOnlyDictionary<GatherSource, int> Villagers,
+    int IdleVillagers,
+    IReadOnlyDictionary<string, int> Buildings)
+{
+    /// <summary>Inicio estándar de AoE2:DE: 3 aldeanos, explorador, centro urbano y 200/200/200/100.</summary>
+    public static PlanStart Standard { get; } = new(
+        Time: 0,
+        Stock: new ResourceAmounts(Food: 200, Wood: 200, Stone: 200, Gold: 100),
+        Population: 4,
+        PopulationCap: 5,
+        Age: Age.Dark,
+        Villagers: new Dictionary<GatherSource, int>(),
+        IdleVillagers: 3,
+        Buildings: new Dictionary<string, int> { [BuildOrderValidator.StartingBuilding] = 1 });
+}
+
+public sealed record PlannerSettings
+{
+    /// <summary>
+    /// Fracción de la tasa del .dat que se logra en la práctica (caminatas, carga, etc.). La de granja es la
+    /// más baja porque el .dat dice 0,53 y en partida se ve cerca de 0,32. En vivo se reemplaza por lo observado.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<GatherSource, double> DefaultEfficiency = new Dictionary<GatherSource, double>
+    {
+        [GatherSource.Sheep] = 0.95,
+        [GatherSource.Hunt] = 0.95,
+        [GatherSource.Berries] = 0.85,
+        [GatherSource.Fish] = 0.8,
+        [GatherSource.Farm] = 0.6,
+        [GatherSource.Wood] = 0.8,
+        [GatherSource.Gold] = 0.85,
+        [GatherSource.Stone] = 0.85,
+    };
+
+    public IReadOnlyDictionary<GatherSource, double> Efficiency { get; init; } = DefaultEfficiency;
+
+    /// <summary>Hasta qué segundo de partida simular como máximo.</summary>
+    public double MaxTime { get; init; } = 3600;
+
+    /// <summary>Cada cuántos segundos guardar una muestra para la línea de tiempo.</summary>
+    public double SampleEvery { get; init; } = 10;
+}
+
+/// <summary>Trabajo que falta de un paso. <paramref name="Remaining"/> sale del Tracker (o es el total en el editor).</summary>
+public sealed record PlanItem(Step Step, int Remaining);
+
+public enum BlockReason
+{
+    /// <summary>Falta población: hay que hacer casas.</summary>
+    Population,
+
+    /// <summary>Faltan recursos para pagarlo.</summary>
+    Resources,
+
+    /// <summary>No existe el edificio donde se produce.</summary>
+    Producer,
+
+    /// <summary>No hay aldeanos para construir o mover.</summary>
+    Villagers,
+
+    /// <summary>Todavía no se llegó a la edad necesaria.</summary>
+    Age,
+}
+
+/// <summary>Un intervalo en que el paso no pudo avanzar.</summary>
+public sealed record PlanBlock(string StepId, BlockReason Reason, double From, double To, Resource? Missing = null)
+{
+    public double Duration => To - From;
+}
+
+/// <param name="Start">Cuándo empieza (primer aldeano en cola, primer cimiento, click de la tech).</param>
+/// <param name="End">Cuándo termina el último trabajo del paso; null si no termina dentro del horizonte.</param>
+public sealed record StepEstimate(Step Step, double? Start, double? End);
+
+public sealed record PlanSample(double Time, ResourceAmounts Stock, int Population, int PopulationCap, int Villagers);
+
+public sealed record PlanResult(
+    IReadOnlyList<StepEstimate> Steps,
+    IReadOnlyList<PlanBlock> Blocks,
+    IReadOnlyList<PlanSample> Timeline)
+{
+    public bool Completed => Steps.All(s => s.End is not null);
+
+    public StepEstimate? For(string stepId) => Steps.FirstOrDefault(s => s.Step.Id == stepId);
+
+    /// <summary>Segundo estimado del click en una tecnología (por ejemplo "feudal_age").</summary>
+    public double? ClickTime(string what) =>
+        Steps.FirstOrDefault(s => s.Step.Do == StepAction.Research && s.Step.What == what)?.Start;
+}
+
+/// <summary>
+/// Simula la BO hacia adelante de a 1 segundo: recolección, cola de cada edificio, constructores y población.
+/// Los pasos arrancan en orden (uno no arranca antes que el anterior), pero se superponen: mientras el centro
+/// urbano entrena aldeanos, otros aldeanos construyen.
+/// </summary>
+public sealed class Planner(GameData data, PlannerSettings? settings = null)
+{
+    private const double Tick = 1;
+    private readonly PlannerSettings _settings = settings ?? new PlannerSettings();
+
+    /// <summary>Simula una BO completa desde el inicio estándar (vista previa del editor).</summary>
+    public PlanResult Simulate(BuildOrder bo) =>
+        Simulate(bo.Steps.Select(s => new PlanItem(s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1)).ToList(), PlanStart.Standard);
+
+    public PlanResult Simulate(IReadOnlyList<PlanItem> items, PlanStart start) =>
+        new Simulation(data, _settings, items, start).Run();
+
+    private sealed class Simulation
+    {
+        private readonly GameData _data;
+        private readonly PlannerSettings _settings;
+        private readonly List<ItemSim> _items;
+        private readonly Dictionary<GatherSource, int> _villagers;
+        private readonly Dictionary<string, int> _buildings;
+        private readonly Dictionary<string, Queue<ItemSim>> _queues = [];
+        private readonly Dictionary<string, int> _busyProducers = [];
+        private readonly List<(double At, ItemSim Item, Action Effect)> _running = [];
+        private readonly List<PlanBlock> _blocks = [];
+        private readonly List<PlanSample> _timeline = [];
+        private readonly HashSet<string> _finishedSteps = [];
+        private double _time;
+        private ResourceAmounts _stock;
+        private int _population;
+        private int _reserved;
+        private int _cap;
+        private int _idle;
+        private int _builders;
+        private Age _age;
+
+        public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start)
+        {
+            _data = data;
+            _settings = settings;
+            _time = start.Time;
+            _stock = start.Stock;
+            _population = start.Population;
+            _cap = start.PopulationCap;
+            _age = start.Age;
+            _idle = start.IdleVillagers;
+            _villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, s => start.Villagers.GetValueOrDefault(s));
+            _buildings = new Dictionary<string, int>(start.Buildings);
+            _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step))).ToList();
+            foreach (var item in _items.Where(i => i.Remaining == 0))
+                Finish(item);
+        }
+
+        private Entity? Lookup(Step step) =>
+            step.What is not null && _data.TryGet(step.What, out var entity) ? entity : null;
+
+        public PlanResult Run()
+        {
+            var nextSample = _time;
+            while (true)
+            {
+                CompleteRunning();
+                for (var i = 0; i < _items.Count; i++)
+                    Advance(_items[i], i == 0 || _items[i - 1].Started);
+
+                if (_time >= nextSample)
+                {
+                    Sample();
+                    nextSample += _settings.SampleEvery;
+                }
+                if (_items.All(i => i.End is not null) || _time >= _settings.MaxTime)
+                    break;
+
+                Gather();
+                _time += Tick;
+            }
+            Sample();
+
+            return new PlanResult(
+                _items.Select(i => new StepEstimate(i.Step, i.Start, i.End)).ToList(),
+                _blocks,
+                _timeline);
+        }
+
+        private void Gather()
+        {
+            foreach (var (source, count) in _villagers)
+            {
+                if (count == 0)
+                    continue;
+                var rate = _data.GatherRates[source] * _settings.Efficiency.GetValueOrDefault(source, 1) * count * Tick;
+                var resource = source.Resource();
+                _stock = _stock.With(resource, _stock[resource] + rate);
+            }
+        }
+
+        private void CompleteRunning()
+        {
+            foreach (var job in _running.Where(j => j.At <= _time).OrderBy(j => j.At).ToList())
+            {
+                _running.Remove(job);
+                job.Effect();
+                job.Item.Unfinished--;
+                if (job.Item.Unfinished == 0 && job.Item.Remaining == 0)
+                    Finish(job.Item);
+            }
+        }
+
+        private void Finish(ItemSim item)
+        {
+            item.Started = true;
+            item.End ??= _time;
+            item.Start ??= _time;
+            _finishedSteps.Add(item.Step.Id);
+        }
+
+        private void Advance(ItemSim item, bool previousStarted)
+        {
+            if (item.End is not null)
+                return;
+
+            if (!item.Started)
+            {
+                if (!previousStarted || !ConditionsMet(item.Step))
+                    return;
+                if (item.Step.Do is StepAction.Train or StepAction.Research)
+                {
+                    // Entra en la cola del edificio; se paga cuando el edificio lo empieza a producir.
+                    var queue = Queue(item.Entity?.MadeIn);
+                    for (var k = 0; k < item.Remaining; k++)
+                        queue.Enqueue(item);
+                    item.Started = true;
+                }
+            }
+
+            switch (item.Step.Do)
+            {
+                case StepAction.Train or StepAction.Research:
+                    Produce(item);
+                    break;
+                case StepAction.Build:
+                    Build(item);
+                    break;
+                case StepAction.Move:
+                    Move(item);
+                    break;
+            }
+        }
+
+        private bool ConditionsMet(Step step) =>
+            step.After.All(_finishedSteps.Contains)
+            && (step.AtPop is not { } pop || _population >= pop)
+            && (step.AtTime is not { } t || _time >= t);
+
+        private Queue<ItemSim> Queue(string? producer)
+        {
+            var key = producer ?? "";
+            return _queues.TryGetValue(key, out var queue) ? queue : _queues[key] = new Queue<ItemSim>();
+        }
+
+        private void Produce(ItemSim item)
+        {
+            if (item.Entity is not { } entity)
+                return;
+            var producer = entity.MadeIn ?? "";
+            var queue = Queue(producer);
+            while (queue.TryPeek(out var head) && head == item)
+            {
+                if (_buildings.GetValueOrDefault(producer) == 0)
+                {
+                    Block(item, BlockReason.Producer);
+                    return;
+                }
+                if (_busyProducers.GetValueOrDefault(producer) >= _buildings[producer])
+                    return; // el edificio está ocupado con el trabajo anterior: no es un bloqueo del paso
+                if (entity.Age > _age)
+                {
+                    Block(item, BlockReason.Age);
+                    return;
+                }
+                if (entity.Pop > 0 && _population + _reserved + entity.Pop > _cap)
+                {
+                    Block(item, BlockReason.Population);
+                    return;
+                }
+                if (!_stock.Covers(entity.Cost))
+                {
+                    Block(item, BlockReason.Resources, Missing(entity.Cost));
+                    return;
+                }
+
+                queue.Dequeue();
+                _stock -= entity.Cost;
+                _reserved += entity.Pop;
+                _busyProducers[producer] = _busyProducers.GetValueOrDefault(producer) + 1;
+                item.Remaining--;
+                item.Unfinished++;
+                item.Start ??= _time;
+                _running.Add((_time + entity.Time, item, () =>
+                {
+                    _busyProducers[producer]--;
+                    _reserved -= entity.Pop;
+                    _population += entity.Pop;
+                    if (entity.Kind == EntityKind.Tech)
+                        _age = AgeReachedBy(entity.Key) ?? _age;
+                    else if (entity.Key == "villager")
+                        AddVillagers(item.Step.Assign, 1);
+                }));
+            }
+        }
+
+        private void Build(ItemSim item)
+        {
+            if (item.Entity is not { } entity || item.Remaining == 0)
+                return;
+            if (entity.Age > _age)
+            {
+                Block(item, BlockReason.Age);
+                return;
+            }
+
+            var parallel = entity.Key == "farm";
+            var team = parallel ? 1 : item.Step.Builders ?? 1;
+            while (item.Remaining > 0)
+            {
+                if (!parallel && item.Unfinished > 0)
+                    return; // los mismos constructores hacen un edificio después del otro
+
+                if (!_stock.Covers(entity.Cost))
+                {
+                    Block(item, BlockReason.Resources, Missing(entity.Cost));
+                    return;
+                }
+
+                int builders;
+                if (!parallel && item.HeldBuilders > 0)
+                {
+                    builders = item.HeldBuilders;
+                }
+                else
+                {
+                    builders = TakeVillagers(item.Step.From, team);
+                    if (builders == 0)
+                    {
+                        Block(item, BlockReason.Villagers);
+                        return;
+                    }
+                    _builders += builders;
+                    if (!parallel)
+                        item.HeldBuilders = builders;
+                }
+
+                _stock -= entity.Cost;
+                item.Remaining--;
+                item.Unfinished++;
+                item.Start ??= _time;
+                item.Started = true;
+                var buildTime = entity.Time * 3.0 / (builders + 2);
+                var last = item.Remaining == 0;
+                _running.Add((_time + buildTime, item, () =>
+                {
+                    _buildings[entity.Key] = _buildings.GetValueOrDefault(entity.Key) + 1;
+                    _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + entity.PopBonus);
+                    if (parallel || last)
+                    {
+                        _builders -= builders;
+                        AddVillagers(item.Step.Assign ?? item.Step.From, builders);
+                        item.HeldBuilders = 0;
+                    }
+                }));
+
+                if (!parallel)
+                    return;
+            }
+        }
+
+        private void Move(ItemSim item)
+        {
+            if (item.Step.From is not { } from || item.Step.Assign is not { } to)
+                return;
+            if (_villagers[from] == 0)
+            {
+                Block(item, BlockReason.Villagers);
+                return;
+            }
+            var moved = Math.Min(item.Step.Count, _villagers[from]);
+            _villagers[from] -= moved;
+            _villagers[to] += moved;
+            item.Started = true;
+            item.Remaining = 0;
+            Finish(item);
+        }
+
+        /// <summary>Saca aldeanos para construir: de 'from' si se indica; si no, los que no tienen tarea y después el recurso con más gente.</summary>
+        private int TakeVillagers(GatherSource? from, int wanted)
+        {
+            if (from is { } source)
+            {
+                var taken = Math.Min(wanted, _villagers[source]);
+                _villagers[source] -= taken;
+                return taken;
+            }
+
+            var fromIdle = Math.Min(wanted, _idle);
+            _idle -= fromIdle;
+            var rest = wanted - fromIdle;
+            if (rest > 0 && fromIdle == 0)
+            {
+                var busiest = _villagers.MaxBy(v => v.Value);
+                var taken = Math.Min(rest, busiest.Value);
+                _villagers[busiest.Key] -= taken;
+                return taken;
+            }
+            return fromIdle;
+        }
+
+        private void AddVillagers(GatherSource? source, int count)
+        {
+            if (source is { } s)
+                _villagers[s] += count;
+            else
+                _idle += count;
+        }
+
+        private static Age? AgeReachedBy(string tech) => tech switch
+        {
+            "feudal_age" => Age.Feudal,
+            "castle_age" => Age.Castle,
+            "imperial_age" => Age.Imperial,
+            _ => null,
+        };
+
+        private Resource Missing(ResourceAmounts cost) =>
+            Enum.GetValues<Resource>().First(r => _stock[r] < cost[r]);
+
+        /// <summary>Registra que el paso está trabado este segundo; si ya lo estaba por lo mismo, estira el intervalo.</summary>
+        private void Block(ItemSim item, BlockReason reason, Resource? missing = null)
+        {
+            var i = _blocks.FindLastIndex(b => b.StepId == item.Step.Id);
+            if (i >= 0 && _blocks[i].Reason == reason && _blocks[i].Missing == missing && _blocks[i].To >= _time)
+            {
+                _blocks[i] = _blocks[i] with { To = _time + Tick };
+                return;
+            }
+            _blocks.Add(new PlanBlock(item.Step.Id, reason, _time, _time + Tick, missing));
+        }
+
+        private void Sample() => _timeline.Add(new PlanSample(
+            _time, _stock, _population, _cap, _villagers.Values.Sum() + _idle + _builders));
+    }
+
+    private sealed class ItemSim(Step step, int index, int remaining, Entity? entity)
+    {
+        public Step Step { get; } = step;
+        public int Index { get; } = index;
+        public Entity? Entity { get; } = entity;
+        public int Remaining { get; set; } = remaining;
+        public int Unfinished { get; set; }
+        public int HeldBuilders { get; set; }
+        public bool Started { get; set; }
+        public double? Start { get; set; }
+        public double? End { get; set; }
+    }
+}
