@@ -42,9 +42,16 @@ public sealed class OcrReader
     /// Renglones con su altura en la imagen original, ordenados de arriba hacia abajo. El OCR a veces parte un
     /// renglón en pedazos o los devuelve desordenados: los pedazos a la misma altura se juntan de izquierda a derecha.
     /// </summary>
-    public async Task<IReadOnlyList<OcrTextLine>> ReadLinesAsync(CapturedImage image, int scale = 3)
+    public Task<IReadOnlyList<OcrTextLine>> ReadLinesAsync(CapturedImage image, int scale = 3) =>
+        ReadPreparedLinesAsync(image.InvertedGray().Scale(scale), scale);
+
+    /// <summary>
+    /// Como <see cref="ReadLinesAsync"/>, pero con la imagen ya preparada para el OCR (texto oscuro sobre fondo
+    /// claro), con <paramref name="margin"/> píxeles de margen agregados y agrandada <paramref name="scale"/> veces;
+    /// las alturas se devuelven en píxeles de la captura original.
+    /// </summary>
+    public async Task<IReadOnlyList<OcrTextLine>> ReadPreparedLinesAsync(CapturedImage prepared, int scale, int margin = 0)
     {
-        var prepared = image.InvertedGray().Scale(scale);
         using var bitmap = SoftwareBitmap.CreateCopyFromBuffer(
             prepared.Bgra.AsBuffer(), BitmapPixelFormat.Bgra8, prepared.Width, prepared.Height, BitmapAlphaMode.Premultiplied);
         var result = await _engine.RecognizeAsync(bitmap);
@@ -53,9 +60,10 @@ public sealed class OcrReader
             .Where(l => l.Words.Count > 0)
             .Select(l =>
             {
-                var top = l.Words.Min(w => w.BoundingRect.Y) / scale;
-                var bottom = l.Words.Max(w => w.BoundingRect.Y + w.BoundingRect.Height) / scale;
-                var left = l.Words.Min(w => w.BoundingRect.X) / scale;
+                // Un renglón cortado por el borde de la región puede empezar apenas antes del margen.
+                var top = Math.Max(0, l.Words.Min(w => w.BoundingRect.Y) / scale - margin);
+                var bottom = Math.Max(0, l.Words.Max(w => w.BoundingRect.Y + w.BoundingRect.Height) / scale - margin);
+                var left = Math.Max(0, l.Words.Min(w => w.BoundingRect.X) / scale - margin);
                 return (Text: l.Text, Left: left, Top: top, Bottom: bottom);
             })
             .OrderBy(p => (p.Top + p.Bottom) / 2)

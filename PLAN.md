@@ -367,6 +367,7 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 |---|---|---|
 | `Windows.Media.Ocr` lee mal los dígitos chicos del HUD | Alto | Escalado x3 y umbral; si no alcanza, template matching de dígitos (fuente fija, 10 plantillas) |
 | El log se superpone con chat u otros mensajes | Medio | Coincidencia aproximada contra frases conocidas; ignorar lo que no matchea |
+| El log no tiene fondo propio: texto blanco sobre el mapa, poco contraste | Medio | Máscara de texto blanco antes del OCR (el mapa siempre tiene color) y brillo estirado para la pausa. "Suscribirse" a los eventos del juego no es opción: es un solo proceso y haría falta inyectar código o leer memoria |
 | Eventos repetidos (dos casas seguidas) se cuentan como uno | Medio | Rastrear posición de cada línea entre capturas |
 | Pantalla completa exclusiva impide la captura | Medio | Documentar el uso de ventana sin marco; probar `Windows.Graphics.Capture` |
 | Estimación de aldeanos por recurso imprecisa | Bajo | El HUD muestra los aldeanos de cada recurso: se leen directo. Si la lectura falla, partir del plan y corregir con tasas observadas |

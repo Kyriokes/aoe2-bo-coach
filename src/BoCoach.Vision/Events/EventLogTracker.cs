@@ -22,8 +22,10 @@ public sealed class EventLogTracker
     /// <summary>
     /// Capturas seguidas sin ningún mensaje para dar el log por vacío. Es más que <see cref="StableFrames"/>
     /// porque un mensaje que se está desvaneciendo a veces no se lee, y al volver a leerlo parecería nuevo.
+    /// Tampoco puede ser mucho más: si un mensaje se va y el mismo vuelve a aparecer (otro aldeano), solo se
+    /// cuenta si en el medio el log se dio por vacío. En las partidas grabadas el hueco más corto fue de 5 capturas.
     /// </summary>
-    public int EmptyFrames { get; init; } = 6;
+    public int EmptyFrames { get; init; } = 5;
 
     /// <summary>Lo que se ve ahora en el log, ya estabilizado.</summary>
     public IReadOnlyList<string> Visible => _stable;

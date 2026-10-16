@@ -120,13 +120,20 @@ public class EventLogTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Criterio de la Fase 7 para el log: sobre la transcripción del OCR de una partida real (737 capturas con
-    /// texto), más del 95 % de los eventos revisados a mano se detectan, sin duplicados ni falsos.
+    /// Criterio de la Fase 7 para el log: sobre la transcripción del OCR de una partida real (unas 740 capturas
+    /// con texto), más del 95 % de los eventos revisados a mano se detectan, sin duplicados ni falsos.
+    /// <list type="bullet">
+    /// <item>event_log_ocr.tsv: con la captura preparada como ahora (<see cref="LogImage"/>).</item>
+    /// <item>event_log_ocr_gris.tsv: con el gris invertido de antes, que leía bastante peor: sirve para ver que
+    /// el detector aguanta lecturas malas.</item>
+    /// </list>
     /// </summary>
-    [Fact]
-    public void Detecta_los_eventos_de_la_partida_grabada_sin_duplicados()
+    [Theory]
+    [InlineData("event_log_ocr.tsv")]
+    [InlineData("event_log_ocr_gris.tsv")]
+    public void Detecta_los_eventos_de_la_partida_grabada_sin_duplicados(string transcriptFile)
     {
-        var transcript = File.ReadLines(Path.Combine(Fixture, "event_log_ocr.tsv"))
+        var transcript = File.ReadLines(Path.Combine(Fixture, transcriptFile))
             .Select(l => l.Split('\t'))
             .ToDictionary(p => int.Parse(p[0]), p => p[1].Split('|').Select(s => s[(s.IndexOf(':') + 1)..]).ToList());
         var golden = File.ReadLines(Path.Combine(Fixture, "event_log_golden.csv")).Skip(1)
@@ -134,7 +141,7 @@ public class EventLogTests(ITestOutputHelper output)
             .Select(p => (Frame: int.Parse(p[0]), Event: p[1]))
             .ToList();
         var frames = RecordedSession.Load(Fixture);
-        var last = File.ReadLines(Path.Combine(Fixture, "event_log_ocr.tsv")).Select(l => int.Parse(l.Split('\t')[0])).Max();
+        var last = transcript.Keys.Max();
 
         var tracker = new EventLogTracker();
         var detected = new List<(int Frame, string Event)>();
@@ -167,16 +174,24 @@ public class EventLogTests(ITestOutputHelper output)
     }
 
     [Theory]
-    [InlineData(317, new[] { "dock_built", "feudal_age_researched" })]
-    [InlineData(556, new[] { "fishing_ship_created", "villager_created", "man_at_arms_created", "blacksmith_built" })]
-    public async Task OCR_de_capturas_reales_del_log(int frame, string[] expected)
+    [InlineData("rec-20261015-205040", 317, new[] { "dock_built", "feudal_age_researched" })]
+    [InlineData("rec-20261015-205040", 556, new[] { "fishing_ship_created", "villager_created", "man_at_arms_created", "blacksmith_built" })]
+    // Las que siguen, con el gris invertido de antes no se leían:
+    [InlineData("rec-20261015-205040", 662, new[] { "man_at_arms_created" })]
+    [InlineData("rec-20261015-211049", 475, new[] { "villager_created", "mill_built" })]
+    [InlineData("rec-20261015-211049", 796, new[] { "barracks_built" })]
+    // Texto sobre una zona negra sin explorar.
+    [InlineData("rec-20261015-214512", 1180, new[] { "villager_created", "scout_cavalry_created" })]
+    // Juego en pausa: todo oscurecido ×0,2.
+    [InlineData("rec-20261015-214512", 1399, new[] { "house_built", "blacksmith_built", "scout_cavalry_created", "mining_camp_built", "villager_created" })]
+    public async Task OCR_de_capturas_reales_del_log(string fixture, int frame, string[] expected)
     {
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
-        var image = RecordedSession.Load(Fixture).Image(frame, "event_log");
+        var image = RecordedSession.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", fixture)).Image(frame, "event_log");
 
-        var lines = await ocr.ReadLinesAsync(image);
+        var lines = await EventLogReader.ReadLinesAsync(ocr, image);
         var ids = Matcher.MatchLines(lines.Select(l => l.Text).ToList());
 
         output.WriteLine(string.Join(" | ", lines.Select(l => $"{l.Top:0}:{l.Text}")));

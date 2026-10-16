@@ -5,8 +5,9 @@ using BoCoach.Vision.Ocr;
 namespace BoCoach.Vision.Events;
 
 /// <summary>
-/// Lee el log de eventos captura por captura y devuelve solo los eventos nuevos: OCR de Windows, reconocimiento
-/// aproximado contra data/events.json y detección de mensajes nuevos (<see cref="EventLogTracker"/>).
+/// Lee el log de eventos captura por captura y devuelve solo los eventos nuevos: OCR de Windows sobre la captura
+/// preparada (<see cref="LogImage"/>), reconocimiento aproximado contra data/events.json y detección de mensajes
+/// nuevos (<see cref="EventLogTracker"/>).
 /// </summary>
 public sealed class EventLogReader(OcrReader ocr, EventCatalog catalog)
 {
@@ -18,9 +19,13 @@ public sealed class EventLogReader(OcrReader ocr, EventCatalog catalog)
 
     public async Task<IReadOnlyList<string>> ReadAsync(CapturedImage image)
     {
-        var lines = await ocr.ReadLinesAsync(image);
+        var lines = await ReadLinesAsync(ocr, image);
         return Process(lines.Select(l => l.Text).ToList());
     }
+
+    /// <summary>Renglones del log de arriba hacia abajo, con la captura preparada por <see cref="LogImage"/>.</summary>
+    public static Task<IReadOnlyList<OcrTextLine>> ReadLinesAsync(OcrReader ocr, CapturedImage image) =>
+        ocr.ReadPreparedLinesAsync(LogImage.Prepare(image), LogImage.Scale, LogImage.Margin);
 
     /// <summary>Procesa renglones ya leídos (de arriba hacia abajo). Sirve también para transcripciones guardadas.</summary>
     public IReadOnlyList<string> Process(IReadOnlyList<string> lines) => Process(_matcher, _tracker, lines);

@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Events;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
 
@@ -247,8 +248,9 @@ public partial class CalibrationWindow : Window
             foreach (var name in RegionNames.All)
             {
                 var image = _screen.Capture(Layout.PixelsOf(name, area));
-                var text = (await _ocr.ReadAsync(image)).Trim();
-                var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                var lines = name == RegionNames.EventLog
+                    ? (await EventLogReader.ReadLinesAsync(_ocr, image)).Select(l => l.Text.Trim()).ToArray()
+                    : (await _ocr.ReadAsync(image)).Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries);
                 _boxes[name].Reading.Text = lines.Length == 0
                     ? "(no leo nada)"
                     : string.Join("\n", lines.Take(name == RegionNames.EventLog ? 4 : 1));

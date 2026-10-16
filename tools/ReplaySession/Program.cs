@@ -9,8 +9,8 @@
 //   read <grabación> <región> <fuente.json> [--frames 1,2,3 | --every N]
 //       Lee la región con la letra y muestra el texto y la seguridad de cada captura.
 //   ocr <grabación> <región> [--frames 1,2,3 | --every N]
-//       Pasa el OCR de Windows (el que se usa para el log) y muestra las capturas donde leyó algo,
-//       con cada renglón como "altura:texto", separados por '|'.
+//       Pasa el OCR de Windows y muestra las capturas donde leyó algo, con cada renglón como "altura:texto",
+//       separados por '|'. Para event_log prepara la captura igual que el lector del log (LogImage).
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre el pipeline completo (números, suavizado, edad y log) y escribe una fila por captura.
@@ -26,6 +26,9 @@ using BoCoach.Core.Data;
 using BoCoach.Vision.Events;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Regions;
+
+// UTF-8 para que los acentos (y lo que lea el OCR) se vean bien y se puedan guardar en archivos de prueba.
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 if (args.Length == 0)
 {
@@ -230,7 +233,8 @@ static async Task<int> Ocr(string recording, string region, string[] args)
     var withText = 0;
     foreach (var frame in SelectFrames(session, args))
     {
-        var lines = await ocr.ReadLinesAsync(session.Image(frame, region));
+        var image = session.Image(frame, region);
+        var lines = region == RegionNames.EventLog ? await EventLogReader.ReadLinesAsync(ocr, image) : await ocr.ReadLinesAsync(image);
         var text = string.Join("|", lines.Select(l => $"{l.Top:0}:{l.Text.Replace("|", "/").Trim()}"));
         if (text.Length == 0)
             continue;
