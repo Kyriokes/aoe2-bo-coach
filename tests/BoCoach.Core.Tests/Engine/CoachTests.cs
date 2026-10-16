@@ -141,6 +141,22 @@ public class CoachTests
     }
 
     [Fact]
+    public void Los_aldeanos_de_un_paso_se_cuentan_como_el_HUD()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+
+        // Los 3 iniciales hicieron las casas y están en las ovejas: "6 aldeanos a ovejas" son 9 en total.
+        var view = coach.Update(At(40, 200, 3, "house_built", "house_built"));
+        Assert.Equal("s2", view.Current?.Step.Id);
+        Assert.Equal((3, 9), view.SourceVillagers);
+        Assert.EndsWith("(3/9 en ovejas)", CoachText.Lines(view, TestData.GameData).Current);
+
+        view = coach.Update(At(65, 200, 4));
+        Assert.EndsWith("(4/9 en ovejas)", CoachText.Lines(view, TestData.GameData).Current);
+    }
+
+    [Fact]
     public void Un_aviso_del_log_se_muestra_unos_segundos()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);

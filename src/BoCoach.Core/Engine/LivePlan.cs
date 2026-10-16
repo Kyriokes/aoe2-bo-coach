@@ -42,6 +42,36 @@ public static class LivePlan
     /// </summary>
     public static PlanStart Start(Tracker tracker)
     {
+        var layout = Layout(tracker.Steps.Where(s => s.Completed > 0).Select(s => (s.Step, s.Completed, s.State == StepState.Done)));
+
+        // También las que el log mostró fuera de la BO (una carretilla que no estaba en el plan).
+        var state = tracker.State;
+        var researched = layout.Researched;
+        foreach (var e in state.Events)
+        {
+            if (EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
+                researched.Add(done.What);
+        }
+        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, layout.Age, layout.Villagers, layout.Idle, layout.Buildings)
+        {
+            Researched = researched,
+        };
+    }
+
+    /// <summary>
+    /// Aldeanos que la BO tiene en cada fuente cuando termina el paso <paramref name="index"/> (todo lo anterior hecho),
+    /// contando los 3 iniciales: lo que mostraría el contador del HUD. "6 aldeanos a ovejas" después de que los 3
+    /// iniciales hicieron las casas y fueron a las ovejas son 9 en ovejas.
+    /// </summary>
+    public static IReadOnlyDictionary<GatherSource, int> PlannedVillagers(BuildOrder bo, int index) =>
+        Layout(bo.Steps.Take(index + 1).Select(s => (s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1, true))).Villagers;
+
+    private sealed record VillagerLayout(
+        Dictionary<GatherSource, int> Villagers, int Idle, Dictionary<string, int> Buildings, Age Age, List<string> Researched);
+
+    /// <summary>Dónde quedan los aldeanos, los edificios y la edad después de hacer esos pasos (en orden).</summary>
+    private static VillagerLayout Layout(IEnumerable<(Step Step, int Completed, bool Done)> steps)
+    {
         var start = PlanStart.Standard;
         var villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, _ => 0);
         var idle = start.IdleVillagers;
@@ -70,24 +100,23 @@ public static class LivePlan
                 idle += count;
         }
 
-        foreach (var progress in tracker.Steps.Where(s => s.Completed > 0))
+        foreach (var (step, completed, done) in steps)
         {
-            var step = progress.Step;
             switch (step.Do)
             {
                 case StepAction.Train when step.What == "villager":
-                    Put(step.Assign, progress.Completed);
+                    Put(step.Assign, completed);
                     break;
                 case StepAction.Build when step.What is not null:
-                    buildings[step.What] = buildings.GetValueOrDefault(step.What) + progress.Completed;
-                    if (progress.State == StepState.Done && (step.Assign is not null || step.From is null))
+                    buildings[step.What] = buildings.GetValueOrDefault(step.What) + completed;
+                    if (done && (step.Assign is not null || step.From is null))
                     {
-                        var builders = step.What == "farm" ? progress.Completed : step.Builders ?? 1;
+                        var builders = step.What == "farm" ? completed : step.Builders ?? 1;
                         Put(step.Assign ?? step.From, Take(step.From, builders));
                     }
                     break;
                 case StepAction.Research:
-                    if (progress.State == StepState.Done && step.What is not null)
+                    if (done && step.What is not null)
                         researched.Add(step.What);
                     age = step.What switch
                     {
@@ -102,18 +131,7 @@ public static class LivePlan
                     break;
             }
         }
-
-        // También las que el log mostró fuera de la BO (una carretilla que no estaba en el plan).
-        var state = tracker.State;
-        foreach (var e in state.Events)
-        {
-            if (EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
-                researched.Add(done.What);
-        }
-        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, age, villagers, idle, buildings)
-        {
-            Researched = researched,
-        };
+        return new VillagerLayout(villagers, idle, buildings, age, researched);
     }
 
     public static PlanResult Replan(Tracker tracker, Planner planner) =>

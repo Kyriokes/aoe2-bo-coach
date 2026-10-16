@@ -35,6 +35,12 @@ public sealed record CoachView(
     /// (o investigando, o la BO ya no pide aldeanos).
     /// </summary>
     public double? TownCenterIdle { get; init; }
+
+    /// <summary>
+    /// Si el paso actual es entrenar aldeanos para una fuente: cuántos hay ahí y cuántos tiene que haber al terminar el
+    /// paso, contando los que ya estaban (como el contador del HUD). "6 aldeanos a ovejas" arranca en 3/9.
+    /// </summary>
+    public (int Current, int Target)? SourceVillagers { get; init; }
 }
 
 /// <summary>
@@ -195,6 +201,14 @@ public sealed class Coach
         return idle >= TownCenterIdleGrace ? idle : null;
     }
 
+    private (int Current, int Target)? SourceVillagers(StepProgress? current)
+    {
+        if (current?.Step is not { Do: StepAction.Train, What: "villager", Assign: { } source })
+            return null;
+        var target = LivePlan.PlannedVillagers(Tracker.BuildOrder, current.Index).GetValueOrDefault(source);
+        return (Math.Max(0, target - current.Remaining), target);
+    }
+
     private void Replan()
     {
         _plan = LivePlan.Replan(Tracker, _planner);
@@ -231,6 +245,7 @@ public sealed class Coach
         {
             Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
             TownCenterIdle = TownCenterIdle(),
+            SourceVillagers = SourceVillagers(current),
         };
     }
 }
