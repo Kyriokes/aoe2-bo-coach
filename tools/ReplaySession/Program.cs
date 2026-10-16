@@ -17,6 +17,8 @@
 //   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso.
+//   bench <grabación> [--frames 300]
+//       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen) o "blue" (números azules).
 
@@ -51,6 +53,7 @@ try
         "ocr" => Ocr(args[1], args[2], args).GetAwaiter().GetResult(),
         "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
         "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
+        "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -315,6 +318,54 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     foreach (var step in coach.Tracker.Steps)
         Console.WriteLine($"  {step.Step.Id,-4} {step.State,-8} {step.Completed}/{step.Required} {(step.DoneAt is { } t ? BoCoach.Core.GameClock.Format(t) : ""),6}  {StepText.Describe(step.Step)}");
     Console.WriteLine($"  extras: {string.Join(", ", coach.Tracker.Extras.GroupBy(e => e.Event.EventId).Select(g => $"{g.Key}×{g.Count()}"))}");
+    return 0;
+}
+
+// ---- bench: cuánto tarda cada parte de la lectura, para estimar la CPU en vivo ----
+static async Task<int> Bench(string recording, string[] args)
+{
+    var session = RecordedSession.Load(recording);
+    var hud = new HudReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))));
+    var ocr = BoCoach.Vision.Ocr.OcrReader.TryCreate() ?? throw new InvalidDataException("El OCR en inglés de Windows no está instalado.");
+    var frames = session.Frames.Take(Option(args, "--frames", 300)).ToList();
+
+    // Decodificar los PNG solo pasa en el replay: en vivo las regiones salen de la captura GDI.
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var images = frames.Select(f => RegionNames.All.ToDictionary(r => r, r => session.Has(f.Index, r) ? session.Image(f.Index, r) : null)).ToList();
+    var decode = watch.Elapsed.TotalMilliseconds / frames.Count;
+
+    watch.Restart();
+    foreach (var image in images)
+        hud.Read(r => image[r]);
+    var hudMs = watch.Elapsed.TotalMilliseconds / frames.Count;
+
+    watch.Restart();
+    var logs = images.Select(i => i[RegionNames.EventLog]).OfType<CapturedImage>().ToList();
+    var withText = logs.Where(LogImage.HasText).ToList();
+    var hasText = watch.Elapsed.TotalMilliseconds / frames.Count;
+
+    // El lector real, captura por captura: solo pasa el OCR si el texto cambió.
+    var reader = new EventLogReader(ocr, EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json"))));
+    watch.Restart();
+    foreach (var log in logs)
+        await reader.ReadAsync(log);
+    var ocrTotal = watch.Elapsed.TotalMilliseconds;
+
+    var ages = images.Select(i => i[RegionNames.Age]).OfType<CapturedImage>().Take(20).ToList();
+    watch.Restart();
+    foreach (var age in ages)
+        await ocr.ReadAsync(age);
+    var ageMs = ages.Count == 0 ? 0 : watch.Elapsed.TotalMilliseconds / ages.Count;
+
+    var ocrPerFrame = ocrTotal / frames.Count;
+    var live = hudMs + hasText + ocrPerFrame + ageMs / 4; // la edad se lee cada 2 s = 1 de cada 4 capturas
+    Console.WriteLine($"{frames.Count} capturas ({withText.Count} con texto en el log)");
+    Console.WriteLine($"  decodificar PNG (solo replay): {decode,6:0.0} ms por captura");
+    Console.WriteLine($"  números del HUD:               {hudMs,6:0.0} ms");
+    Console.WriteLine($"  ¿hay texto en el log?:         {hasText,6:0.0} ms");
+    Console.WriteLine($"  log (máscara + OCR si cambió): {ocrPerFrame,6:0.0} ms en promedio ({reader.OcrCalls} OCR en {logs.Count} capturas, {(reader.OcrCalls == 0 ? 0 : ocrTotal / reader.OcrCalls):0.0} ms cada uno)");
+    Console.WriteLine($"  OCR de la edad:                {ageMs,6:0.0} ms (cada 2 s)");
+    Console.WriteLine($"  total en vivo (sin captura):   {live,6:0.0} ms por captura → {live / 500 / Environment.ProcessorCount * 100:0.0} % de CPU con {Environment.ProcessorCount} núcleos");
     return 0;
 }
 

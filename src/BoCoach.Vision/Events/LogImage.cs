@@ -34,8 +34,54 @@ public static class LogImage
     private const int InkLow = 60;
     private const int InkFull = 180;
 
-    public static CapturedImage Prepare(CapturedImage image) =>
-        WhiteText(image.Stretched(MaxGain)).Padded(Margin).ScaleSmooth(Scale);
+    /// <summary>Píxeles de tinta (más de la mitad) a partir de los cuales hay texto: un renglón corto tiene unos 250.</summary>
+    public const int MinInkPixels = 40;
+
+    /// <summary>Píxeles que pueden cambiar entre dos máscaras para considerar que el texto es el mismo.</summary>
+    public const int MaxChangedPixels = 12;
+
+    public static CapturedImage Prepare(CapturedImage image) => PrepareMask(Mask(image));
+
+    /// <summary>La máscara de texto (negro sobre blanco) de la captura, todavía sin margen ni agrandar.</summary>
+    public static CapturedImage Mask(CapturedImage image) => WhiteText(image.Stretched(MaxGain));
+
+    /// <summary>Lo que va al OCR a partir de la máscara: con margen y agrandada.</summary>
+    public static CapturedImage PrepareMask(CapturedImage mask) => mask.Padded(Margin).ScaleSmooth(Scale);
+
+    /// <summary>
+    /// Si hay texto del log en la captura. Es mucho más barato que el OCR, que es lo que más CPU usa, y el log está
+    /// vacío buena parte de la partida.
+    /// </summary>
+    public static bool HasText(CapturedImage image) => HasInk(Mask(image));
+
+    /// <summary>Como <see cref="HasText"/>, sobre una máscara ya hecha.</summary>
+    public static bool HasInk(CapturedImage mask)
+    {
+        var ink = 0;
+        for (var i = 0; i < mask.Bgra.Length && ink < MinInkPixels; i += 4)
+        {
+            if (mask.Bgra[i] < 128)
+                ink++;
+        }
+        return ink >= MinInkPixels;
+    }
+
+    /// <summary>
+    /// Si dos máscaras muestran el mismo texto: casi ningún píxel pasó de tinta a fondo o al revés. El mapa de atrás
+    /// no cuenta (la máscara ya lo sacó), así que el texto quieto da máscaras iguales aunque la cámara se mueva.
+    /// </summary>
+    public static bool SameText(CapturedImage a, CapturedImage b)
+    {
+        if (a.Width != b.Width || a.Height != b.Height)
+            return false;
+        var changed = 0;
+        for (var i = 0; i < a.Bgra.Length; i += 4)
+        {
+            if ((a.Bgra[i] < 128) != (b.Bgra[i] < 128) && ++changed > MaxChangedPixels)
+                return false;
+        }
+        return true;
+    }
 
     /// <summary>Texto blanco → negro sobre fondo blanco; lo que tiene color o es oscuro queda blanco.</summary>
     public static CapturedImage WhiteText(CapturedImage image)

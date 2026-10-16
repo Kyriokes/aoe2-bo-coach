@@ -306,9 +306,11 @@ Positivo: va a faltar. Muy negativo: sobra, que es el problema típico del jugad
 
 ### 6.6 Overlay
 - Ventana WPF sin bordes, `Topmost`, con `WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE` para que sea click-through y no robe foco.
-- Contenido: paso actual (grande), siguiente (chico), pasos `late` en otro color, sugerencia económica y línea de desvío contra el objetivo.
-- Hotkeys: avanzar, retroceder, pausar, ocultar.
-- Posición y tamaño configurables.
+- Contenido: paso actual (grande) con lo que falta para hacerlo, lo que está en curso (una edad desde que se paga), siguiente (chico), pasos `late` en otro color, sugerencia económica y línea de desvío contra el objetivo.
+- Hotkeys (todas con Ctrl+Alt, que el juego no usa): S empezar o detener, → avanzar, ← retroceder, ↓ saltear, P pausar, H ocultar, D CPU y RAM.
+- Posición: arriba a la derecha de la ventana del juego (lejos del log de eventos) y la sigue si se mueve. Configurable más adelante.
+- En curso: el log avisa cuando una investigación termina, no cuando se hace clic. El clic se reconoce porque el stock baja de golpe justo el costo.
+- CPU: el OCR del log se pasa solo si hay texto y si cambió desde la captura anterior.
 
 ### 6.7 Editor de build orders (en la app)
 - Lista de pasos con alta, edición, duplicado y **reordenamiento por arrastre**.

@@ -9,6 +9,7 @@ namespace BoCoach.Vision.Hud;
 /// <param name="Clock">Reloj de la partida en segundos.</param>
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura.</param>
 /// <param name="Clipped">Regiones con el número cortado por la caja (avisar que hay que agrandarla).</param>
+/// <param name="ClockRead">Si en esta captura se leyó el reloj (<paramref name="Clock"/> conserva el último valor).</param>
 public sealed record HudState(
     double RealTime,
     double? Clock,
@@ -20,7 +21,8 @@ public sealed record HudState(
     int? IdleVillagers,
     Age? Age,
     IReadOnlyList<string> NewEvents,
-    IReadOnlyList<string> Clipped)
+    IReadOnlyList<string> Clipped,
+    bool ClockRead = true)
 {
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
@@ -73,7 +75,8 @@ public sealed class HudTracker
             (int?)_idle.Add(reading.IdleVillagers, realTime),
             _age,
             newEvents ?? [],
-            reading.Clipped);
+            reading.Clipped,
+            reading.Clock is not null);
     }
 
     private void UpdateAge(Age? read)

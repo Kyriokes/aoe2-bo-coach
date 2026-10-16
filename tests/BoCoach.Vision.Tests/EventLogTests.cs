@@ -1,4 +1,5 @@
 using BoCoach.Core.Data;
+using BoCoach.Vision.Capture;
 using BoCoach.Vision.Events;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
@@ -171,6 +172,26 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.True(golden.Count - unmatched.Count >= Math.Ceiling(golden.Count * 0.95));
         Assert.True(falsePositives.Count <= Math.Floor(golden.Count * 0.05));
         Assert.NotEmpty(frames.Frames);
+    }
+
+    [Fact]
+    public async Task Si_el_texto_no_cambio_no_vuelve_a_pasar_el_OCR()
+    {
+        var ocr = OcrReader.TryCreate();
+        if (ocr is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var image = RecordedSession.Load(Fixture).Image(556, "event_log");
+        var empty = new CapturedImage(image.Width, image.Height, Enumerable.Range(0, image.Bgra.Length).Select(i => (byte)(i % 4 == 3 ? 255 : 30)).ToArray());
+        var reader = new EventLogReader(ocr, Catalog);
+
+        await reader.ReadAsync(image);
+        await reader.ReadAsync(image);
+        Assert.Equal(1, reader.OcrCalls);
+
+        // Un log vacío no pasa por el OCR, y el mismo texto que vuelve sí (puede ser un mensaje nuevo).
+        await reader.ReadAsync(empty);
+        await reader.ReadAsync(image);
+        Assert.Equal(2, reader.OcrCalls);
     }
 
     [Theory]

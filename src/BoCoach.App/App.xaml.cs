@@ -1,8 +1,15 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using BoCoach.App.Coaching;
+using BoCoach.App.Overlay;
+using BoCoach.Core;
+using BoCoach.Core.Engine;
+using BoCoach.Vision.Capture;
+using BoCoach.Vision.Recording;
 
 namespace BoCoach.App;
 
@@ -14,7 +21,7 @@ public partial class App : Application
         DispatcherUnhandledException += OnUnhandledException;
 
         var args = e.Args;
-        var screenshot = Argument(args, "--screenshot");
+        var screenshot = Argument(args, "--screenshot") ?? Argument(args, "--overlay-screenshot");
 
         CoachData data;
         try
@@ -30,11 +37,19 @@ public partial class App : Application
             return;
         }
 
+        if (Argument(args, "--overlay-screenshot") is { } overlayShot)
+        {
+            CaptureOverlayAndExit(data, overlayShot, Argument(args, "--readings"), Argument(args, "--bo"), Argument(args, "--at"), args.Contains("--debug"));
+            return;
+        }
+
         var window = new MainWindow(data);
         MainWindow = window;
         if (screenshot is null)
         {
             window.Show();
+            if (Argument(args, "--replay") is { } replay)
+                StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             return;
         }
 
@@ -69,6 +84,78 @@ public partial class App : Application
         window.Width = 1920;
         window.Height = 1080;
         window.Left = -30000;
+        window.Show();
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+        {
+            Render(window, path);
+            window.Close();
+            Shutdown(0);
+        });
+    }
+
+    /// <summary>
+    /// Modo de prueba sin el juego: corre el coach en vivo sobre una grabación, con el overlay en pantalla.
+    /// Uso: BoCoach.exe --replay carpeta [--bo nombre] [--speed 4] [--stats uso.csv] (CPU y RAM cada 2 s).
+    /// </summary>
+    private static void StartReplay(MainWindow window, string folder, string? bo, string? speed, string? stats)
+    {
+        var vm = window.ViewModel;
+        if (bo is not null)
+            vm.SelectedEntry = vm.Entries.FirstOrDefault(entry => entry.Name.Contains(bo, StringComparison.OrdinalIgnoreCase)) ?? vm.SelectedEntry;
+        if (vm.SelectedEntry?.BuildOrder is not { } buildOrder)
+            return;
+
+        var factor = double.TryParse(speed, NumberStyles.Float, CultureInfo.InvariantCulture, out var s) ? s : 1;
+        window.Coach.Start(buildOrder, new RecordedFrames(RecordedSession.Load(folder), factor));
+        if (stats is null)
+            return;
+
+        var log = new StreamWriter(stats) { AutoFlush = true };
+        log.WriteLine("segundos,cpu_porcentaje,ram_mb,ms_por_captura");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var last = TimeSpan.Zero;
+        window.Coach.FrameApplied += frame =>
+        {
+            if (clock.Elapsed - last < TimeSpan.FromSeconds(2))
+                return;
+            last = clock.Elapsed;
+            log.WriteLine(string.Join(",",
+                ((int)clock.Elapsed.TotalSeconds).ToString(CultureInfo.InvariantCulture),
+                frame.Usage.CpuPercent.ToString("0.00", CultureInfo.InvariantCulture),
+                frame.Usage.MemoryMb.ToString("0.0", CultureInfo.InvariantCulture),
+                frame.FrameMs.ToString("0.0", CultureInfo.InvariantCulture)));
+        };
+        window.Closed += (_, _) => log.Dispose();
+    }
+
+    /// <summary>
+    /// Dibuja el overlay como se vería en un momento de una partida grabada y cierra.
+    /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo nombre --at 8:20 [--debug].
+    /// </summary>
+    private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug)
+    {
+        var entry = data.Library.List().FirstOrDefault(e => bo is null || e.Name.Contains(bo, StringComparison.OrdinalIgnoreCase));
+        if (entry?.BuildOrder is not { } buildOrder || readings is null)
+        {
+            Shutdown(2);
+            return;
+        }
+
+        var until = GameClock.TryParse(at, out var seconds) ? seconds : double.MaxValue;
+        var builder = new SnapshotBuilder(data.GameData);
+        var coach = new Coach(buildOrder, data.GameData, data.Events);
+        foreach (var logged in ScreenReadingLog.Load(readings))
+        {
+            if (builder.Build(logged.Reading) is not { } snapshot)
+                continue;
+            coach.Update(snapshot);
+            if (snapshot.Time >= until)
+                break;
+        }
+
+        var overlay = new OverlayViewModel(data.GameData, buildOrder.Name) { ShowDebug = debug };
+        overlay.Apply(new CoachFrame(coach.View, null, 0, 31, new ProcessUsage(1.2, 87), false, false, null, GameWindow.PrimaryScreen));
+        var window = new CoachOverlay(overlay) { Left = -30000, Top = 0 };
         window.Show();
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {

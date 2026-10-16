@@ -67,6 +67,15 @@ public class LogImageTests
     }
 
     [Fact]
+    public void Una_zona_gris_pareja_no_se_estira_como_si_fuera_texto_en_pausa()
+    {
+        var gray = new CapturedImage(50, 10, Enumerable.Range(0, 50 * 10 * 4).Select(i => (byte)(i % 4 == 3 ? 255 : 30)).ToArray());
+
+        Assert.Same(gray, gray.Stretched(LogImage.MaxGain));
+        Assert.False(LogImage.HasText(gray));
+    }
+
+    [Fact]
     public void Agrega_el_margen_y_agranda()
     {
         var prepared = LogImage.Prepare(Map(40, 12, 3));

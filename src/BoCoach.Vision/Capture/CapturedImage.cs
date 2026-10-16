@@ -101,14 +101,16 @@ public sealed class CapturedImage
     /// <summary>
     /// Multiplica el brillo para que lo más claro de la imagen (el 0,2 % de los píxeles) llegue a 255, hasta
     /// <paramref name="maxGain"/> veces. Con el juego en pausa todo se ve ×0,2: así el texto vuelve a verse blanco.
-    /// Una imagen que ya tiene blancos (o es toda negra, por el tope) queda igual.
+    /// Queda igual una imagen que ya tiene blancos, que es toda negra (por el tope) o en la que lo más claro ocupa
+    /// buena parte (una zona gris pareja no es texto oscurecido).
     /// </summary>
     public CapturedImage Stretched(double maxGain)
     {
         var histogram = new int[256];
         for (var i = 0; i < Bgra.Length; i += 4)
             histogram[Math.Max(Bgra[i + 2], Math.Max(Bgra[i + 1], Bgra[i]))]++;
-        var brightest = Width * Height / 500;
+        var pixels = Width * Height;
+        var brightest = pixels / 500;
         var peak = 255;
         for (var count = 0; peak > 0; peak--)
         {
@@ -118,7 +120,7 @@ public sealed class CapturedImage
         }
 
         var gain = Math.Min(maxGain, 255.0 / Math.Max(1, peak));
-        if (gain <= 1.01)
+        if (gain <= 1.01 || histogram.Skip(peak * 4 / 5).Sum() > pixels / 4)
             return this;
         var output = new byte[Bgra.Length];
         for (var i = 0; i < Bgra.Length; i += 4)

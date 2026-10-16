@@ -22,4 +22,9 @@
     <ProjectReference Include="..\..\src\BoCoach.App\BoCoach.App.csproj" />
   </ItemGroup>
 
+  <!-- 40 capturas de la partida de scouts, para correr el coach en vivo sin el juego -->
+  <ItemGroup>
+    <None Include="..\fixtures\rec-20261015-214512\**\*" Link="fixtures\rec-20261015-214512\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

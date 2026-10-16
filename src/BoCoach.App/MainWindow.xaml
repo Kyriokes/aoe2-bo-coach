@@ -38,6 +38,8 @@
             <DockPanel>
                 <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,18,0" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
+                            ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
                     <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
                     <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
                     <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
