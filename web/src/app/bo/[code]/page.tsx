@@ -5,15 +5,26 @@ import { Suspense } from "react";
 import { BuildOrderView } from "@/components/BuildOrderView";
 import { OpenInApp } from "@/components/OpenInApp";
 import { OwnerActions } from "@/components/OwnerActions";
-import { VoteButton } from "@/components/VoteButton";
+import { VoteButton, Votes } from "@/components/VoteButton";
 import { getBuildOrder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
+import { civLabel, shareDescription, SITE_NAME } from "@/lib/share";
 import { sessionClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/bo/[code]">): Promise<Metadata> {
   const { code } = await params;
   const bo = await getBuildOrder(code);
-  return bo ? { title: bo.name, description: bo.description ?? `Build order de AoE2 por ${bo.author}.` } : { title: "No encontrada" };
+  if (!bo) return { title: "No encontrada" };
+  // Lo que muestran Discord, WhatsApp o los buscadores al compartir el enlace (la imagen sale de opengraph-image).
+  const description = shareDescription(bo);
+  const url = `/bo/${bo.code}`;
+  return {
+    title: bo.name,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "article", siteName: SITE_NAME, locale: "es_AR", title: bo.name, description, url },
+    twitter: { card: "summary_large_image", title: bo.name, description },
+  };
 }
 
 export default function BuildOrderPage({ params }: PageProps<"/bo/[code]">) {
@@ -42,11 +53,11 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
           <div>
             <h1 className="text-2xl font-semibold">{bo.name}</h1>
             <p className="text-sm text-faint">
-              {bo.civ === "any" ? "Cualquier civ" : bo.civ} · por {bo.author} · actualizada el{" "}
+              {civLabel(bo.civ)} · por {bo.author} · actualizada el{" "}
               {new Date(bo.updated_at).toLocaleDateString("es-AR")}
             </p>
           </div>
-          <Suspense fallback={<span className="button">▲ {bo.votes}</span>}>
+          <Suspense fallback={<span className="button"><Votes votes={bo.votes} /></span>}>
             <Vote buildOrderId={bo.id} code={bo.code} votes={bo.votes} />
           </Suspense>
         </div>

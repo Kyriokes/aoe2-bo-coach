@@ -40,9 +40,24 @@ export function BuildOrderView({ json, onAnalysis }: { json: string; onAnalysis?
     };
   }, [json, onAnalysis]);
 
-  if (state.status === "loading") return <p className="text-sm text-faint">Simulando la BO con el motor de la app…</p>;
-  if (state.status === "error") return <p className="text-sm text-red">No se pudo cargar el simulador: {state.message}</p>;
-  if (!state.result.ok) return <p className="text-sm text-red">{state.result.error}</p>;
+  if (state.status === "loading")
+    return (
+      <p role="status" className="text-sm text-faint">
+        Simulando la BO con el motor de la app…
+      </p>
+    );
+  if (state.status === "error")
+    return (
+      <p role="alert" className="text-sm text-red">
+        No se pudo cargar el simulador: {state.message}
+      </p>
+    );
+  if (!state.result.ok)
+    return (
+      <p role="alert" className="text-sm text-red">
+        {state.result.error}
+      </p>
+    );
   return <AnalysisView analysis={state.result} />;
 }
 

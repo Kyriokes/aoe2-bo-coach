@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
+import { SITE_NAME } from "@/lib/share";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,18 +15,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "Biblioteca de build orders para Age of Empires II: Definitive Edition. Mirá la línea de tiempo de cada BO y abrila en BO Coach para seguirla durante la partida.";
+
 export const metadata: Metadata = {
-  title: { default: "AoE2 BO Coach", template: "%s · AoE2 BO Coach" },
-  description:
-    "Biblioteca de build orders para Age of Empires II: Definitive Edition. Mirá la línea de tiempo de cada BO y abrila en BO Coach para seguirla durante la partida.",
+  metadataBase: new URL(siteUrl()),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description,
+  openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title: SITE_NAME, description },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
+        <a href="#contenido" className="skip-link">
+          Saltar al contenido
+        </a>
         <Header />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+        <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 focus:outline-none">
+          {children}
+        </main>
         <footer className="border-t border-line px-4 py-4 text-center text-xs text-faint">
           AoE2 BO Coach es un proyecto de la comunidad, sin relación con Microsoft ni con los estudios del juego. Solo
           lee la pantalla: no toca la memoria del juego ni manda inputs.

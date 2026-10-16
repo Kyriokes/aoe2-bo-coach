@@ -88,6 +88,19 @@ export async function listFacets(): Promise<{ civs: string[]; tags: string[] }> 
   return { civs: sorted(rows.map((r) => r.civ)), tags: sorted(rows.flatMap((r) => r.tags)) };
 }
 
+/** Código y última modificación de cada BO, para el sitemap. */
+export async function listSitemapEntries(): Promise<{ code: string; updated_at: string }[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(LIBRARY_TAG);
+
+  const db = publicClient();
+  if (!db) return [];
+  const { data, error } = await db.from("build_orders").select("code, updated_at").order("updated_at", { ascending: false }).limit(5000);
+  if (error) throw new Error(`No se pudo armar el sitemap: ${error.message}`);
+  return data as { code: string; updated_at: string }[];
+}
+
 export async function getBuildOrder(code: string): Promise<BuildOrderDetail | null> {
   "use cache";
   cacheLife("minutes");

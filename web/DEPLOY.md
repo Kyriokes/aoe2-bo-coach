@@ -57,7 +57,8 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
    - **Framework Preset:** Next.js (lo detecta solo). El comando de build lo toma de `web/vercel.json`: instala .NET para
      compilar el motor a WebAssembly, así que el primer build tarda unos minutos.
    - **Environment Variables:** agregá `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con los
-     valores de Supabase.
+     valores de Supabase. Si más adelante usás un dominio propio, agregá también `NEXT_PUBLIC_SITE_URL` con esa
+     dirección (si no, los enlaces de la vista previa al compartir y el sitemap usan la de Vercel).
 4. Tocá **Deploy**. Al terminar, Vercel te da la dirección del sitio (por ejemplo `https://aoe2-bo-coach.vercel.app`).
    El sitio de producción sale de la rama `main`.
 5. De vuelta en Supabase: **Authentication** → **URL Configuration**:

@@ -24,7 +24,11 @@ export function LoginButtons({ next }: { next: string }) {
           {p.label}
         </button>
       ))}
-      {error ? <p className="text-sm text-red">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

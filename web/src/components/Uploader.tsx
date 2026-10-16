@@ -86,9 +86,9 @@ export function Uploader({ loggedIn, editCode, initialJson }: { loggedIn: boolea
           <button type="button" className="button" onClick={() => review(text)} disabled={!text.trim()}>
             Revisar y simular
           </button>
-          <label className="button cursor-pointer">
+          <label className="button cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-amber">
             Elegir archivo .json
-            <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => readFile(e.target.files?.[0])} />
+            <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => readFile(e.target.files?.[0])} />
           </label>
           {examples.length > 0 && !editCode ? (
             <select className="field" defaultValue="" onChange={(e) => loadExample(e.target.value)} aria-label="Probar con un ejemplo">
@@ -106,8 +106,16 @@ export function Uploader({ loggedIn, editCode, initialJson }: { loggedIn: boolea
             {pending ? "Publicando…" : editCode ? "Guardar la nueva versión" : "Publicar en la biblioteca"}
           </button>
         </div>
-        {analysis?.ok && !analysis.valid ? <p className="text-sm text-red">Corregí los errores antes de publicar.</p> : null}
-        {error ? <p className="text-sm text-red">{error}</p> : null}
+        {analysis?.ok && !analysis.valid ? (
+          <p role="alert" className="text-sm text-red">
+            Corregí los errores antes de publicar.
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" className="text-sm text-red">
+            {error}
+          </p>
+        ) : null}
       </div>
       {reviewed ? <BuildOrderView json={reviewed} onAnalysis={onAnalysis} /> : null}
     </div>

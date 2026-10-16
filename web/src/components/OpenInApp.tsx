@@ -30,7 +30,7 @@ export function OpenInApp({ code, json, fileName }: { code: string; json: string
         Abrir en BO Coach
       </a>
       <button type="button" onClick={copy} className="button">
-        Código <span className="font-mono text-amber">{code}</span> {copied ? "· copiado" : "· copiar"}
+        Código <span className="font-mono text-amber">{code}</span> <span aria-live="polite">{copied ? "· copiado" : "· copiar"}</span>
       </button>
       <button type="button" onClick={download} className="button">
         Descargar .json

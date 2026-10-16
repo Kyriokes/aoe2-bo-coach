@@ -9,7 +9,7 @@ export function Header() {
         <Link href="/" className="text-base font-semibold tracking-tight text-foreground no-underline">
           AoE2 BO Coach
         </Link>
-        <nav className="flex gap-4 text-sm text-muted">
+        <nav aria-label="Principal" className="flex gap-4 text-sm text-muted">
           <Link href="/" className="hover:text-amber">
             Biblioteca
           </Link>

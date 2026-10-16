@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BoCard } from "@/components/BoCard";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
+import { civLabel } from "@/lib/share";
 import { supabaseConfigured } from "@/lib/supabase/env";
 
 type SearchParams = PageProps<"/">["searchParams"];
@@ -44,12 +45,19 @@ async function Filters({ searchParams }: { searchParams: SearchParams }) {
   const [query, facets] = await Promise.all([readQuery(searchParams), listFacets()]);
   return (
     <form className="flex flex-wrap items-center gap-2" role="search">
-      <input name="q" defaultValue={query.q} placeholder="Buscar por nombre o descripción" className="field min-w-56 flex-1" />
+      <input
+        name="q"
+        type="search"
+        defaultValue={query.q}
+        placeholder="Buscar por nombre o descripción"
+        aria-label="Buscar build orders"
+        className="field min-w-56 flex-1"
+      />
       <select name="civ" defaultValue={query.civ ?? ""} className="field" aria-label="Civilización">
         <option value="">Todas las civs</option>
         {facets.civs.map((civ) => (
           <option key={civ} value={civ}>
-            {civ === "any" ? "Cualquier civ" : civ}
+            {civLabel(civ)}
           </option>
         ))}
       </select>

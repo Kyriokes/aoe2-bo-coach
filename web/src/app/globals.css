@@ -3,7 +3,8 @@
 /* El Core en WebAssembly y las BO de ejemplo no tienen clases: que Tailwind no los escanee. */
 @source not "../../public/coach";
 
-/* Misma paleta que la app de escritorio (barra marrón, texto claro, ámbar para lo pendiente). */
+/* Misma paleta que la app de escritorio (barra marrón, texto claro, ámbar para lo pendiente). El gris tenue es un poco
+   más claro que en la app: con #8a8178 el texto chico sobre los paneles no llegaba al contraste mínimo (4,5:1). */
 :root {
   --background: #1e1a16;
   --panel: #2b2622;
@@ -11,7 +12,7 @@
   --line: #5c5046;
   --foreground: #f4f2ee;
   --muted: #c9c1b6;
-  --faint: #8a8178;
+  --faint: #a39a8f;
   --amber: #e8c26a;
   --green: #8cd17d;
   --red: #f08070;
@@ -46,11 +47,16 @@ a {
 }
 
 .button {
-  @apply inline-flex items-center gap-2 rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-amber hover:text-amber disabled:opacity-50;
+  @apply inline-flex items-center gap-2 rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-amber hover:text-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:opacity-50;
 }
 
 .button-primary {
-  @apply inline-flex items-center gap-2 rounded-md bg-amber px-3 py-1.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50;
+  @apply inline-flex items-center gap-2 rounded-md bg-amber px-3 py-1.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:opacity-50;
+}
+
+/* Primer elemento de la página: invisible hasta que llega el foco con Tab. */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-amber focus:px-3 focus:py-1.5 focus:text-sm focus:font-semibold focus:text-background;
 }
 
 .field {
