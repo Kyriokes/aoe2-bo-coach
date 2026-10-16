@@ -16,6 +16,9 @@ public sealed record PlanStart(
     int IdleVillagers,
     IReadOnlyDictionary<string, int> Buildings)
 {
+    /// <summary>Tecnologías ya terminadas (claves de game_data), en orden: las mejoras económicas cambian las tasas.</summary>
+    public IReadOnlyList<string> Researched { get; init; } = [];
+
     /// <summary>Inicio estándar de AoE2:DE: 3 aldeanos, explorador, centro urbano y 200/200/200/100.</summary>
     public static PlanStart Standard { get; } = new(
         Time: 0,
@@ -174,6 +177,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private int _builders;
         private Age _age;
         private readonly CivBonuses _civ;
+        private readonly GatherModel _gatherModel;
+        private readonly List<string> _researched;
+        private Dictionary<GatherSource, double> _rates = [];
 
         public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses civ)
         {
@@ -188,6 +194,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _idle = start.IdleVillagers;
             _villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, s => start.Villagers.GetValueOrDefault(s));
             _buildings = new Dictionary<string, int>(start.Buildings);
+            _gatherModel = new GatherModel(data, settings.Efficiency);
+            _researched = [.. start.Researched];
+            RefreshRates();
             _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step)) { PaidAt = item.PaidAt }).ToList();
             foreach (var item in _items.Where(i => i.Remaining == 0))
                 Finish(item);
@@ -249,12 +258,13 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             {
                 if (count == 0)
                     continue;
-                var rate = _data.GatherRates[source] * _settings.Efficiency.GetValueOrDefault(source, 1)
-                    * _civ.GatherMultiplier(source, _age) * count * Tick;
                 var resource = source.Resource();
-                _stock = _stock.With(resource, _stock[resource] + rate);
+                _stock = _stock.With(resource, _stock[resource] + _rates[source] * count * Tick);
             }
         }
+
+        /// <summary>Tasas por aldeano con la edad y las tecnologías de ahora (cambian cuando termina una).</summary>
+        private void RefreshRates() => _rates = _gatherModel.Rates(_civ, _age, _researched);
 
         private void CompleteRunning()
         {
@@ -374,7 +384,15 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _reserved -= entity.Pop;
             _population += entity.Pop;
             if (entity.Kind == EntityKind.Tech)
-                _age = AgeReachedBy(entity.Key) ?? _age;
+            {
+                _researched.Add(entity.Key);
+                if (AgeReachedBy(entity.Key) is { } reached)
+                {
+                    _age = reached;
+                    _stock += _civ.AgeResources(reached); // dravidianos, etíopes
+                }
+                RefreshRates();
+            }
             else if (entity.Key == "villager")
                 AddVillagers(item.Step.Assign, 1);
         };

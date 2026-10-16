@@ -47,6 +47,7 @@ public static class LivePlan
         var idle = start.IdleVillagers;
         var buildings = new Dictionary<string, int>(start.Buildings);
         var age = start.Age;
+        var researched = new List<string>();
 
         int Take(GatherSource? from, int wanted)
         {
@@ -86,6 +87,8 @@ public static class LivePlan
                     }
                     break;
                 case StepAction.Research:
+                    if (progress.State == StepState.Done && step.What is not null)
+                        researched.Add(step.What);
                     age = step.What switch
                     {
                         "feudal_age" => Age.Feudal,
@@ -100,8 +103,17 @@ public static class LivePlan
             }
         }
 
+        // También las que el log mostró fuera de la BO (una carretilla que no estaba en el plan).
         var state = tracker.State;
-        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, age, villagers, idle, buildings);
+        foreach (var e in state.Events)
+        {
+            if (EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
+                researched.Add(done.What);
+        }
+        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, age, villagers, idle, buildings)
+        {
+            Researched = researched,
+        };
     }
 
     public static PlanResult Replan(Tracker tracker, Planner planner) =>

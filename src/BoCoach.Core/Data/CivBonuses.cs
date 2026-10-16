@@ -22,6 +22,9 @@ public sealed class CivBonuses
     private readonly IReadOnlyDictionary<string, double[]> _times;
     private readonly IReadOnlyDictionary<string, double[]> _workRate;
     private readonly IReadOnlyDictionary<string, int[]> _popBonus;
+    private readonly IReadOnlyDictionary<GatherSource, double[]> _carry;
+    private readonly double[]? _villagerSpeed;
+    private readonly IReadOnlyDictionary<Age, ResourceAmounts> _ageResources;
 
     public CivBonuses(
         string key,
@@ -32,7 +35,10 @@ public sealed class CivBonuses
         IReadOnlyDictionary<string, double[]> times,
         IReadOnlyDictionary<string, double[]> workRate,
         IReadOnlyDictionary<string, int[]> popBonus,
-        CivStart start)
+        CivStart start,
+        IReadOnlyDictionary<GatherSource, double[]>? carry = null,
+        double[]? villagerSpeed = null,
+        IReadOnlyDictionary<Age, ResourceAmounts>? ageResources = null)
     {
         Key = key;
         DatName = datName;
@@ -43,6 +49,9 @@ public sealed class CivBonuses
         _workRate = workRate;
         _popBonus = popBonus;
         Start = start;
+        _carry = carry ?? new Dictionary<GatherSource, double[]>();
+        _villagerSpeed = villagerSpeed;
+        _ageResources = ageResources ?? new Dictionary<Age, ResourceAmounts>();
     }
 
     public static CivBonuses None { get; } = new("any", "", new Dictionary<GatherSource, double[]>(), null,
@@ -75,4 +84,14 @@ public sealed class CivBonuses
 
     /// <summary>Población que da un edificio (chinos: centro urbano 15; incas: casas 10).</summary>
     public int PopBonus(Entity entity, Age age) => _popBonus.TryGetValue(entity.Key, out var v) ? v[(int)age] : entity.PopBonus;
+
+    /// <summary>Carga por viaje de los aldeanos de una fuente sin contar tecnologías, o null si es la de siempre
+    /// (aztecas +3 en todo; dravidianos +15 en la pesca).</summary>
+    public double? Carry(GatherSource source, Age age) => _carry.TryGetValue(source, out var v) ? v[(int)age] : null;
+
+    /// <summary>Multiplicador de la velocidad de los aldeanos (bereberes ×1,05 en Oscura y ×1,1 después).</summary>
+    public double VillagerSpeed(Age age) => _villagerSpeed?[(int)age] ?? 1;
+
+    /// <summary>Lo que se recibe al llegar a una edad (dravidianos +200 de madera; etíopes +100 de comida y de oro).</summary>
+    public ResourceAmounts AgeResources(Age age) => _ageResources.GetValueOrDefault(age, ResourceAmounts.Zero);
 }

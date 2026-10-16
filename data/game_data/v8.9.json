@@ -378,7 +378,65 @@
       },
       "time": 75,
       "made_in": "town_center",
-      "age": "feudal"
+      "age": "feudal",
+      "gather": {
+        "sheep": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "hunt": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "berries": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "fish": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "farm": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "wood": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "gold": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "stone": {
+          "carry": [
+            1.2695,
+            0.0
+          ],
+          "speed": 1.1
+        }
+      }
     },
     "hand_cart": {
       "kind": "tech",
@@ -390,7 +448,65 @@
       },
       "time": 55,
       "made_in": "town_center",
-      "age": "castle"
+      "age": "castle",
+      "gather": {
+        "sheep": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "hunt": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "berries": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "fish": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "farm": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "wood": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "gold": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        },
+        "stone": {
+          "carry": [
+            1.5,
+            0.0
+          ],
+          "speed": 1.1
+        }
+      }
     },
     "double_bit_axe": {
       "kind": "tech",
@@ -402,7 +518,12 @@
       },
       "time": 25,
       "made_in": "lumber_camp",
-      "age": "feudal"
+      "age": "feudal",
+      "gather": {
+        "wood": {
+          "work": 1.2
+        }
+      }
     },
     "bow_saw": {
       "kind": "tech",
@@ -414,7 +535,12 @@
       },
       "time": 50,
       "made_in": "lumber_camp",
-      "age": "castle"
+      "age": "castle",
+      "gather": {
+        "wood": {
+          "work": 1.2
+        }
+      }
     },
     "horse_collar": {
       "kind": "tech",
@@ -438,7 +564,15 @@
       },
       "time": 40,
       "made_in": "mill",
-      "age": "castle"
+      "age": "castle",
+      "gather": {
+        "farm": {
+          "carry": [
+            1.0,
+            1.0
+          ]
+        }
+      }
     },
     "gold_mining": {
       "kind": "tech",
@@ -450,7 +584,12 @@
       },
       "time": 30,
       "made_in": "mining_camp",
-      "age": "feudal"
+      "age": "feudal",
+      "gather": {
+        "gold": {
+          "work": 1.15
+        }
+      }
     },
     "gold_shaft_mining": {
       "kind": "tech",
@@ -462,7 +601,12 @@
       },
       "time": 75,
       "made_in": "mining_camp",
-      "age": "castle"
+      "age": "castle",
+      "gather": {
+        "gold": {
+          "work": 1.15
+        }
+      }
     },
     "stone_mining": {
       "kind": "tech",
@@ -474,7 +618,12 @@
       },
       "time": 30,
       "made_in": "mining_camp",
-      "age": "feudal"
+      "age": "feudal",
+      "gather": {
+        "stone": {
+          "work": 1.15
+        }
+      }
     },
     "stone_shaft_mining": {
       "kind": "tech",
@@ -486,7 +635,12 @@
       },
       "time": 75,
       "made_in": "mining_camp",
-      "age": "castle"
+      "age": "castle",
+      "gather": {
+        "stone": {
+          "work": 1.15
+        }
+      }
     },
     "feudal_age": {
       "kind": "tech",
@@ -661,6 +815,16 @@
     "gold": 0.38,
     "stone": 0.36
   },
+  "gather_carry": {
+    "sheep": 10,
+    "hunt": 35,
+    "berries": 10,
+    "fish": 10,
+    "farm": 10,
+    "wood": 10,
+    "gold": 10,
+    "stone": 10
+  },
   "civs": {
     "britons": {
       "dat_name": "British",
@@ -756,6 +920,14 @@
     },
     "goths": {
       "dat_name": "Goths",
+      "carry": {
+        "hunt": [
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ]
+      },
       "costs": {
         "militia": [
           {
@@ -1573,6 +1745,56 @@
     },
     "aztecs": {
       "dat_name": "Aztecs",
+      "carry": {
+        "sheep": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "hunt": [
+          38.0,
+          38.0,
+          38.0,
+          38.0
+        ],
+        "berries": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "fish": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "farm": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "wood": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "gold": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ],
+        "stone": [
+          13.0,
+          13.0,
+          13.0,
+          13.0
+        ]
+      },
       "times": {
         "militia": [
           18.26,
@@ -1979,7 +2201,21 @@
       "dat_name": "Portuguese"
     },
     "ethiopians": {
-      "dat_name": "Ethiopians"
+      "dat_name": "Ethiopians",
+      "age_resources": {
+        "feudal": {
+          "food": 100,
+          "gold": 100
+        },
+        "castle": {
+          "food": 100,
+          "gold": 100
+        },
+        "imperial": {
+          "food": 100,
+          "gold": 100
+        }
+      }
     },
     "malians": {
       "dat_name": "Malians",
@@ -2232,6 +2468,12 @@
     },
     "berbers": {
       "dat_name": "Berbers",
+      "villager_speed": [
+        1.05,
+        1.1,
+        1.1,
+        1.1
+      ],
       "costs": {
         "scout_cavalry": [
           {
@@ -2683,6 +2925,9 @@
           1.2,
           1.2
         ]
+      },
+      "start": {
+        "food": 100
       }
     },
     "burgundians": {
@@ -3092,6 +3337,25 @@
     },
     "dravidians": {
       "dat_name": "Dravidians",
+      "carry": {
+        "fish": [
+          25.0,
+          25.0,
+          25.0,
+          25.0
+        ]
+      },
+      "age_resources": {
+        "feudal": {
+          "wood": 200
+        },
+        "castle": {
+          "wood": 200
+        },
+        "imperial": {
+          "wood": 200
+        }
+      },
       "costs": {
         "mangonel": [
           {
@@ -3244,6 +3508,38 @@
     },
     "spartans": {
       "dat_name": "Spartans",
+      "carry": {
+        "sheep": [
+          11.0,
+          11.0,
+          11.0,
+          11.0
+        ],
+        "hunt": [
+          38.5,
+          38.5,
+          38.5,
+          38.5
+        ],
+        "berries": [
+          11.0,
+          11.0,
+          11.0,
+          11.0
+        ],
+        "fish": [
+          11.0,
+          11.0,
+          11.0,
+          11.0
+        ],
+        "farm": [
+          11.0,
+          11.0,
+          11.0,
+          11.0
+        ]
+      },
       "times": {
         "man_at_arms": [
           26.67,

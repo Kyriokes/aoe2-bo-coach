@@ -141,6 +141,10 @@ NIVEL_POR_TECH_DE_EDAD = {101: 1, 102: 2, 103: 3}
 
 ATTR_POBLACION = 21     # lo que guarda el edificio: en casas y centros urbanos, la población que da
 ATTR_TRABAJO = 13       # velocidad de trabajo: recolección, construcción o producción del edificio
+ATTR_CARGA = 14         # cuánto lleva un aldeano por viaje
+ATTR_VELOCIDAD = 5      # velocidad de movimiento
+ATTR_UNIDAD_MUERTA = 57  # en qué se convierte la unidad al morir
+ID_CENTRO_URBANO = 109
 ATTR_COSTO_TODO = 100
 ATTR_TIEMPO = 101
 ATTR_COSTO = {103: "food", 104: "wood", 105: "stone", 106: "gold"}
@@ -327,7 +331,7 @@ class Extractor:
         if tipo == "tech":
             tech = self.dat.techs[dat_id]
             loc = tech.research_locations[0]
-            return {
+            datos = {
                 "kind": tipo,
                 "dat_id": dat_id,
                 "dat_name": tech.name,
@@ -336,6 +340,10 @@ class Extractor:
                 "made_in": self.lugar(loc.location_id),
                 "age": _edad_por_nivel(self.nivel_edad_requerida(dat_id)),
             }
+            comandos = self.dat.effects[tech.effect_id].effect_commands if 0 <= tech.effect_id < len(self.dat.effects) else []
+            if recoleccion := self.efectos_de_recoleccion(comandos):
+                datos["gather"] = recoleccion
+            return datos
 
         unidad = self.unidades[dat_id]
         if unidad is None:
@@ -371,6 +379,37 @@ class Extractor:
             recurso: round(self.unidades[uid].bird.work_rate, 3)
             for recurso, uid in VARIANTES_RECOLECCION.items()
         }
+
+    def cargas(self) -> dict[str, float]:
+        """Cuánto lleva por viaje el aldeano de cada tarea (10; el cazador, 35)."""
+        return {fuente: self.unidades[ids[0]].resource_capacity for fuente, ids in TAREAS.items()}
+
+    def efectos_de_recoleccion(self, comandos) -> dict[str, dict]:
+        """
+        Lo que unos comandos de efecto le hacen a cada tarea de los aldeanos: trabajo y velocidad (multiplicadores)
+        y carga (se multiplica y después se suma: la carretilla ×1,27; el arado pesado +1 a los granjeros). Se evalúa
+        sobre el aldeano hombre, como las bonificaciones de civ.
+        """
+        efectos = {}
+        for fuente, ids in TAREAS.items():
+            unidad = self.unidades[ids[0]]
+            trabajo = self.atributo(comandos, {ids[0]}, CLASE_ALDEANO, ATTR_TRABAJO, unidad.bird.work_rate) / unidad.bird.work_rate
+            velocidad = self.atributo(comandos, {ids[0]}, CLASE_ALDEANO, ATTR_VELOCIDAD, unidad.speed) / unidad.speed
+            # La carga es lineal en el valor de partida (c · m + a): con dos puntos salen m y a.
+            con10 = self.atributo(comandos, {ids[0]}, CLASE_ALDEANO, ATTR_CARGA, 10.0)
+            con20 = self.atributo(comandos, {ids[0]}, CLASE_ALDEANO, ATTR_CARGA, 20.0)
+            multiplica = (con20 - con10) / 10
+            suma = con10 - 10 * multiplica
+            efecto = {}
+            if round(trabajo, 4) != 1:
+                efecto["work"] = round(trabajo, 4)
+            if round(multiplica, 4) != 1 or round(suma, 3) != 0:
+                efecto["carry"] = [round(multiplica, 4), round(suma, 3)]
+            if round(velocidad, 4) != 1:
+                efecto["speed"] = round(velocidad, 4)
+            if efecto:
+                efectos[fuente] = efecto
+        return efectos
 
     # ---- Bonificaciones de civilización ----
 
@@ -495,6 +534,32 @@ class Extractor:
                 recoleccion[fuente] = valores
         if recoleccion:
             datos["gather"] = recoleccion
+        # Carga por viaje (absoluta, por edad) y velocidad de los aldeanos (multiplicador).
+        carga = {}
+        for fuente, ids in TAREAS.items():
+            base = self.unidades[ids[0]].resource_capacity
+            valores = por_edad(lambda cmds, n, uid=ids[0], base=base: round(self.atributo(cmds, {uid}, CLASE_ALDEANO, ATTR_CARGA, base), 3))
+            if any(v != base for v in valores):
+                carga[fuente] = valores
+        if carga:
+            datos["carry"] = carga
+        lenador = self.unidades[TAREAS["wood"][0]]
+        velocidad = por_edad(lambda cmds, n: round(
+            self.atributo(cmds, {TAREAS["wood"][0]}, CLASE_ALDEANO, ATTR_VELOCIDAD, lenador.speed) / lenador.speed, 4))
+        if any(v != 1 for v in velocidad):
+            datos["villager_speed"] = velocidad
+
+        # Recursos que da cada edad al llegar (dravidianos +200 de madera, etíopes +100 de comida y de oro): los
+        # comandos nuevos de cada edad que suman al stock.
+        al_subir = {}
+        for n in range(1, 4):
+            for c in niveles[n][len(niveles[n - 1]):]:
+                if c.type == 1 and c.a in RECURSOS and c.b == 1 and c.d > 0:
+                    edad = al_subir.setdefault(_edad_por_nivel(n), {})
+                    edad[RECURSOS[c.a]] = edad.get(RECURSOS[c.a], 0) + int(c.d)
+        if al_subir:
+            datos["age_resources"] = al_subir
+
         base_construccion = self.unidades[CONSTRUCTORES[0]].bird.work_rate
         construccion = por_edad(lambda cmds, n: round(
             self.atributo(cmds, {CONSTRUCTORES[0]}, CLASE_ALDEANO, ATTR_TRABAJO, base_construccion, solo_subas=True) / base_construccion, 3))
@@ -547,9 +612,16 @@ class Extractor:
 
         # Arranque de una partida estándar: recursos, aldeanos extra y casas.
         inicio = {}
+        anexos = {a.unit_id for a in self.unidades[ID_CENTRO_URBANO].building.annexes if a.unit_id >= 0}
         for c in niveles[0]:
             if c.type == 1 and c.a in RECURSO_INICIAL and c.b == 1:
                 inicio[RECURSO_INICIAL[c.a]] = inicio.get(RECURSO_INICIAL[c.a], 0) + int(c.d)
+            elif c.type == 0 and c.c == ATTR_UNIDAD_MUERTA and c.a in anexos:
+                # Lituanos: un anexo vacío del centro urbano pasa a convertirse en un edificio que guarda comida
+                # ("Lithuanian food building", 100), que se suma al stock.
+                for s in self.unidades[int(c.d)].resource_storages:
+                    if s.type in RECURSOS and s.amount > 0:
+                        inicio[RECURSOS[s.type]] = inicio.get(RECURSOS[s.type], 0) + int(s.amount)
             elif c.type == 7 and c.a == ID_ALDEANO:
                 inicio["villagers"] = inicio.get("villagers", 0) + int(c.c)
             elif c.type == 0 and c.a == ID_CASA and c.c == 0 and c.d < 0:
@@ -630,6 +702,7 @@ class Extractor:
             "dat_version": self.dat.version,
             "entities": entidades,
             "gather_rates": self.tasas(),
+            "gather_carry": self.cargas(),
             "civs": self.civs(entidades),
         }
 
@@ -719,9 +792,12 @@ def main() -> int:
             partes.append(f"construcción {civ['build_rate']}")
         if "start" in civ:
             partes.append(f"arranque {civ['start']}")
-        for nombre in ("costs", "times", "work_rate", "pop_bonus"):
+        for nombre in ("costs", "times", "work_rate", "pop_bonus", "carry"):
             if nombre in civ:
                 partes.append(f"{nombre}: {', '.join(civ[nombre])}")
+        for nombre in ("villager_speed", "age_resources"):
+            if nombre in civ:
+                partes.append(f"{nombre}: {civ[nombre]}")
         print(f"  {clave:14} {' · '.join(partes)}")
     return 0
 

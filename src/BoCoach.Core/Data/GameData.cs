@@ -15,18 +15,32 @@ public sealed record Entity(
     Age Age,
     string? MadeIn,
     int Pop,
-    int PopBonus);
+    int PopBonus)
+{
+    /// <summary>Lo que hace (si es una tecnología) con la recolección de cada fuente: hachas, carretilla, minería.</summary>
+    public IReadOnlyDictionary<GatherSource, GatherEffect> Gather { get; init; } = new Dictionary<GatherSource, GatherEffect>();
+}
+
+/// <summary>
+/// Efecto sobre los aldeanos de una fuente: el trabajo y la velocidad se multiplican; la carga se multiplica y después
+/// se suma (carretilla: carga ×1,27 y velocidad ×1,1; arado pesado: +1 de carga a los granjeros).
+/// </summary>
+public sealed record GatherEffect(double Work = 1, double CarryMultiplier = 1, double CarryAdd = 0, double Speed = 1);
 
 /// <summary>Datos del juego de un parche, generados por tools/extractor desde el .dat.</summary>
 public sealed class GameData
 {
+    /// <summary>Carga por viaje del aldeano de cada fuente cuando el .dat no la dice.</summary>
+    public const double DefaultCarry = 10;
+
     public GameData(string datVersion, IReadOnlyDictionary<string, Entity> entities, IReadOnlyDictionary<GatherSource, double> gatherRates,
-        IReadOnlyDictionary<string, CivBonuses>? civs = null)
+        IReadOnlyDictionary<string, CivBonuses>? civs = null, IReadOnlyDictionary<GatherSource, double>? gatherCarry = null)
     {
         DatVersion = datVersion;
         Entities = entities;
         GatherRates = gatherRates;
         Civs = civs ?? new Dictionary<string, CivBonuses>();
+        GatherCarry = gatherCarry ?? new Dictionary<GatherSource, double>();
     }
 
     public string DatVersion { get; }
@@ -35,6 +49,11 @@ public sealed class GameData
 
     /// <summary>Tasa de trabajo del .dat por fuente (recurso por segundo, sin contar caminatas).</summary>
     public IReadOnlyDictionary<GatherSource, double> GatherRates { get; }
+
+    /// <summary>Cuánto lleva por viaje el aldeano de cada fuente (10; el cazador, 35).</summary>
+    public IReadOnlyDictionary<GatherSource, double> GatherCarry { get; }
+
+    public double Carry(GatherSource source) => GatherCarry.GetValueOrDefault(source, DefaultCarry);
 
     public Entity Get(string key) =>
         Entities.TryGetValue(key, out var entity)
