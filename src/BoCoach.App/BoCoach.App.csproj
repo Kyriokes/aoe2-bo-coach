@@ -9,6 +9,24 @@
     <AssemblyName>BoCoach</AssemblyName>
     <Product>AoE2 BO Coach</Product>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.9.0</Version>
+  </PropertyGroup>
+
+  <!--
+    Versión portable: dotnet publish src/BoCoach.App -c Release -r win-x64
+    Un solo BoCoach.exe con el runtime de .NET adentro (no hay que instalar nada) y la carpeta data al lado.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Sin compresión: comprimido, .NET descomprime los ensamblados en memoria y la RAM privada sube unos 60 MB.
+         El .zip de la descarga ya comprime. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+    <!-- Tampoco los .pdb de Core y Vision -->
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,10 +40,15 @@
 
   <!-- Datos del juego, eventos y BO de ejemplo, copiados junto al ejecutable -->
   <ItemGroup>
-    <None Include="..\..\data\game_data\*.json" Link="data\game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\data\events.json" Link="data\events.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\data\fonts\*.json" Link="data\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\build_orders\*.json" Link="data\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\game_data\*.json" Link="data\game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\data\events.json" Link="data\events.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\data\fonts\*.json" Link="data\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\build_orders\*.json" Link="data\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <!-- Instrucciones de la versión portable -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <None Include="..\..\docs\LEEME-portable.txt" Link="LEEME.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
 </Project>

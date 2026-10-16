@@ -1,0 +1,18 @@
+AoE2 BO Coach (versión portable)
+================================
+
+No hay que instalar nada: descomprimí la carpeta donde quieras y abrí BoCoach.exe.
+La carpeta "data" tiene que quedar al lado del .exe.
+
+La primera vez Windows puede avisar "Windows protegió su PC" porque el programa no está firmado:
+tocá "Más información" y después "Ejecutar de todas formas".
+
+Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
+así que se conserva aunque reemplaces la carpeta por una versión nueva.
+
+Para usar el coach:
+  1. Abrí el juego en "Full screen" o "Windowed".
+  2. Ctrl+Alt+C para calibrar las cajas sobre el HUD (una sola vez).
+  3. Elegí la build order en la biblioteca y tocá "Empezar coach" (o Ctrl+Alt+S desde el juego).
+
+Más información: https://github.com/Kyriokes/aoe2-bo-coach

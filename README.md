@@ -6,6 +6,10 @@ Solo lee la pantalla: no lee memoria del proceso, no inyecta código y no envía
 
 El diseño completo y las fases están en [PLAN.md](PLAN.md).
 
+## Descargar
+
+Cada versión publicada está en [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases): un `.zip` con `BoCoach.exe` (trae .NET adentro, no hay que instalar nada) y la carpeta `data`. Cada corrida del CI también deja la versión portable como artefacto (14 días). Para publicar una versión se sube una etiqueta `v0.9.0`: el workflow `release.yml` arma el `.zip` y la release.
+
 ## Requisitos para desarrollar
 
 - Windows 10 (2004 o posterior) u 11

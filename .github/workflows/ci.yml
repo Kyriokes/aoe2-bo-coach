@@ -23,6 +23,14 @@ jobs:
       - run: dotnet build BoCoach.slnx -c Release --no-restore
       - run: dotnet test BoCoach.slnx -c Release --no-build
 
+      # La versión portable (BoCoach.exe con .NET adentro + data), para bajarla y probarla en otra PC.
+      - run: dotnet publish src/BoCoach.App -c Release -r win-x64 -o publish/BoCoach
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BoCoach-portable-win-x64
+          path: publish/
+          retention-days: 14
+
   web:
     # La web: tests de la base (PGlite), el Core en WebAssembly corrido en Node, lint, tipos y build de Next.
     runs-on: ubuntu-latest
