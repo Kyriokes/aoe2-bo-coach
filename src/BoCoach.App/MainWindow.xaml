@@ -63,6 +63,41 @@
             </DockPanel>
         </Border>
 
+        <!-- Lo que ve el coach: todo lo leído en la última captura, mientras el coach corre -->
+        <Border x:Name="LivePanel" DockPanel.Dock="Top" Background="#1E1A16" BorderBrush="#5C5046" BorderThickness="0,0,0,1" Padding="12,8"
+                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel DataContext="{Binding Live}">
+                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="Últimos eventos leídos del log">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#C9C1B6" FontSize="11" FontFamily="Consolas" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Lo que ve el coach" Foreground="#E8C26A" FontWeight="SemiBold" Margin="0,0,16,0" />
+                        <TextBlock Foreground="#F4F2EE"><Run Text="Reloj " Foreground="#A39A8F" /><Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="   Edad " Foreground="#A39A8F" /><Run Text="{Binding Age, Mode=OneWay}" /><Run Text="   Aldeanos " Foreground="#A39A8F" /><Run Text="{Binding Villagers, Mode=OneWay}" /><Run Text="   Inactivos " Foreground="#A39A8F" /><Run Text="{Binding Idle, Mode=OneWay}" /><Run Text="   Población " Foreground="#A39A8F" /><Run Text="{Binding Population, Mode=OneWay}" /></TextBlock>
+                    </StackPanel>
+                    <ItemsControl Margin="0,6,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" HorizontalAlignment="Left" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ContentControl Content="{Binding Food}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                        <ContentControl Content="{Binding Wood}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                        <ContentControl Content="{Binding Gold}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                        <ContentControl Content="{Binding Stone}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                    </ItemsControl>
+                    <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
+                               Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
+                    <TextBlock Text="{Binding Usage}" Foreground="#A39A8F" FontSize="11" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="260" />

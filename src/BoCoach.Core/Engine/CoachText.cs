@@ -15,7 +15,8 @@ public sealed record CoachLines(
     bool Behind,
     string? Suggestion,
     string? Alert = null,
-    string? Idle = null);
+    string? Idle = null,
+    string? Distribution = null);
 
 public static class CoachText
 {
@@ -37,7 +38,8 @@ public static class CoachText
                 false,
                 view.Suggestion?.ToString(),
                 AlertText(view.Alert),
-                IdleText(view.TownCenterIdle));
+                IdleText(view.TownCenterIdle),
+                DistributionText(view.Distribution));
         }
 
         var title = StepText.Describe(current.Step);
@@ -57,8 +59,14 @@ public static class CoachText
             deviation is { Delta: > BehindThreshold },
             view.Suggestion?.ToString(),
             AlertText(view.Alert),
-            IdleText(view.TownCenterIdle));
+            IdleText(view.TownCenterIdle),
+            DistributionText(view.Distribution));
     }
+
+    /// <summary>"Reparto: comida 9 · madera 4 · oro 0 · piedra 0".</summary>
+    public static string? DistributionText(ResourceAmounts? d) => d is { } v
+        ? $"Reparto: comida {v.Food:0} · madera {v.Wood:0} · oro {v.Gold:0} · piedra {v.Stone:0}"
+        : null;
 
     /// <summary>"Centro urbano parado hace 12 s" (lo que pasó de más desde que tendría que haber salido otro aldeano).</summary>
     public static string? IdleText(double? seconds) =>

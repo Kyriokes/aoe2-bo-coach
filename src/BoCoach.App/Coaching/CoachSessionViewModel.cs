@@ -53,6 +53,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     public OverlayViewModel? Overlay { get; private set; }
 
+    /// <summary>Lo que se leyó en la última captura, para el panel "Lo que ve el coach" de la ventana.</summary>
+    public LiveReadingViewModel Live { get; } = new();
+
     /// <summary>Cada captura procesada (en el hilo de la interfaz), por ejemplo para medir CPU y RAM.</summary>
     public event Action<CoachFrame>? FrameApplied;
 
@@ -83,6 +86,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (_coach == coach)
                 Apply(frame);
         });
+        Live.Clear();
         _placedOver = frames.Area;
         _overlayVisible = true;
         _host.ShowOverlay(Overlay, _placedOver);
@@ -141,6 +145,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (Overlay is null)
             return;
         Overlay.Apply(frame);
+        Live.Apply(frame);
         if (frame.Area is { IsEmpty: false } area && area != _placedOver)
         {
             _placedOver = area;

@@ -41,6 +41,12 @@ public sealed record CoachView(
     /// paso, contando los que ya estaban (como el contador del HUD). "6 aldeanos a ovejas" arranca en 3/9.
     /// </summary>
     public (int Current, int Target)? SourceVillagers { get; init; }
+
+    /// <summary>
+    /// Cómo repartir los aldeanos que hay ahora (total del HUD) según la BO en este punto, o null si todavía no se leyó
+    /// el total.
+    /// </summary>
+    public ResourceAmounts? Distribution { get; init; }
 }
 
 /// <summary>
@@ -209,6 +215,28 @@ public sealed class Coach
         return (Math.Max(0, target - current.Remaining), target);
     }
 
+    /// <summary>
+    /// El reparto de la BO con lo hecho hasta ahora (aldeanos por recurso), llevado al total de aldeanos que muestra el
+    /// HUD: si hay más o menos de lo que dice el plan, se reparte en la misma proporción (enteros que suman el total).
+    /// </summary>
+    private ResourceAmounts? Distribution()
+    {
+        if (_villagers is not { } total || total <= 0)
+            return null;
+        var planned = new Dictionary<Resource, double>();
+        foreach (var (source, count) in LivePlan.Start(Tracker).Villagers)
+            planned[source.Resource()] = planned.GetValueOrDefault(source.Resource()) + count;
+        var sum = planned.Values.Sum();
+        if (sum <= 0)
+            return null;
+
+        var exact = Enum.GetValues<Resource>().ToDictionary(r => r, r => planned.GetValueOrDefault(r) * total / sum);
+        var whole = exact.ToDictionary(e => e.Key, e => (int)Math.Floor(e.Value));
+        foreach (var r in exact.OrderByDescending(e => e.Value - Math.Floor(e.Value)).Take(total - whole.Values.Sum()).Select(e => e.Key))
+            whole[r]++;
+        return new ResourceAmounts(whole[Resource.Food], whole[Resource.Wood], whole[Resource.Stone], whole[Resource.Gold]);
+    }
+
     private void Replan()
     {
         _plan = LivePlan.Replan(Tracker, _planner);
@@ -246,6 +274,7 @@ public sealed class Coach
             Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
             TownCenterIdle = TownCenterIdle(),
             SourceVillagers = SourceVillagers(current),
+            Distribution = Distribution(),
         };
     }
 }

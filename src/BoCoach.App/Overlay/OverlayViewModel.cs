@@ -28,6 +28,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string? Suggestion { get; set; }
     [ObservableProperty] public partial string? Alert { get; set; }
     [ObservableProperty] public partial string? Idle { get; set; }
+    [ObservableProperty] public partial string? Distribution { get; set; }
     [ObservableProperty] public partial string? Warning { get; set; }
     [ObservableProperty] public partial string Debug { get; set; } = "";
     [ObservableProperty] public partial bool ShowDebug { get; set; }
@@ -49,6 +50,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Suggestion = lines.Suggestion;
         Alert = lines.Alert;
         Idle = lines.Idle;
+        Distribution = lines.Distribution;
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
     }

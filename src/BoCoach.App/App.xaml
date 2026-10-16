@@ -65,5 +65,13 @@
             <Setter Property="BorderBrush" Value="{StaticResource AccentSoft}" />
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+        <!-- Un recurso en el panel "Lo que ve el coach": lo leído del HUD y los aldeanos que le tocan según la BO -->
+        <DataTemplate x:Key="LiveResourceTemplate">
+            <StackPanel Margin="0,0,24,0" MinWidth="90">
+                <TextBlock Text="{Binding Label}" Foreground="#A39A8F" FontSize="11" />
+                <TextBlock Text="{Binding Stock}" Foreground="#F4F2EE" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Villagers}" Foreground="#E8C26A" FontSize="12" />
+            </StackPanel>
+        </DataTemplate>
     </Application.Resources>
 </Application>

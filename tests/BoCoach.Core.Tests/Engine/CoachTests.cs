@@ -157,6 +157,19 @@ public class CoachTests
     }
 
     [Fact]
+    public void El_reparto_lleva_el_plan_al_total_de_aldeanos_del_HUD()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+        coach.Update(At(40, 200, 3, "house_built", "house_built"));
+
+        // La BO tiene los 3 iniciales en ovejas; el HUD dice 5: van todos a la comida.
+        var view = coach.Update(At(65, 200, 5));
+        Assert.Equal(new ResourceAmounts(5, 0, 0, 0), view.Distribution);
+        Assert.Equal("Reparto: comida 5 · madera 0 · oro 0 · piedra 0", CoachText.Lines(view, TestData.GameData).Distribution);
+    }
+
+    [Fact]
     public void Un_aviso_del_log_se_muestra_unos_segundos()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);

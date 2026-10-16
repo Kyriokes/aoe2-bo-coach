@@ -35,6 +35,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         ToolsBar.DataContext = Tools;
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () => new ScreenFrames(_screen, Tools.Layout));
         CoachButton.DataContext = Coach;
+        LivePanel.DataContext = Coach;
         Coach.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))

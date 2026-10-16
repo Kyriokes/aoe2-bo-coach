@@ -77,6 +77,10 @@
                 </TextBlock.Style>
             </TextBlock>
 
+            <!-- Cómo repartir los aldeanos de ahora según la BO -->
+            <TextBlock Text="{Binding Distribution}" FontSize="13" Foreground="#C9C1B6" Margin="0,8,0,0"
+                       Visibility="{Binding Distribution, Converter={StaticResource NotEmptyToVisibility}}" />
+
             <!-- Centro urbano sin producir aldeanos -->
             <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F08070" Margin="0,8,0,0"
                        Visibility="{Binding Idle, Converter={StaticResource NotEmptyToVisibility}}">
