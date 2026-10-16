@@ -314,6 +314,7 @@ Positivo: va a faltar. Muy negativo: sobra, que es el problema típico del jugad
 - Posición: arriba a la derecha de la ventana del juego (lejos del log de eventos) y la sigue si se mueve. Configurable más adelante.
 - En curso: el log avisa cuando una investigación termina, no cuando se hace clic. El clic se reconoce porque el stock baja de golpe justo el costo.
 - CPU: el OCR del log se pasa solo si hay texto y si cambió desde la captura anterior.
+- Centro urbano parado: si el total de aldeanos no sube en lo que tarda uno más 8 s y el centro urbano no investiga, se avisa (sin leer la cola; ver la decisión abierta 6).
 
 ### 6.7 Editor de build orders (en la app)
 - Lista de pasos con alta, edición, duplicado y **reordenamiento por arrastre**.
@@ -388,5 +389,10 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 1. ~~Nombre del repo.~~ Resuelto: `aoe2-bo-coach`.
 2. ~~Bonificaciones por civilización.~~ Resuelto en la Fase 9: el extractor las saca del `.dat` (por edad) y el Planner, la economía y el coach las aplican según la civ de la BO ("any" = valores base).
 3. ¿Importador de formatos de BO de la comunidad? (Propuesta: después de la Fase 10, como extra.)
+6. ¿Leer la cola de producción de los edificios? (Pedido en la Fase 9; pendiente de una captura del usuario.)
+   - Lo más útil de la cola, saber si el centro urbano está parado, ya sale sin leerla: si pasa el tiempo de un aldeano (25 s) más 8 s de margen sin que suba el total del HUD, y el centro urbano no está investigando, el overlay avisa "Centro urbano parado hace N s". Sobre la partida de scouts avisa a las 4:47 y a las 6:38 (los dos huecos reales) y no durante telar y Feudal. Por ahora solo mientras la BO pide aldeanos, para no molestar en las BO que los cortan a propósito.
+   - Leer la cola agregaría: aldeanos o unidades encolados (pagados) antes de que salgan, la barra de progreso de una investigación (cuánto le falta de verdad) y la cola de los cuarteles. Hasta donde sé, la cola solo se ve con el edificio seleccionado, en el panel de abajo: sirve cuando el jugador lo selecciona (la tecla del centro urbano se usa seguido), no todo el tiempo. Hay que confirmarlo con una captura.
+   - Haría falta otra región (el panel de abajo), plantillas de íconos (están en los archivos del juego: `resources/_common/wpfg/resources/uniticons`, con el índice que usa `CivTechTrees`) y los números de la cola (letra nueva). Solo lectura de pantalla, igual que el resto.
+   - Para decidir: una captura a 1920×1080 con el centro urbano seleccionado y 3 o 4 aldeanos en cola, otra investigando telar y otra con el cuartel produciendo.
 4. ~~Stack de la web.~~ Resuelto: mismo repo (`web/`), Next.js + Supabase + Vercel, y el `Core` de C# compilado a WebAssembly para validar y simular en el navegador (una sola implementación del Planner). Login con Discord y Google.
 5. ~~Licencia del repo.~~ Resuelto: repo público con licencia MIT.

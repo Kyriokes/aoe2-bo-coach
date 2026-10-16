@@ -264,4 +264,69 @@ public class PartidaDeScoutsGrabadaTests(Xunit.Abstractions.ITestOutputHelper ou
         Assert.All(changes.Zip(changes.Skip(1)), pair => Assert.True(pair.Second.Time - pair.First.Time >= 3,
             $"la sugerencia cambió a las {GameClock.Format(pair.Second.Time)}, apenas {pair.Second.Time - pair.First.Time:0.0} s después"));
     }
+
+    [Fact]
+    public void Avisa_cuando_el_centro_urbano_deja_de_sacar_aldeanos()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        var idle = new List<(double From, double To)>();
+        double? since = null;
+
+        foreach (var logged in ScreenReadingLog.Load(Readings))
+        {
+            if (builder.Build(logged.Reading) is not { } snapshot)
+                continue;
+            var view = coach.Update(snapshot);
+            if (view.TownCenterIdle is not null)
+                since ??= view.Time;
+            else if (since is { } from)
+            {
+                idle.Add((from, view.Time));
+                since = null;
+            }
+        }
+        foreach (var (from, to) in idle)
+            output.WriteLine($"parado {GameClock.Format(from)} a {GameClock.Format(to)}");
+
+        // Según el total de aldeanos del HUD: de 4:14 a 4:50 y de 6:05 a 6:47 no salió ninguno (un aldeano tarda 25 s).
+        // De 8:27 a 11:27 tampoco, pero el centro urbano estaba investigando telar y Feudal: no es estar parado.
+        Assert.Equal(2, idle.Count);
+        Assert.Equal(Clock("4:47"), idle[0].From, 1.5);
+        Assert.Equal(Clock("4:50"), idle[0].To, 1.5);
+        Assert.Equal(Clock("6:38"), idle[1].From, 1.5);
+        Assert.Equal(Clock("6:47"), idle[1].To, 1.5);
+    }
+}
+
+public class CentroUrbanoParadoTests
+{
+    private static readonly BuildOrder Scouts = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "scouts_feudal.json"));
+
+    private static GameSnapshot At(double time, int villagers, double food = 100) =>
+        new(time, new ResourceAmounts(food, 200, 200, 100), villagers + 1, 25, []) { Villagers = villagers };
+
+    [Fact]
+    public void Pasado_el_tiempo_de_un_aldeano_y_el_margen_avisa()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(100, 6));
+
+        Assert.Null(coach.Update(At(130, 6)).TownCenterIdle);      // 25 s + 8 de margen todavía no
+        var view = coach.Update(At(140, 6));
+        Assert.Equal(15, view.TownCenterIdle!.Value, 1);            // 40 s sin aldeanos: 15 de más
+        Assert.Equal("Centro urbano parado hace 15 s", CoachText.Lines(view, TestData.GameData).Idle);
+
+        Assert.Null(coach.Update(At(142, 7)).TownCenterIdle);      // salió uno
+    }
+
+    [Fact]
+    public void Si_la_BO_ya_no_pide_aldeanos_no_avisa()
+    {
+        var bo = Scouts with { Steps = Scouts.Steps.Where(s => s.What != "villager").ToList() };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(100, 6));
+
+        Assert.Null(coach.Update(At(200, 6)).TownCenterIdle);
+    }
 }

@@ -14,7 +14,8 @@ public sealed record CoachLines(
     string? Deviation,
     bool Behind,
     string? Suggestion,
-    string? Alert = null);
+    string? Alert = null,
+    string? Idle = null);
 
 public static class CoachText
 {
@@ -35,7 +36,8 @@ public static class CoachText
                 null,
                 false,
                 view.Suggestion?.ToString(),
-                AlertText(view.Alert));
+                AlertText(view.Alert),
+                IdleText(view.TownCenterIdle));
         }
 
         var title = StepText.Describe(current.Step);
@@ -52,8 +54,13 @@ public static class CoachText
             deviation?.ToString(),
             deviation is { Delta: > BehindThreshold },
             view.Suggestion?.ToString(),
-            AlertText(view.Alert));
+            AlertText(view.Alert),
+            IdleText(view.TownCenterIdle));
     }
+
+    /// <summary>"Centro urbano parado hace 12 s" (lo que pasó de más desde que tendría que haber salido otro aldeano).</summary>
+    public static string? IdleText(double? seconds) =>
+        seconds is { } s ? $"Centro urbano parado hace {(s < 60 ? $"{s:0} s" : GameClock.Format(s))}" : null;
 
     /// <summary>Texto de un aviso del log (ver <see cref="Coach.AlertEvents"/>).</summary>
     public static string? AlertText(string? eventId) => eventId switch

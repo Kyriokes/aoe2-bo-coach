@@ -29,6 +29,12 @@ public sealed record CoachView(
 
     /// <summary>Aviso reciente del log que no es un paso ("farm_exhausted", "under_attack"), o null.</summary>
     public string? Alert { get; init; }
+
+    /// <summary>
+    /// Segundos que el centro urbano lleva sin sacar aldeanos de más de lo que tarda uno, o null si está produciendo
+    /// (o investigando, o la BO ya no pide aldeanos).
+    /// </summary>
+    public double? TownCenterIdle { get; init; }
 }
 
 /// <summary>
@@ -49,6 +55,11 @@ public sealed class Coach
     private Suggestion? _suggestion;
     private ResourceAmounts? _lastStock;
     private GameEvent? _alert;
+
+    // Centro urbano: cuándo subió por última vez el total de aldeanos del HUD y cuándo se lo vio investigando.
+    private int? _villagers;
+    private double _lastVillagerAt;
+    private double _townCenterBusyAt = double.NegativeInfinity;
 
     public Coach(BuildOrder bo, GameData data, EventCatalog? events = null, PlannerSettings? planner = null, EconomySettings? economy = null)
     {
@@ -73,6 +84,12 @@ public sealed class Coach
     /// <summary>Cuántos segundos de partida se muestra un aviso.</summary>
     public double AlertSeconds { get; init; } = 8;
 
+    /// <summary>
+    /// Margen sobre el tiempo de un aldeano antes de avisar que el centro urbano está parado: la cola no se ve, pero si
+    /// pasan más de 25 s (más este margen) sin que suba el total del HUD, no estuvo produciendo todo el tiempo.
+    /// </summary>
+    public double TownCenterIdleGrace { get; init; } = 8;
+
     public CoachView View { get; private set; }
 
     /// <summary>El detalle de la economía del último snapshot (tasas, aldeanos estimados, demanda, déficit).</summary>
@@ -84,6 +101,7 @@ public sealed class Coach
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
         var clicked = DetectResearchClick(snapshot);
+        TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
         Economy = _economy.Update(Tracker, _plan);
@@ -149,6 +167,34 @@ public sealed class Coach
         return paid.Count > 0 && paid.All(r => change[r] >= cost[r] * 0.85 && change[r] <= cost[r] + Math.Max(10, cost[r] * 0.1));
     }
 
+    private void TrackTownCenter(GameSnapshot snapshot)
+    {
+        if (snapshot.Villagers is { } villagers)
+        {
+            if (_villagers is null || villagers > _villagers)
+                _lastVillagerAt = snapshot.Time;
+            _villagers = villagers;
+        }
+        if (Tracker.InProgress.Any(s => s.Step.What is { } what && _data.TryGet(what, out var e) && e.MadeIn == "town_center"))
+            _townCenterBusyAt = snapshot.Time;
+    }
+
+    /// <summary>
+    /// Cuánto lleva el centro urbano sin producir, contando desde el último aldeano (o desde que terminó de investigar)
+    /// más lo que tarda uno. Solo si la BO todavía pide aldeanos.
+    /// </summary>
+    private double? TownCenterIdle()
+    {
+        if (_villagers is null || !_data.TryGet("villager", out var villager)
+            || !Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped)))
+            return null;
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = LivePlan.Start(Tracker).Age;
+        var train = civ.Time(villager, age) / civ.WorkRate("town_center", age);
+        var idle = State.Time - Math.Max(_lastVillagerAt, _townCenterBusyAt) - train;
+        return idle >= TownCenterIdleGrace ? idle : null;
+    }
+
     private void Replan()
     {
         _plan = LivePlan.Replan(Tracker, _planner);
@@ -184,6 +230,7 @@ public sealed class Coach
             Tracker.Steps.Count)
         {
             Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
+            TownCenterIdle = TownCenterIdle(),
         };
     }
 }
