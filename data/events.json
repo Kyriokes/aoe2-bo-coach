@@ -1,8 +1,26 @@
 {
   // Frases del log de eventos del juego -> id de evento.
-  // Solo "House Built" y "Villager Created" están confirmadas en partida; el resto sigue
-  // el mismo patrón y hay que verificarlas con RecordSession (Fase 6).
+  // Convención de ids: "<entidad>_created" (unidades), "<entidad>_built" (edificios) y
+  // "<entidad>_researched" (tecnologías), con la clave de game_data.
+  // Verificadas en una partida real (2026-10-15): Villager/Fishing Ship/Galley/Man-at-Arms Created,
+  // House/Mill/Lumber Camp/Mining Camp/Dock/Barracks/Archery Range/Blacksmith/Stable/Market Built y
+  // Feudal Age/Horse Collar/Double-Bit Axe/Scale Mail Armor Research Complete. El resto sigue el mismo patrón.
+  // Ojo: si un mensaje se repite, el juego no agrega otro renglón sino que mueve el viejo al final.
+
   "villager_created": ["Villager Created"],
+  "militia_created": ["Militia Created"],
+  "man_at_arms_created": ["Man-at-Arms Created"],
+  "spearman_created": ["Spearman Created"],
+  "archer_created": ["Archer Created"],
+  "skirmisher_created": ["Skirmisher Created"],
+  "scout_cavalry_created": ["Scout Cavalry Created"],
+  "knight_created": ["Knight Created"],
+  "monk_created": ["Monk Created"],
+  "fishing_ship_created": ["Fishing Ship Created"],
+  "galley_created": ["Galley Created"],
+  "trade_cart_created": ["Trade Cart Created"],
+  "mangonel_created": ["Mangonel Created"],
+
   "house_built": ["House Built"],
   "mill_built": ["Mill Built"],
   "lumber_camp_built": ["Lumber Camp Built"],
@@ -14,5 +32,38 @@
   "stable_built": ["Stable Built"],
   "blacksmith_built": ["Blacksmith Built"],
   "market_built": ["Market Built"],
-  "town_center_built": ["Town Center Built"]
+  "town_center_built": ["Town Center Built"],
+  "monastery_built": ["Monastery Built"],
+  "university_built": ["University Built"],
+  "siege_workshop_built": ["Siege Workshop Built"],
+  "castle_built": ["Castle Built"],
+  "watch_tower_built": ["Watch Tower Built"],
+  "outpost_built": ["Outpost Built"],
+
+  "loom_researched": ["Loom Research Complete"],
+  "town_watch_researched": ["Town Watch Research Complete"],
+  "wheelbarrow_researched": ["Wheelbarrow Research Complete"],
+  "hand_cart_researched": ["Hand Cart Research Complete"],
+  "double_bit_axe_researched": ["Double-Bit Axe Research Complete"],
+  "bow_saw_researched": ["Bow Saw Research Complete"],
+  "horse_collar_researched": ["Horse Collar Research Complete"],
+  "heavy_plow_researched": ["Heavy Plow Research Complete"],
+  "gold_mining_researched": ["Gold Mining Research Complete"],
+  "gold_shaft_mining_researched": ["Gold Shaft Mining Research Complete"],
+  "stone_mining_researched": ["Stone Mining Research Complete"],
+  "stone_shaft_mining_researched": ["Stone Shaft Mining Research Complete"],
+  "feudal_age_researched": ["Feudal Age Research Complete"],
+  "castle_age_researched": ["Castle Age Research Complete"],
+  "imperial_age_researched": ["Imperial Age Research Complete"],
+  "man_at_arms_researched": ["Man-at-Arms Research Complete"],
+  "crossbowman_researched": ["Crossbowman Research Complete"],
+  "light_cavalry_researched": ["Light Cavalry Research Complete"],
+  "fletching_researched": ["Fletching Research Complete"],
+  "forging_researched": ["Forging Research Complete"],
+  "scale_mail_armor_researched": ["Scale Mail Armor Research Complete"],
+  "scale_barding_armor_researched": ["Scale Barding Armor Research Complete"],
+  "padded_archer_armor_researched": ["Padded Archer Armor Research Complete"],
+  "bloodlines_researched": ["Bloodlines Research Complete"],
+  "husbandry_researched": ["Husbandry Research Complete"],
+  "coinage_researched": ["Coinage Research Complete"]
 }

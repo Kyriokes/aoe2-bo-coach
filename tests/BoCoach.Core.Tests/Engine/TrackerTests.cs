@@ -1,4 +1,5 @@
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 
 namespace BoCoach.Core.Tests.Engine;
@@ -175,8 +176,12 @@ public class TrackerTests
     [Fact]
     public void Pasos_que_el_log_no_confirma_se_dan_por_hechos_cuando_avanza_uno_posterior()
     {
-        // Con el catálogo real, "loom_researched" y "feudal_age_researched" no son reconocibles.
-        var tracker = new Tracker(Scouts, TestData.GameData, TestData.Events);
+        // Un catálogo sin los mensajes de investigación: "loom_researched" y "feudal_age_researched" no son
+        // reconocibles (el log real sí los muestra, pero el Tracker no puede depender de eso).
+        var withoutResearch = new EventCatalog(TestData.Events.Phrases
+            .Where(e => !e.Key.EndsWith("_researched", StringComparison.Ordinal))
+            .ToDictionary(e => e.Key, e => e.Value));
+        var tracker = new Tracker(Scouts, TestData.GameData, withoutResearch);
         var partida = new Partida().Play(Scouts, 0, 10);
         tracker.Update(partida.State);
         Assert.Equal("s12", tracker.Current?.Step.Id);

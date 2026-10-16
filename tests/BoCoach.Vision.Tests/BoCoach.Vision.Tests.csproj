@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -20,6 +20,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BoCoach.Vision\BoCoach.Vision.csproj" />
+  </ItemGroup>
+
+  <!-- Letras del HUD y grabación de prueba con valores verificados a ojo -->
+  <ItemGroup>
+    <None Include="..\..\data\fonts\*.json" Link="fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\events.json" Link="events.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\rec-20261015\*" Link="fixtures\rec-20261015\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
