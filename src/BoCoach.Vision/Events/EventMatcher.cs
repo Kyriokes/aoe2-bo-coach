@@ -10,18 +10,21 @@ namespace BoCoach.Vision.Events;
 /// </summary>
 public sealed class EventMatcher
 {
-    private readonly List<(string EventId, string Phrase)> _phrases;
+    private readonly List<(string EventId, string Phrase, bool Rare)> _phrases;
 
     public EventMatcher(EventCatalog catalog)
     {
         _phrases = catalog.Phrases
-            .SelectMany(e => e.Value.Select(p => (e.Key, Normalize(p))))
+            .SelectMany(e => e.Value.Select((p, i) => (e.Key, Normalize(p), !catalog.IsCommon(e.Key, i))))
             .Where(p => p.Item2.Length > 0)
             .ToList();
     }
 
     /// <summary>Distancia relativa máxima (errores / largo de la frase) para aceptar una coincidencia.</summary>
     public double MaxRelativeDistance { get; init; } = 0.38;
+
+    /// <summary>Lo que se suma a la distancia de un evento poco común (ver <see cref="EventCatalog.Common"/>).</summary>
+    public double RarePenalty { get; init; } = 0.15;
 
     /// <summary>
     /// Ids de evento de los renglones, de arriba hacia abajo. Un renglón que no coincide solo se prueba junto con
@@ -61,9 +64,13 @@ public sealed class EventMatcher
 
         string? best = null;
         var bestScore = double.MaxValue;
-        foreach (var (eventId, phrase) in _phrases)
+        foreach (var (eventId, phrase, rare) in _phrases)
         {
-            var score = Levenshtein(normalized, phrase) / (double)phrase.Length;
+            // La distancia nunca es menor que la diferencia de largo: si con eso ya no puede ganar, no se calcula.
+            var penalty = rare ? RarePenalty : 0;
+            if (Math.Abs(normalized.Length - phrase.Length) > (Math.Min(bestScore, MaxRelativeDistance) - penalty) * phrase.Length)
+                continue;
+            var score = Levenshtein(normalized, phrase) / (double)phrase.Length + penalty;
             if (score < bestScore)
                 (best, bestScore) = (eventId, score);
         }

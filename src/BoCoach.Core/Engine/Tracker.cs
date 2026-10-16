@@ -39,7 +39,10 @@ public sealed record StepProgress(
     public int Remaining => Math.Max(0, Required - Completed);
 }
 
-/// <summary>Un evento que no corresponde a ningún paso pendiente: suma al gasto pero no mueve el puntero.</summary>
+/// <summary>
+/// Una acción (unidad, edificio o tecnología) que no corresponde a ningún paso pendiente: suma al gasto pero no mueve
+/// el puntero. Los avisos del log ("Farm Exhausted", "Sheep Found") no son acciones y no cuentan.
+/// </summary>
 public sealed record ExtraAction(GameEvent Event);
 
 /// <summary>
@@ -216,7 +219,8 @@ public sealed class Tracker
 
             if (target < 0)
             {
-                _extras.Add(new ExtraAction(e));
+                if (EventConventions.Parse(e.EventId) is not null)
+                    _extras.Add(new ExtraAction(e));
                 continue;
             }
 

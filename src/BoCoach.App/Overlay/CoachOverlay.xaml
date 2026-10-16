@@ -77,6 +77,12 @@
                 </TextBlock.Style>
             </TextBlock>
 
+            <!-- Aviso del log (granja agotada, ataque) -->
+            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F0A060" Margin="0,8,0,0"
+                       Visibility="{Binding Alert, Converter={StaticResource NotEmptyToVisibility}}">
+                <Run Text="⚠ " /><Run Text="{Binding Alert, Mode=OneWay}" />
+            </TextBlock>
+
             <!-- Sugerencia de aldeanos -->
             <Border Background="#33E8C26A" CornerRadius="4" Padding="8,4" Margin="0,8,0,0"
                     Visibility="{Binding Suggestion, Converter={StaticResource NotEmptyToVisibility}}">

@@ -293,7 +293,7 @@ static async Task<int> Replay(string recording, string[] args)
 static async Task<int> CoachReplay(string recording, string boPath, string[] args)
 {
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
-    var catalog = EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json")));
+    var catalog = Catalog(args, data);
     var bo = BuildOrderSerializer.Load(boPath);
     var builder = new SnapshotBuilder(data);
     var coach = new Coach(bo, data, catalog);
@@ -305,7 +305,7 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             continue;
         var view = coach.Update(snapshot);
         var lines = CoachText.Lines(view, data);
-        var text = string.Join(" | ", new[] { lines.Current, lines.Status, lines.Next }.Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion]).Where(s => s is not null));
+        var text = string.Join(" | ", new[] { lines.Current, lines.Status, lines.Next }.Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion, lines.Alert]).Where(s => s is not null));
         if (text == last)
             continue;
         last = text;
@@ -345,7 +345,7 @@ static async Task<int> Bench(string recording, string[] args)
     var hasText = watch.Elapsed.TotalMilliseconds / frames.Count;
 
     // El lector real, captura por captura: solo pasa el OCR si el texto cambió.
-    var reader = new EventLogReader(ocr, EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json"))));
+    var reader = new EventLogReader(ocr, Catalog(args));
     watch.Restart();
     foreach (var log in logs)
         await reader.ReadAsync(log);
@@ -394,9 +394,13 @@ static string Text(string[] args, string name, string fallback)
 static ScreenReader Reader(RecordedSession session, string[] args)
 {
     var ocr = args.Contains("--no-log") ? null : BoCoach.Vision.Ocr.OcrReader.TryCreate();
-    return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr,
-        EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json"))));
+    return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr, Catalog(args));
 }
+
+// Frases del log, prefiriendo (ante una lectura dudosa) los eventos de las entidades de game_data, como la app.
+static EventCatalog Catalog(string[] args, GameData? data = null) =>
+    EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json")))
+        .PreferringEntitiesOf(data ?? GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data"))));
 
 static Func<string, CapturedImage?> Regions(RecordedSession session, int frame) =>
     region => session.Has(frame, region) ? session.Image(frame, region) : null;

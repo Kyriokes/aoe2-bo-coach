@@ -1,8 +1,9 @@
-"""Exporta los datos del juego (.dat de AoE2:DE) a data/game_data/<version>.json.
+"""Exporta los datos del juego (.dat de AoE2:DE) a data/game_data/<version>.json, y las frases del log de
+eventos (textos y árboles de tecnologías del juego) a data/events.json.
 
 Se corre una vez por parche:
 
-    python extract.py [--dat RUTA_AL_DAT] [--out RUTA_DE_SALIDA]
+    python extract.py [--dat RUTA_AL_DAT] [--out RUTA_DE_SALIDA] [--eventos RUTA_DE_EVENTOS]
 
 Todo se mapea por ID del .dat, nunca por nombre interno (los nombres están
 desfasados: el tech 101 "Middle Age" es el paso a Feudal).
@@ -14,6 +15,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 from genieutils.datfile import DatFile
@@ -154,6 +156,96 @@ CLAVES_DE_CIV = {
 
 def clave_de_civ(nombre: str) -> str:
     return CLAVES_DE_CIV.get(nombre, re.sub(r"[^a-z0-9]+", "_", nombre.lower()).strip("_"))
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Eventos del log (data/events.json).
+#
+# El juego arma cada mensaje con una plantilla de sus textos (resources/en/strings/key-value) y el nombre que
+# muestra la entidad (language_dll_name del .dat, que puede cambiar según la civ). Qué unidades, edificios y
+# tecnologías existen en una partida sale de los árboles de cada civ (resources/_common/dat/CivTechTrees).
+# ---------------------------------------------------------------------------------------------------------------
+
+ARCHIVOS_DE_TEXTO = ("key-value-strings-utf8.txt", "key-value-paphos-strings-utf8.txt")
+
+# Tipo de entidad -> (id del texto con la plantilla, sufijo del evento).
+PLANTILLAS = {
+    "unit": (37159, "created"),         # "--%s Created--"
+    "building": (37158, "built"),       # "--%s Built--"
+    "tech": (37157, "researched"),      # "--%s Research Complete--"
+}
+
+# Otros mensajes del log: id del texto -> id del evento.
+AVISOS = {
+    37162: "farm_exhausted",            # "--Farm Exhausted--"
+    37163: "fish_trap_expired",
+    37160: "under_attack",              # "--Warning: You are being attacked by Player %s!!!--"
+    37165: "attacked_by_animals",
+    37161: "sheep_found",
+    37155: "cow_found",
+    37156: "llama_found",
+    37167: "turkey_found",
+    37168: "goat_found",
+    37164: "relic_picked_up",
+}
+
+# Avisos largos que el log parte en dos renglones antes de una parte variable: también se reconoce el primero solo.
+# Ej. (verificado en la grabación 205040): "--Warning: You are being attacked by" / "Player 2 Timur Qutlugh!!!--".
+PRIMER_RENGLON = {37160: " Player %s"}
+
+TIPO_DE_NODO = {"Unit": "unit", "Building": "building", "Tech": "tech"}
+
+# Frases verificadas en una partida real (2026-10-15); el resto sigue las mismas plantillas.
+VERIFICADAS = (
+    "Villager/Fishing Ship/Galley/Man-at-Arms Created, House/Mill/Lumber Camp/Mining Camp/Dock/Barracks/"
+    "Archery Range/Blacksmith/Stable/Market Built y Feudal Age/Horse Collar/Double-Bit Axe/Scale Mail Armor "
+    "Research Complete"
+)
+
+
+def cargar_textos(carpeta: Path) -> dict[int, str]:
+    """Textos en inglés del juego: id -> texto. Los de las Crónicas (paphos) solo completan lo que falta."""
+    textos: dict[int, str] = {}
+    for nombre in ARCHIVOS_DE_TEXTO:
+        for renglon in (carpeta / nombre).read_text(encoding="utf-8").splitlines():
+            m = re.match(r'^(\d+)\s+"(.*)"\s*$', renglon)
+            if m:
+                textos.setdefault(int(m.group(1)), m.group(2))
+    return textos
+
+
+def cargar_disponibles(carpeta: Path) -> dict[str, set[int]]:
+    """Unidades, edificios y techs que alguna civ puede hacer: los árboles marcan lo que falta como NotAvailable.
+
+    Las mejoras de unidad ("Man-at-Arms") y de edificio ("Guard Tower") son a la vez una unidad y la tech que la
+    habilita (Trigger Tech ID): se investigan.
+    """
+    ids: dict[str, set[int]] = {tipo: set() for tipo in PLANTILLAS}
+    for archivo in sorted(carpeta.glob("*.json")):
+        arbol = json.loads(archivo.read_text(encoding="utf-8"))
+        for nodos in arbol.values():
+            if not isinstance(nodos, list):
+                continue
+            for nodo in nodos:
+                tipo = TIPO_DE_NODO.get(nodo.get("Use Type"))
+                if tipo is None or nodo.get("Node Status") == "NotAvailable":
+                    continue
+                ids[tipo].add(nodo["Node ID"])
+                es_mejora = nodo.get("Node Type") == "UnitUpgrade" or nodo.get("Building upgraded from ID", -1) >= 0
+                if es_mejora and nodo.get("Trigger Tech ID", -1) >= 0:
+                    ids["tech"].add(nodo["Trigger Tech ID"])
+    return ids
+
+
+def clave_de_nombre(nombre: str) -> str:
+    """'Man-at-Arms' -> 'man_at_arms' (sin tildes)."""
+    ascii_ = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "_", ascii_.lower()).strip("_")
+
+
+def frase(plantilla: str, nombre: str = "") -> str:
+    """'--%s Built--' + 'House' -> 'House Built'."""
+    return plantilla.replace("%s", nombre).strip("-").strip()
 
 
 def costo(resource_costs) -> dict[str, int]:
@@ -466,6 +558,64 @@ class Extractor:
             datos["start"] = inicio
         return datos
 
+    def nombres_de_unidad(self, uid: int, textos: dict[int, str]) -> list[str]:
+        """Nombres que muestra la unidad o el edificio: primero el de Gaia y después los que cambian según la civ.
+
+        Sin lo que va entre paréntesis: el aldeano se llama "Villager (Male)" y el log dice "Villager Created"
+        (verificado); lo mismo con "Trade Cart (Empty)", "Trebuchet (Packed)" o "Ratha (Ranged)".
+        """
+        nombres: list[str] = []
+        for civ in self.dat.civs:
+            u = civ.units[uid] if uid < len(civ.units) else None
+            texto = textos.get(u.language_dll_name) if u is not None else None
+            texto = re.sub(r"\s*\([^)]*\)", "", texto).strip() if texto else None
+            if texto and texto not in nombres:
+                nombres.append(texto)
+        return nombres
+
+    def eventos(self, textos: dict[int, str], disponibles: dict[str, set[int]]) -> tuple[dict[str, list[str]], list[str]]:
+        """id de evento -> frases del log, y los conflictos (frases que ya eran de otro evento).
+
+        La clave es la de game_data si la entidad está ahí, si no sale del nombre en inglés. Dos entidades con el
+        mismo nombre (el huscarle del castillo y el del cuartel) comparten evento: el log no las distingue.
+        """
+        claves_tech = {i: k for k, (t, i) in ENTIDADES.items() if t == "tech"}
+        ids = {tipo: set(disponibles[tipo]) for tipo in PLANTILLAS}
+        for tipo, dat_id in ENTIDADES.values():
+            ids[tipo].add(dat_id)
+
+        candidatos = []
+        for tipo in PLANTILLAS:
+            for dat_id in sorted(ids[tipo]):
+                if tipo == "tech":
+                    texto = textos.get(self.dat.techs[dat_id].language_dll_name) if dat_id < len(self.dat.techs) else None
+                    nombres, conocida = ([texto] if texto else []), claves_tech.get(dat_id)
+                else:
+                    nombres, conocida = self.nombres_de_unidad(dat_id, textos), self.clave_por_unidad.get(dat_id)
+                if nombres:
+                    candidatos.append((conocida is None, tipo, conocida or clave_de_nombre(nombres[0]), nombres))
+
+        eventos: dict[str, list[str]] = {}
+        duenio: dict[str, str] = {}
+        conflictos: list[str] = []
+        # Primero las entidades de game_data: si una frase choca, gana la clave que usan las BO.
+        for _, tipo, clave, nombres in sorted(candidatos, key=lambda c: (c[0], c[2])):
+            texto_id, sufijo = PLANTILLAS[tipo]
+            evento = f"{clave}_{sufijo}"
+            for nombre in nombres:
+                texto = frase(textos[texto_id], nombre)
+                dueno = duenio.setdefault(re.sub(r"[^a-z]+", " ", texto.lower()).strip(), evento)
+                if dueno != evento:
+                    conflictos.append(f"{texto!r} es de {dueno}, no de {evento}")
+                elif texto not in eventos.setdefault(evento, []):
+                    eventos[evento].append(texto)
+        for texto_id, evento in AVISOS.items():
+            plantilla = textos[texto_id]
+            eventos[evento] = [frase(plantilla)]
+            if texto_id in PRIMER_RENGLON:
+                eventos[evento].insert(0, frase(plantilla.split(PRIMER_RENGLON[texto_id])[0]))
+        return {e: f for e, f in eventos.items() if f}, conflictos
+
     def civs(self, entidades: dict) -> dict:
         civs = {}
         for civ_id, civ in enumerate(self.dat.civs):
@@ -488,6 +638,40 @@ def _edad_por_nivel(nivel: int) -> str:
     return next(nombre for nombre, n in NIVEL_EDAD.items() if n == nivel)
 
 
+SECCIONES_DE_EVENTOS = (("Unidades", "_created"), ("Edificios", "_built"), ("Tecnologías", "_researched"))
+
+
+def escribir_eventos(eventos: dict[str, list[str]], ruta: Path) -> None:
+    """data/events.json: JSON con comentarios, un evento por renglón y agrupado por tipo."""
+    grupos = [(titulo, sorted(e for e in eventos if e.endswith(sufijo))) for titulo, sufijo in SECCIONES_DE_EVENTOS]
+    grupos.append(("Otros mensajes", [e for e in eventos if not any(e.endswith(s) for _, s in SECCIONES_DE_EVENTOS)]))
+
+    renglones = [
+        "{",
+        "  // Frases del log de eventos del juego -> id de evento. Lo genera tools/extractor/extract.py: no editar a mano.",
+        '  // Convención de ids: "<entidad>_created" (unidades), "<entidad>_built" (edificios) y',
+        '  // "<entidad>_researched" (tecnologías), con la clave de game_data o, si no está ahí, el nombre en inglés.',
+        '  // Las frases son las plantillas del juego ("--%s Created--", "--%s Built--", "--%s Research Complete--")',
+        "  // con el nombre que muestra cada entidad, que puede cambiar según la civ. Están las entidades que alguna civ",
+        "  // puede hacer según los árboles de tecnologías del juego (CivTechTrees).",
+        f"  // Verificadas en una partida real (2026-10-15): {VERIFICADAS}.",
+        "  // Ojo: si un mensaje se repite, el juego no agrega otro renglón sino que mueve el viejo al final.",
+    ]
+    entradas = [
+        (titulo, [f"  {json.dumps(e)}: {json.dumps(eventos[e], ensure_ascii=False)}" for e in ids])
+        for titulo, ids in grupos
+    ]
+    total = sum(len(lineas) for _, lineas in entradas)
+    escritas = 0
+    for titulo, lineas in entradas:
+        renglones += ["", f"  // {titulo} ({len(lineas)})"]
+        for linea in lineas:
+            escritas += 1
+            renglones.append(linea + ("," if escritas < total else ""))
+    renglones.append("}")
+    ruta.write_text("\n".join(renglones) + "\n", encoding="utf-8")
+
+
 def nombre_de_archivo(version: str) -> str:
     """'VER 8.9' -> 'v8.9.json'."""
     m = re.search(r"(\d+(?:\.\d+)*)", version)
@@ -500,11 +684,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dat", type=Path, default=DAT_POR_DEFECTO, help="ruta a empires2_x2_p1.dat")
     parser.add_argument("--out", type=Path, help="archivo de salida (por defecto data/game_data/v<versión>.json)")
+    parser.add_argument("--eventos", type=Path, default=REPO / "data" / "events.json", help="frases del log")
     args = parser.parse_args()
+
+    # El .dat está en resources/_common/dat; los textos en inglés, en resources/en/strings/key-value.
+    textos = cargar_textos(args.dat.parents[2] / "en" / "strings" / "key-value")
+    disponibles = cargar_disponibles(args.dat.parent / "CivTechTrees")
 
     print(f"Leyendo {args.dat} (tarda ~30 s)...")
     dat = DatFile.parse(str(args.dat))
-    datos = Extractor(dat).exportar()
+    extractor = Extractor(dat)
+    datos = extractor.exportar()
+
+    eventos, conflictos = extractor.eventos(textos, disponibles)
+    escribir_eventos(eventos, args.eventos)
+    for titulo, sufijo in SECCIONES_DE_EVENTOS:
+        print(f"  {titulo}: {sum(e.endswith(sufijo) for e in eventos)} eventos")
+    print(f"{len(eventos)} eventos exportados a {args.eventos}")
+    for conflicto in conflictos:
+        print(f"  frase repetida: {conflicto}")
 
     salida = args.out or REPO / "data" / "game_data" / nombre_de_archivo(dat.version)
     salida.parent.mkdir(parents=True, exist_ok=True)

@@ -88,6 +88,18 @@ public class TrackerTests
     }
 
     [Fact]
+    public void Los_avisos_del_log_no_son_acciones_extra()
+    {
+        var tracker = NewTracker();
+        var partida = new Partida().Play(Scouts, 0, 0).Event("sheep_found").Event("farm_exhausted").Event("under_attack");
+
+        tracker.Update(partida.State);
+
+        Assert.Empty(tracker.Extras);
+        Assert.Equal("s2", tracker.Current?.Step.Id);
+    }
+
+    [Fact]
     public void Mas_casas_de_las_que_pide_la_BO_son_extras()
     {
         var tracker = NewTracker();

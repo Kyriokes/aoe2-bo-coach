@@ -39,7 +39,7 @@ public sealed class CoachData
     public static CoachData Load(string? libraryDir = null)
     {
         var gameData = GameDataLoader.LoadLatest(Path.Combine(DataDir, "game_data"));
-        var events = EventCatalog.Load(Path.Combine(DataDir, "events.json"));
+        var events = EventCatalog.Load(Path.Combine(DataDir, "events.json")).PreferringEntitiesOf(gameData);
         var library = new BuildOrderLibrary(libraryDir ?? Path.Combine(UserDir, "build_orders"));
         library.SeedIfEmpty(Directory.EnumerateFiles(Path.Combine(DataDir, "build_orders"), "*.json"));
         return new CoachData(gameData, events, library);

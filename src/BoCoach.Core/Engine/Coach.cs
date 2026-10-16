@@ -26,6 +26,9 @@ public sealed record CoachView(
     int TotalSteps)
 {
     public bool Finished => DoneSteps == TotalSteps;
+
+    /// <summary>Aviso reciente del log que no es un paso ("farm_exhausted", "under_attack"), o null.</summary>
+    public string? Alert { get; init; }
 }
 
 /// <summary>
@@ -45,6 +48,7 @@ public sealed class Coach
     private double _plannedAt = double.NegativeInfinity;
     private Suggestion? _suggestion;
     private ResourceAmounts? _lastStock;
+    private GameEvent? _alert;
 
     public Coach(BuildOrder bo, GameData data, EventCatalog? events = null, PlannerSettings? planner = null, EconomySettings? economy = null)
     {
@@ -62,6 +66,13 @@ public sealed class Coach
     /// <summary>Cada cuántos segundos de partida se vuelve a simular el plan (si no hubo eventos).</summary>
     public double ReplanEvery { get; init; } = 5;
 
+    /// <summary>Avisos del log que el overlay muestra (ver <see cref="CoachText.AlertText"/>).</summary>
+    public static readonly IReadOnlySet<string> AlertEvents =
+        new HashSet<string> { "farm_exhausted", "fish_trap_expired", "under_attack", "attacked_by_animals" };
+
+    /// <summary>Cuántos segundos de partida se muestra un aviso.</summary>
+    public double AlertSeconds { get; init; } = 8;
+
     public CoachView View { get; private set; }
 
     /// <summary>El detalle de la economía del último snapshot (tasas, aldeanos estimados, demanda, déficit).</summary>
@@ -70,6 +81,7 @@ public sealed class Coach
     public CoachView Update(GameSnapshot snapshot)
     {
         State.Apply(snapshot);
+        _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
         var clicked = DetectResearchClick(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
@@ -169,6 +181,9 @@ public sealed class Coach
             deviations,
             _suggestion,
             Tracker.Steps.Count(s => s.State is StepState.Done or StepState.Skipped),
-            Tracker.Steps.Count);
+            Tracker.Steps.Count)
+        {
+            Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
+        };
     }
 }

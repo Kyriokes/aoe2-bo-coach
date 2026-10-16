@@ -141,6 +141,21 @@ public class CoachTests
     }
 
     [Fact]
+    public void Un_aviso_del_log_se_muestra_unos_segundos()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(600, 100));
+
+        var view = coach.Update(At(601, 100, events: ["sheep_found", "farm_exhausted"]));
+        Assert.Equal("farm_exhausted", view.Alert);
+        Assert.Equal("Se agotó una granja: resembrala", CoachText.Lines(view, TestData.GameData).Alert);
+
+        Assert.Equal("farm_exhausted", coach.Update(At(608, 100)).Alert);
+        Assert.Null(coach.Update(At(609.5, 100)).Alert);
+        Assert.Null(CoachText.Lines(coach.View, TestData.GameData).Alert);
+    }
+
+    [Fact]
     public void Si_se_cancela_la_Feudal_vuelve_a_estar_pendiente()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);

@@ -10,7 +10,8 @@ namespace BoCoach.Vision.Tests;
 public class EventLogTests(ITestOutputHelper output)
 {
     private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-205040");
-    private static readonly EventCatalog Catalog = EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json"));
+    private static readonly EventCatalog Catalog = EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json"))
+        .PreferringEntitiesOf(GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "game_data")));
     private static readonly EventMatcher Matcher = new(Catalog);
 
     [Theory]
@@ -21,13 +22,15 @@ public class EventLogTests(ITestOutputHelper output)
     [InlineData("i-Blacksmit11 Built--", "blacksmith_built")]
     [InlineData("-Slable Built-", "stable_built")]
     [InlineData("-Villager created", "villager_created")]
+    // El aviso de ataque se parte antes del jugador: el primer renglón alcanza (el segundo varía con el nombre).
+    [InlineData("-Warning: You arc being attacked by", "under_attack")]
+    [InlineData("-Warning: You arc being attacked by Player 2 Timur Qutlugh!!!-", "under_attack")]
     public void Reconoce_renglones_con_errores_del_OCR(string line, string expected)
     {
         Assert.Equal(expected, Matcher.Match(line));
     }
 
     [Theory]
-    [InlineData("-Warning: You arc being attacked by")]
     [InlineData("Player 2 Timur Qutlugh!!!-")]
     [InlineData("Age of Empires II: Definitive Editior")]
     [InlineData("Complete--")]
@@ -128,6 +131,8 @@ public class EventLogTests(ITestOutputHelper output)
     /// <item>event_log_ocr_gris.tsv: con el gris invertido de antes, que leía bastante peor: sirve para ver que
     /// el detector aguanta lecturas malas.</item>
     /// </list>
+    /// El aviso de ataque de la captura 924 está en el golden pero <see cref="LogImage"/> no lo lee: sale con el color
+    /// del jugador que ataca (rojo) y la máscara solo deja el texto blanco. El gris de antes sí lo leía.
     /// </summary>
     [Theory]
     [InlineData("event_log_ocr.tsv")]

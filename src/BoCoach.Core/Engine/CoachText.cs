@@ -13,7 +13,8 @@ public sealed record CoachLines(
     IReadOnlyList<string> Late,
     string? Deviation,
     bool Behind,
-    string? Suggestion);
+    string? Suggestion,
+    string? Alert = null);
 
 public static class CoachText
 {
@@ -33,7 +34,8 @@ public static class CoachText
                 view.Late.Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
                 null,
                 false,
-                view.Suggestion?.ToString());
+                view.Suggestion?.ToString(),
+                AlertText(view.Alert));
         }
 
         var title = StepText.Describe(current.Step);
@@ -49,8 +51,19 @@ public static class CoachText
             view.Late.Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
             deviation?.ToString(),
             deviation is { Delta: > BehindThreshold },
-            view.Suggestion?.ToString());
+            view.Suggestion?.ToString(),
+            AlertText(view.Alert));
     }
+
+    /// <summary>Texto de un aviso del log (ver <see cref="Coach.AlertEvents"/>).</summary>
+    public static string? AlertText(string? eventId) => eventId switch
+    {
+        "farm_exhausted" => "Se agotó una granja: resembrala",
+        "fish_trap_expired" => "Se agotó una trampa de peces",
+        "under_attack" => "¡Te están atacando!",
+        "attacked_by_animals" => "Un animal ataca a tus aldeanos",
+        _ => null,
+    };
 
     /// <summary>"En curso: Edad Feudal (termina en 1:30)".</summary>
     private static string Running(RunningStep running, double now)
