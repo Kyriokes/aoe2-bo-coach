@@ -22,12 +22,32 @@ public static class Glyphs
         var map = ink.InkMap(image);
         var (w, h) = (image.Width, image.Height);
 
-        // Filas con tinta: la altura del texto (para normalizar y estimar el ancho típico).
-        var rowsWithInk = Enumerable.Range(0, h).Where(y => Enumerable.Range(0, w).Any(x => map[y * w + x] >= 0.5f)).ToList();
-        if (rowsWithInk.Count == 0)
+        // Banda de texto: el bloque de filas seguidas con más tinta. Lo que quede afuera (separado por filas
+        // vacías, como el borde de la caja en algunos diseños de HUD) se borra para que no se pegue a los dígitos.
+        var rowInk = Enumerable.Range(0, h)
+            .Select(y => Enumerable.Range(0, w).Sum(x => map[y * w + x] >= 0.5f ? map[y * w + x] : 0))
+            .ToArray();
+        var band = (Top: -1, Bottom: -1, Ink: 0f);
+        for (var y = 0; y < h; y++)
+        {
+            if (rowInk[y] <= 0)
+                continue;
+            var top = y;
+            var total = 0f;
+            while (y < h && rowInk[y] > 0)
+                total += rowInk[y++];
+            if (total > band.Ink)
+                band = (top, y - 1, total);
+        }
+        if (band.Top < 0)
             return [];
-        var textTop = rowsWithInk[0];
-        var textHeight = rowsWithInk[^1] - textTop + 1;
+        for (var y = 0; y < h; y++)
+        {
+            if (y < band.Top || y > band.Bottom)
+                Array.Clear(map, y * w, w);
+        }
+        var textTop = band.Top;
+        var textHeight = band.Bottom - band.Top + 1;
 
         var columns = new float[w];
         for (var x = 0; x < w; x++)

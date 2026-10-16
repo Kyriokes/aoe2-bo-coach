@@ -7,7 +7,7 @@ namespace BoCoach.Vision.Tests;
 
 public class HudTests
 {
-    private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015");
+    private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-205040");
     private static readonly HudReader Reader = new(HudFonts.Load(Path.Combine(AppContext.BaseDirectory, "fonts")));
 
     private static List<(int Frame, long TimeMs, Dictionary<string, string> Values)> Golden()

@@ -1,6 +1,6 @@
 // ReplaySession: corre la visión sobre una grabación (sin el juego) y arma las letras del HUD.
 //
-//   glyphs <grabación> <región[,región...]> <tinta> <salida> [--every N] [--ratio-percent 70]
+//   glyphs <grabación[;grabación...]> <región[,región...]> <tinta> <salida> [--every N] [--ratio-percent 70]
 //       Recorta los caracteres de la región, los agrupa por parecido y escribe clusters.json y
 //       clusters.png (una fila por grupo, en el mismo orden) para etiquetarlos mirando la imagen.
 //   font <salida> <etiquetas> <nombre> <tinta> <fuente.json>
@@ -15,7 +15,7 @@
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre el pipeline completo (números, suavizado, edad y log) y escribe una fila por captura.
 //
-// <tinta> es "white" (números blancos) o "blue" (números azules).
+// <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen) o "blue" (números azules).
 
 using System.Globalization;
 using System.Text.Json;
@@ -53,7 +53,10 @@ catch (Exception e) when (e is ArgumentException or IndexOutOfRangeException or 
 
 static InkSpec Ink(string color) => color switch
 {
-    "white" => new InkSpec { Color = "white", Low = 120, High = 200 },
+    // Blanco puro: el fondo de algunos diseños de HUD (por civ) es gris claro y no tiene que contar como tinta.
+    "white" => new InkSpec { Color = "white", Low = 180, High = 235 },
+    // Umbral por imagen (Otsu) entre 110 y 200: para los números del stock en los distintos diseños de HUD.
+    "white-auto" => new InkSpec { Color = "white", Low = 110, High = 200, Adaptive = true },
     "blue" => new InkSpec { Color = "blue", Low = 120, High = 190 },
     _ => throw new ArgumentException($"Tinta desconocida: {color} (usá white o blue)."),
 };
@@ -76,16 +79,19 @@ static IEnumerable<int> SelectFrames(RecordedSession session, string[] args)
 // ---- glyphs: recortar y agrupar ----
 static int Glyphs(string recording, string region, InkSpec ink, string output, int every, double ratio)
 {
-    var session = RecordedSession.Load(recording);
+    // Varias grabaciones separadas por ';' (por ejemplo, partidas con distintos diseños de HUD).
     var samples = new List<float[]>();
     var ratios = new List<float>();
-    foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
+    foreach (var session in recording.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(RecordedSession.Load))
     {
-        // Ancho típico provisorio de un dígito (--ratio-percent, 70 = 0,7 del alto): sirve para partir dígitos pegados.
-        foreach (var g in region.Split(',').SelectMany(r => BoCoach.Vision.Digits.Glyphs.Extract(session.Image(frame.Index, r), ink, ratio)))
+        foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
         {
-            samples.Add(g.Cell);
-            ratios.Add(g.WidthRatio);
+            // Ancho típico provisorio de un dígito (--ratio-percent, 70 = 0,7 del alto): sirve para partir dígitos pegados.
+            foreach (var g in region.Split(',').SelectMany(r => BoCoach.Vision.Digits.Glyphs.Extract(session.Image(frame.Index, r), ink, ratio)))
+            {
+                samples.Add(g.Cell);
+                ratios.Add(g.WidthRatio);
+            }
         }
     }
 
@@ -129,35 +135,41 @@ static int Glyphs(string recording, string region, InkSpec ink, string output, i
     });
     File.WriteAllText(Path.Combine(output, "clusters.json"), JsonSerializer.Serialize(json));
 
-    // Imagen: una fila por grupo con hasta 16 ejemplos (×4), en el mismo orden que clusters.json.
-    const int zoom = 4, perRow = 16, gap = 4;
+    // Imágenes: una fila por grupo con hasta 16 ejemplos (×4), en el mismo orden que clusters.json, en páginas
+    // de 20 grupos (clusters.png = grupos 0-19, clusters-2.png = 20-39, ...) para que se vean grandes.
+    const int zoom = 4, perRow = 16, gap = 4, rowsPerPage = 20;
     var cellW = GlyphFont.CellWidth * zoom;
     var cellH = GlyphFont.CellHeight * zoom;
     var width = perRow * (cellW + gap) + gap;
-    var height = ordered.Count * (cellH + gap) + gap;
-    var pixels = new byte[width * height * 4];
-    for (var p = 0; p < pixels.Length; p += 4)
-        (pixels[p], pixels[p + 1], pixels[p + 2], pixels[p + 3]) = (70, 50, 40, 255);
-    for (var row = 0; row < ordered.Count; row++)
+    for (var page = 0; page * rowsPerPage < ordered.Count; page++)
     {
-        var members = ordered[row].Members;
-        for (var k = 0; k < Math.Min(perRow, members.Count); k++)
+        var rows = ordered.Skip(page * rowsPerPage).Take(rowsPerPage).ToList();
+        var height = rows.Count * (cellH + gap) + gap;
+        var pixels = new byte[width * height * 4];
+        for (var p = 0; p < pixels.Length; p += 4)
+            (pixels[p], pixels[p + 1], pixels[p + 2], pixels[p + 3]) = (70, 50, 40, 255);
+        for (var row = 0; row < rows.Count; row++)
         {
-            var cell = samples[members[k * members.Count / Math.Min(perRow, members.Count)]];
-            var ox = gap + k * (cellW + gap);
-            var oy = gap + row * (cellH + gap);
-            for (var y = 0; y < cellH; y++)
+            var members = rows[row].Members;
+            for (var k = 0; k < Math.Min(perRow, members.Count); k++)
             {
-                for (var x = 0; x < cellW; x++)
+                var cell = samples[members[k * members.Count / Math.Min(perRow, members.Count)]];
+                var ox = gap + k * (cellW + gap);
+                var oy = gap + row * (cellH + gap);
+                for (var y = 0; y < cellH; y++)
                 {
-                    var v = (byte)(30 + 225 * cell[y / zoom * GlyphFont.CellWidth + x / zoom]);
-                    var o = ((oy + y) * width + ox + x) * 4;
-                    (pixels[o], pixels[o + 1], pixels[o + 2]) = (v, v, v);
+                    for (var x = 0; x < cellW; x++)
+                    {
+                        var v = (byte)(30 + 225 * cell[y / zoom * GlyphFont.CellWidth + x / zoom]);
+                        var o = ((oy + y) * width + ox + x) * 4;
+                        (pixels[o], pixels[o + 1], pixels[o + 2]) = (v, v, v);
+                    }
                 }
             }
         }
+        var name = page == 0 ? "clusters.png" : $"clusters-{page + 1}.png";
+        Png.Write(new CapturedImage(width, height, pixels), Path.Combine(output, name));
     }
-    Png.Write(new CapturedImage(width, height, pixels), Path.Combine(output, "clusters.png"));
 
     Console.WriteLine($"{samples.Count} caracteres en {ordered.Count} grupos (fila = grupo):");
     for (var id = 0; id < ordered.Count; id++)

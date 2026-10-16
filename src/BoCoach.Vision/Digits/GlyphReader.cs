@@ -31,7 +31,10 @@ public sealed class GlyphReader(GlyphFont font)
         var glyphs = Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio);
         if (glyphs.Count == 0)
             return new GlyphReading("", 0);
-        var gap = glyphs.Max(g => g.Width) * 1.2;
+        // Un hueco de grupo es más ancho que un dígito típico (por la altura del texto, no por los dígitos de esta
+        // caja: un "11" son dos caracteres angostos con el espacio de dígitos normales entre ellos).
+        var textHeight = glyphs[0].Width / Math.Max(0.01, glyphs[0].WidthRatio);
+        var gap = Math.Max(glyphs.Max(g => g.Width), font.TypicalWidthRatio * textHeight) * 1.2;
         var start = glyphs.Count - 1;
         while (start > 0 && glyphs[start].Left - glyphs[start - 1].Right <= gap)
             start--;

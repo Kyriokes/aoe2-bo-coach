@@ -21,22 +21,73 @@ public sealed record InkSpec
     /// <summary>Desde esto, tinta 1.</summary>
     public int High { get; init; } = 200;
 
-    public float Ink(byte r, byte g, byte b)
-    {
-        var value = Color switch
-        {
-            "blue" => Math.Min(b, b - r + 120),
-            _ => Math.Min(r, Math.Min(g, b)),
-        };
-        return Math.Clamp((value - Low) / (float)(High - Low), 0, 1);
-    }
+    /// <summary>
+    /// Si es true, <see cref="Low"/> se calcula para cada imagen con el método de Otsu (separa fondo y texto) y
+    /// <see cref="Low"/>/<see cref="High"/> quedan como límites: sirve para los distintos diseños de HUD de cada civ,
+    /// con fondos oscuros o con textura clara.
+    /// </summary>
+    public bool Adaptive { get; init; }
+
+    /// <summary>Ancho de la rampa de tinta cuando el umbral es adaptativo.</summary>
+    public int Ramp { get; init; } = 60;
+
+    public float Ink(byte r, byte g, byte b) => Ink(Value(r, g, b), Low, High);
 
     public float[] InkMap(CapturedImage image)
     {
-        var map = new float[image.Width * image.Height];
+        var values = new int[image.Width * image.Height];
+        for (var i = 0; i < values.Length; i++)
+            values[i] = Value(image.Bgra[i * 4 + 2], image.Bgra[i * 4 + 1], image.Bgra[i * 4]);
+
+        var (low, high) = (Low, High);
+        if (Adaptive)
+        {
+            low = Math.Clamp(Otsu(values), Low, High);
+            high = Math.Min(255, low + Ramp);
+        }
+
+        var map = new float[values.Length];
         for (var i = 0; i < map.Length; i++)
-            map[i] = Ink(image.Bgra[i * 4 + 2], image.Bgra[i * 4 + 1], image.Bgra[i * 4]);
+            map[i] = Ink(values[i], low, high);
         return map;
+    }
+
+    private int Value(byte r, byte g, byte b) => Color switch
+    {
+        "blue" => Math.Max(0, Math.Min((int)b, b - r + 120)),
+        _ => Math.Min(r, Math.Min(g, b)),
+    };
+
+    private static float Ink(int value, int low, int high) => Math.Clamp((value - low) / (float)(high - low), 0, 1);
+
+    /// <summary>Umbral de Otsu: el que mejor separa los valores en dos grupos (fondo y texto).</summary>
+    private static int Otsu(int[] values)
+    {
+        var histogram = new int[256];
+        foreach (var v in values)
+            histogram[Math.Clamp(v, 0, 255)]++;
+        double total = values.Length, sumAll = 0;
+        for (var i = 0; i < 256; i++)
+            sumAll += i * histogram[i];
+
+        double sumBelow = 0, weightBelow = 0, bestVariance = -1;
+        var best = 0;
+        for (var t = 0; t < 256; t++)
+        {
+            weightBelow += histogram[t];
+            if (weightBelow == 0)
+                continue;
+            var weightAbove = total - weightBelow;
+            if (weightAbove == 0)
+                break;
+            sumBelow += t * histogram[t];
+            var meanBelow = sumBelow / weightBelow;
+            var meanAbove = (sumAll - sumBelow) / weightAbove;
+            var variance = weightBelow * weightAbove * (meanBelow - meanAbove) * (meanBelow - meanAbove);
+            if (variance > bestVariance)
+                (bestVariance, best) = (variance, t);
+        }
+        return best;
     }
 }
 

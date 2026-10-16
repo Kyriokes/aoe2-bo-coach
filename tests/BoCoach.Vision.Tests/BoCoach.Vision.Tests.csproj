@@ -26,7 +26,7 @@
   <ItemGroup>
     <None Include="..\..\data\fonts\*.json" Link="fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\events.json" Link="events.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\fixtures\rec-20261015\*" Link="fixtures\rec-20261015\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\**\*" Link="fixtures\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

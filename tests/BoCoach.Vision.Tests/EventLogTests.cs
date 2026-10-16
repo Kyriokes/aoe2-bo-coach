@@ -8,7 +8,7 @@ namespace BoCoach.Vision.Tests;
 
 public class EventLogTests(ITestOutputHelper output)
 {
-    private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015");
+    private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-205040");
     private static readonly EventCatalog Catalog = EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json"));
     private static readonly EventMatcher Matcher = new(Catalog);
 
