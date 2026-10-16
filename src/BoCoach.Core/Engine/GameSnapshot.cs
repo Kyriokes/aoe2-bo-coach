@@ -21,4 +21,10 @@ public sealed record GameSnapshot(
         : this(time, stock, population, populationCap, (IReadOnlyList<GameEvent>)events)
     {
     }
+
+    /// <summary>
+    /// Total de aldeanos que muestra el HUD (número azul debajo de la población), o null si no se leyó. Cuando se
+    /// lee, los aldeanos nuevos salen de este número y no del log, que muestra varios aldeanos seguidos como uno.
+    /// </summary>
+    public int? Villagers { get; init; }
 }

@@ -4,12 +4,14 @@ using BoCoach.Core.Data;
 namespace BoCoach.Core.Engine;
 
 /// <summary>Diferencia entre lo estimado y el objetivo de la BO. Positivo = atrasado.</summary>
-public sealed record TargetDeviation(string What, double Estimated, double Target)
+/// <param name="Clicked">El clic ya se hizo: <paramref name="Estimated"/> es el momento real, no una estimación.</param>
+public sealed record TargetDeviation(string What, double Estimated, double Target, bool Clicked = false)
 {
     public double Delta => Estimated - Target;
 
-    public override string ToString() =>
-        $"{Label(What)} estimada en {Clock(Estimated)}, objetivo {Clock(Target)}";
+    public override string ToString() => Clicked
+        ? $"Clic de {Label(What)} a las {Clock(Estimated)}, objetivo {Clock(Target)}"
+        : $"{Label(What)} estimada en {Clock(Estimated)}, objetivo {Clock(Target)}";
 
     public static string Clock(double seconds) => GameClock.Format(seconds);
 
@@ -25,10 +27,13 @@ public sealed record TargetDeviation(string What, double Estimated, double Targe
 /// <summary>Re-planificación en vivo: lleva el progreso del Tracker y el estado del jugador al Planner.</summary>
 public static class LivePlan
 {
-    /// <summary>Lo que falta de cada paso no terminado ni salteado, en el orden de la BO (los atrasados también).</summary>
+    /// <summary>
+    /// Lo que falta de cada paso no terminado ni salteado, en el orden de la BO (los atrasados también). Lo que
+    /// está en curso va con el momento en que se pagó.
+    /// </summary>
     public static IReadOnlyList<PlanItem> Items(Tracker tracker) => tracker.Steps
         .Where(s => s.State is not (StepState.Done or StepState.Skipped))
-        .Select(s => new PlanItem(s.Step, s.Remaining))
+        .Select(s => new PlanItem(s.Step, s.Remaining, s.StartedAt))
         .ToList();
 
     /// <summary>
@@ -104,9 +109,15 @@ public static class LivePlan
     /// <summary>Desvíos contra los objetivos de la BO que todavía no se cumplieron.</summary>
     public static IEnumerable<TargetDeviation> Deviations(BuildOrder bo, PlanResult plan)
     {
-        if (bo.Targets?.FeudalClickTime is { } feudal && plan.ClickTime("feudal_age") is { } f)
-            yield return new TargetDeviation("feudal_age", f, feudal);
-        if (bo.Targets?.CastleClickTime is { } castle && plan.ClickTime("castle_age") is { } c)
-            yield return new TargetDeviation("castle_age", c, castle);
+        if (bo.Targets?.FeudalClickTime is { } feudal && Click(plan, "feudal_age") is { } f)
+            yield return new TargetDeviation("feudal_age", f.Time, feudal, f.Paid);
+        if (bo.Targets?.CastleClickTime is { } castle && Click(plan, "castle_age") is { } c)
+            yield return new TargetDeviation("castle_age", c.Time, castle, c.Paid);
+    }
+
+    private static (double Time, bool Paid)? Click(PlanResult plan, string tech)
+    {
+        var estimate = plan.Steps.FirstOrDefault(s => s.Step.Do == StepAction.Research && s.Step.What == tech);
+        return estimate?.Start is { } start ? (start, estimate.Paid) : null;
     }
 }

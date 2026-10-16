@@ -56,7 +56,8 @@ public sealed record PlannerSettings
 }
 
 /// <summary>Trabajo que falta de un paso. <paramref name="Remaining"/> sale del Tracker (o es el total en el editor).</summary>
-public sealed record PlanItem(Step Step, int Remaining);
+/// <param name="PaidAt">Si una unidad del paso ya se pagó y se está haciendo (una investigación en curso), desde cuándo.</param>
+public sealed record PlanItem(Step Step, int Remaining, double? PaidAt = null);
 
 public enum BlockReason
 {
@@ -84,7 +85,8 @@ public sealed record PlanBlock(string StepId, BlockReason Reason, double From, d
 
 /// <param name="Start">Cuándo empieza (primer aldeano en cola, primer cimiento, click de la tech).</param>
 /// <param name="End">Cuándo termina el último trabajo del paso; null si no termina dentro del horizonte.</param>
-public sealed record StepEstimate(Step Step, double? Start, double? End);
+/// <param name="Paid">El paso ya estaba pagado al empezar la simulación: <paramref name="Start"/> es real, no estimado.</param>
+public sealed record StepEstimate(Step Step, double? Start, double? End, bool Paid = false);
 
 public sealed record PlanSample(double Time, ResourceAmounts Stock, int Population, int PopulationCap, int Villagers);
 
@@ -153,9 +155,28 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _idle = start.IdleVillagers;
             _villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, s => start.Villagers.GetValueOrDefault(s));
             _buildings = new Dictionary<string, int>(start.Buildings);
-            _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step))).ToList();
+            _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step)) { PaidAt = item.PaidAt }).ToList();
             foreach (var item in _items.Where(i => i.Remaining == 0))
                 Finish(item);
+            foreach (var item in _items.Where(i => i.PaidAt is not null && i.Remaining > 0 && i.Entity is not null && i.Step.Do is StepAction.Train or StepAction.Research))
+                StartPaid(item);
+        }
+
+        /// <summary>Lo ya pagado no se vuelve a pagar: ocupa su edificio hasta que termina.</summary>
+        private void StartPaid(ItemSim item)
+        {
+            var entity = item.Entity!;
+            var producer = entity.MadeIn ?? "";
+            _busyProducers[producer] = _busyProducers.GetValueOrDefault(producer) + 1;
+            _reserved += entity.Pop;
+            item.Remaining--;
+            item.Unfinished++;
+            item.Started = true;
+            item.Start = item.PaidAt;
+            var queue = Queue(producer);
+            for (var k = 0; k < item.Remaining; k++)
+                queue.Enqueue(item);
+            _running.Add((Math.Max(_time, item.PaidAt!.Value + entity.Time), item, Completion(item, entity, producer)));
         }
 
         private Entity? Lookup(Step step) =>
@@ -184,7 +205,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             Sample();
 
             return new PlanResult(
-                _items.Select(i => new StepEstimate(i.Step, i.Start, i.End)).ToList(),
+                _items.Select(i => new StepEstimate(i.Step, i.Start, i.End, i.PaidAt is not null)).ToList(),
                 _blocks,
                 _timeline);
         }
@@ -303,18 +324,21 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 item.Remaining--;
                 item.Unfinished++;
                 item.Start ??= _time;
-                _running.Add((_time + entity.Time, item, () =>
-                {
-                    _busyProducers[producer]--;
-                    _reserved -= entity.Pop;
-                    _population += entity.Pop;
-                    if (entity.Kind == EntityKind.Tech)
-                        _age = AgeReachedBy(entity.Key) ?? _age;
-                    else if (entity.Key == "villager")
-                        AddVillagers(item.Step.Assign, 1);
-                }));
+                _running.Add((_time + entity.Time, item, Completion(item, entity, producer)));
             }
         }
+
+        /// <summary>Lo que pasa cuando el edificio termina de producir una unidad o una tecnología.</summary>
+        private Action Completion(ItemSim item, Entity entity, string producer) => () =>
+        {
+            _busyProducers[producer]--;
+            _reserved -= entity.Pop;
+            _population += entity.Pop;
+            if (entity.Kind == EntityKind.Tech)
+                _age = AgeReachedBy(entity.Key) ?? _age;
+            else if (entity.Key == "villager")
+                AddVillagers(item.Step.Assign, 1);
+        };
 
         private void Build(ItemSim item)
         {
@@ -467,5 +491,6 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         public bool Started { get; set; }
         public double? Start { get; set; }
         public double? End { get; set; }
+        public double? PaidAt { get; init; }
     }
 }

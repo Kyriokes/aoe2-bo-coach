@@ -13,7 +13,10 @@
 //       separados por '|'. Para event_log prepara la captura igual que el lector del log (LogImage).
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
-//       Corre el pipeline completo (números, suavizado, edad y log) y escribe una fila por captura.
+//       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
+//   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
+//       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
+//       y al final el estado de cada paso.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen) o "blue" (números azules).
 
@@ -22,7 +25,9 @@ using System.Text.Json;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Digits;
 using BoCoach.Vision.Recording;
+using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
 using BoCoach.Vision.Events;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Regions;
@@ -45,6 +50,7 @@ try
         "read" => Read(args[1], args[2], args[3], args),
         "ocr" => Ocr(args[1], args[2], args).GetAwaiter().GetResult(),
         "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
+        "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -248,54 +254,98 @@ static async Task<int> Ocr(string recording, string region, string[] args)
 // ---- replay: pipeline completo sobre una grabación ----
 static async Task<int> Replay(string recording, string[] args)
 {
-    string Text(string name, string fallback)
-    {
-        var i = Array.IndexOf(args, name);
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
-    }
-
     var session = RecordedSession.Load(recording);
-    var reader = new HudReader(HudFonts.Load(Text("--fonts", Path.Combine("data", "fonts"))));
-    var tracker = new HudTracker();
-    var ocr = BoCoach.Vision.Ocr.OcrReader.TryCreate();
-    var useLog = !args.Contains("--no-log") && ocr is not null && session.Regions.Contains(RegionNames.EventLog);
-    var log = useLog ? new EventLogReader(ocr!, EventCatalog.Load(Text("--events", Path.Combine("data", "events.json")))) : null;
-    var output = Text("--out", Path.Combine(recording, "lecturas.csv"));
+    var reader = Reader(session, args);
+    var output = Text(args, "--out", Path.Combine(recording, "lecturas.csv"));
 
-    var raw = new Dictionary<string, int>();
+    var valid = new Dictionary<string, int>();
     var clipped = new Dictionary<string, int>();
     var events = 0;
     await using var csv = new StreamWriter(output);
-    await csv.WriteLineAsync("frame,time_ms,clock,food,wood,gold,stone,villagers,idle,age,events");
+    await csv.WriteLineAsync(ScreenReadingLog.Header);
     foreach (var frame in session.Frames)
     {
-        var reading = reader.Read(session, frame.Index);
-        foreach (var (name, value) in new (string, object?)[] { ("clock", reading.Clock), ("food", reading.Food), ("wood", reading.Wood), ("gold", reading.Gold), ("stone", reading.Stone), ("villagers", reading.Villagers) })
+        var state = await reader.ReadAsync(Regions(session, frame.Index), frame.TimeMs / 1000.0);
+        foreach (var (name, value) in new (string, object?)[] { ("clock", state.Clock), ("food", state.Food), ("wood", state.Wood), ("gold", state.Gold), ("stone", state.Stone), ("villagers", state.Villagers) })
             if (value is not null)
-                raw[name] = raw.GetValueOrDefault(name) + 1;
-        foreach (var region in reading.Clipped)
+                valid[name] = valid.GetValueOrDefault(name) + 1;
+        foreach (var region in state.Clipped)
             clipped[region] = clipped.GetValueOrDefault(region) + 1;
+        events += state.NewEvents.Count;
 
-        IReadOnlyList<string> newEvents = log is null ? [] : await log.ReadAsync(session.Image(frame.Index, RegionNames.EventLog));
-        events += newEvents.Count;
-        BoCoach.Core.Data.Age? age = ocr is not null && session.Has(frame.Index, RegionNames.Age)
-            ? AgeText.Parse(await ocr.ReadAsync(session.Image(frame.Index, RegionNames.Age)))
-            : null;
-
-        var state = tracker.Update(frame.TimeMs / 1000.0, reading, newEvents, age);
-        await csv.WriteLineAsync(string.Join(",",
-            frame.Index, frame.TimeMs,
-            state.Clock is { } c ? BoCoach.Core.GameClock.Format(c) : "",
-            state.Food, state.Wood, state.Gold, state.Stone, state.Villagers, state.IdleVillagers, state.Age,
-            string.Join(" ", state.NewEvents)));
+        await csv.WriteLineAsync(ScreenReadingLog.Format(frame.Index, frame.TimeMs, state.ToReading(), state.IdleVillagers, state.Age?.ToString()));
     }
 
     var total = session.Frames.Count;
     Console.WriteLine($"{total} capturas → {output}");
     foreach (var name in new[] { "clock", "food", "wood", "gold", "stone", "villagers" })
-        Console.WriteLine($"  {name,-10} lecturas válidas: {raw.GetValueOrDefault(name) * 100.0 / total,5:0.0} %");
+        Console.WriteLine($"  {name,-10} lecturas suavizadas: {valid.GetValueOrDefault(name) * 100.0 / total,5:0.0} %");
     foreach (var (region, n) in clipped.OrderByDescending(c => c.Value))
         Console.WriteLine($"  aviso: en {region} el número toca el borde de la caja en {n} capturas: agrandá esa caja al calibrar.");
-    Console.WriteLine(log is null ? "  log: no se leyó" : $"  log: {events} eventos");
+    Console.WriteLine(args.Contains("--no-log") ? "  log: no se leyó" : $"  log: {events} eventos");
     return 0;
 }
+
+// ---- coach: el loop completo (visión + motor + economía) sobre una grabación o sus lecturas.csv ----
+static async Task<int> CoachReplay(string recording, string boPath, string[] args)
+{
+    var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+    var catalog = EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json")));
+    var bo = BuildOrderSerializer.Load(boPath);
+    var builder = new SnapshotBuilder(data);
+    var coach = new Coach(bo, data, catalog);
+
+    string? last = null;
+    await foreach (var (index, reading) in Readings(recording, args))
+    {
+        if (builder.Build(reading) is not { } snapshot)
+            continue;
+        var view = coach.Update(snapshot);
+        var lines = CoachText.Lines(view, data);
+        var text = string.Join(" | ", new[] { lines.Current, lines.Status, lines.Next }.Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion]).Where(s => s is not null));
+        if (text == last)
+            continue;
+        last = text;
+        Console.WriteLine($"{index,5} {BoCoach.Core.GameClock.Format(view.Time),6} pob {view.Population}/{view.PopulationCap}  {text}");
+        if (args.Contains("--economy") && coach.Economy is { } e)
+            Console.WriteLine($"        tasas {e.ObservedRates} · aldeanos {e.Villagers.PerResource} (efic {e.Villagers.Efficiency:0.00}) · demanda {e.Demand} · déficit {e.Deficit} · candidata {e.Candidate}");
+    }
+
+    Console.WriteLine();
+    foreach (var step in coach.Tracker.Steps)
+        Console.WriteLine($"  {step.Step.Id,-4} {step.State,-8} {step.Completed}/{step.Required} {(step.DoneAt is { } t ? BoCoach.Core.GameClock.Format(t) : ""),6}  {StepText.Describe(step.Step)}");
+    Console.WriteLine($"  extras: {string.Join(", ", coach.Tracker.Extras.GroupBy(e => e.Event.EventId).Select(g => $"{g.Key}×{g.Count()}"))}");
+    return 0;
+}
+
+/// <summary>Las lecturas de cada captura: de un lecturas.csv ya guardado, o pasando la visión por la grabación.</summary>
+static async IAsyncEnumerable<(int Frame, ScreenReading Reading)> Readings(string source, string[] args)
+{
+    if (File.Exists(source))
+    {
+        foreach (var logged in ScreenReadingLog.Load(source))
+            yield return (logged.Frame, logged.Reading);
+        yield break;
+    }
+
+    var session = RecordedSession.Load(source);
+    var reader = Reader(session, args);
+    foreach (var frame in session.Frames)
+        yield return (frame.Index, (await reader.ReadAsync(Regions(session, frame.Index), frame.TimeMs / 1000.0)).ToReading());
+}
+
+static string Text(string[] args, string name, string fallback)
+{
+    var i = Array.IndexOf(args, name);
+    return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
+}
+
+static ScreenReader Reader(RecordedSession session, string[] args)
+{
+    var ocr = args.Contains("--no-log") ? null : BoCoach.Vision.Ocr.OcrReader.TryCreate();
+    return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr,
+        EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json"))));
+}
+
+static Func<string, CapturedImage?> Regions(RecordedSession session, int frame) =>
+    region => session.Has(frame, region) ? session.Image(frame, region) : null;

@@ -153,4 +153,21 @@ public class PlannerTests
         Assert.Equal("s3", items[0].Step.Id);
         Assert.Equal(partida.Time, start.Time);
     }
+
+    [Fact]
+    public void Lo_ya_pagado_no_se_vuelve_a_pagar_y_ocupa_el_edificio()
+    {
+        var feudal = new Step { Id = "f", Do = StepAction.Research, What = "feudal_age" };
+        var more = Villagers("v", 1);
+        var start = PlanStart.Standard with { Time = 500, Stock = new ResourceAmounts(Food: 60, Wood: 0, Stone: 0, Gold: 0) };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1, PaidAt: 480), new PlanItem(more, 1)], start);
+
+        var research = plan.For("f")!;
+        Assert.True(research.Paid);
+        Assert.Equal(480, research.Start);
+        Assert.Equal(480 + TestData.GameData.Get("feudal_age").Time, research.End);
+        // Con 60 de comida alcanza para el aldeano, pero el centro urbano está ocupado hasta que termina la Feudal.
+        Assert.True(plan.For("v")!.Start >= research.End);
+    }
 }

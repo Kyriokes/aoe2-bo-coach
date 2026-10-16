@@ -144,7 +144,7 @@ public sealed class EconomyAdvisor
     private VillagerEstimate EstimateVillagers(PlanStart start, PlayerState state, ResourceAmounts perVillager)
     {
         var military = state.Events.Count(e => EventConventions.IsUnitCreated(e.EventId) && e.EventId != EventConventions.VillagerCreated);
-        var total = Math.Max(1, state.Population - 1 - military); // -1: el explorador inicial
+        var total = Math.Max(1, state.Villagers ?? state.Population - 1 - military); // -1: el explorador inicial
 
         // Según la BO, escalado al total real.
         var planned = ResourceAmounts.Zero;
@@ -172,10 +172,13 @@ public sealed class EconomyAdvisor
         return new VillagerEstimate(blended * (total / Sum(blended)), efficiency, total);
     }
 
-    /// <summary>Costo de lo que falta hasta el próximo hito (subir de edad), dividido el tiempo que queda para él.</summary>
+    /// <summary>
+    /// Costo de lo que falta hasta el próximo hito (subir de edad), dividido el tiempo que queda para él. Lo que ya
+    /// se pagó (una edad en curso) no cuenta: el próximo hito pasa a ser el siguiente.
+    /// </summary>
     private ResourceAmounts Demand(Tracker tracker, PlanResult? plan, double now)
     {
-        var items = LivePlan.Items(tracker);
+        var items = LivePlan.Items(tracker).Where(i => i.PaidAt is null).ToList();
         var milestone = items
             .Select((item, i) => (item, i))
             .FirstOrDefault(x => x.item.Step.Do == StepAction.Research && x.item.Step.What is { } w && AgeTechs.ContainsKey(w));
@@ -250,16 +253,29 @@ public sealed class EconomyAdvisor
 /// <summary>
 /// Histéresis: una sugerencia se muestra recién cuando el mismo par de recursos se sostuvo
 /// <c>sustain</c> segundos y pasaron <c>cooldown</c> segundos desde la anterior. Una a la vez.
+/// Una vez visible:
+/// <list type="bullet">
+/// <item>se muestra al menos <c>minShow</c> segundos, aunque el déficit se cruce un momento con el umbral;</item>
+/// <item>la cantidad cambia solo si el número nuevo se sostiene <see cref="CountSettleSeconds"/> segundos: el
+/// asignador la recalcula en cada captura y sin esto saltaría de 3 a 2 a 5. Si el jugador hace caso, el déficit
+/// se resuelve y la sugerencia desaparece igual.</item>
+/// </list>
 /// </summary>
-public sealed class SuggestionGate(double sustainSeconds, double cooldownSeconds)
+public sealed class SuggestionGate(double sustainSeconds, double cooldownSeconds, double minShowSeconds = 8)
 {
+    public const double CountSettleSeconds = 6;
+
     private (Resource From, Resource To)? _pending;
     private double _pendingSince;
     private double _lastShown = double.NegativeInfinity;
+    private double? _differentSince;
     private Suggestion? _active;
 
     public Suggestion? Update(double now, Suggestion? candidate)
     {
+        if (_active is not null && candidate is null && now - _lastShown < minShowSeconds)
+            return _active;
+
         if (candidate is null)
         {
             _pending = null;
@@ -269,7 +285,7 @@ public sealed class SuggestionGate(double sustainSeconds, double cooldownSeconds
 
         var pair = (candidate.From, candidate.To);
         if (_active is not null && (_active.From, _active.To) == pair)
-            return _active = candidate; // sigue vigente; puede cambiar la cantidad
+            return _active = Adjust(now, candidate);
 
         if (_pending != pair)
         {
@@ -282,8 +298,23 @@ public sealed class SuggestionGate(double sustainSeconds, double cooldownSeconds
         if (now - _pendingSince >= sustainSeconds && now - _lastShown >= cooldownSeconds)
         {
             _lastShown = now;
+            _differentSince = null;
             return _active = candidate;
         }
         return null;
+    }
+
+    private Suggestion Adjust(double now, Suggestion candidate)
+    {
+        if (candidate.Count == _active!.Count)
+        {
+            _differentSince = null;
+            return _active;
+        }
+        _differentSince ??= now;
+        if (now - _differentSince < CountSettleSeconds)
+            return _active;
+        _differentSince = null;
+        return candidate;
     }
 }

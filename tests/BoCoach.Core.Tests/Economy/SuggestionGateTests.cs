@@ -42,14 +42,31 @@ public class SuggestionGateTests
     }
 
     [Fact]
-    public void La_sugerencia_vigente_actualiza_la_cantidad()
+    public void La_cantidad_cambia_solo_si_el_numero_nuevo_se_sostiene()
     {
         var gate = new SuggestionGate(10, 20);
+        gate.Update(0, WoodToFood with { Count = 3 });
+        gate.Update(10, WoodToFood with { Count = 3 });
+
+        // El asignador duda entre 2, 5 y 3: se sigue mostrando 3.
+        Assert.Equal(3, gate.Update(11, WoodToFood with { Count = 2 })!.Count);
+        Assert.Equal(3, gate.Update(12, WoodToFood with { Count = 5 })!.Count);
+        Assert.Equal(3, gate.Update(13, WoodToFood with { Count = 3 })!.Count);
+        // Un 4 que se sostiene 6 s sí se muestra.
+        Assert.Equal(3, gate.Update(14, WoodToFood with { Count = 4 })!.Count);
+        Assert.Equal(3, gate.Update(19, WoodToFood with { Count = 4 })!.Count);
+        Assert.Equal(4, gate.Update(20, WoodToFood with { Count = 4 })!.Count);
+    }
+
+    [Fact]
+    public void Una_vez_visible_dura_un_minimo_aunque_el_deficit_se_corte()
+    {
+        var gate = new SuggestionGate(10, 20, minShowSeconds: 8);
         gate.Update(0, WoodToFood);
         gate.Update(10, WoodToFood);
 
-        var updated = gate.Update(11, WoodToFood with { Count = 3 });
-
-        Assert.Equal(3, updated!.Count);
+        Assert.Equal(WoodToFood, gate.Update(12, null));
+        Assert.Equal(WoodToFood, gate.Update(17.5, null));
+        Assert.Null(gate.Update(18, null));
     }
 }

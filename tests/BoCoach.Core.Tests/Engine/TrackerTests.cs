@@ -221,4 +221,51 @@ public class TrackerTests
 
         Assert.Equal(StepState.Ready, tracker.Current?.State);
     }
+
+    [Fact]
+    public void Construir_antes_de_tiempo_no_atrasa_los_aldeanos_del_centro_urbano()
+    {
+        var tracker = NewTracker();
+        // Hace las casas iniciales y el campamento maderero (s4) antes de entrenar los aldeanos de s2 y s3.
+        var partida = new Partida().Play(Scouts, 0, 0).Event("lumber_camp_built");
+
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Done, StateOf(tracker, "s4"));
+        Assert.Contains(StateOf(tracker, "s2"), Open);
+        Assert.Contains(StateOf(tracker, "s3"), Open);
+        Assert.Empty(tracker.Late);
+        Assert.Equal("s2", tracker.Current?.Step.Id);
+    }
+
+    [Fact]
+    public void Un_paso_en_curso_deja_de_ser_el_actual_y_retroceder_lo_deshace()
+    {
+        var tracker = NewTracker();
+        tracker.Update(new Partida().Play(Scouts, 0, 10).State);
+        Assert.Equal("s12", tracker.Current?.Step.Id);
+
+        tracker.MarkStarted(Index("s12"), 500);
+
+        Assert.Equal(StepState.InProgress, StateOf(tracker, "s12"));
+        Assert.Equal(500, tracker.Steps[Index("s12")].StartedAt);
+        Assert.Equal("s13", tracker.Current?.Step.Id);
+
+        tracker.Back();
+
+        Assert.Equal("s12", tracker.Current?.Step.Id);
+        Assert.Empty(tracker.InProgress);
+    }
+
+    [Fact]
+    public void Empezar_una_investigacion_atrasa_la_anterior_del_mismo_edificio()
+    {
+        var tracker = NewTracker();
+        tracker.Update(new Partida().Play(Scouts, 0, 10).State);
+
+        // Hace clic en Feudal sin haber investigado el telar (los dos se hacen en el centro urbano).
+        tracker.MarkStarted(Index("s13"), 520);
+
+        Assert.Equal(StepState.Late, StateOf(tracker, "s12"));
+    }
 }

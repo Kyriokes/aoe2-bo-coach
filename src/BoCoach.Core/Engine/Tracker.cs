@@ -13,8 +13,14 @@ public enum StepState
 
     Done,
 
-    /// <summary>Se terminó un paso posterior y este sigue sin empezar. No se pierde: se muestra aparte.</summary>
+    /// <summary>
+    /// Se terminó (o se empezó) un paso posterior que hace el mismo actor, y este sigue sin empezar. No se pierde:
+    /// se muestra aparte.
+    /// </summary>
     Late,
+
+    /// <summary>Ya se pagó y se está haciendo (por ejemplo, la investigación de una edad), pero no terminó.</summary>
+    InProgress,
 
     /// <summary>El jugador lo salteó a mano.</summary>
     Skipped,
@@ -27,7 +33,8 @@ public sealed record StepProgress(
     int Completed,
     int Required,
     double? DoneAt,
-    bool Manual)
+    bool Manual,
+    double? StartedAt = null)
 {
     public int Remaining => Math.Max(0, Required - Completed);
 }
@@ -39,6 +46,9 @@ public sealed record ExtraAction(GameEvent Event);
 /// Sigue en qué paso de la BO está el jugador. Se recalcula entero en cada <see cref="Update"/> a partir de
 /// los eventos, las correcciones manuales y el estado del jugador, así que el resultado no depende del orden
 /// en que se llamó.
+/// <para>Cada paso lo hace un "actor": el edificio que entrena o investiga (centro urbano, cuartel...) o los
+/// aldeanos que construyen. Los actores trabajan en paralelo, así que un paso queda atrasado solo si el mismo
+/// actor ya terminó uno posterior: construir el campamento antes de tiempo no atrasa los aldeanos del centro urbano.</para>
 /// </summary>
 public sealed class Tracker
 {
@@ -46,8 +56,10 @@ public sealed class Tracker
     private readonly GameData _data;
     private readonly EventCatalog? _events;
     private readonly string?[] _confirmEvent;
+    private readonly string[] _actor;
     private readonly Dictionary<int, double> _manualDone = [];
     private readonly Dictionary<int, double> _skipped = [];
+    private readonly Dictionary<int, double> _started = [];
     private readonly HashSet<int> _noImplicit = [];
     private readonly HashSet<GameEvent> _ignored = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<int, List<GameEvent>> _allocated = [];
@@ -63,6 +75,7 @@ public sealed class Tracker
         _data = data;
         _events = events;
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
+        _actor = bo.Steps.Select(Actor).ToArray();
         Recompute();
     }
 
@@ -77,6 +90,8 @@ public sealed class Tracker
     public StepProgress? Next => _steps.Where(IsOpen).Skip(1).FirstOrDefault();
 
     public IEnumerable<StepProgress> Late => _steps.Where(s => s.State == StepState.Late);
+
+    public IEnumerable<StepProgress> InProgress => _steps.Where(s => s.State == StepState.InProgress);
 
     public bool Finished => _steps.All(s => s.State is StepState.Done or StepState.Skipped);
 
@@ -108,13 +123,35 @@ public sealed class Tracker
     }
 
     /// <summary>
-    /// Hotkey "retroceder": deshace lo último que se completó o salteó. Si lo habían confirmado eventos,
+    /// El paso ya se pagó y se está haciendo (por ejemplo, se vio la baja de comida del clic en Feudal). Deja de
+    /// ser el paso actual y el Planner cuenta lo que le falta desde ese momento.
+    /// </summary>
+    public void MarkStarted(int index, double time)
+    {
+        _started[index] = time;
+        Recompute();
+    }
+
+    /// <summary>Lo pagado se devolvió (se canceló): el paso vuelve a estar pendiente.</summary>
+    public void ClearStarted(int index)
+    {
+        if (_started.Remove(index))
+            Recompute();
+    }
+
+    /// <summary>
+    /// Hotkey "retroceder": deshace lo último que se completó, salteó o empezó. Si lo habían confirmado eventos,
     /// esos eventos se descartan (se asume que fueron una lectura falsa).
     /// </summary>
     public void Back()
     {
         var last = _steps
-            .Select(s => (s.Index, Time: s.State == StepState.Skipped ? _skipped[s.Index] : s.DoneAt))
+            .Select(s => (s.Index, Time: s.State switch
+            {
+                StepState.Skipped => _skipped[s.Index],
+                StepState.InProgress => s.StartedAt,
+                _ => s.DoneAt,
+            }))
             .Where(s => s.Time is not null)
             .OrderBy(s => s.Time)
             .ThenBy(s => s.Index)
@@ -123,7 +160,11 @@ public sealed class Tracker
             return;
 
         var i = last.Index;
-        if (!_skipped.Remove(i) && !_manualDone.Remove(i))
+        if (_steps[i].State == StepState.InProgress)
+        {
+            _started.Remove(i);
+        }
+        else if (!_skipped.Remove(i) && !_manualDone.Remove(i))
         {
             if (_allocated.TryGetValue(i, out var events) && events.Count > 0)
                 _ignored.UnionWith(events);
@@ -140,6 +181,12 @@ public sealed class Tracker
     }
 
     private static int Required(Step step) => step.Do is StepAction.Train or StepAction.Build ? step.Count : 1;
+
+    /// <summary>Quién hace el paso: el edificio que lo produce, o los aldeanos si es construir o mover.</summary>
+    private string Actor(Step step) =>
+        step.Do is StepAction.Train or StepAction.Research && step.What is not null && _data.TryGet(step.What, out var entity)
+            ? entity.MadeIn ?? ""
+            : "aldeanos";
 
     private static bool IsOpen(StepProgress s) => s.State is StepState.Pending or StepState.Ready;
 
@@ -220,7 +267,11 @@ public sealed class Tracker
                 state = StepState.Done;
                 completed[i] = required;
             }
-            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(IsDone))
+            else if (_started.ContainsKey(i))
+            {
+                state = StepState.InProgress;
+            }
+            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && (IsDone(j) || _started.ContainsKey(j))))
             {
                 state = StepState.Late;
             }
@@ -229,7 +280,8 @@ public sealed class Tracker
                 state = IsReady(step, i, completed[i]) ? StepState.Ready : StepState.Pending;
             }
 
-            steps[i] = new StepProgress(step, i, state, Math.Min(completed[i], required), required, state == StepState.Done ? at : null, manual);
+            steps[i] = new StepProgress(step, i, state, Math.Min(completed[i], required), required, state == StepState.Done ? at : null, manual,
+                state == StepState.InProgress ? _started[i] : null);
         }
         _steps = steps;
 

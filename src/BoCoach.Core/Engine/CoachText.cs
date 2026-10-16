@@ -1,0 +1,92 @@
+using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
+using BoCoach.Core.Economy;
+
+namespace BoCoach.Core.Engine;
+
+/// <summary>Los textos del overlay, armados a partir de un <see cref="CoachView"/>.</summary>
+public sealed record CoachLines(
+    string Current,
+    string? Status,
+    string? Next,
+    IReadOnlyList<string> Running,
+    IReadOnlyList<string> Late,
+    string? Deviation,
+    bool Behind,
+    string? Suggestion);
+
+public static class CoachText
+{
+    /// <summary>Desvío (en segundos) a partir del cual el objetivo se muestra como atrasado.</summary>
+    public const double BehindThreshold = 15;
+
+    public static CoachLines Lines(CoachView view, GameData data)
+    {
+        var running = view.Running.Select(r => Running(r, view.Time)).ToList();
+        if (view.Current is not { } current)
+        {
+            return new CoachLines(
+                view.Finished ? "BO terminada" : "Sin pasos pendientes",
+                view.Late.Count > 0 ? "Quedan pasos atrasados" : null,
+                null,
+                running,
+                view.Late.Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
+                null,
+                false,
+                view.Suggestion?.ToString());
+        }
+
+        var title = StepText.Describe(current.Step);
+        if (current.Required > 1 && current.Completed > 0)
+            title += $" ({current.Completed}/{current.Required})";
+
+        var deviation = view.Deviations.FirstOrDefault();
+        return new CoachLines(
+            title,
+            Status(view, current, data),
+            view.Next is { } next ? $"Después: {StepText.Describe(next.Step)}" : null,
+            running,
+            view.Late.Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
+            deviation?.ToString(),
+            deviation is { Delta: > BehindThreshold },
+            view.Suggestion?.ToString());
+    }
+
+    /// <summary>"En curso: Edad Feudal (termina en 1:30)".</summary>
+    private static string Running(RunningStep running, double now)
+    {
+        var step = running.Progress.Step;
+        var name = step.What is { } what ? StepText.Name(what) : StepText.Describe(step);
+        return running.EndsAt is { } end && end > now
+            ? $"En curso: {name} (termina en {GameClock.Format(end - now)})"
+            : $"En curso: {name}";
+    }
+
+    /// <summary>
+    /// Por qué todavía no se puede hacer el paso actual, o cuándo se va a poder. En los pasos de aldeanos no se
+    /// muestra lo que falta: el centro urbano los va encolando de a uno y el "faltan 50" cambiaría todo el tiempo.
+    /// </summary>
+    private static string? Status(CoachView view, StepProgress current, GameData data)
+    {
+        var step = current.Step;
+        var villagers = step.Do == StepAction.Train && step.What == "villager";
+        var missing = villagers ? [] : Enum.GetValues<Resource>()
+            .Where(r => view.Missing[r] >= 1)
+            .Select(r => $"{Math.Ceiling(view.Missing[r]):0} de {Suggestion.Name(r)}")
+            .ToList();
+        var eta = view.CurrentEta is { } at && at - view.Time >= 5 ? $" (en {GameClock.Format(at - view.Time)})" : "";
+
+        if (missing.Count > 0)
+            return $"Faltan {Join(missing)}{eta}";
+        if (step.AtPop is { } pop && view.Population < pop)
+            return $"A {pop} de población (vas {view.Population})";
+        if (step.AtTime is { } time && view.Time < time)
+            return $"A los {GameClock.Format(time)}";
+        if (step.What is { } what && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
+            return "Sin lugar: hacé una casa";
+        return current.State == StepState.Ready ? "Ya se puede" : null;
+    }
+
+    private static string Join(IReadOnlyList<string> parts) =>
+        parts.Count == 1 ? parts[0] : $"{string.Join(", ", parts.Take(parts.Count - 1))} y {parts[^1]}";
+}
