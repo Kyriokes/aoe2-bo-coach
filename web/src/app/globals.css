@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/* El Core en WebAssembly y las BO de ejemplo no tienen clases: que Tailwind no los escanee. */
+@source not "../../public/coach";
+
+/* Misma paleta que la app de escritorio (barra marrón, texto claro, ámbar para lo pendiente). */
+:root {
+  --background: #1e1a16;
+  --panel: #2b2622;
+  --panel-2: #352f2a;
+  --line: #5c5046;
+  --foreground: #f4f2ee;
+  --muted: #c9c1b6;
+  --faint: #8a8178;
+  --amber: #e8c26a;
+  --green: #8cd17d;
+  --red: #f08070;
+  --blue: #8fc3e8;
+  --orange: #f0a060;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-amber: var(--amber);
+  --color-green: var(--green);
+  --color-red: var(--red);
+  --color-blue: var(--blue);
+  --color-orange: var(--orange);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+a {
+  color: inherit;
+}
+
+.button {
+  @apply inline-flex items-center gap-2 rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-amber hover:text-amber disabled:opacity-50;
+}
+
+.button-primary {
+  @apply inline-flex items-center gap-2 rounded-md bg-amber px-3 py-1.5 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50;
+}
+
+.field {
+  @apply rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm text-foreground placeholder:text-faint focus:border-amber focus:outline-none;
+}
