@@ -6,6 +6,8 @@ Biblioteca pública de build orders: buscar, ver la línea de tiempo de cada BO,
 - **Supabase**: Postgres, cuentas con Discord y Google, y permisos por fila (`supabase/migrations`).
 - **El Core de C# en WebAssembly** (`../src/BoCoach.Wasm`): la web valida y simula cada BO con el mismo validador y el mismo Planner que la app. `scripts/build-coach.mjs` lo compila a `public/coach` antes de `dev`, `build` y `test` (hace falta el SDK de .NET de `../global.json`).
 
+Para ponerla en línea (Supabase, Discord, Google y Vercel), seguí [DEPLOY.md](DEPLOY.md).
+
 ## Desarrollo
 
 ```bash
