@@ -106,17 +106,19 @@ public sealed class Coach
         if (previous is not { } before)
             return false;
         var spent = before - snapshot.Stock;
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = LivePlan.Start(Tracker).Age;
 
         foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research))
         {
             if (step.State is StepState.Done or StepState.Skipped || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
                 continue;
-            if (step.State == StepState.InProgress && Matches(spent * -1, entity.Cost))
+            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)))
             {
                 Tracker.ClearStarted(step.Index);
                 return true;
             }
-            if (step.State != StepState.InProgress && Matches(spent, entity.Cost))
+            if (step.State != StepState.InProgress && Matches(spent, civ.Cost(entity, age)))
             {
                 Tracker.MarkStarted(step.Index, snapshot.Time);
                 return true;
@@ -147,8 +149,9 @@ public sealed class Coach
         var missing = ResourceAmounts.Zero;
         if (current?.Step.What is { } what && current.Step.Do != StepAction.Move && _data.TryGet(what, out var entity))
         {
+            var cost = _data.Civ(Tracker.BuildOrder.Civ).Cost(entity, LivePlan.Start(Tracker).Age);
             foreach (var r in Enum.GetValues<Resource>())
-                missing = missing.With(r, Math.Max(0, entity.Cost[r] - State.Stock[r]));
+                missing = missing.With(r, Math.Max(0, cost[r] - State.Stock[r]));
         }
 
         var eta = current is null ? null : _plan?.For(current.Step.Id)?.Start;

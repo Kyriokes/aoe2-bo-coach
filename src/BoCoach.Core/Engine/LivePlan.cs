@@ -104,7 +104,8 @@ public static class LivePlan
         return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, age, villagers, idle, buildings);
     }
 
-    public static PlanResult Replan(Tracker tracker, Planner planner) => planner.Simulate(Items(tracker), Start(tracker));
+    public static PlanResult Replan(Tracker tracker, Planner planner) =>
+        planner.Simulate(Items(tracker), Start(tracker), planner.CivOf(tracker.BuildOrder));
 
     /// <summary>Desvíos contra los objetivos de la BO que todavía no se cumplieron.</summary>
     public static IEnumerable<TargetDeviation> Deviations(BuildOrder bo, PlanResult plan)

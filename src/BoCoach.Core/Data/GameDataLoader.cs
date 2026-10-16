@@ -58,7 +58,8 @@ public static partial class GameDataLoader
                 throw new GameDataException($"'{entity.Key}': made_in '{entity.MadeIn}' no es una entidad conocida.");
         }
 
-        return new GameData(dto.DatVersion, entities, ToGatherRates(dto.GatherRates));
+        var civs = (dto.Civs ?? []).ToDictionary(c => c.Key, c => ToCiv(c.Key, c.Value, entities));
+        return new GameData(dto.DatVersion, entities, ToGatherRates(dto.GatherRates), civs);
     }
 
     private static Entity ToEntity(string key, EntityDto dto)
@@ -90,6 +91,51 @@ public static partial class GameDataLoader
             dto.MadeIn,
             dto.Pop,
             dto.PopBonus);
+    }
+
+    private static CivBonuses ToCiv(string key, CivDto dto, IReadOnlyDictionary<string, Entity> entities)
+    {
+        T[] Ages<T>(T[] values, string field) => values.Length == 4
+            ? values
+            : throw new GameDataException($"civs.{key}.{field}: tiene que tener un valor por edad (4) y tiene {values.Length}.");
+
+        string Known(string entity, string field) => entities.ContainsKey(entity)
+            ? entity
+            : throw new GameDataException($"civs.{key}.{field}: '{entity}' no es una entidad conocida.");
+
+        var gather = new Dictionary<GatherSource, double[]>();
+        foreach (var (name, values) in dto.Gather ?? [])
+        {
+            if (!Enum.TryParse<GatherSource>(name, ignoreCase: true, out var source))
+                throw new GameDataException($"civs.{key}.gather: fuente desconocida '{name}'.");
+            gather[source] = Ages(values, $"gather.{name}");
+        }
+
+        ResourceAmounts ToAmounts(Dictionary<string, double> cost, string field)
+        {
+            var amounts = ResourceAmounts.Zero;
+            foreach (var (name, amount) in cost)
+            {
+                if (!Enum.TryParse<Resource>(name, ignoreCase: true, out var resource))
+                    throw new GameDataException($"civs.{key}.{field}: recurso desconocido '{name}'.");
+                amounts = amounts.With(resource, amount);
+            }
+            return amounts;
+        }
+
+        var start = dto.Start is { } s
+            ? new CivStart(new ResourceAmounts(s.Food, s.Wood, s.Stone, s.Gold), s.Villagers, s.NoHouses)
+            : CivStart.None;
+        return new CivBonuses(
+            key,
+            dto.DatName ?? "",
+            gather,
+            dto.BuildRate is { } build ? Ages(build, "build_rate") : null,
+            (dto.Costs ?? []).ToDictionary(c => Known(c.Key, "costs"), c => Ages(c.Value.ToArray(), $"costs.{c.Key}").Select(a => ToAmounts(a, $"costs.{c.Key}")).ToArray()),
+            (dto.Times ?? []).ToDictionary(t => Known(t.Key, "times"), t => Ages(t.Value, $"times.{t.Key}")),
+            (dto.WorkRate ?? []).ToDictionary(w => Known(w.Key, "work_rate"), w => Ages(w.Value, $"work_rate.{w.Key}")),
+            (dto.PopBonus ?? []).ToDictionary(p => Known(p.Key, "pop_bonus"), p => Ages(p.Value, $"pop_bonus.{p.Key}")),
+            start);
     }
 
     private static Dictionary<GatherSource, double> ToGatherRates(Dictionary<string, double>? rates)
@@ -127,7 +173,20 @@ public static partial class GameDataLoader
     internal sealed record GameDataDto(
         string? DatVersion,
         Dictionary<string, EntityDto>? Entities,
-        Dictionary<string, double>? GatherRates);
+        Dictionary<string, double>? GatherRates,
+        Dictionary<string, CivDto>? Civs);
+
+    internal sealed record CivDto(
+        string? DatName,
+        Dictionary<string, double[]>? Gather,
+        double[]? BuildRate,
+        Dictionary<string, List<Dictionary<string, double>>>? Costs,
+        Dictionary<string, double[]>? Times,
+        Dictionary<string, double[]>? WorkRate,
+        Dictionary<string, int[]>? PopBonus,
+        CivStartDto? Start);
+
+    internal sealed record CivStartDto(int Food, int Wood, int Stone, int Gold, int Villagers, bool NoHouses);
 
     internal sealed record EntityDto(
         EntityKind? Kind,

@@ -54,6 +54,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             Error(null, "La build order no tiene nombre.");
         if (bo.Steps.Count == 0)
             Error(null, "La build order no tiene pasos.");
+        if (!string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase) && gameData.Civs.Count > 0 && !gameData.IsKnownCiv(bo.Civ))
+            Warn(null, $"La civ '{bo.Civ}' no está en los datos del juego: se simula sin sus bonificaciones (usá, por ejemplo, 'britons' o 'any').");
 
         var ids = new HashSet<string>();
         foreach (var step in bo.Steps)

@@ -26,6 +26,29 @@ public sealed record PlanStart(
         Villagers: new Dictionary<GatherSource, int>(),
         IdleVillagers: 3,
         Buildings: new Dictionary<string, int> { [BuildOrderValidator.StartingBuilding] = 1 });
+
+    /// <summary>
+    /// El inicio estándar con las bonificaciones de la civ: recursos y aldeanos de más, la población que da su centro
+    /// urbano (chinos: 15) y sin tope de casas si no las necesita (hunos).
+    /// </summary>
+    public static PlanStart For(CivBonuses civ, GameData data)
+    {
+        if (civ.IsNone)
+            return Standard;
+        var extra = civ.Start.ExtraVillagers;
+        var cap = civ.Start.NoHouses
+            ? BuildOrderValidator.MaxPopulation
+            : data.TryGet(BuildOrderValidator.StartingBuilding, out var tc) ? civ.PopBonus(tc, Age.Dark) : Standard.PopulationCap;
+        // Los aldeanos de más (chinos, mayas) van a las ovejas, que es lo que se hace al arrancar; los 3 comunes
+        // quedan sin tarea porque la BO les dice qué hacer (casas, por ejemplo).
+        return Standard with
+        {
+            Stock = Standard.Stock + civ.Start.Resources,
+            Population = Standard.Population + extra,
+            Villagers = extra > 0 ? new Dictionary<GatherSource, int> { [GatherSource.Sheep] = extra } : Standard.Villagers,
+            PopulationCap = cap,
+        };
+    }
 }
 
 public sealed record PlannerSettings
@@ -114,12 +137,20 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
     private const double Tick = 1;
     private readonly PlannerSettings _settings = settings ?? new PlannerSettings();
 
-    /// <summary>Simula una BO completa desde el inicio estándar (vista previa del editor).</summary>
-    public PlanResult Simulate(BuildOrder bo) =>
-        Simulate(bo.Steps.Select(s => new PlanItem(s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1)).ToList(), PlanStart.Standard);
+    /// <summary>Simula una BO completa desde el inicio estándar de su civ (vista previa del editor).</summary>
+    public PlanResult Simulate(BuildOrder bo)
+    {
+        var civ = CivOf(bo);
+        return Simulate(bo.Steps.Select(s => new PlanItem(s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1)).ToList(),
+            PlanStart.For(civ, data), civ);
+    }
 
-    public PlanResult Simulate(IReadOnlyList<PlanItem> items, PlanStart start) =>
-        new Simulation(data, _settings, items, start).Run();
+    /// <param name="civ">Bonificaciones de la civ (por defecto, ninguna).</param>
+    public PlanResult Simulate(IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses? civ = null) =>
+        new Simulation(data, _settings, items, start, civ ?? CivBonuses.None).Run();
+
+    /// <summary>Las bonificaciones de la civ de la BO ("any" = ninguna).</summary>
+    public CivBonuses CivOf(BuildOrder bo) => data.Civ(bo.Civ);
 
     private sealed class Simulation
     {
@@ -142,11 +173,13 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private int _idle;
         private int _builders;
         private Age _age;
+        private readonly CivBonuses _civ;
 
-        public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start)
+        public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses civ)
         {
             _data = data;
             _settings = settings;
+            _civ = civ;
             _time = start.Time;
             _stock = start.Stock;
             _population = start.Population;
@@ -176,7 +209,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             var queue = Queue(producer);
             for (var k = 0; k < item.Remaining; k++)
                 queue.Enqueue(item);
-            _running.Add((Math.Max(_time, item.PaidAt!.Value + entity.Time), item, Completion(item, entity, producer)));
+            _running.Add((Math.Max(_time, item.PaidAt!.Value + ProductionTime(entity, producer)), item, Completion(item, entity, producer)));
         }
 
         private Entity? Lookup(Step step) =>
@@ -216,7 +249,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             {
                 if (count == 0)
                     continue;
-                var rate = _data.GatherRates[source] * _settings.Efficiency.GetValueOrDefault(source, 1) * count * Tick;
+                var rate = _data.GatherRates[source] * _settings.Efficiency.GetValueOrDefault(source, 1)
+                    * _civ.GatherMultiplier(source, _age) * count * Tick;
                 var resource = source.Resource();
                 _stock = _stock.With(resource, _stock[resource] + rate);
             }
@@ -311,22 +345,27 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     Block(item, BlockReason.Population);
                     return;
                 }
-                if (!_stock.Covers(entity.Cost))
+                var cost = _civ.Cost(entity, _age);
+                if (!_stock.Covers(cost))
                 {
-                    Block(item, BlockReason.Resources, Missing(entity.Cost));
+                    Block(item, BlockReason.Resources, Missing(cost));
                     return;
                 }
 
                 queue.Dequeue();
-                _stock -= entity.Cost;
+                _stock -= cost;
                 _reserved += entity.Pop;
                 _busyProducers[producer] = _busyProducers.GetValueOrDefault(producer) + 1;
                 item.Remaining--;
                 item.Unfinished++;
                 item.Start ??= _time;
-                _running.Add((_time + entity.Time, item, Completion(item, entity, producer)));
+                _running.Add((_time + ProductionTime(entity, producer), item, Completion(item, entity, producer)));
             }
         }
+
+        /// <summary>Tiempo de entrenar o investigar con las bonificaciones de la civ (incluida la velocidad del edificio).</summary>
+        private double ProductionTime(Entity entity, string producer) =>
+            _civ.Time(entity, _age) / _civ.WorkRate(producer, _age);
 
         /// <summary>Lo que pasa cuando el edificio termina de producir una unidad o una tecnología.</summary>
         private Action Completion(ItemSim item, Entity entity, string producer) => () =>
@@ -357,9 +396,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 if (!parallel && item.Unfinished > 0)
                     return; // los mismos constructores hacen un edificio después del otro
 
-                if (!_stock.Covers(entity.Cost))
+                var cost = _civ.Cost(entity, _age);
+                if (!_stock.Covers(cost))
                 {
-                    Block(item, BlockReason.Resources, Missing(entity.Cost));
+                    Block(item, BlockReason.Resources, Missing(cost));
                     return;
                 }
 
@@ -381,17 +421,17 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                         item.HeldBuilders = builders;
                 }
 
-                _stock -= entity.Cost;
+                _stock -= cost;
                 item.Remaining--;
                 item.Unfinished++;
                 item.Start ??= _time;
                 item.Started = true;
-                var buildTime = entity.Time * 3.0 / (builders + 2);
+                var buildTime = _civ.Time(entity, _age) * 3.0 / (builders + 2) / _civ.BuildRate(_age);
                 var last = item.Remaining == 0;
                 _running.Add((_time + buildTime, item, () =>
                 {
                     _buildings[entity.Key] = _buildings.GetValueOrDefault(entity.Key) + 1;
-                    _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + entity.PopBonus);
+                    _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + _civ.PopBonus(entity, _age));
                     if (parallel || last)
                     {
                         _builders -= builders;

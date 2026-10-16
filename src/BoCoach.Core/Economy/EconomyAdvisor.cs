@@ -80,6 +80,10 @@ public sealed class EconomyAdvisor
     private readonly RateObserver _observer;
     private readonly SuggestionGate _gate;
 
+    // Civ de la BO y edad actual (las tasas y los costos dependen de las dos); se fijan en cada Update.
+    private CivBonuses _civ = CivBonuses.None;
+    private Age _age;
+
     public EconomyAdvisor(GameData data, PlannerSettings? planner = null, EconomySettings? settings = null)
     {
         _data = data;
@@ -95,6 +99,8 @@ public sealed class EconomyAdvisor
         _observer.Add(state);
 
         var start = LivePlan.Start(tracker);
+        _civ = _data.Civ(tracker.BuildOrder.Civ);
+        _age = start.Age;
         var perVillager = PerVillagerRates(start, state.Time);
         var villagers = EstimateVillagers(start, state, perVillager);
         var effective = Scale(perVillager, villagers.Efficiency);
@@ -131,7 +137,7 @@ public sealed class EconomyAdvisor
     }
 
     private double SourceRate(GatherSource source) =>
-        _data.GatherRates[source] * _planner.Efficiency.GetValueOrDefault(source, 1);
+        _data.GatherRates[source] * _planner.Efficiency.GetValueOrDefault(source, 1) * _civ.GatherMultiplier(source, _age);
 
     private static GatherSource DefaultSource(Resource resource, double time) => resource switch
     {
@@ -188,7 +194,7 @@ public sealed class EconomyAdvisor
         foreach (var item in items.Take(upTo))
         {
             if (item.Step.What is { } what && _data.TryGet(what, out var entity))
-                cost += entity.Cost * item.Remaining;
+                cost += _civ.Cost(entity, _age) * item.Remaining;
         }
 
         var seconds = _settings.Horizon * 2;

@@ -57,6 +57,9 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 
     public string Id { get; private set; }
 
+    /// <summary>"any" y las civs de los datos del juego (la vista previa usa sus bonificaciones).</summary>
+    public IReadOnlyList<string> CivOptions => ["any", .. _app.GameData.Civs.Keys.Order()];
+
     [ObservableProperty] public partial string Name { get; set; }
     [ObservableProperty] public partial string Civ { get; set; }
     [ObservableProperty] public partial string Author { get; set; }

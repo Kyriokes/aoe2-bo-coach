@@ -20,11 +20,13 @@ public sealed record Entity(
 /// <summary>Datos del juego de un parche, generados por tools/extractor desde el .dat.</summary>
 public sealed class GameData
 {
-    public GameData(string datVersion, IReadOnlyDictionary<string, Entity> entities, IReadOnlyDictionary<GatherSource, double> gatherRates)
+    public GameData(string datVersion, IReadOnlyDictionary<string, Entity> entities, IReadOnlyDictionary<GatherSource, double> gatherRates,
+        IReadOnlyDictionary<string, CivBonuses>? civs = null)
     {
         DatVersion = datVersion;
         Entities = entities;
         GatherRates = gatherRates;
+        Civs = civs ?? new Dictionary<string, CivBonuses>();
     }
 
     public string DatVersion { get; }
@@ -40,4 +42,13 @@ public sealed class GameData
             : throw new KeyNotFoundException($"La entidad '{key}' no existe en game_data {DatVersion}.");
 
     public bool TryGet(string key, out Entity entity) => Entities.TryGetValue(key, out entity!);
+
+    /// <summary>Bonificaciones de cada civ por su clave ("britons", "franks"...).</summary>
+    public IReadOnlyDictionary<string, CivBonuses> Civs { get; }
+
+    /// <summary>Las bonificaciones de la civ de una BO; "any", vacío o una civ desconocida = sin bonificaciones.</summary>
+    public CivBonuses Civ(string? key) =>
+        key is not null && Civs.TryGetValue(key.Trim().ToLowerInvariant(), out var civ) ? civ : CivBonuses.None;
+
+    public bool IsKnownCiv(string? key) => key is not null && Civs.ContainsKey(key.Trim().ToLowerInvariant());
 }

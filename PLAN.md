@@ -384,7 +384,7 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 ## 10. Decisiones abiertas
 
 1. ~~Nombre del repo.~~ Resuelto: `aoe2-bo-coach`.
-2. ¿Bonificaciones por civilización desde el MVP o en la Fase 9? (Propuesta: Fase 9; en el MVP se usan valores base.)
+2. ~~Bonificaciones por civilización.~~ Resuelto en la Fase 9: el extractor las saca del `.dat` (por edad) y el Planner, la economía y el coach las aplican según la civ de la BO ("any" = valores base).
 3. ¿Importador de formatos de BO de la comunidad? (Propuesta: después de la Fase 10, como extra.)
 4. ~~Stack de la web.~~ Resuelto: mismo repo (`web/`), Next.js + Supabase + Vercel, y el `Core` de C# compilado a WebAssembly para validar y simular en el navegador (una sola implementación del Planner). Login con Discord y Google.
 5. ~~Licencia del repo.~~ Resuelto: repo público con licencia MIT.

@@ -314,10 +314,15 @@ class Extractor:
         return self._mejoras
 
     def variante(self, uid: int, nivel: int) -> int:
-        """La unidad que representa a uid en esa edad (los edificios cambian de unidad al subir de edad)."""
+        """
+        La unidad que representa a uid en esa edad (los edificios cambian de unidad al subir de edad). Cada edad
+        reemplaza a la unidad original (109 → 71 en Feudal, 109 → 141 en Castillos), no a la de la edad anterior.
+        """
+        actual = uid
         for n in range(1, nivel + 1):
-            uid = self.mejoras_de_edad()[n].get(uid, uid)
-        return uid
+            mejoras = self.mejoras_de_edad()[n]
+            actual = mejoras.get(uid, mejoras.get(actual, actual))
+        return actual
 
     @staticmethod
     def aplica(cmd, ids, clase) -> bool:
@@ -418,8 +423,9 @@ class Extractor:
                 continue
 
             def ids_y_clase(n, uid=dat_id):
+                # Solo la unidad de esa edad: los efectos nombran a cada variante por separado con el mismo valor.
                 variante = self.variante(uid, n)
-                return {uid, variante}, self.unidades[variante].class_
+                return {variante}, self.unidades[variante].class_
 
             valores = por_edad(lambda cmds, n, base=base: self.costo_con_bonos(cmds, *ids_y_clase(n), base["cost"]))
             if any(v != base["cost"] for v in valores):
