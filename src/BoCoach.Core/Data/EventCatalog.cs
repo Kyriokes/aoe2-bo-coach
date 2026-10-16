@@ -24,7 +24,7 @@ public sealed class EventCatalog
         Dictionary<string, List<string>>? raw;
         try
         {
-            raw = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(json, CoreJson.Options);
+            raw = JsonSerializer.Deserialize(json, CoreJson.Info<Dictionary<string, List<string>>>());
         }
         catch (JsonException e)
         {

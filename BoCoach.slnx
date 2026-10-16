@@ -3,6 +3,7 @@
     <Project Path="src/BoCoach.App/BoCoach.App.csproj" />
     <Project Path="src/BoCoach.Core/BoCoach.Core.csproj" />
     <Project Path="src/BoCoach.Vision/BoCoach.Vision.csproj" />
+    <Project Path="src/BoCoach.Wasm/BoCoach.Wasm.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BoCoach.App.Tests/BoCoach.App.Tests.csproj" />

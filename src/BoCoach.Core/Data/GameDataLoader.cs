@@ -38,7 +38,7 @@ public static partial class GameDataLoader
         GameDataDto dto;
         try
         {
-            dto = JsonSerializer.Deserialize<GameDataDto>(json, CoreJson.Options)
+            dto = JsonSerializer.Deserialize(json, CoreJson.Info<GameDataDto>())
                 ?? throw new GameDataException("El archivo está vacío.");
         }
         catch (JsonException e)
@@ -124,12 +124,12 @@ public static partial class GameDataLoader
     [GeneratedRegex(@"^v(\d+(?:\.\d+){0,3})$")]
     private static partial Regex VersionPattern();
 
-    private sealed record GameDataDto(
+    internal sealed record GameDataDto(
         string? DatVersion,
         Dictionary<string, EntityDto>? Entities,
         Dictionary<string, double>? GatherRates);
 
-    private sealed record EntityDto(
+    internal sealed record EntityDto(
         EntityKind? Kind,
         int? DatId,
         string? DatName,

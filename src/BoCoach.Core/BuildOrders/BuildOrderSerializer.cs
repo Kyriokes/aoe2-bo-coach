@@ -50,7 +50,7 @@ public static class BuildOrderSerializer
 
         try
         {
-            return obj.Deserialize<BuildOrder>(CoreJson.Options)
+            return obj.Deserialize(CoreJson.Info<BuildOrder>())
                 ?? throw new BuildOrderFormatException("La build order está vacía.");
         }
         catch (JsonException e)
@@ -59,7 +59,7 @@ public static class BuildOrderSerializer
         }
     }
 
-    public static string Serialize(BuildOrder buildOrder) => JsonSerializer.Serialize(buildOrder, CoreJson.Options);
+    public static string Serialize(BuildOrder buildOrder) => JsonSerializer.Serialize(buildOrder, CoreJson.Info<BuildOrder>());
 
     public static void Save(BuildOrder buildOrder, string path) => File.WriteAllText(path, Serialize(buildOrder) + "\n");
 
