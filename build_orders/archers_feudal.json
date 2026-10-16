@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "ejemplo-arqueros",
   "name": "Arqueros Feudal (23 pop)",
   "civ": "any",
@@ -8,16 +8,16 @@
   "tags": ["feudal", "archers", "arabia"],
   "steps": [
     { "id": "s1", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep", "confirm_by": "house_built", "note": "Los 3 aldeanos iniciales hacen 2 casas y van a las ovejas" },
-    { "id": "s2", "do": "train", "what": "villager", "count": 6, "assign": "sheep" },
+    { "id": "s2", "do": "train", "what": "villager", "count": 9, "assign": "sheep" },
     { "id": "s3", "do": "train", "what": "villager", "count": 4, "assign": "wood" },
     { "id": "s4", "do": "build", "what": "lumber_camp", "from": "wood", "assign": "wood", "confirm_by": "lumber_camp_built" },
     { "id": "s5", "do": "build", "what": "house", "from": "wood", "assign": "wood", "confirm_by": "house_built" },
     { "id": "s6", "do": "train", "what": "villager", "count": 1, "assign": "hunt", "note": "Atraé el jabalí al centro urbano" },
     { "id": "s7", "do": "train", "what": "villager", "count": 4, "assign": "berries" },
     { "id": "s8", "do": "build", "what": "mill", "from": "berries", "assign": "berries", "confirm_by": "mill_built" },
-    { "id": "s9", "do": "train", "what": "villager", "count": 1, "assign": "hunt", "note": "Segundo jabalí" },
+    { "id": "s9", "do": "train", "what": "villager", "count": 2, "assign": "hunt", "note": "Segundo jabalí" },
     { "id": "s10", "do": "build", "what": "house", "from": "wood", "assign": "wood", "confirm_by": "house_built" },
-    { "id": "s11", "do": "train", "what": "villager", "count": 3, "assign": "wood" },
+    { "id": "s11", "do": "train", "what": "villager", "count": 7, "assign": "wood" },
     { "id": "s12", "do": "research", "what": "loom" },
     { "id": "s13", "do": "research", "what": "feudal_age", "at_pop": 23, "note": "Mientras sube: cuartel, campamento minero y 2 de ovejas al oro" },
     { "id": "s14", "do": "build", "what": "barracks", "from": "wood", "assign": "wood", "confirm_by": "barracks_built" },
@@ -25,7 +25,7 @@
     { "id": "s16", "do": "move", "count": 2, "from": "sheep", "assign": "gold" },
     { "id": "s17", "do": "build", "what": "archery_range", "count": 2, "from": "wood", "assign": "wood", "after": ["s13"], "confirm_by": "archery_range_built" },
     { "id": "s18", "do": "build", "what": "house", "count": 2, "from": "wood", "assign": "wood", "confirm_by": "house_built" },
-    { "id": "s19", "do": "train", "what": "villager", "count": 3, "assign": "gold" },
+    { "id": "s19", "do": "train", "what": "villager", "count": 6, "assign": "gold" },
     { "id": "s20", "do": "train", "what": "archer", "count": 6 }
   ],
   "targets": {

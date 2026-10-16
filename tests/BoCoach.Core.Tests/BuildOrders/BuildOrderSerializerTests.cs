@@ -43,7 +43,7 @@ public class BuildOrderSerializerTests
         var again = BuildOrderSerializer.Parse(json);
 
         Assert.Equal(json, BuildOrderSerializer.Serialize(again));
-        Assert.Contains("\"schema_version\": 1", json);
+        Assert.Contains("\"schema_version\": 2", json);
         Assert.Contains("\"do\": \"train\"", json);
     }
 
@@ -81,4 +81,24 @@ public class BuildOrderSerializerTests
     }
 
     public static TheoryData<string> Ejemplos() => new(TestData.ExampleBuildOrders);
+
+    [Fact]
+    public void El_formato_1_pasa_los_aldeanos_a_totales_en_la_fuente()
+    {
+        var bo = BuildOrderSerializer.Parse("""
+            {
+              "schema_version": 1, "name": "Vieja",
+              "steps": [
+                { "id": "s1", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep" },
+                { "id": "s2", "do": "train", "what": "villager", "count": 6, "assign": "sheep" },
+                { "id": "s3", "do": "train", "what": "villager", "count": 4, "assign": "wood" }
+              ]
+            }
+            """);
+
+        // Antes "6 nuevos a ovejas" después de que los 3 iniciales fueron a las ovejas: ahora "9 en ovejas".
+        Assert.Equal(BuildOrder.CurrentSchemaVersion, bo.SchemaVersion);
+        Assert.Equal([2, 9, 4], bo.Steps.Select(s => s.Count));
+        Assert.Equal([2, 6, 4], BoCoach.Core.Engine.LivePlan.Units(bo));
+    }
 }

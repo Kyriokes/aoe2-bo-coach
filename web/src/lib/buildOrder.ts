@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Versión más nueva del formato de BO que entiende esta web (la misma que la app: BuildOrder.CurrentSchemaVersion). */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 const step = z.looseObject({
   id: z.string().min(1).max(40),

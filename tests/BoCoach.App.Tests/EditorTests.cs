@@ -67,16 +67,16 @@ public sealed class EditorTests : IDisposable
         }
 
         Build("house", null, GatherSource.Sheep, count: 2, builders: 3);
-        Villagers(6, GatherSource.Sheep);
+        Villagers(9, GatherSource.Sheep);   // totales en la fuente, como el HUD (formato 2)
         Villagers(4, GatherSource.Wood);
         Build("lumber_camp", GatherSource.Wood, GatherSource.Wood);
         Build("house", GatherSource.Wood, GatherSource.Wood);
         Villagers(1, GatherSource.Hunt);
         Villagers(3, GatherSource.Berries);
         Build("mill", GatherSource.Berries, GatherSource.Berries);
-        Villagers(2, GatherSource.Hunt);
+        Villagers(3, GatherSource.Hunt);
         Build("house", GatherSource.Wood, GatherSource.Wood);
-        Villagers(2, GatherSource.Wood);
+        Villagers(6, GatherSource.Wood);
         editor.AddResearchCommand.Execute(null);                // Telar
         editor.AddResearchCommand.Execute(null);                // Edad Feudal
         editor.SelectedStep!.AtPop = 22;
@@ -115,7 +115,7 @@ public sealed class EditorTests : IDisposable
         editor.SelectedStep.Builders = 3;
         editor.SelectedStep.Assign = GatherSource.Sheep;
         editor.AddVillagersCommand.Execute(null);
-        editor.SelectedStep!.Count = 14;
+        editor.SelectedStep!.Count = 17; // 14 nuevos más los 3 iniciales en las ovejas
 
         var blocked = editor.Steps[1];
         Assert.True(blocked.IsPopBlocked);

@@ -144,7 +144,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
     public PlanResult Simulate(BuildOrder bo)
     {
         var civ = CivOf(bo);
-        return Simulate(bo.Steps.Select(s => new PlanItem(s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1)).ToList(),
+        var units = LivePlan.Units(bo);
+        return Simulate(bo.Steps.Select((s, i) => new PlanItem(s, units[i])).ToList(),
             PlanStart.For(civ, data), civ);
     }
 

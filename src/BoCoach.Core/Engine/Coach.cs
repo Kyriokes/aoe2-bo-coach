@@ -205,7 +205,7 @@ public sealed class Coach
     {
         if (current?.Step is not { Do: StepAction.Train, What: "villager", Assign: { } source })
             return null;
-        var target = LivePlan.PlannedVillagers(Tracker.BuildOrder, current.Index).GetValueOrDefault(source);
+        var target = current.Step.Count; // formato 2: el total en la fuente
         return (Math.Max(0, target - current.Remaining), target);
     }
 

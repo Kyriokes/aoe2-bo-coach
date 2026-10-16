@@ -51,10 +51,11 @@ internal sealed class Partida
     /// <summary>Juega los pasos indicados de la BO tal cual, emitiendo su evento de confirmación.</summary>
     public Partida Play(BuildOrder bo, int fromStep, int toStep, double dt = 10)
     {
-        foreach (var step in bo.Steps.Skip(fromStep).Take(toStep - fromStep + 1))
+        var units = LivePlan.Units(bo);
+        for (var i = fromStep; i <= toStep && i < bo.Steps.Count; i++)
         {
-            if (EventConventions.EventFor(step) is { } e)
-                Events(e, step.Do is StepAction.Train or StepAction.Build ? step.Count : 1, dt);
+            if (EventConventions.EventFor(bo.Steps[i]) is { } e)
+                Events(e, units[i], dt);
         }
         return this;
     }

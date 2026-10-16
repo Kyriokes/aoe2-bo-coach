@@ -68,6 +68,7 @@ public sealed class Tracker
     private readonly Dictionary<int, List<GameEvent>> _allocated = [];
     private PlayerState _state = new();
     private StepProgress[] _steps = [];
+    private readonly int[] _units;
     private List<ExtraAction> _extras = [];
 
     /// <param name="events">Eventos que Vision sabe reconocer. Un paso cuyo evento no está acá no se puede
@@ -78,6 +79,7 @@ public sealed class Tracker
         _data = data;
         _events = events;
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
+        _units = LivePlan.Units(bo);
         _actor = bo.Steps.Select(Actor).ToArray();
         Recompute();
     }
@@ -183,7 +185,7 @@ public sealed class Tracker
         return id is not null && (_events is null || _events.Contains(id)) ? id : null;
     }
 
-    private static int Required(Step step) => step.Do is StepAction.Train or StepAction.Build ? step.Count : 1;
+    private int Required(int index) => _units[index];
 
     /// <summary>Quién hace el paso: el edificio que lo produce, o los aldeanos si es construir o mover.</summary>
     private string Actor(Step step) =>
@@ -210,7 +212,7 @@ public sealed class Tracker
             for (var i = 0; i < n; i++)
             {
                 if (_confirmEvent[i] == e.EventId && !_skipped.ContainsKey(i) && !_manualDone.ContainsKey(i)
-                    && completed[i] < Required(_bo.Steps[i]))
+                    && completed[i] < Required(i))
                 {
                     target = i;
                     break;
@@ -226,7 +228,7 @@ public sealed class Tracker
 
             completed[target]++;
             (_allocated.TryGetValue(target, out var list) ? list : _allocated[target] = []).Add(e);
-            if (completed[target] == Required(_bo.Steps[target]))
+            if (completed[target] == Required(target))
                 doneAt[target] = e.Time;
         }
 
@@ -250,7 +252,7 @@ public sealed class Tracker
         for (var i = 0; i < n; i++)
         {
             var step = _bo.Steps[i];
-            var required = Required(step);
+            var required = Required(i);
             StepState state;
             double? at = doneAt[i];
             var manual = false;
@@ -258,6 +260,10 @@ public sealed class Tracker
             if (_skipped.ContainsKey(i))
             {
                 state = StepState.Skipped;
+            }
+            else if (required == 0)
+            {
+                state = StepState.Done; // ya había esos aldeanos en la fuente: el paso no pide ninguno
             }
             else if (_manualDone.TryGetValue(i, out var manualAt))
             {

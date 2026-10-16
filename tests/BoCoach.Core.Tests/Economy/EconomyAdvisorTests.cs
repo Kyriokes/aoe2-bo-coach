@@ -19,7 +19,7 @@ public class EconomyAdvisorTests
         [
             new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 6, Assign = GatherSource.Sheep },
             new Step { Id = "s2", Do = StepAction.Train, What = "villager", Count = 8, Assign = GatherSource.Wood },
-            new Step { Id = "s3", Do = StepAction.Train, What = "villager", Count = 6, Assign = GatherSource.Sheep },
+            new Step { Id = "s3", Do = StepAction.Train, What = "villager", Count = 12, Assign = GatherSource.Sheep }, // total en ovejas
             new Step { Id = "s4", Do = StepAction.Research, What = "feudal_age" },
         ],
         Targets = new Targets { FeudalClickTime = 540 },

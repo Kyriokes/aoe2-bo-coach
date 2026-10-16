@@ -25,7 +25,7 @@ public enum StepAction
 /// </summary>
 public sealed record BuildOrder
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
     public string Id { get; set; } = "";

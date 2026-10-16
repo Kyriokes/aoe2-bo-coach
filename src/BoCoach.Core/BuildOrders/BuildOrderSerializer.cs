@@ -48,15 +48,22 @@ public static class BuildOrderSerializer
 
         Migrate(obj, version);
 
+        BuildOrder bo;
         try
         {
-            return obj.Deserialize(CoreJson.Info<BuildOrder>())
+            bo = obj.Deserialize(CoreJson.Info<BuildOrder>())
                 ?? throw new BuildOrderFormatException("La build order está vacía.");
         }
         catch (JsonException e)
         {
             throw new BuildOrderFormatException($"Valor inválido en {Describe(e.Path)}: {e.Message}", e);
         }
+
+        // Formato 1 → 2: en los pasos de aldeanos, 'count' pasó de "cuántos se entrenan" a "cuántos tiene que haber en
+        // la fuente" (como el contador del HUD).
+        if (version < 2)
+            Engine.LivePlan.CountsToTotals(bo);
+        return bo;
     }
 
     public static string Serialize(BuildOrder buildOrder) => JsonSerializer.Serialize(buildOrder, CoreJson.Info<BuildOrder>());
@@ -77,7 +84,7 @@ public static class BuildOrderSerializer
         }
     }
 
-    /// <summary>Lleva una BO de una versión vieja del formato a la actual. Por ahora solo existe la 1.</summary>
+    /// <summary>Lleva una BO de una versión vieja del formato a la actual (lo que no depende de simular).</summary>
     private static void Migrate(JsonObject obj, int fromVersion)
     {
         if (fromVersion < 1)

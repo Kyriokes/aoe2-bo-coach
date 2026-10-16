@@ -79,6 +79,14 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
                 age = next;
         }
 
+        // Formato 2: un paso de aldeanos dice cuántos tiene que haber en la fuente; si ya los hay, no pide ninguno.
+        var units = ids.Count == bo.Steps.Count ? Engine.LivePlan.Units(bo) : [];
+        for (var i = 0; i < units.Length; i++)
+        {
+            if (units[i] == 0 && Engine.LivePlan.IsVillagerTarget(bo.Steps[i]))
+                Warn(bo.Steps[i].Id, $"Antes de este paso ya hay {bo.Steps[i].Count} o más aldeanos en {StepText.Source(bo.Steps[i].Assign!.Value)}: no entrena ninguno (la cantidad es el total en el recurso, como en el HUD).");
+        }
+
         foreach (var cycle in FindCycles(bo.Steps))
             Error(cycle[0], $"Dependencia circular en 'after': {string.Join(" → ", cycle)}.");
 

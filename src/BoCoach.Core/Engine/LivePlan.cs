@@ -59,12 +59,49 @@ public static class LivePlan
     }
 
     /// <summary>
+    /// Un paso de aldeanos con fuente: su 'count' es cuántos tiene que haber en esa fuente al terminarlo, contando los
+    /// que ya estaban (como el contador del HUD), no cuántos se entrenan.
+    /// </summary>
+    public static bool IsVillagerTarget(Step step) => step is { Do: StepAction.Train, What: "villager", Assign: not null };
+
+    /// <summary>
+    /// Cuántas unidades hace cada paso: en los de aldeanos con fuente, lo que falta para llegar a 'count' en esa
+    /// fuente ("6 aldeanos en ovejas" con los 3 iniciales ya ahí son 3 nuevos); en los demás, 'count' (o 1).
+    /// </summary>
+    public static int[] Units(BuildOrder bo)
+    {
+        var units = new int[bo.Steps.Count];
+        for (var i = 0; i < units.Length; i++)
+        {
+            var step = bo.Steps[i];
+            units[i] = IsVillagerTarget(step)
+                ? Math.Max(0, step.Count - LayoutOf(bo, units, i).Villagers.GetValueOrDefault(step.Assign!.Value))
+                : step.Do is StepAction.Train or StepAction.Build ? step.Count : 1;
+        }
+        return units;
+    }
+
+    /// <summary>
     /// Aldeanos que la BO tiene en cada fuente cuando termina el paso <paramref name="index"/> (todo lo anterior hecho),
-    /// contando los 3 iniciales: lo que mostraría el contador del HUD. "6 aldeanos a ovejas" después de que los 3
-    /// iniciales hicieron las casas y fueron a las ovejas son 9 en ovejas.
+    /// contando los 3 iniciales: lo que mostraría el contador del HUD.
     /// </summary>
     public static IReadOnlyDictionary<GatherSource, int> PlannedVillagers(BuildOrder bo, int index) =>
-        Layout(bo.Steps.Take(index + 1).Select(s => (s, s.Do is StepAction.Train or StepAction.Build ? s.Count : 1, true))).Villagers;
+        LayoutOf(bo, Units(bo), index + 1).Villagers;
+
+    /// <summary>
+    /// Migración del formato 1, donde 'count' de un paso de aldeanos era cuántos se entrenan: lo pasa al total en la
+    /// fuente, así la BO simula lo mismo ("6 nuevos a ovejas" después de las casas son 9 en ovejas).
+    /// </summary>
+    public static void CountsToTotals(BuildOrder bo)
+    {
+        var units = bo.Steps.Select(s => s.Do is StepAction.Train or StepAction.Build ? s.Count : 1).ToArray();
+        var totals = bo.Steps.Select((s, i) => IsVillagerTarget(s) ? LayoutOf(bo, units, i + 1).Villagers.GetValueOrDefault(s.Assign!.Value) : s.Count).ToList();
+        for (var i = 0; i < totals.Count; i++)
+            bo.Steps[i].Count = totals[i];
+    }
+
+    private static VillagerLayout LayoutOf(BuildOrder bo, int[] units, int stepCount) =>
+        Layout(bo.Steps.Take(stepCount).Select((s, j) => (s, units[j], true)));
 
     private sealed record VillagerLayout(
         Dictionary<GatherSource, int> Villagers, int Idle, Dictionary<string, int> Buildings, Age Age, List<string> Researched);

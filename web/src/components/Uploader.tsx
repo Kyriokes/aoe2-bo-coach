@@ -79,7 +79,7 @@ export function Uploader({ loggedIn, editCode, initialJson }: { loggedIn: boolea
           onChange={(e) => setText(e.target.value)}
           rows={10}
           spellCheck={false}
-          placeholder='{ "schema_version": 1, "name": "…", "steps": [ … ] }'
+          placeholder='{ "schema_version": 2, "name": "…", "steps": [ … ] }'
           className="field font-mono text-xs"
         />
         <div className="flex flex-wrap items-center gap-2">

@@ -8,7 +8,7 @@ public class StepTextTests
     [Fact]
     public void Describe_cada_tipo_de_paso()
     {
-        Assert.Equal("Entrenar 6 aldeanos → ovejas",
+        Assert.Equal("6 aldeanos en ovejas",
             StepText.Describe(new Step { Do = StepAction.Train, What = "villager", Count = 6, Assign = GatherSource.Sheep }));
         Assert.Equal("Construir 2 casas (3 constructores) → ovejas",
             StepText.Describe(new Step { Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep }));

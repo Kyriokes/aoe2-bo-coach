@@ -102,6 +102,10 @@ public static class StepText
             return $"Mover {step.Count} de {from} a {to}";
         }
 
+        // Formato 2: la cantidad de un paso de aldeanos es el total en la fuente, como el contador del HUD.
+        if (step is { Do: StepAction.Train, What: "villager", Assign: { } source })
+            return $"{step.Count} {Name("villager", step.Count)} en {Source(source)}";
+
         var what = step.What is null ? "?" : Name(step.What, step.Count);
         var text = step.Do == StepAction.Research
             ? $"Investigar {what}"

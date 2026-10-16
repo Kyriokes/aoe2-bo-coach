@@ -267,7 +267,7 @@
                                       SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding What}"
                                       Visibility="{Binding UsesEntity, Converter={StaticResource BoolToVisibility}}" />
 
-                            <TextBlock Grid.Row="2" Text="Cantidad" Style="{StaticResource FieldLabel}" />
+                            <TextBlock Grid.Row="2" Text="Cantidad" Style="{StaticResource FieldLabel}" ToolTip="En los pasos de aldeanos: cuántos tiene que haber en el recurso al terminar el paso, contando los que ya están (como el contador del HUD)." />
                             <TextBox Grid.Row="2" Grid.Column="1" Width="70" HorizontalAlignment="Left"
                                      Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}" />
 

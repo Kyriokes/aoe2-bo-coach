@@ -24,7 +24,7 @@ public class BuildOrderAnalysisTests
         Assert.InRange(r.GetProperty("feudal_click").GetDouble(), 7 * 60, 10 * 60);
         Assert.NotEmpty(r.GetProperty("timeline").EnumerateArray());
         Assert.Equal(540, r.GetProperty("targets").GetProperty("feudal_click_time").GetInt32());
-        Assert.Equal(1, r.GetProperty("build_order").GetProperty("schema_version").GetInt32());
+        Assert.Equal(BuildOrder.CurrentSchemaVersion, r.GetProperty("build_order").GetProperty("schema_version").GetInt32());
     }
 
     [Fact]
