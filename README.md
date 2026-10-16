@@ -35,6 +35,16 @@ En la barra de arriba de la app:
 - **Calibrar pantalla…** (o **Ctrl+Alt+C** desde el juego) abre una capa transparente sobre la ventana del juego con un rectángulo por región (madera, comida, oro, piedra, población, reloj y log de eventos). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`, relativo a la ventana del juego, así anda en cualquier monitor y en modo ventana.
 - **Grabar partida** (o **Ctrl+Alt+R** desde el juego; arriba aparece "● Grabando") guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
 
+## Probar la visión sobre una grabación (tools/ReplaySession)
+
+Los números del HUD se leen por plantillas (`data/fonts`), sacadas de una grabación real; el log de eventos, con el OCR de Windows. Todo se puede correr sobre una grabación, sin el juego:
+
+```bash
+dotnet run --project tools/ReplaySession -c Release -- replay "%LOCALAPPDATA%\BoCoach\recordings\<carpeta>"
+```
+
+Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y avisa si alguna caja corta los números. Otros comandos (ver el comienzo de `tools/ReplaySession/Program.cs`): `glyphs` agrupa los caracteres de una región para etiquetarlos, `font` arma una letra con esas etiquetas, `read` lee una región y `ocr` pasa el OCR de Windows.
+
 ## Regenerar los datos del juego (una vez por parche)
 
 `data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida.

@@ -12,6 +12,9 @@
 //       Pasa el OCR de Windows (el que se usa para el log) y muestra las capturas donde leyó algo,
 //       con cada renglón como "altura:texto", separados por '|'.
 //
+//   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
+//       Corre el pipeline completo (números, suavizado, edad y log) y escribe una fila por captura.
+//
 // <tinta> es "white" (números blancos) o "blue" (números azules).
 
 using System.Globalization;
@@ -19,6 +22,10 @@ using System.Text.Json;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Digits;
 using BoCoach.Vision.Recording;
+using BoCoach.Core.Data;
+using BoCoach.Vision.Events;
+using BoCoach.Vision.Hud;
+using BoCoach.Vision.Regions;
 
 if (args.Length == 0)
 {
@@ -34,6 +41,7 @@ try
         "font" => Font(args[1], args[2], args[3], Ink(args[4]), args[5]),
         "read" => Read(args[1], args[2], args[3], args),
         "ocr" => Ocr(args[1], args[2], args).GetAwaiter().GetResult(),
+        "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -218,5 +226,60 @@ static async Task<int> Ocr(string recording, string region, string[] args)
         Console.WriteLine($"{frame,6}  {text}");
     }
     Console.WriteLine($"{withText} capturas con texto");
+    return 0;
+}
+
+// ---- replay: pipeline completo sobre una grabación ----
+static async Task<int> Replay(string recording, string[] args)
+{
+    string Text(string name, string fallback)
+    {
+        var i = Array.IndexOf(args, name);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : fallback;
+    }
+
+    var session = RecordedSession.Load(recording);
+    var reader = new HudReader(HudFonts.Load(Text("--fonts", Path.Combine("data", "fonts"))));
+    var tracker = new HudTracker();
+    var ocr = BoCoach.Vision.Ocr.OcrReader.TryCreate();
+    var useLog = !args.Contains("--no-log") && ocr is not null && session.Regions.Contains(RegionNames.EventLog);
+    var log = useLog ? new EventLogReader(ocr!, EventCatalog.Load(Text("--events", Path.Combine("data", "events.json")))) : null;
+    var output = Text("--out", Path.Combine(recording, "lecturas.csv"));
+
+    var raw = new Dictionary<string, int>();
+    var clipped = new Dictionary<string, int>();
+    var events = 0;
+    await using var csv = new StreamWriter(output);
+    await csv.WriteLineAsync("frame,time_ms,clock,food,wood,gold,stone,villagers,idle,age,events");
+    foreach (var frame in session.Frames)
+    {
+        var reading = reader.Read(session, frame.Index);
+        foreach (var (name, value) in new (string, object?)[] { ("clock", reading.Clock), ("food", reading.Food), ("wood", reading.Wood), ("gold", reading.Gold), ("stone", reading.Stone), ("villagers", reading.Villagers) })
+            if (value is not null)
+                raw[name] = raw.GetValueOrDefault(name) + 1;
+        foreach (var region in reading.Clipped)
+            clipped[region] = clipped.GetValueOrDefault(region) + 1;
+
+        IReadOnlyList<string> newEvents = log is null ? [] : await log.ReadAsync(session.Image(frame.Index, RegionNames.EventLog));
+        events += newEvents.Count;
+        BoCoach.Core.Data.Age? age = ocr is not null && session.Has(frame.Index, RegionNames.Age)
+            ? AgeText.Parse(await ocr.ReadAsync(session.Image(frame.Index, RegionNames.Age)))
+            : null;
+
+        var state = tracker.Update(frame.TimeMs / 1000.0, reading, newEvents, age);
+        await csv.WriteLineAsync(string.Join(",",
+            frame.Index, frame.TimeMs,
+            state.Clock is { } c ? BoCoach.Core.GameClock.Format(c) : "",
+            state.Food, state.Wood, state.Gold, state.Stone, state.Villagers, state.IdleVillagers, state.Age,
+            string.Join(" ", state.NewEvents)));
+    }
+
+    var total = session.Frames.Count;
+    Console.WriteLine($"{total} capturas → {output}");
+    foreach (var name in new[] { "clock", "food", "wood", "gold", "stone", "villagers" })
+        Console.WriteLine($"  {name,-10} lecturas válidas: {raw.GetValueOrDefault(name) * 100.0 / total,5:0.0} %");
+    foreach (var (region, n) in clipped.OrderByDescending(c => c.Value))
+        Console.WriteLine($"  aviso: en {region} el número toca el borde de la caja en {n} capturas: agrandá esa caja al calibrar.");
+    Console.WriteLine(log is null ? "  log: no se leyó" : $"  log: {events} eventos");
     return 0;
 }

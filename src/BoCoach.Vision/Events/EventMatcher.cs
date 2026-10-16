@@ -91,7 +91,7 @@ public sealed class EventMatcher
         return sb.ToString().Trim();
     }
 
-    private static int Levenshtein(string a, string b)
+    internal static int Levenshtein(string a, string b)
     {
         var previous = new int[b.Length + 1];
         var current = new int[b.Length + 1];

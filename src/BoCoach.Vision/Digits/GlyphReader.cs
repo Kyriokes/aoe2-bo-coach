@@ -22,9 +22,27 @@ public sealed class GlyphReader(GlyphFont font)
 
     public GlyphFont Font => font;
 
-    public GlyphReading Read(CapturedImage image)
+    /// <summary>
+    /// Lee solo el último grupo de caracteres (el de más a la derecha). Sirve para las cajas que además del número
+    /// tienen otras cosas a la izquierda, como el ícono del recurso: un hueco de más de un carácter separa grupos.
+    /// </summary>
+    public GlyphReading ReadRightmostGroup(CapturedImage image)
     {
         var glyphs = Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio);
+        if (glyphs.Count == 0)
+            return new GlyphReading("", 0);
+        var gap = glyphs.Max(g => g.Width) * 1.2;
+        var start = glyphs.Count - 1;
+        while (start > 0 && glyphs[start].Left - glyphs[start - 1].Right <= gap)
+            start--;
+        return Classify(glyphs.Skip(start).ToList(), image.Width);
+    }
+
+    public GlyphReading Read(CapturedImage image) =>
+        Classify(Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio), image.Width);
+
+    private GlyphReading Classify(IReadOnlyList<Glyph> glyphs, int imageWidth)
+    {
         if (glyphs.Count == 0)
             return new GlyphReading("", 0);
 
@@ -39,7 +57,7 @@ public sealed class GlyphReader(GlyphFont font)
             var margin = second <= 0 ? 1 : Math.Clamp((second - bestDistance) / second, 0, 1);
             confidence = Math.Min(confidence, 0.5f * closeness + 0.5f * margin);
         }
-        var clipped = glyphs[0].Left <= 0 || glyphs[^1].Right >= image.Width - 1;
+        var clipped = glyphs[0].Left <= 0 || glyphs[^1].Right >= imageWidth - 1;
         return new GlyphReading(new string(text), clipped ? 0 : confidence, clipped);
     }
 
