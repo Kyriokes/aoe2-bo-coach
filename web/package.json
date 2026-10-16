@@ -12,7 +12,7 @@
     "lint": "eslint",
     "pretest": "node scripts/build-coach.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

@@ -60,9 +60,11 @@ public sealed class BuildOrderLibrary
     public BuildOrder Duplicate(BuildOrder bo) => Save(bo with { Id = NewId(), Name = $"{bo.Name} (copia)" });
 
     /// <summary>Copia una BO de afuera a la biblioteca. Si su id ya existe, le da uno nuevo.</summary>
-    public BuildOrder Import(string sourcePath)
+    public BuildOrder Import(string sourcePath) => Add(BuildOrderSerializer.Load(sourcePath));
+
+    /// <summary>Agrega una BO que vino de afuera (archivo o web); si su id falta o ya está en uso, le da uno nuevo.</summary>
+    public BuildOrder Add(BuildOrder bo)
     {
-        var bo = BuildOrderSerializer.Load(sourcePath);
         if (string.IsNullOrWhiteSpace(bo.Id) || File.Exists(PathFor(bo)))
             bo = bo with { Id = NewId() };
         return Save(bo);

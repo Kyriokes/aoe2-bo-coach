@@ -9,6 +9,7 @@ using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
 using BoCoach.App.Editor;
 using BoCoach.App.Overlay;
+using BoCoach.App.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
@@ -216,4 +217,19 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
 
     public void ShowError(string message) =>
         MessageBox.Show(this, message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+    public string? AskText(string title, string message, string initial = "") => TextPrompt.Ask(this, title, message, initial);
+
+    public WebSettings? EditWebAccount(WebSettings current)
+    {
+        var window = new WebAccountWindow(current) { Owner = this };
+        return window.ShowDialog() == true ? window.Result : null;
+    }
+
+    /// <summary>Solo direcciones http(s): las arma la web, pero no se abre cualquier cosa.</summary>
+    public void OpenUrl(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
+            Process.Start(new ProcessStartInfo(uri.ToString()) { UseShellExecute = true });
+    }
 }

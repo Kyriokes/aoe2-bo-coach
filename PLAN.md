@@ -62,7 +62,7 @@ Mezclar Python y C# en runtime (por ejemplo, OCR en Python y overlay en C# comun
 | Tests | xUnit |
 | Extractor de datos | Python 3.12 + `genieutils-py` (herramienta offline) |
 | Distribución | Publicación self-contained single-file de .NET |
-| Web (fase final) | A decidir: Next.js en Vercel o ASP.NET Core; base de datos Postgres |
+| Web (fase final) | Next.js en Vercel + Supabase (Postgres, cuentas con Discord y Google); el `Core` compilado a WebAssembly para la línea de tiempo |
 
 ---
 
@@ -143,7 +143,8 @@ aoe2-bo-coach/
 │  │  └─ requirements.txt
 │  ├─ (RecordSession)         # quedó en BoCoach.Vision/Recording, con el botón "Grabar partida" de la app
 │  └─ ReplaySession/          # corre el pipeline sobre una grabación
-└─ web/                       # fase final: biblioteca de BO
+├─ src/BoCoach.Wasm/          # el Core en browser-wasm para la web (JSExport: Init y Analyze)
+└─ web/                       # biblioteca de BO: Next.js + Supabase (ver web/README.md)
 ```
 
 ---
@@ -376,7 +377,7 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 | El OCR general no lee la letra del reloj ni los números chicos | Medio | Template matching de dígitos con plantillas sacadas de una grabación real (plan B de la sección 6.2) |
 | Un parche cambia el formato del `.dat` | Bajo | Versionar `game_data` por parche; actualizar `genieutils-py` |
 | Sugerencias que oscilan | Medio | Histéresis y una sola sugerencia a la vez |
-| La lógica del planner se duplica entre app y web | Medio | Decidir en la fase 10: backend en ASP.NET Core reutilizando `Core`, o simulación solo del lado de la app |
+| La lógica del planner se duplica entre app y web | Medio | Resuelto: la web corre el mismo `Core` compilado a WebAssembly (`src/BoCoach.Wasm`) |
 
 ---
 
@@ -385,5 +386,5 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 1. ~~Nombre del repo.~~ Resuelto: `aoe2-bo-coach`.
 2. ¿Bonificaciones por civilización desde el MVP o en la Fase 9? (Propuesta: Fase 9; en el MVP se usan valores base.)
 3. ¿Importador de formatos de BO de la comunidad? (Propuesta: después de la Fase 10, como extra.)
-4. Stack de la web: ASP.NET Core (reutiliza `Core` y el planner) o Next.js en Vercel (más simple de hostear). Se decide al llegar a la Fase 10.
+4. ~~Stack de la web.~~ Resuelto: mismo repo (`web/`), Next.js + Supabase + Vercel, y el `Core` de C# compilado a WebAssembly para validar y simular en el navegador (una sola implementación del Planner). Login con Discord y Google.
 5. ~~Licencia del repo.~~ Resuelto: repo público con licencia MIT.

@@ -79,7 +79,11 @@
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                         <Button Content="Nueva" Command="{Binding NewCommand}" ToolTip="Ctrl+N" Margin="0,0,6,6" />
                         <Button Content="Importar…" Command="{Binding ImportCommand}" Margin="0,0,6,6" />
+                        <Button Content="Desde la web…" Command="{Binding ImportFromWebCommand}" Margin="0,0,6,6"
+                                ToolTip="Importar una BO de la biblioteca web con su código" />
                         <Button Content="A la papelera" Command="{Binding TrashCommand}" Margin="0,0,6,6" />
+                        <Button Content="Cuenta de la web…" Command="{Binding WebAccountSettingsCommand}" Margin="0,0,6,6"
+                                ToolTip="Dirección de la web, token para publicar y enlaces bocoach://" />
                     </WrapPanel>
                     <ListBox ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -115,7 +119,9 @@
                             <Button Content="Guardar" Style="{StaticResource PrimaryButton}" ToolTip="Ctrl+S"
                                     Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
                             <Button Content="Duplicar BO" Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                            <Button Content="Exportar…" Margin="0" Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <Button Content="Exportar…" Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <Button Content="Publicar en la web" Margin="0" Command="{Binding DataContext.PublishToWebCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    ToolTip="Publica (o reemplaza) esta BO en la biblioteca web con tu cuenta" />
                         </StackPanel>
                         <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="SemiBold"
                                  BorderThickness="0,0,0,1" Background="Transparent" Margin="0,0,16,0" ToolTip="Nombre de la build order" />

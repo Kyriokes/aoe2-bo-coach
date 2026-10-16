@@ -53,6 +53,14 @@ En la barra de arriba de la app:
 
 Para probarlo sin el juego, sobre una grabación: `BoCoach.exe --replay "<carpeta de la grabación>" --bo scouts [--speed 4] [--stats uso.csv]`. Para ver cómo queda el overlay en un momento de una partida: `BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo scouts --at 8:20`.
 
+## Biblioteca web
+
+La web (`web/`, ver [web/README.md](web/README.md)) es una biblioteca pública de BO: cada una muestra la línea de tiempo calculada por el mismo motor que la app (compilado a WebAssembly). Desde la app:
+
+- **Desde la web…** (biblioteca) importa una BO con su código de 6 letras, el enlace «Abrir en BO Coach» o la dirección de su página.
+- **Publicar en la web** (editor) la publica con tu cuenta, o la reemplaza si ya la habías publicado desde esta PC. La primera vez pide el token, que se crea en "Mi cuenta" de la web.
+- **Cuenta de la web…** cambia la dirección de la web o el token, y registra los enlaces `bocoach://` para que el botón «Abrir en BO Coach» de la web abra la app directo.
+
 ## Probar la visión sobre una grabación (tools/ReplaySession)
 
 Los números del HUD se leen por plantillas (`data/fonts`), sacadas de una grabación real; el log de eventos, con el OCR de Windows. Todo se puede correr sobre una grabación, sin el juego:
@@ -81,7 +89,9 @@ Por defecto lee `H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2
 |---|---|---|
 | `src/BoCoach.Core` | `net10.0` | Lógica pura: datos del juego, build orders, motor y economía. Sin dependencias de Windows. |
 | `src/BoCoach.Vision` | `net10.0-windows10.0.19041.0` | Captura de pantalla, OCR y suavizado. |
-| `src/BoCoach.App` | `net10.0-windows10.0.19041.0` | App WPF: overlay, calibración, editor de BO y hotkeys. |
+| `src/BoCoach.App` | `net10.0-windows10.0.19041.0` | App WPF: overlay, calibración, editor de BO, hotkeys y conexión con la web. |
+| `src/BoCoach.Wasm` | `net10.0` (browser-wasm) | El `Core` en WebAssembly para la web. |
+| `web` | Next.js | Biblioteca web (Supabase + Vercel). |
 | `tests/BoCoach.Core.Tests` | `net10.0` | Tests de `Core`, incluido uno que verifica que no dependa de Windows. |
 | `tests/BoCoach.Vision.Tests` | `net10.0-windows10.0.19041.0` | Tests de `Vision`. |
 | `tests/BoCoach.App.Tests` | `net10.0-windows10.0.19041.0` | Tests de los ViewModels del editor, el overlay y la sesión de coach. |

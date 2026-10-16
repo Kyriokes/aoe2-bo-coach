@@ -33,6 +33,9 @@ public sealed class EditorTests : IDisposable
         public bool AskSaveChanges(string name) { SaveQuestions++; return SaveOnLeave; }
         public bool Confirm(string message) => ConfirmAnswer;
         public void ShowError(string message) => Errors.Add(message);
+        public string? AskText(string title, string message, string initial = "") => null;
+        public BoCoach.App.Web.WebSettings? EditWebAccount(BoCoach.App.Web.WebSettings current) => null;
+        public void OpenUrl(string url) { }
     }
 
     /// <summary>

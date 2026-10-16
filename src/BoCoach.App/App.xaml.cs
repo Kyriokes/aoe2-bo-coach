@@ -6,6 +6,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using BoCoach.App.Coaching;
 using BoCoach.App.Overlay;
+using BoCoach.App.Web;
 using BoCoach.Core;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
@@ -15,6 +16,8 @@ namespace BoCoach.App;
 
 public partial class App : Application
 {
+    private SingleInstance? _instance;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -22,6 +25,18 @@ public partial class App : Application
 
         var args = e.Args;
         var screenshot = Argument(args, "--screenshot") ?? Argument(args, "--overlay-screenshot");
+        var importLink = Argument(args, "--import");
+
+        // Una sola app por usuario: si ya hay una abierta, se le pasa el enlace bocoach:// (o que se muestre) y esta cierra.
+        if (screenshot is null)
+        {
+            _instance = SingleInstance.Claim(importLink ?? ActivateMessage);
+            if (_instance is null)
+            {
+                Shutdown(0);
+                return;
+            }
+        }
 
         CoachData data;
         try
@@ -50,6 +65,16 @@ public partial class App : Application
             window.Show();
             if (Argument(args, "--replay") is { } replay)
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
+            if (importLink is not null)
+                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.ViewModel.ImportFromLinkAsync(importLink));
+            _instance!.Listen(message => Dispatcher.BeginInvoke(async () =>
+            {
+                if (window.WindowState == WindowState.Minimized)
+                    window.WindowState = WindowState.Normal;
+                window.Activate();
+                if (message != ActivateMessage)
+                    await window.ViewModel.ImportFromLinkAsync(message);
+            }));
             return;
         }
 
@@ -205,6 +230,15 @@ public partial class App : Application
             Render(window, path);
             Shutdown(0);
         });
+    }
+
+    /// <summary>Lo que manda una segunda instancia sin enlace: solo que se muestre la ventana.</summary>
+    private const string ActivateMessage = "activate";
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _instance?.Dispose();
+        base.OnExit(e);
     }
 
     private static string? Argument(string[] args, string name)

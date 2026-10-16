@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using BoCoach.App.Web;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Web;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -17,19 +21,33 @@ public interface IDialogs
 
     bool Confirm(string message);
     void ShowError(string message);
+
+    /// <summary>Pide un texto (por ejemplo, el código de una BO de la web). null = cancelado.</summary>
+    string? AskText(string title, string message, string initial = "");
+
+    /// <summary>Muestra el diálogo "Cuenta de la web". null = cancelado.</summary>
+    WebSettings? EditWebAccount(WebSettings current);
+
+    /// <summary>Abre una dirección de la web en el navegador.</summary>
+    void OpenUrl(string url);
 }
 
 /// <summary>Biblioteca local a la izquierda y el editor de la BO elegida.</summary>
 public sealed partial class MainViewModel : ObservableObject
 {
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
+
     private readonly CoachData _app;
     private readonly IDialogs _dialogs;
+    private readonly WebAccount _web;
     private bool _suppressOpen;
 
-    public MainViewModel(CoachData app, IDialogs dialogs)
+    /// <param name="web">La cuenta de la biblioteca web (por defecto, la de %APPDATA%\BoCoach\web.json).</param>
+    public MainViewModel(CoachData app, IDialogs dialogs, WebAccount? web = null)
     {
         _app = app;
         _dialogs = dialogs;
+        _web = web ?? new WebAccount(SharedHttp);
         RefreshList();
         SelectedEntry = Entries.FirstOrDefault(e => e.BuildOrder is not null);
     }
@@ -43,7 +61,7 @@ public sealed partial class MainViewModel : ObservableObject
     public partial LibraryEntry? SelectedEntry { get; set; }
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DuplicateCommand), nameof(ExportCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(DuplicateCommand), nameof(ExportCommand), nameof(PublishToWebCommand))]
     public partial BuildOrderEditorViewModel? Editor { get; set; }
 
     [ObservableProperty] public partial string Status { get; set; } = "";
@@ -126,6 +144,105 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _dialogs.ShowError($"No se pudo importar el archivo.\n\n{e.Message}");
         }
+    }
+
+    /// <summary>
+    /// Publica la BO abierta en la biblioteca web (la guarda antes). Si ya se había publicado desde esta PC, la
+    /// reemplaza y mantiene su código y sus votos.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(HasEditor))]
+    private async Task PublishToWebAsync()
+    {
+        if (Editor is not { } editor)
+            return;
+        if (editor.HasErrors)
+        {
+            _dialogs.ShowError("Corregí los errores de la BO antes de publicarla.");
+            return;
+        }
+        if (!_web.Settings.HasToken)
+        {
+            if (_dialogs.EditWebAccount(_web.Settings) is not { HasToken: true } settings)
+                return;
+            _web.Save(settings);
+        }
+
+        var saved = SaveEditor()!;
+        RefreshList();
+        var plan = _app.Planner.Simulate(saved);
+        var (feudal, castle) = (plan.ClickTime("feudal_age"), plan.ClickTime("castle_age"));
+        var code = _web.Settings.Published.GetValueOrDefault(saved.Id);
+        Status = "Publicando en la web…";
+        try
+        {
+            PublishedBuildOrder published;
+            try
+            {
+                published = await _web.Client.PublishAsync(saved, _web.Settings.Token, feudal, castle, code);
+            }
+            catch (WebLibraryException e) when (code is not null && e.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+            {
+                // La de la web se borró (o es de otra cuenta): se publica como nueva.
+                _web.ForgetPublished(saved.Id);
+                published = await _web.Client.PublishAsync(saved, _web.Settings.Token, feudal, castle);
+            }
+            _web.RememberPublished(saved.Id, published.Code);
+            Status = $"\"{saved.Name}\" publicada en la web con el código {published.Code}.";
+            if (_dialogs.Confirm($"\"{saved.Name}\" quedó publicada con el código {published.Code}.\n\n¿Abrir su página en el navegador?"))
+                _dialogs.OpenUrl(published.Url);
+        }
+        catch (WebLibraryException e)
+        {
+            Status = "";
+            _dialogs.ShowError($"No se pudo publicar.\n\n{e.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportFromWebAsync()
+    {
+        var text = _dialogs.AskText("Importar desde la web",
+            "Pegá el código de la BO (6 letras y números), el enlace «Abrir en BO Coach» o la dirección de su página:");
+        if (!string.IsNullOrWhiteSpace(text))
+            await ImportFromLinkAsync(text);
+    }
+
+    /// <summary>Baja una BO de la web y la agrega a la biblioteca (también para los enlaces bocoach://import/...).</summary>
+    public async Task<bool> ImportFromLinkAsync(string text)
+    {
+        if (WebCode.Parse(text) is not { } code)
+        {
+            _dialogs.ShowError($"«{text.Trim()}» no tiene un código de la biblioteca web (son 6 letras y números).");
+            return false;
+        }
+        Status = $"Bajando {code} de la web…";
+        try
+        {
+            var downloaded = await _web.Client.DownloadAsync(code);
+            LeaveCurrent();
+            var imported = _app.Library.Add(downloaded.BuildOrder);
+            RefreshList();
+            SelectedEntry = Entries.FirstOrDefault(e => e.Path == _app.Library.PathFor(imported));
+            Status = $"Importada \"{imported.Name}\" de {downloaded.Author} (código {code}).";
+            return true;
+        }
+        catch (WebLibraryException e)
+        {
+            Status = "";
+            _dialogs.ShowError($"No se pudo importar {code}.\n\n{e.Message}");
+            return false;
+        }
+    }
+
+    [RelayCommand]
+    private void WebAccountSettings()
+    {
+        if (_dialogs.EditWebAccount(_web.Settings) is not { } settings)
+            return;
+        _web.Save(settings);
+        Status = settings.HasToken
+            ? "Cuenta de la web guardada."
+            : "Cuenta de la web guardada sin token: se puede importar, pero para publicar hace falta el token.";
     }
 
     [RelayCommand(CanExecute = nameof(HasEditor))]
