@@ -300,6 +300,8 @@ Positivo: va a faltar. Muy negativo: sobra, que es el problema típico del jugad
 **Asignación:**
 - **v1 (greedy):** mover de a 1 aldeano desde el recurso con mayor excedente al de mayor déficit, con mínimos por recurso.
 - **v2 (LP):** minimizar `Σ w_r · |déficit_r|` sujeto a `Σ aldeanos_r = N`, `aldeanos_r ≥ min_r` y un costo por reasignación (caminata, campamentos nuevos).
+  - Hecho en la Fase 9 (`VillagerAllocator.Exact`, el de por defecto; el greedy sigue como `AllocatorKind.Greedy`). Costo: lo que falta por encima del umbral pesa 1 y lo que sobra por encima de su umbral pesa 0,2; mover cuesta 15 s de trabajo por aldeano y 40 más si van a un recurso sin nadie. El que cede tiene que seguir sobrando. Como el overlay muestra un solo par a la vez, se prueban las 12 combinaciones por hasta 5 aldeanos: es el óptimo exacto entre lo que se puede sugerir, sin solver.
+  - Sobre la partida de scouts sugiere en los mismos momentos que el greedy, con la cantidad que alcanza para cubrir lo que falta (15 cambios contra 17).
 - **Histéresis:** solo sugerir si el déficit se sostiene más de 10 s y no hubo sugerencia en los últimos 20 s.
 - **Salida:** una frase simple, por ejemplo "Pasá 2 de madera a comida". Una sugerencia a la vez.
 

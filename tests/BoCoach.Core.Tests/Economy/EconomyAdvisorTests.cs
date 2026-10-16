@@ -33,12 +33,13 @@ public class EconomyAdvisorTests
     {
         private readonly Partida _partida = new();
         private readonly Tracker _tracker;
-        private readonly EconomyAdvisor _advisor = new(TestData.GameData);
+        private readonly EconomyAdvisor _advisor;
         private double _food;
         private double _wood;
 
-        public Escenario(int food, int wood, double start = 300)
+        public Escenario(int food, int wood, double start = 300, AllocatorKind allocator = AllocatorKind.Exact)
         {
+            _advisor = new EconomyAdvisor(TestData.GameData, settings: new EconomySettings { Allocator = allocator });
             _food = food;
             _wood = wood;
             _partida.Play(Bo, 0, 1);
@@ -92,10 +93,12 @@ public class EconomyAdvisorTests
         public (double Food, double Wood) Real => (_food, _wood);
     }
 
-    [Fact]
-    public void Si_sobra_madera_sugiere_pasar_aldeanos_a_comida()
+    [Theory]
+    [InlineData(AllocatorKind.Exact)]
+    [InlineData(AllocatorKind.Greedy)]
+    public void Si_sobra_madera_sugiere_pasar_aldeanos_a_comida(AllocatorKind allocator)
     {
-        var escenario = new Escenario(food: 3, wood: 14);
+        var escenario = new Escenario(food: 3, wood: 14, allocator: allocator);
 
         escenario.Run(seconds: 40, followSuggestions: false);
 
@@ -108,10 +111,12 @@ public class EconomyAdvisorTests
         Assert.True(time >= 300 + 10, "la histéresis pide 10 s sostenidos");
     }
 
-    [Fact]
-    public void Sin_oscilaciones_en_5_minutos_siguiendo_las_sugerencias()
+    [Theory]
+    [InlineData(AllocatorKind.Exact)]
+    [InlineData(AllocatorKind.Greedy)]
+    public void Sin_oscilaciones_en_5_minutos_siguiendo_las_sugerencias(AllocatorKind allocator)
     {
-        var escenario = new Escenario(food: 3, wood: 14);
+        var escenario = new Escenario(food: 3, wood: 14, allocator: allocator);
 
         escenario.Run(seconds: 300, followSuggestions: true);
 
@@ -122,10 +127,12 @@ public class EconomyAdvisorTests
         Assert.True(escenario.Real.Food > 3, "el jugador terminó con más gente en comida");
     }
 
-    [Fact]
-    public void Con_la_economia_equilibrada_no_sugiere_nada()
+    [Theory]
+    [InlineData(AllocatorKind.Exact)]
+    [InlineData(AllocatorKind.Greedy)]
+    public void Con_la_economia_equilibrada_no_sugiere_nada(AllocatorKind allocator)
     {
-        var escenario = new Escenario(food: 12, wood: 5);
+        var escenario = new Escenario(food: 12, wood: 5, allocator: allocator);
 
         escenario.Run(seconds: 60, followSuggestions: false);
 

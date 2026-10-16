@@ -15,6 +15,7 @@
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
 //   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
+//         [--economy] [--allocator exact|greedy]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso.
 //   bench <grabación> [--frames 300]
@@ -296,14 +297,20 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     var catalog = Catalog(args, data);
     var bo = BuildOrderSerializer.Load(boPath);
     var builder = new SnapshotBuilder(data);
-    var coach = new Coach(bo, data, catalog);
+    var allocator = Enum.Parse<BoCoach.Core.Economy.AllocatorKind>(Text(args, "--allocator", "exact"), ignoreCase: true);
+    var coach = new Coach(bo, data, catalog, economy: new BoCoach.Core.Economy.EconomySettings { Allocator = allocator });
 
     string? last = null;
+    BoCoach.Core.Economy.Suggestion? shown = null;
+    var suggestions = 0;
     await foreach (var (index, reading) in Readings(recording, args))
     {
         if (builder.Build(reading) is not { } snapshot)
             continue;
         var view = coach.Update(snapshot);
+        if (view.Suggestion is { } s && (shown is null || (shown.From, shown.To) != (s.From, s.To)))
+            suggestions++;
+        shown = view.Suggestion;
         var lines = CoachText.Lines(view, data);
         var text = string.Join(" | ", new[] { lines.Current, lines.Status, lines.Next }.Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion, lines.Alert]).Where(s => s is not null));
         if (text == last)
@@ -318,6 +325,7 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     foreach (var step in coach.Tracker.Steps)
         Console.WriteLine($"  {step.Step.Id,-4} {step.State,-8} {step.Completed}/{step.Required} {(step.DoneAt is { } t ? BoCoach.Core.GameClock.Format(t) : ""),6}  {StepText.Describe(step.Step)}");
     Console.WriteLine($"  extras: {string.Join(", ", coach.Tracker.Extras.GroupBy(e => e.Event.EventId).Select(g => $"{g.Key}×{g.Count()}"))}");
+    Console.WriteLine($"  sugerencias ({allocator}): {suggestions}");
     return 0;
 }
 

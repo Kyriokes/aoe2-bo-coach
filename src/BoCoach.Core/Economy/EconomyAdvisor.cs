@@ -32,6 +32,26 @@ public sealed record EconomySettings
 
     /// <summary>Si el objetivo del próximo hito está más cerca que esto (o ya pasó), se usa la estimación del Planner.</summary>
     public double MinSecondsToMilestone { get; init; } = 30;
+
+    /// <summary>Cómo se elige la sugerencia (ver <see cref="VillagerAllocator"/>).</summary>
+    public AllocatorKind Allocator { get; init; } = AllocatorKind.Exact;
+
+    /// <summary>v2: peso de lo que sobra de más contra lo que falta (que pesa 1).</summary>
+    public double SurplusWeight { get; init; } = 0.2;
+
+    /// <summary>
+    /// v2: segundos de trabajo que pierde un aldeano al cambiar de recurso (caminata, el viaje que vuelve sin carga).
+    /// Con el peso de lo que sobra en 0,2 y H = 60 s, sacar gente de donde sobra para llevarla a donde no falta pierde
+    /// un poco (12 s de lo que sobra contra 15 s de trabajo): solo conviene mover si algo va a faltar, y la cantidad es
+    /// la que alcanza para cubrirlo.
+    /// </summary>
+    public double MoveSeconds { get; init; } = 15;
+
+    /// <summary>v2: costo extra de mandar gente a un recurso donde no hay nadie (campamento nuevo, caminata larga).</summary>
+    public double NewSiteCost { get; init; } = 40;
+
+    /// <summary>v2: cuánto tiene que mejorar la economía para que valga la pena sugerir.</summary>
+    public double MinGain { get; init; } = 15;
 }
 
 /// <summary>Aldeanos por recurso estimados, y la eficiencia aprendida (1 = lo que asume el Planner).</summary>
@@ -61,8 +81,8 @@ public sealed record EconomyReport(
     Suggestion? Suggestion);
 
 /// <summary>
-/// Economía v1: tasas observadas, aldeanos estimados, demanda hasta el próximo hito de la BO, déficit en un
-/// horizonte H y una sugerencia de reasignación (greedy, de a 1 aldeano) con histéresis.
+/// Economía: tasas observadas, aldeanos estimados, demanda hasta el próximo hito de la BO, déficit en un horizonte H
+/// y una sugerencia de reasignación (<see cref="VillagerAllocator"/>) con histéresis.
 /// Llamar <see cref="Update"/> una vez por snapshot, después de actualizar el Tracker.
 /// </summary>
 public sealed class EconomyAdvisor
@@ -110,7 +130,7 @@ public sealed class EconomyAdvisor
         var h = _settings.Horizon;
         var deficit = demand * h - (state.Stock + projectedRates * h);
 
-        var candidate = Allocate(deficit, villagers.PerResource, effective);
+        var candidate = VillagerAllocator.Choose(deficit, villagers.PerResource, effective, _settings);
         var suggestion = _gate.Update(state.Time, candidate);
         return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion);
     }
@@ -212,40 +232,6 @@ public sealed class EconomyAdvisor
                 seconds = click - now;
         }
         return cost * (1 / seconds);
-    }
-
-    /// <summary>Greedy: mueve de a 1 aldeano del recurso que más sobra al que más falta, mientras mejore.</summary>
-    private Suggestion? Allocate(ResourceAmounts deficit, ResourceAmounts villagers, ResourceAmounts perVillager)
-    {
-        var d = deficit;
-        var h = _settings.Horizon;
-        Resource? from = null, to = null;
-        var moved = 0;
-
-        while (moved < _settings.MaxMoves)
-        {
-            var needy = Enum.GetValues<Resource>().Where(r => d[r] > _settings.ShortageThreshold).OrderByDescending(r => d[r]).ToList();
-            var donors = Enum.GetValues<Resource>()
-                .Where(r => d[r] < -_settings.SurplusThreshold && villagers[r] - moved * (r == from ? 1 : 0) >= 1)
-                .OrderBy(r => d[r])
-                .ToList();
-            if (needy.Count == 0 || donors.Count == 0)
-                break;
-
-            var target = needy[0];
-            var donor = donors[0];
-            if (from is not null && (donor != from || target != to))
-                break; // una sola sugerencia (un par de recursos) a la vez
-            if (d[donor] + perVillager[donor] * h > -_settings.SurplusThreshold / 2)
-                break; // el donante pasaría a quedar justo
-
-            from = donor;
-            to = target;
-            d = d.With(donor, d[donor] + perVillager[donor] * h).With(target, d[target] - perVillager[target] * h);
-            moved++;
-        }
-
-        return from is { } f && to is { } t ? new Suggestion(f, t, moved) : null;
     }
 
     private static double Sum(ResourceAmounts a) => a.Food + a.Wood + a.Stone + a.Gold;
