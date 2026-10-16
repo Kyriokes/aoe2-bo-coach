@@ -150,10 +150,10 @@ public class CoachTests
         var view = coach.Update(At(40, 200, 3, "house_built", "house_built"));
         Assert.Equal("s2", view.Current?.Step.Id);
         Assert.Equal((3, 9), view.SourceVillagers);
-        Assert.EndsWith("(3/9 en ovejas)", CoachText.Lines(view, TestData.GameData).Current);
+        Assert.Equal("Aldeanos a ovejas: 3/9", CoachText.Lines(view, TestData.GameData).Current);
 
         view = coach.Update(At(65, 200, 4));
-        Assert.EndsWith("(4/9 en ovejas)", CoachText.Lines(view, TestData.GameData).Current);
+        Assert.Equal("Aldeanos a ovejas: 4/9", CoachText.Lines(view, TestData.GameData).Current);
     }
 
     [Fact]

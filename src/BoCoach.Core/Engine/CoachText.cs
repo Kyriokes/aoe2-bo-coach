@@ -42,7 +42,7 @@ public static class CoachText
 
         var title = StepText.Describe(current.Step);
         if (view.SourceVillagers is { } on && current.Step.Assign is { } source)
-            title += $" ({on.Current}/{on.Target} en {StepText.Source(source)})"; // como el contador del HUD
+            title = $"Aldeanos a {StepText.Source(source)}: {on.Current}/{on.Target}"; // corto y como el contador del HUD
         else if (current.Required > 1 && current.Completed > 0)
             title += $" ({current.Completed}/{current.Required})";
 
