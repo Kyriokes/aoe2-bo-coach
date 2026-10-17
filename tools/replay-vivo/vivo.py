@@ -71,7 +71,8 @@ ORDENES = {
     "GATHER_POINT": "Punto de reunión", "DE_MULTI_GATHERPOINT": "Punto de reunión", "DELETE": "Borrar",
     "BACK_TO_WORK": "Volver al trabajo", "UNGARRISON": "Desguarnecer", "DE_TRANSFORM": "Transformar",
     "PATROL": "Patrullar", "DE_ATTACK_MOVE": "Atacar en movimiento", "FORMATION": "Formación",
-    "STANCE": "Postura", "SPECIAL": "Habilidad especial", "RESIGN": "Rendirse", "TOWN_BELL": "Campana",
+    "STANCE": "Postura", "RESIGN": "Rendirse", "TOWN_BELL": "Campana",
+    "CHAPTER": "Guardado de la partida dentro del replay (autoguardado)",
     "REPAIR": "Reparar", "GUARD": "Escoltar", "FOLLOW": "Seguir", "FLARE": "Bengala", "GATE": "Puerta",
     "DE_AUTOSCOUT": "Exploración automática", "AI_ORDER": "Orden automática", "ATTACK_GROUND": "Atacar el suelo",
 }
@@ -112,6 +113,17 @@ def describir(nombre: str, d: dict) -> str:
     if nombre in ("BUY", "SELL"):
         verbo = "Comprar" if nombre == "BUY" else "Vender"
         return f"{verbo} {RECURSOS.get(d.get('resource_id'), 'recurso')} en el mercado"
+    if nombre == "SPECIAL":
+        # Verificado en una partida: la orden 4 saca de la cola el lugar slot_id (devolvió justo el costo) y la 5
+        # mete las unidades en el edificio. mgz lee corridos 8 bits los ids de esta orden (5884 sale 1506304).
+        orden = d.get("order_id")
+        if orden == 4:
+            return f"Cancelar de la cola (lugar {d.get('slot_id', 0) + 1})"
+        if orden == 5:
+            return "Guarecer" + cuantas
+        return f"Habilidad especial (orden {orden})" + cuantas
+    if nombre == "GAME" and d.get("command_id") == 1:
+        return f"Cambiar la velocidad a {d.get('speed', 0):g}"
     return ORDENES.get(nombre, nombre) + cuantas
 
 
