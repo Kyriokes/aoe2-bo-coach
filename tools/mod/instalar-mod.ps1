@@ -1,9 +1,9 @@
 # Genera el mod local "BoCoach HUD" a partir de los paneles que el juego usa hoy (los del mod activo con el
 # número de prioridad más bajo, o los originales) en cada perfil que usa mods. Cambia dos cosas para leer mejor:
 #   - resourcepanel.json: el ícono de cada recurso y el de inactivos pasan a ser un cuadrado negro con la mitad
-#     de arriba del color del recurso (rojo en inactivos) y abajo la cantidad de aldeanos grande, en blanco.
-#     El stock, la población y la edad no cambian.
-#   - worldtimerpanel.json: un rectángulo negro liso detrás del reloj; el texto no cambia (sigue la letra "clock").
+#     de arriba del color del recurso (azul en población, rojo en inactivos) y abajo la cantidad de aldeanos
+#     grande, en blanco. Los stocks con la misma letra y tamaño. "N/M" de población y la edad no cambian.
+#   - worldtimerpanel.json: el reloj más grande con un rectángulo negro liso detrás.
 # Si el mod ya existe, parte de sus propios paneles (así no cambian las posiciones ni la calibración aunque se
 # hayan apagado los mods de los que salió). Con -Regenerar vuelve a partir de los mods activos.
 param([string]$Juego = 'H:\Steam\steamapps\common\AoE2DE', [switch]$Regenerar)
@@ -33,7 +33,11 @@ function Fijar($w, $nombre, $valor) { $w | Add-Member -NotePropertyName $nombre 
 
 # Cuadrado del recurso: negro, la mitad de arriba del color del recurso y abajo el número grande en blanco.
 $puntosNumero = 48
-$colores = @{ Wood = 0.55, 0.35, 0.15; Food = 0.9, 0.4, 0.4; Gold = 0.95, 0.75, 0.1; Stone = 0.6, 0.6, 0.65; Idle = 0.9, 0, 0 }
+$colores = @{ Wood = 0.55, 0.35, 0.15; Food = 0.9, 0.4, 0.4; Gold = 0.95, 0.75, 0.1; Stone = 0.6, 0.6, 0.65; Population = 0.25, 0.5, 1; Idle = 0.9, 0, 0 }
+# El reloj: tamaño de la letra y rectángulo negro que tapa "00:00:00" (medido en una captura: a 40 pt el texto
+# ocupa unas 121 unidades del panel).
+$puntosReloj = 56
+$fondoReloj = @{ x = -10; y = 4; ancho = 200; alto = 74 }
 
 function Letra-Numero($fontIndex) {
     [pscustomobject]@{ StateNormal = [pscustomobject]@{ Font = [pscustomobject][ordered]@{
@@ -56,12 +60,24 @@ function Panel-Recursos([string]$base) {
     $j = Leer $base
     $widgets = @(foreach ($w in $j.Collection.Widgets) { Todos $w.Widget })
     $fontIndex = @($widgets | Where-Object { $_.Name -eq 'WoodStorage' })[0].StateMaterials.StateNormal.Font.FontIndex
-    foreach ($recurso in 'Wood', 'Food', 'Gold', 'Stone') {
+    foreach ($recurso in 'Wood', 'Food', 'Gold', 'Stone', 'Population') {
         $icono = @($widgets | Where-Object { $_.Name -eq $recurso -and $_.Type -eq 'Base' })[0]
         $aldeanos = @(Hijos $icono | Where-Object { $_.Name -eq 'Workers' })[0]
         if (-not $aldeanos) { throw "No encontré los aldeanos de $recurso en $base" }
         $ancho = $icono.ViewPort.width; $alto = $icono.ViewPort.height; $banda = [int]($alto * 0.43)
-        $icono.StateMaterials = [pscustomobject]@{ StateNormal = Plano 0 0 0 }
+        if ($recurso -eq 'Population') {
+            # La población tiene dos estados (con ícono y sin él): los dos en negro.
+            $icono.StateMaterials = [pscustomobject][ordered]@{ UserStates = 2; UserState0 = Plano 0 0 0; UserState1 = Plano 0 0 0 }
+        } else {
+            $icono.StateMaterials = [pscustomobject]@{ StateNormal = Plano 0 0 0 }
+            # El stock con la misma letra y tamaño que los aldeanos, hasta el borde del cuadrado siguiente.
+            $stock = @($widgets | Where-Object { $_.Name -eq "${recurso}Storage" })[0]
+            $siguiente = @($widgets | Where-Object { $_.Type -eq 'Base' -and $_.ViewPort.xorigin -gt $icono.ViewPort.xorigin -and $_.Name -in 'Wood', 'Food', 'Gold', 'Stone', 'Population' } |
+                Sort-Object { $_.ViewPort.xorigin })[0]
+            $limite = $siguiente.ViewPort.xorigin - [int]($siguiente.ViewPort.width / 2) - 4
+            $stock.ViewPort = Vista $stock.ViewPort.xorigin $stock.ViewPort.yorigin ($limite - $stock.ViewPort.xorigin) $puntosNumero 'CentreLeft'
+            $stock.StateMaterials = Letra-Numero $fontIndex
+        }
         $aldeanos.ViewPort = Vista 0 $banda $ancho ($alto - $banda) 'TopLeft'
         $aldeanos.StateMaterials = Letra-Numero $fontIndex
         Fijar $aldeanos TextAnchor 'CentreCentre'
@@ -93,10 +109,16 @@ function Panel-Reloj([string]$base) {
     $reloj = @($j.Collection.Widgets | ForEach-Object { $_.Widget } | Where-Object { $_.Name -eq 'WorldTimer' })[0]
     $etiqueta = @(Hijos $reloj | Where-Object { $_.Name -eq 'WorldTimerLabel' })[0]
     if (-not $etiqueta) { throw "No encontré el reloj en $base" }
+    $etiqueta.StateMaterials.StateNormal.Font.PointSize = $puntosReloj
+    $etiqueta.ViewPort.height = $puntosReloj
+    # Espectadores e ID de partida van debajo del reloj: se bajan para que el reloj grande no los pise.
+    foreach ($w in @(Hijos $reloj | Where-Object { $_.Name -in 'SpectatorsIcon', 'GameIDLabel' })) {
+        $w.ViewPort.yorigin = $etiqueta.ViewPort.yorigin + $puntosReloj + 12
+    }
     $fondo = [pscustomobject]@{ Widget = [pscustomobject][ordered]@{
         Type           = 'Base'
         Name           = 'BoCoachClockBackground'
-        ViewPort       = [pscustomobject][ordered]@{ xorigin = -10; yorigin = 6; width = 220; height = 52; alignment = 'TopLeft' }
+        ViewPort       = Vista $fondoReloj.x $fondoReloj.y $fondoReloj.ancho $fondoReloj.alto 'TopLeft'
         StateMaterials = [pscustomobject]@{ StateNormal = [pscustomobject][ordered]@{ Material = 'FlatColorWithAlpha'; Color = Color 0 0 0 } }
         ChildWidgets   = @()
     } }
