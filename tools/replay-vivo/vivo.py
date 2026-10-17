@@ -46,7 +46,7 @@ CARPETA_JUEGO = Path(os.environ["USERPROFILE"]) / "Games" / "Age of Empires 2 DE
 CARPETA_REGISTROS = Path(os.environ["LOCALAPPDATA"]) / "BoCoach" / "replay-vivo"
 INTERVALO = 0.2  # segundos entre lecturas
 
-VERDE, AMARILLO, GRIS, NORMAL = "\x1b[92m", "\x1b[93m", "\x1b[90m", "\x1b[0m"
+VERDE, AMARILLO, CELESTE, GRIS, NORMAL = "\x1b[92m", "\x1b[93m", "\x1b[96m", "\x1b[90m", "\x1b[0m"
 
 # Nombres en castellano de las claves de game_data más comunes (el resto se muestra con la clave).
 NOMBRES = {
@@ -81,21 +81,25 @@ RECURSOS = {0: "comida", 1: "madera", 2: "piedra", 3: "oro"}
 
 # ---- Datos del juego: id del .dat -> nombre ----
 
-def cargar_nombres() -> tuple[dict[int, str], dict[int, str]]:
-    """Unidades y edificios por id, y tecnologías por id, sacados del game_data más nuevo del repo."""
+def cargar_nombres() -> tuple[dict[int, str], dict[int, str], dict[int, str], dict[int, str]]:
+    """Del game_data más nuevo del repo, por id del .dat: nombre de unidades y edificios, nombre de tecnologías, y
+    en qué edificio se hace cada unidad y cada tecnología."""
     archivos = sorted(
         (REPO / "data" / "game_data").glob("v*.json"),
         key=lambda p: tuple(int(n) for n in re.findall(r"\d+", p.stem)),
     )
     if not archivos:
-        return {}, {}
+        return {}, {}, {}, {}
     entidades = json.loads(archivos[-1].read_text(encoding="utf-8"))["entities"]
     unidades = {e["dat_id"]: NOMBRES.get(k, k) for k, e in entidades.items() if e["kind"] != "tech"}
     techs = {e["dat_id"]: NOMBRES.get(k, k) for k, e in entidades.items() if e["kind"] == "tech"}
-    return unidades, techs
+    lugar = lambda e: NOMBRES.get(e["made_in"], e["made_in"])  # noqa: E731
+    donde_unidad = {e["dat_id"]: lugar(e) for e in entidades.values() if e["kind"] == "unit"}
+    donde_tech = {e["dat_id"]: lugar(e) for e in entidades.values() if e["kind"] == "tech"}
+    return unidades, techs, donde_unidad, donde_tech
 
 
-UNIDADES, TECHS = cargar_nombres()
+UNIDADES, TECHS, DONDE_UNIDAD, DONDE_TECH = cargar_nombres()
 
 
 def describir(nombre: str, d: dict) -> str:
@@ -170,6 +174,86 @@ class Estricto:
         return self.archivo.tell()
 
 
+def valores_por_jugador(archivo) -> dict[int, tuple[int, ...]]:
+    """Los 11 valores de cada jugador de la sincronización detallada que se acaba de leer.
+
+    mgz solo devuelve algunos, y saltea al jugador que tiene 0 de stock. Están justo antes de los últimos 4 bytes
+    (el tiempo de partida): 8 jugadores × 11 valores de 4 bytes. El valor 8 es el número de jugador.
+    """
+    fin = archivo.tell()
+    archivo.seek(fin - 4 - 88 * 4)
+    crudos = struct.unpack("<88I", archivo.read(88 * 4))
+    archivo.seek(fin)
+    return {v[8]: v for v in (crudos[i:i + 11] for i in range(0, 88, 11)) if v[8]}
+
+
+class Objetos:
+    """Lo que existe, según las sincronizaciones: cuántos objetos tiene el jugador (valor 6) y la suma de sus ids
+    (valor 10). Las órdenes dicen lo que el jugador pidió; esto dice lo que pasó.
+
+    Cada objeto que aparece suma su id y cada uno que se pierde lo resta. Si entre dos sincronizaciones cambió uno
+    solo, se sabe exactamente cuál. Los objetos nuevos (unidades, cimientos) tienen un id mayor que todos los
+    anteriores; los del mapa que pasan a ser del jugador (una oveja encontrada) tienen uno chico.
+    Verificado: el aldeano que nació a las 3:01 en la partida de prueba sumó +6921, su id en las órdenes posteriores.
+    """
+
+    def __init__(self):
+        self.cantidad: int | None = None
+        self.suma = 0
+        self.nombres: dict[int, str] = {}  # ids que aparecieron en órdenes propias
+        self.con_cola: set[int] = set()  # edificios donde se encoló algo
+        self.mayor_id = 0
+
+    def orden(self, nombre: str, d: dict) -> None:
+        ids = list(d.get("object_ids") or [])
+        if nombre in ("SPECIAL", "UNGARRISON"):
+            ids = [i >> 8 if i > 0xFFFFF else i for i in ids]  # mgz los lee corridos 8 bits
+        if nombre in ("DE_QUEUE", "QUEUE", "MULTIQUEUE"):
+            for i in ids:
+                self.nombres.setdefault(i, DONDE_UNIDAD.get(d.get("unit_id"), "edificio"))
+                self.con_cola.add(i)
+        elif nombre == "RESEARCH":
+            for i in ids:
+                self.nombres.setdefault(i, DONDE_TECH.get(d.get("technology_id"), "edificio"))
+        elif nombre in ("GATHER_POINT", "SPECIAL"):
+            for i in ids:
+                self.nombres.setdefault(i, "edificio")
+        else:
+            for i in ids:
+                self.nombres.setdefault(i, "unidad")
+        self.mayor_id = max([self.mayor_id, *ids])
+
+    def _nombre(self, i: int) -> str:
+        return f"{self.nombres[i]} {i}" if i in self.nombres else f"objeto {i}"
+
+    def cambio(self, cantidad: int, suma: int) -> str | None:
+        """Qué cambió desde la sincronización anterior, o None si nada."""
+        if self.cantidad is None:
+            self.cantidad, self.suma = cantidad, suma
+            return f"Objetos tuyos: {cantidad}"
+        dn, ds = cantidad - self.cantidad, suma - self.suma
+        self.cantidad, self.suma = cantidad, suma
+        if dn == 0 and ds == 0:
+            return None
+        if dn == 1 and ds > self.mayor_id:
+            self.mayor_id = ds
+            return f"Apareció el objeto {ds} (nuevo: una unidad que salió o un cimiento) · total {cantidad}"
+        if dn == 1 and ds > 0:
+            return f"Se sumó el objeto {ds}, que ya estaba en el mapa (una oveja encontrada, por ejemplo) · total {cantidad}"
+        if dn == -1 and ds < 0:
+            perdido = -ds
+            cola = " Tenía cola: lo que estaba encolado ahí ya no va a salir." if perdido in self.con_cola else ""
+            return f"Se perdió {self._nombre(perdido)} · total {cantidad}.{cola}"
+        # Varios cambios juntos: solo se sabe la cantidad y la suma. Se nombran los edificios con cola que podrían
+        # estar entre los perdidos (el centro urbano tiene partes que también son objetos).
+        texto = f"Cambiaron varios objetos a la vez: {dn:+} objetos, suma de ids {ds:+} · total {cantidad}"
+        if dn < 0:
+            candidatos = [self._nombre(e) for e in sorted(self.con_cola) if e <= -ds]
+            if candidatos:
+                texto += f" (puede incluir: {', '.join(candidatos)})"
+        return texto
+
+
 def reloj(ms: int) -> str:
     s = ms // 1000
     return f"{s // 3600}:{s // 60 % 60:02d}:{s % 60:02d}" if s >= 3600 else f"{s // 60}:{s % 60:02d}"
@@ -190,6 +274,7 @@ class Replay:
         self.siguiente: int | None = None  # dónde empieza la próxima operación sin leer
         self.tiempo = 0  # ms de juego hasta la última sincronización
         self.otros: set[int] = set()
+        self.objetos = Objetos()
         self.terminado = False
         self.problema: str | None = None
 
@@ -232,13 +317,17 @@ class Replay:
                 if operacion == Operation.SYNC:
                     incremento, _, valores = datos
                     self.tiempo = valores.get("current_time", self.tiempo + incremento)
-                    propio = valores.get(salida.jugador)
+                    propio = valores_por_jugador(archivo).get(salida.jugador) if "current_time" in valores else None
                     if propio:
-                        mostrar(lambda t=self.tiempo, total=propio["total_res"]: salida.recursos(t, total, tamano))
+                        mostrar(lambda t=self.tiempo, total=propio[1]: salida.recursos(t, total, tamano))
+                        cambio = self.objetos.cambio(propio[6], propio[10])
+                        if cambio:
+                            mostrar(lambda t=self.tiempo, texto=cambio: salida.objetos(t, texto, tamano))
                 elif operacion == Operation.ACTION:
                     tipo, d = datos
                     jugador = d.get("player_id")
                     if jugador == salida.jugador:
+                        self.objetos.orden(tipo.name, d)
                         mostrar(lambda t=self.tiempo, texto=describir(tipo.name, d): salida.orden(t, texto, tamano))
                     elif jugador is not None and jugador not in self.otros:
                         self.otros.add(jugador)
@@ -301,6 +390,10 @@ class Salida:
     def recursos(self, tiempo_ms: int, total: int, tamano: int) -> None:
         self._renglon(f"{self._hora()}  juego {reloj(tiempo_ms):>7}  Σ recursos en stock: {total} (madera + comida + oro + piedra)", AMARILLO)
         self.registrar("recursos", tamano, tiempo_ms, str(total))
+
+    def objetos(self, tiempo_ms: int, texto: str, tamano: int) -> None:
+        self._renglon(f"{self._hora()}  juego {reloj(tiempo_ms):>7}  • {texto}", CELESTE)
+        self.registrar("objetos", tamano, tiempo_ms, texto)
 
     def estado(self, texto: str) -> None:
         if self.consola:
