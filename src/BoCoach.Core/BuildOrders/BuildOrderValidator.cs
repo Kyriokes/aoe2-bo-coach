@@ -90,6 +90,16 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         foreach (var cycle in FindCycles(bo.Steps))
             Error(cycle[0], $"Dependencia circular en 'after': {string.Join(" → ", cycle)}.");
 
+        // Pasos mixtos: las metas de un grupo van seguidas, y un grupo de una sola meta es un paso simple.
+        foreach (var group in bo.Steps.Select((s, i) => (s, i)).Where(x => x.s.Group is not null).GroupBy(x => x.s.Group!))
+        {
+            var indexes = group.Select(x => x.i).ToList();
+            if (indexes[^1] - indexes[0] + 1 != indexes.Count)
+                Error(group.First().s.Id, $"Las metas del paso mixto '{group.Key}' tienen que ir seguidas, sin otros pasos en el medio.");
+            else if (indexes.Count == 1)
+                Warn(group.First().s.Id, $"El paso mixto '{group.Key}' tiene una sola meta: es un paso simple.");
+        }
+
         ValidateTargets(bo.Targets, Error);
         return new ValidationResult(issues);
     }

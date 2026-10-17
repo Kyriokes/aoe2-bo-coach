@@ -361,8 +361,11 @@
                                      TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" />
 
                             <TextBlock Grid.Row="11" Text="Id" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Row="11" Grid.Column="1" Width="70" HorizontalAlignment="Left"
-                                     Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal">
+                                <TextBox Width="70" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                                <CheckBox Content="Junto con el anterior" IsChecked="{Binding WithPrevious}" VerticalAlignment="Center" Margin="14,0,0,0"
+                                          ToolTip="Paso mixto: esta meta se hace a la vez que el paso anterior (por ejemplo, el cuartel mientras siguen saliendo aldeanos a madera). El coach muestra todas las metas juntas y el paso termina cuando terminan todas." />
+                            </StackPanel>
 
                             <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="{Binding IssueText}" TextWrapping="Wrap" Margin="0,6,0,0"
                                        Foreground="{StaticResource Danger}" Visibility="{Binding IssueText, Converter={StaticResource NotEmptyToVisibility}}" />

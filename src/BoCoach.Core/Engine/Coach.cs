@@ -62,6 +62,9 @@ public sealed record CoachView(
 
     /// <summary>Aldeanos en comida que mantienen los centros urbanos produciendo (0 si ya se llegó al máximo).</summary>
     public int FoodFloor { get; init; }
+
+    /// <summary>Si el paso actual es un paso mixto: todas sus metas (ver <see cref="Tracker.CurrentGoals"/>).</summary>
+    public IReadOnlyList<StepProgress> Goals { get; init; } = [];
 }
 
 /// <summary>
@@ -366,6 +369,7 @@ public sealed class Coach
             Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
+            Goals = Tracker.CurrentGoals,
         };
     }
 }

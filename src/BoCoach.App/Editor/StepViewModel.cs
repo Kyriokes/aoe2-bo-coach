@@ -12,7 +12,7 @@ public sealed partial class StepViewModel : ObservableObject
     private static readonly HashSet<string> InputProperties =
     [
         nameof(Id), nameof(Action), nameof(What), nameof(Count), nameof(Assign), nameof(From), nameof(Builders),
-        nameof(AfterText), nameof(AtPop), nameof(AtTimeText), nameof(ConfirmBy), nameof(Note),
+        nameof(AfterText), nameof(AtPop), nameof(AtTimeText), nameof(ConfirmBy), nameof(Note), nameof(WithPrevious),
     ];
 
     private readonly GameData _data;
@@ -53,6 +53,12 @@ public sealed partial class StepViewModel : ObservableObject
     [ObservableProperty] public partial string? ConfirmBy { get; set; }
     [ObservableProperty] public partial string Note { get; set; }
 
+    /// <summary>
+    /// Paso mixto: esta meta se hace a la vez que el paso anterior (mismo <see cref="Step.Group"/>). El grupo se arma al
+    /// guardar (<see cref="BuildOrderEditorViewModel.ToBuildOrder"/>).
+    /// </summary>
+    [ObservableProperty] public partial bool WithPrevious { get; set; }
+
     // Lo que calcula el editor (validación y vista previa).
     [ObservableProperty] public partial int Number { get; set; }
     [ObservableProperty] public partial string EstimateText { get; set; } = "";
@@ -65,7 +71,8 @@ public sealed partial class StepViewModel : ObservableObject
     [ObservableProperty] public partial double BarWidth { get; set; }
     [ObservableProperty] public partial double BarRest { get; set; } = 1;
 
-    public string Description => StepText.Describe(ToStep());
+    /// <summary>Lo que se ve en la lista de pasos; "+" adelante si va junto con el anterior (paso mixto).</summary>
+    public string Description => (WithPrevious ? "+ " : "") + StepText.Describe(ToStep());
 
     public IReadOnlyList<Option<string?>> EntityOptions => Options.EntitiesFor(_data, Action);
     public IReadOnlyList<Option<string?>> ConfirmOptions { get; }

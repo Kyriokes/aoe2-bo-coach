@@ -75,6 +75,13 @@ public sealed record Step
     /// <summary>Id de evento del log (data/events.json) que confirma el paso.</summary>
     public string? ConfirmBy { get; set; }
 
+    /// <summary>
+    /// Paso mixto: los pasos seguidos con el mismo grupo son un solo paso con varias metas que se hacen a la vez
+    /// (por ejemplo, el cuartel mientras siguen saliendo aldeanos a madera). Cada meta avanza por su cuenta y el paso
+    /// termina cuando terminan todas. null = paso simple.
+    /// </summary>
+    public string? Group { get; set; }
+
     public string? Note { get; set; }
 }
 

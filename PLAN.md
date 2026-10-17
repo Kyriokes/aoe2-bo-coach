@@ -204,6 +204,7 @@ Es el mismo formato en la app, en los archivos locales y en la web.
 - El costo y el tiempo **no se escriben**: salen de `game_data`.
 - `assign` indica a qué recurso va el aldeano producido.
 - `after`, `at_pop`, `at_time` son condiciones opcionales. `confirm_by` usa ids de `events.json`.
+- `group` (opcional) arma un **paso mixto**: los pasos seguidos con el mismo grupo son un solo paso con varias metas que se hacen a la vez (por ejemplo, el clic en Feudal y el cuartel). Cada meta avanza por su cuenta, el paso termina cuando terminan todas, y una meta no deja "atrasada" ni da por hecha a otra del mismo grupo. En el editor: "Junto con el anterior".
 - `schema_version` permite migrar BO viejas cuando el formato cambie.
 
 ### 5.3 `regions.json` (generado por la calibración, en la carpeta de usuario)

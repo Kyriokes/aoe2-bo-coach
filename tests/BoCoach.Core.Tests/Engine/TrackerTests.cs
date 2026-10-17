@@ -202,8 +202,15 @@ public class TrackerTests
         tracker.Update(partida.State);
 
         Assert.Equal(StepState.Done, StateOf(tracker, "s12"));
+        // Feudal (s13) y el cuartel (s14) son metas del mismo paso mixto: se hacen a la vez, así que el cuartel
+        // terminado no da por hecha la Feudal. Sí la da por hecha un paso de después del grupo.
+        Assert.Equal("s13", tracker.Current?.Step.Id);
+
+        partida.Event("stable_built");
+        tracker.Update(partida.State);
+
         Assert.Equal(StepState.Done, StateOf(tracker, "s13"));
-        Assert.Equal("s15", tracker.Current?.Step.Id);
+        Assert.Equal("s16", tracker.Current?.Step.Id);
     }
 
     [Fact]

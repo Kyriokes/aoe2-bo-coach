@@ -50,6 +50,8 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         FeudalGold = bo.Targets?.VillagersAtFeudal?.Gold;
         FeudalStone = bo.Targets?.VillagersAtFeudal?.Stone;
         Steps = new ObservableCollection<StepViewModel>(bo.Steps.Select(NewStep));
+        for (var i = 1; i < Steps.Count; i++)
+            Steps[i].WithPrevious = bo.Steps[i].Group is { } group && group == bo.Steps[i - 1].Group;
         Steps.CollectionChanged += (_, _) => Changed();
         _loading = false;
         Refresh();
@@ -97,6 +99,16 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         int? feudal = GameClock.TryParse(FeudalTargetText, out var f) ? f : null;
         int? castle = GameClock.TryParse(CastleTargetText, out var c) ? c : null;
 
+        // Pasos mixtos: cada paso "junto con el anterior" toma el grupo del anterior (o le crea uno con su id).
+        var steps = Steps.Select(s => s.ToStep()).ToList();
+        for (var i = 1; i < steps.Count; i++)
+        {
+            if (!Steps[i].WithPrevious)
+                continue;
+            steps[i - 1].Group ??= $"g{steps[i - 1].Id}";
+            steps[i].Group = steps[i - 1].Group;
+        }
+
         return new BuildOrder
         {
             SchemaVersion = _schemaVersion,
@@ -106,7 +118,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
             Author = string.IsNullOrWhiteSpace(Author) ? null : Author.Trim(),
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Tags = TagsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-            Steps = Steps.Select(s => s.ToStep()).ToList(),
+            Steps = steps,
             Targets = feudal is null && castle is null && atFeudal is null
                 ? null
                 : new Targets { FeudalClickTime = feudal, CastleClickTime = castle, VillagersAtFeudal = atFeudal },

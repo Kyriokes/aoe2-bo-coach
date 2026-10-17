@@ -92,7 +92,21 @@ public sealed class Tracker
     /// <summary>Paso a mostrar en grande: el primero pendiente que no quedó atrasado.</summary>
     public StepProgress? Current => _steps.FirstOrDefault(IsOpen);
 
-    public StepProgress? Next => _steps.Where(IsOpen).Skip(1).FirstOrDefault();
+    /// <summary>
+    /// Si el paso actual es parte de un paso mixto (<see cref="Step.Group"/>): todas sus metas, en el orden de la BO y
+    /// en el estado en que estén (hechas, en curso o pendientes). Vacío si es un paso simple.
+    /// </summary>
+    public IReadOnlyList<StepProgress> CurrentGoals => Current is { Step.Group: { } group }
+        ? _steps.Where(s => s.Step.Group == group).ToList()
+        : [];
+
+    /// <summary>El primer paso pendiente después del actual que no es otra meta del mismo paso mixto.</summary>
+    public StepProgress? Next => Current is { } current
+        ? _steps.Where(IsOpen).FirstOrDefault(s => s.Index != current.Index && !SameGroup(s.Index, current.Index))
+        : null;
+
+    /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
+    private bool SameGroup(int i, int j) => _bo.Steps[i].Group is { } g && g == _bo.Steps[j].Group;
 
     public IEnumerable<StepProgress> Late => _steps.Where(s => s.State == StepState.Late);
 
@@ -240,7 +254,7 @@ public sealed class Tracker
             if (_confirmEvent[i] is not null || IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i))
                 continue;
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
-                .Where(j => completed[j] > 0 || IsDone(j))
+                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j)))
                 .Select(j => FirstProgressTime(j, doneAt))
                 .Min();
             if (progressAfter is not null)
@@ -281,7 +295,7 @@ public sealed class Tracker
             {
                 state = StepState.InProgress;
             }
-            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && (IsDone(j) || _started.ContainsKey(j))))
+            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && !SameGroup(i, j) && (IsDone(j) || _started.ContainsKey(j))))
             {
                 state = StepState.Late;
             }

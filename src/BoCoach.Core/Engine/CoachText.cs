@@ -16,7 +16,11 @@ public sealed record CoachLines(
     string? Suggestion,
     string? Alert = null,
     string? Idle = null,
-    string? Distribution = null);
+    string? Distribution = null)
+{
+    /// <summary>Paso mixto: las otras metas del paso actual, una por renglón ("✓" las hechas).</summary>
+    public IReadOnlyList<string> Goals { get; init; } = [];
+}
 
 public static class CoachText
 {
@@ -25,7 +29,9 @@ public static class CoachText
 
     public static CoachLines Lines(CoachView view, GameData data)
     {
-        var running = view.Running.Select(r => Running(r, view.Time)).ToList();
+        // Las metas en curso del paso mixto se ven en su renglón de meta, no también en "En curso".
+        var goalIndexes = view.Goals.Select(g => g.Index).ToHashSet();
+        var running = view.Running.Where(r => !goalIndexes.Contains(r.Progress.Index)).Select(r => Running(r, view.Time)).ToList();
         if (view.Current is not { } current)
         {
             return new CoachLines(
@@ -54,13 +60,31 @@ public static class CoachText
             Status(view, current, data),
             view.Next is { } next ? $"Después: {StepText.Describe(next.Step)}" : null,
             running,
-            view.Late.Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
+            view.Late.Where(s => !goalIndexes.Contains(s.Index)).Select(s => StepText.Describe(s.Step)).Take(2).ToList(),
             deviation?.ToString(),
             deviation is { Delta: > BehindThreshold },
             view.Suggestion?.ToString(),
             AlertText(view.Alert),
             IdleText(view.TownCenterIdle),
-            DistributionText(view.Distribution));
+            DistributionText(view.Distribution))
+        {
+            Goals = view.Goals.Where(g => g.Index != current.Index).Select(Goal).ToList(),
+        };
+    }
+
+    /// <summary>Una meta de un paso mixto: "✓ Construir 1 cuartel", "Edad Feudal (en curso)", "Aldeanos a madera: 2/6".</summary>
+    public static string Goal(StepProgress goal)
+    {
+        var step = goal.Step;
+        if (goal.State is StepState.Done or StepState.Skipped)
+            return $"✓ {StepText.Describe(step)}";
+        if (goal.State == StepState.InProgress)
+            return $"{(step.What is { } what ? StepText.Name(what) : StepText.Describe(step))} (en curso)";
+        if (LivePlan.IsVillagerTarget(step))
+            return $"Aldeanos a {StepText.Source(step.Assign!.Value)}: {step.Count - goal.Remaining}/{step.Count}";
+        return goal.Required > 1 && goal.Completed > 0
+            ? $"{StepText.Describe(step)} ({goal.Completed}/{goal.Required})"
+            : StepText.Describe(step);
     }
 
     /// <summary>

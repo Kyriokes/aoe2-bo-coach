@@ -27,6 +27,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string? Status { get; set; }
     [ObservableProperty] public partial bool StatusReady { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> Running { get; set; } = [];
+
+    /// <summary>Paso mixto: las otras metas del paso actual.</summary>
+    [ObservableProperty] public partial IReadOnlyList<string> Goals { get; set; } = [];
     [ObservableProperty] public partial string? Next { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> Late { get; set; } = [];
     [ObservableProperty] public partial string? Deviation { get; set; }
@@ -49,6 +52,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Status = lines.Status;
         StatusReady = view.Current?.State == StepState.Ready;
         Running = lines.Running;
+        Goals = lines.Goals;
         Next = lines.Next;
         Late = lines.Late.Select(l => $"Atrasado: {l}").ToList();
         Deviation = lines.Deviation;

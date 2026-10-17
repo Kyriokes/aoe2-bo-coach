@@ -341,7 +341,7 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             suggestions++;
         shown = view.Suggestion;
         var lines = CoachText.Lines(view, data);
-        var text = string.Join(" | ", new[] { lines.Current, lines.Status, lines.Next }.Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
+        var text = string.Join(" | ", new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
         if (text == last)
             continue;
         last = text;
