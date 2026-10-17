@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using BoCoach.Core;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
@@ -62,6 +63,13 @@ public sealed class HudReader(HudFonts fonts)
     private readonly GlyphReader _villagers = new(fonts.Villagers);
     private readonly GlyphReader? _modNumbers = fonts.ModNumbers is { } numbers ? new(numbers) : null;
     private readonly GlyphReader? _modClock = fonts.ModClock is { } clock ? new(clock) : null;
+    private static readonly Regex ModClockTime = new(@"^\d\d:\d\d:\d\d", RegexOptions.Compiled);
+
+    /// <summary>
+    /// En pausa el juego oscurece todo: los números del mod (blancos sobre negro puro) se estiran para que lo más
+    /// claro vuelva a ser blanco.
+    /// </summary>
+    private const double PauseGain = 5;
 
     /// <param name="image">Imagen de cada región, o null si no está calibrada o grabada.</param>
     public HudReading Read(Func<string, CapturedImage?> image)
@@ -84,8 +92,8 @@ public sealed class HudReader(HudFonts fonts)
                 return (false, null, null);
             if (_modNumbers is not null && ModPanel.Split(img) is { } parts)
             {
-                var right = modRight && parts.Stock is { } stock ? Parse(_modNumbers.Read(stock), region) : null;
-                return (true, Parse(_modNumbers.Read(parts.Square), region), right);
+                var right = modRight && parts.Stock is { } stock ? Parse(_modNumbers.Read(stock.Stretched(PauseGain)), region) : null;
+                return (true, Parse(_modNumbers.Read(parts.Square.Stretched(PauseGain)), region), right);
             }
             return (false, null, Parse(reader.ReadRightmostGroup(img), region));
         }
@@ -108,12 +116,25 @@ public sealed class HudReader(HudFonts fonts)
         double? clockSeconds = null;
         if (image(RegionNames.Clock) is { } clockImage)
         {
-            var reader = _modClock is not null && ModPanel.HasBlackBackground(clockImage) ? _modClock : _clock;
-            var reading = reader.Read(clockImage);
-            if (reading.Clipped)
-                clipped.Add(RegionNames.Clock);
-            if (reading.IsUsable && reading.Text.Contains(':') && GameClock.TryParse(reading.Text, out var seconds))
-                clockSeconds = seconds;
+            if (_modClock is not null && ModPanel.HasBlackBackground(clockImage))
+            {
+                // El reloj del mod sigue con " (Normal - 1.7)…": vale el "hh:mm:ss" del principio, aunque lo de
+                // después toque el borde de la caja.
+                var reading = _modClock.Read(clockImage.Stretched(PauseGain));
+                var time = ModClockTime.Match(reading.Text);
+                if (time.Success && GameClock.TryParse(time.Value, out var seconds))
+                    clockSeconds = seconds;
+                else if (reading.Clipped)
+                    clipped.Add(RegionNames.Clock);
+            }
+            else
+            {
+                var reading = _clock.Read(clockImage);
+                if (reading.Clipped)
+                    clipped.Add(RegionNames.Clock);
+                if (reading.IsUsable && reading.Text.Contains(':') && GameClock.TryParse(reading.Text, out var seconds))
+                    clockSeconds = seconds;
+            }
         }
 
         var food = Stock(Resource.Food, RegionNames.Food);

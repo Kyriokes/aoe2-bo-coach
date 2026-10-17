@@ -7,7 +7,7 @@ public class ModPanelTests
 {
     // Caja de 60×20 sobre panel con textura: cuadrado (x 2..19) con franja de color arriba (y 0..6) y un dígito
     // blanco abajo, panel, fondo negro del stock (x 24..55) con su número.
-    private static CapturedImage Box(bool withStock = true, bool withBand = true)
+    private static CapturedImage Box(bool withStock = true, bool withBand = true, bool softEdge = false)
     {
         const int w = 60, h = 20;
         var bgra = new byte[w * h * 4];
@@ -17,7 +17,9 @@ public class ModPanelTests
             {
                 var inSquare = x is >= 2 and <= 19;
                 var band = withBand && inSquare && y <= 6;
-                var black = (inSquare && !band) || (withStock && x is >= 24 and <= 55);
+                // Borde suavizado del cuadrado: una columna con apenas un par de píxeles negro puro.
+                var soft = softEdge && x == 20 && y >= 18;
+                var black = (inSquare && !band) || soft || (withStock && x is >= 24 and <= 55);
                 var digit = (x is >= 9 and <= 11 && y is >= 10 and <= 17) || (x is >= 30 and <= 33 && y is >= 6 and <= 14);
                 var (r, g, b) = band ? (230, 102, 102)
                     : digit && black ? (255, 255, 255)
@@ -39,6 +41,16 @@ public class ModPanelTests
         Assert.Equal(18, parts.Value.Square.Width);
         Assert.Equal(13, parts.Value.Square.Height); // sin la franja de color
         Assert.Equal(32, parts.Value.Stock!.Width);
+    }
+
+    [Fact]
+    public void Un_borde_suavizado_no_rompe_el_cuadrado()
+    {
+        // Grabación 20261017-021002: la última columna del cuadrado de madera tenía 4 píxeles negros de 40.
+        var parts = ModPanel.Split(Box(softEdge: true));
+
+        Assert.NotNull(parts);
+        Assert.Equal(13, parts.Value.Square.Height);
     }
 
     [Fact]

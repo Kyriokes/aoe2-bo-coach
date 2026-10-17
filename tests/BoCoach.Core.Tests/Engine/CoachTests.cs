@@ -87,6 +87,19 @@ public class SnapshotBuilderTests
     }
 
     [Fact]
+    public void Un_total_de_aldeanos_imposible_se_descarta_sin_cortar_la_lectura()
+    {
+        // En vivo se leyó "8889" y Math.Clamp tiraba una excepción que cortaba toda la lectura.
+        var builder = new SnapshotBuilder(TestData.GameData);
+        builder.Build(Reading(10, villagers: 7));
+
+        var snapshot = builder.Build(Reading(11, villagers: 8889))!;
+
+        Assert.Null(snapshot.Villagers);
+        Assert.Equal(7 + 1, snapshot.Population);
+    }
+
+    [Fact]
     public void Sin_N_M_estima_la_poblacion_y_el_tope()
     {
         var builder = new SnapshotBuilder(TestData.GameData);

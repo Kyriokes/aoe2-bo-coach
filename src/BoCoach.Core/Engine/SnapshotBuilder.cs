@@ -31,6 +31,7 @@ public sealed record ScreenReading(
 public sealed class SnapshotBuilder(GameData data)
 {
     private const int StartingCap = 5;
+    private const int MaxPopulation = BuildOrders.BuildOrderValidator.MaxPopulation;
 
     private readonly List<string> _pendingEvents = [];
     private ResourceAmounts _stock = PlanStart.Standard.Stock;
@@ -59,7 +60,9 @@ public sealed class SnapshotBuilder(GameData data)
             reading.Wood ?? _stock.Wood,
             reading.Stone ?? _stock.Stone,
             reading.Gold ?? _stock.Gold);
-        _villagers = reading.Villagers ?? _villagers;
+        // Más aldeanos que el tope de población del juego es una lectura mala: se descarta.
+        var readVillagers = reading.Villagers is { } read && read <= MaxPopulation ? read : (int?)null;
+        _villagers = readVillagers ?? _villagers;
 
         if (reading.Population is { } population && reading.PopulationCap is { } cap)
         {
@@ -69,7 +72,7 @@ public sealed class SnapshotBuilder(GameData data)
         else if (_villagers is { } villagers)
         {
             _population = villagers + _military + 1;
-            _cap = Math.Clamp(_builtCap, _population, 200);
+            _cap = Math.Min(MaxPopulation, Math.Max(_builtCap, _population));
             PopulationEstimated = true;
         }
 
@@ -77,6 +80,6 @@ public sealed class SnapshotBuilder(GameData data)
             return null;
         var events = _pendingEvents.Select(id => new GameEvent(id, clock)).ToList();
         _pendingEvents.Clear();
-        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = reading.Villagers };
+        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers };
     }
 }
