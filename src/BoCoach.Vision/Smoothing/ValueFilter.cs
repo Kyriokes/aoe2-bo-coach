@@ -12,7 +12,7 @@ namespace BoCoach.Vision.Smoothing;
 public sealed class ValueFilter
 {
     private readonly Queue<double> _window = new();
-    private double? _lastTime;
+    private double? _lastAcceptedTime;
     private double? _lastAccepted;
     private double? _pending;
     private int _pendingCount;
@@ -43,8 +43,9 @@ public sealed class ValueFilter
 
     public double? Add(double? reading, double time)
     {
-        var dt = _lastTime is { } previous ? Math.Max(0, time - previous) : 0;
-        _lastTime = time;
+        // Desde la última lectura aceptada, no desde la captura anterior: si se descartaron o no se leyeron
+        // capturas, el margen crece, y un valor que sigue avanzando (el reloj después de un tirón) se destraba.
+        var dt = _lastAcceptedTime is { } previous ? Math.Max(0, time - previous) : 0;
         if (reading is not { } value)
             return Value;
 
@@ -64,6 +65,7 @@ public sealed class ValueFilter
         _pending = null;
         _pendingCount = 0;
         _lastAccepted = value;
+        _lastAcceptedTime = time;
         _window.Enqueue(value);
         while (_window.Count > Window)
             _window.Dequeue();

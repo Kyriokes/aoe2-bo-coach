@@ -57,6 +57,18 @@ public class ValueFilterTests
     }
 
     [Fact]
+    public void El_reloj_se_destraba_si_el_juego_se_pone_al_dia_de_golpe()
+    {
+        // Grabación 20261017-002121: tras un tirón el reloj pasó de 2:24 a 2:28 en medio segundo real y
+        // después siguió avanzando normal; antes quedaba clavado en 2:24 el resto de la partida.
+        var clock = new ValueFilter { Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6 };
+
+        Assert.Equal(144, Feed(clock, 144, 148, 149));
+        Assert.Equal(150, clock.Add(150, 1.5));
+        Assert.Equal(151, clock.Add(151, 2.0));
+    }
+
+    [Fact]
     public void Las_bajas_por_gasto_se_aceptan_al_instante()
     {
         var filter = new ValueFilter { Window = 1, MaxRisePerSecond = 120, Slack = 20 };
