@@ -396,3 +396,7 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
    - Para decidir: una captura a 1920×1080 con el centro urbano seleccionado y 3 o 4 aldeanos en cola, otra investigando telar y otra con el cuartel produciendo.
 4. ~~Stack de la web.~~ Resuelto: mismo repo (`web/`), Next.js + Supabase + Vercel, y el `Core` de C# compilado a WebAssembly para validar y simular en el navegador (una sola implementación del Planner). Login con Discord y Google.
 5. ~~Licencia del repo.~~ Resuelto: repo público con licencia MIT.
+7. ¿Leer el replay (`.aoe2record`) mientras se juega? (Planteado el 2026-10-17 para depender menos del OCR.)
+   - Daría exactos el tiempo, la cola de producción propia, las investigaciones, los edificios pedidos, lo gastado y el total de recursos en stock cada 6 a 12 s, y las civs (información pública). Reemplazaría el OCR del log, que es casi todo el costo de CPU. Stock por recurso, aldeanos por recurso y población siguen saliendo de la pantalla.
+   - Es un archivo que el juego deja en el disco, no memoria ni inyección. Solo se usarían las órdenes propias: las del rival en vivo son trampa. Cambiaría la regla "solo lectura de pantalla" por "pantalla y archivos que el juego escribe, con datos propios y públicos".
+   - Para decidir: que el usuario corra `tools/replay-vivo/vivo.bat` en una partida contra la IA y confirme que las órdenes aparecen enseguida.
