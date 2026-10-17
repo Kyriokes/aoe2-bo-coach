@@ -56,8 +56,14 @@ public sealed partial class LiveReadingViewModel : ObservableObject
 
         var plan = view.Distribution;
         var actual = view.Actual;
-        string Plan(Resource r) =>
-            (plan is { } d ? $"aldeanos: {d[r]:0}" : "aldeanos: —") + (actual is { } a ? $" (hay ~{a[r]:0})" : "");
+        // Lo que se ve en el HUD (con el mod) o, si no, lo que estima la economía; y lo que pide la BO.
+        string Plan(Resource r)
+        {
+            var seen = hud?.VillagersOn is { } on && on.TryGetValue(r, out var n) ? $"hay {n}"
+                : actual is { } a ? $"hay ~{a[r]:0}"
+                : "hay —";
+            return $"aldeanos: {seen} · la BO pide {(plan is { } d ? $"{d[r]:0}" : "—")}";
+        }
         Food.Villagers = Plan(Resource.Food);
         Wood.Villagers = Plan(Resource.Wood);
         Gold.Villagers = Plan(Resource.Gold);
@@ -65,7 +71,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
 
         Villagers = hud?.Villagers is { } v ? $"{v}" : "no se lee";
         Idle = hud?.IdleVillagers is { } idle ? $"{idle}" : "—";
-        Population = $"{view.Population}/{view.PopulationCap} (estimada)";
+        Population = hud is { Population: { } p, PopulationCap: { } c } ? $"{p}/{c}" : $"{view.Population}/{view.PopulationCap} (estimada)";
         FoodFloor = view.FoodFloor > 0 ? $"mínimo en comida para no parar el centro urbano: {view.FoodFloor}" : "";
         Age = hud?.Age is { } age ? BuildOrderValidator.AgeName(age) : "no se lee";
         Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";

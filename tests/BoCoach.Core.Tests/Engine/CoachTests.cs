@@ -86,6 +86,51 @@ public class SnapshotBuilderTests
         Assert.Equal(340, snapshot!.Stock.Food);
     }
 
+    private static ScreenReading WithCap(double clock, int cap, params string[] events) =>
+        new(clock, 200, 200, 100, 200, 7, 8, cap, events);
+
+    private static int Houses(GameSnapshot? snapshot) => snapshot!.Events.Count(e => e.EventId == "house_built");
+
+    [Fact]
+    public void Si_el_tope_sube_sin_aviso_del_log_es_una_casa_terminada()
+    {
+        // La segunda "House Built" no cambia el log si la primera sigue siendo el último renglón.
+        var builder = new SnapshotBuilder(TestData.GameData);
+        builder.Build(WithCap(10, 15));
+
+        Assert.Equal(1, Houses(builder.Build(WithCap(11, 20))));
+    }
+
+    [Fact]
+    public void Una_casa_avisada_por_el_log_no_se_cuenta_otra_vez_cuando_sube_el_tope()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        builder.Build(WithCap(10, 15));
+
+        Assert.Equal(1, Houses(builder.Build(WithCap(11, 15, "house_built"))));
+        Assert.Equal(0, Houses(builder.Build(WithCap(12, 20))));
+    }
+
+    [Fact]
+    public void Si_el_aviso_del_log_llega_despues_de_la_suba_no_es_otra_casa()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        builder.Build(WithCap(10, 15));
+
+        Assert.Equal(1, Houses(builder.Build(WithCap(11, 20))));
+        Assert.Equal(0, Houses(builder.Build(WithCap(12, 20, "house_built"))));
+    }
+
+    [Fact]
+    public void Despues_de_un_rato_sin_leer_el_tope_no_se_deducen_casas()
+    {
+        // Mientras no se leía, el log pudo avisar esas casas: la suba no se puede atribuir.
+        var builder = new SnapshotBuilder(TestData.GameData);
+        builder.Build(WithCap(10, 15));
+
+        Assert.Equal(0, Houses(builder.Build(WithCap(40, 25))));
+    }
+
     [Fact]
     public void Un_total_de_aldeanos_imposible_se_descarta_sin_cortar_la_lectura()
     {

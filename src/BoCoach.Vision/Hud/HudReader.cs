@@ -13,14 +13,17 @@ namespace BoCoach.Vision.Hud;
 /// BoCoach HUD, todos los números van en una sola letra blanca sobre negro (<paramref name="ModNumbers"/>) y el reloj
 /// en otra (<paramref name="ModClock"/>); son opcionales mientras no estén armadas.
 /// </summary>
-public sealed record HudFonts(GlyphFont Clock, GlyphFont Stock, GlyphFont Villagers, GlyphFont? ModNumbers = null, GlyphFont? ModClock = null)
+public sealed record HudFonts(
+    GlyphFont Clock, GlyphFont Stock, GlyphFont Villagers,
+    GlyphFont? ModNumbers = null, GlyphFont? ModClock = null, GlyphFont? ModPopulation = null)
 {
     public static HudFonts Load(string directory) => new(
         GlyphFont.Load(Path.Combine(directory, "clock.json")),
         GlyphFont.Load(Path.Combine(directory, "stock.json")),
         GlyphFont.Load(Path.Combine(directory, "villagers.json")),
         Optional(Path.Combine(directory, "mod_numbers.json")),
-        Optional(Path.Combine(directory, "mod_clock.json")));
+        Optional(Path.Combine(directory, "mod_clock.json")),
+        Optional(Path.Combine(directory, "mod_population.json")));
 
     private static GlyphFont? Optional(string path) => File.Exists(path) ? GlyphFont.Load(path) : null;
 }
@@ -31,6 +34,8 @@ public sealed record HudFonts(GlyphFont Clock, GlyphFont Stock, GlyphFont Villag
 /// </summary>
 /// <param name="Clipped">Regiones donde el número toca el borde de la caja: hay que agrandarla.</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso (solo con el mod BoCoach HUD).</param>
+/// <param name="Population">Población "N" de "N/M" (solo con el mod BoCoach HUD).</param>
+/// <param name="PopulationCap">Tope "M" de "N/M" (solo con el mod BoCoach HUD).</param>
 public sealed record HudReading(
     double? Clock,
     int? Food,
@@ -40,7 +45,9 @@ public sealed record HudReading(
     int? Villagers,
     int? IdleVillagers,
     IReadOnlyList<string> Clipped,
-    IReadOnlyDictionary<Resource, int>? VillagersOn = null)
+    IReadOnlyDictionary<Resource, int>? VillagersOn = null,
+    int? Population = null,
+    int? PopulationCap = null)
 {
     public int? Stock(Resource resource) => resource switch
     {
@@ -63,6 +70,8 @@ public sealed class HudReader(HudFonts fonts)
     private readonly GlyphReader _villagers = new(fonts.Villagers);
     private readonly GlyphReader? _modNumbers = fonts.ModNumbers is { } numbers ? new(numbers) : null;
     private readonly GlyphReader? _modClock = fonts.ModClock is { } clock ? new(clock) : null;
+    private readonly GlyphReader? _modPopulation = fonts.ModPopulation is { } population ? new(population) : null;
+    private static readonly Regex PopulationText = new(@"^(\d{1,3})/(\d{1,3})$", RegexOptions.Compiled);
     private static readonly Regex ModClockTime = new(@"^\d\d:\d\d:\d\d", RegexOptions.Compiled);
 
     /// <summary>
@@ -84,33 +93,49 @@ public sealed class HudReader(HudFonts fonts)
             return reading.IsUsable && int.TryParse(reading.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : null;
         }
 
-        // Sin el mod: el número de más a la derecha de la caja. Con el mod: el del cuadrado de los aldeanos y, si se
-        // pide, el del fondo negro de la derecha (el stock).
-        (bool Mod, int? Square, int? Right) Box(GlyphReader reader, string region, bool modRight)
-        {
-            if (image(region) is not { } img)
-                return (false, null, null);
-            if (_modNumbers is not null && ModPanel.Split(img) is { } parts)
-            {
-                var right = modRight && parts.Stock is { } stock ? Parse(_modNumbers.Read(stock.Stretched(PauseGain)), region) : null;
-                return (true, Parse(_modNumbers.Read(parts.Square.Stretched(PauseGain)), region), right);
-            }
-            return (false, null, Parse(reader.ReadRightmostGroup(img), region));
-        }
+        // Con el mod, las dos partes de la caja (el cuadrado de los aldeanos y el fondo negro de la derecha), ya
+        // estiradas de brillo por si el juego está en pausa; sin el mod, null.
+        (CapturedImage Square, CapturedImage? Right)? ModParts(CapturedImage img) =>
+            _modNumbers is not null && ModPanel.Split(img) is { } parts
+                ? (parts.Square.Stretched(PauseGain), parts.Stock?.Stretched(PauseGain))
+                : null;
 
         int? Stock(Resource resource, string region)
         {
-            var (_, villagers, stock) = Box(_stock, region, modRight: true);
-            if (villagers is { } v)
-                villagersOn[resource] = v;
-            return stock;
+            if (image(region) is not { } img)
+                return null;
+            if (ModParts(img) is not { } parts)
+                return Parse(_stock.ReadRightmostGroup(img), region);
+            if (Parse(_modNumbers!.Read(parts.Square), region) is { } villagers)
+                villagersOn[resource] = villagers;
+            return parts.Right is { } right ? Parse(_modNumbers.Read(right), region) : null;
         }
 
-        // Población e inactivos: con el mod, el número del cuadrado; sin él, el de la derecha.
-        int? Count(GlyphReader reader, string region)
+        // Inactivos: con el mod, el número del cuadrado; sin él, el de más a la derecha.
+        int? Idle()
         {
-            var (mod, square, right) = Box(reader, region, modRight: false);
-            return mod ? square : right;
+            if (image(RegionNames.IdleVillagers) is not { } img)
+                return null;
+            return ModParts(img) is { } parts
+                ? Parse(_modNumbers!.Read(parts.Square), RegionNames.IdleVillagers)
+                : Parse(_stock.ReadRightmostGroup(img), RegionNames.IdleVillagers);
+        }
+
+        // Población: con el mod, el total de aldeanos en el cuadrado y "N/M" a la derecha; sin él, el total azul.
+        (int? Villagers, int? Population, int? Cap) Population()
+        {
+            if (image(RegionNames.Population) is not { } img)
+                return (null, null, null);
+            if (ModParts(img) is not { } parts)
+                return (Parse(_villagers.ReadRightmostGroup(img), RegionNames.Population), null, null);
+            var villagers = Parse(_modNumbers!.Read(parts.Square), RegionNames.Population);
+            if (_modPopulation is null || parts.Right is not { } right)
+                return (villagers, null, null);
+            var reading = _modPopulation.Read(right);
+            var match = PopulationText.Match(reading.Text);
+            return match.Success && !reading.Clipped
+                ? (villagers, int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture))
+                : (villagers, null, null);
         }
 
         double? clockSeconds = null;
@@ -141,16 +166,19 @@ public sealed class HudReader(HudFonts fonts)
         var wood = Stock(Resource.Wood, RegionNames.Wood);
         var gold = Stock(Resource.Gold, RegionNames.Gold);
         var stone = Stock(Resource.Stone, RegionNames.Stone);
+        var (villagersTotal, population, cap) = Population();
         return new HudReading(
             clockSeconds,
             food,
             wood,
             gold,
             stone,
-            Count(_villagers, RegionNames.Population),
-            Count(_stock, RegionNames.IdleVillagers),
+            villagersTotal,
+            Idle(),
             clipped,
-            villagersOn.Count > 0 ? villagersOn : null);
+            villagersOn.Count > 0 ? villagersOn : null,
+            population,
+            cap);
     }
 
     /// <summary>Lee una captura grabada.</summary>

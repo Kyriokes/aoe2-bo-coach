@@ -10,6 +10,9 @@ namespace BoCoach.Vision.Hud;
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura.</param>
 /// <param name="Clipped">Regiones con el número cortado por la caja (avisar que hay que agrandarla).</param>
 /// <param name="ClockRead">Si en esta captura se leyó el reloj (<paramref name="Clock"/> conserva el último valor).</param>
+/// <param name="Population">"N" de "N/M" (solo con el mod BoCoach HUD).</param>
+/// <param name="PopulationCap">"M" de "N/M" (solo con el mod BoCoach HUD).</param>
+/// <param name="VillagersOn">Aldeanos en cada recurso según el HUD (solo con el mod BoCoach HUD).</param>
 public sealed record HudState(
     double RealTime,
     double? Clock,
@@ -22,7 +25,10 @@ public sealed record HudState(
     Age? Age,
     IReadOnlyList<string> NewEvents,
     IReadOnlyList<string> Clipped,
-    bool ClockRead = true)
+    bool ClockRead = true,
+    int? Population = null,
+    int? PopulationCap = null,
+    IReadOnlyDictionary<Resource, int>? VillagersOn = null)
 {
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
@@ -46,6 +52,9 @@ public sealed class HudTracker
     private readonly ValueFilter _stone;
     private readonly ValueFilter _villagers = new() { Window = 1, MaxRisePerSecond = 1, Slack = 2, ConfirmJump = 3 };
     private readonly ValueFilter _idle = new() { Window = 3, ConfirmJump = 2 };
+    private readonly ValueFilter _population = new() { Window = 3, ConfirmJump = 2 };
+    private readonly ValueFilter _cap = new() { Window = 3, ConfirmJump = 2 };
+    private readonly Dictionary<Resource, ValueFilter> _villagersOn = Enum.GetValues<Resource>().ToDictionary(r => r, _ => new ValueFilter { Window = 3, ConfirmJump = 2 });
     private Age? _age;
     private Age? _pendingAge;
     private int _pendingAgeCount;
@@ -64,6 +73,15 @@ public sealed class HudTracker
     public HudState Update(double realTime, HudReading reading, IReadOnlyList<string>? newEvents = null, Age? ageRead = null)
     {
         UpdateAge(ageRead);
+        var villagersOn = new Dictionary<Resource, int>();
+        foreach (var (resource, filter) in _villagersOn)
+        {
+            int? read = reading.VillagersOn is { } on && on.TryGetValue(resource, out var v) ? v : null;
+            if (filter.Add(read, realTime) is { } smoothed)
+                villagersOn[resource] = (int)smoothed;
+        }
+        var population = (int?)_population.Add(reading.Population, realTime);
+        var cap = (int?)_cap.Add(reading.PopulationCap, realTime);
         return new HudState(
             realTime,
             _clock.Add(reading.Clock, realTime),
@@ -76,7 +94,10 @@ public sealed class HudTracker
             _age,
             newEvents ?? [],
             reading.Clipped,
-            reading.Clock is not null);
+            reading.Clock is not null,
+            population,
+            cap,
+            villagersOn.Count > 0 ? villagersOn : null);
     }
 
     private void UpdateAge(Age? read)

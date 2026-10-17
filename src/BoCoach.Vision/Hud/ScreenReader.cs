@@ -56,8 +56,11 @@ public sealed class ScreenReader
 
 public static class HudStateExtensions
 {
-    /// <summary>Lo que necesita el motor (la población "N/M" todavía no se lee: la estima el SnapshotBuilder).</summary>
+    /// <summary>
+    /// Lo que necesita el motor. La población "N/M" solo se lee con el mod BoCoach HUD; si no, la estima el
+    /// SnapshotBuilder.
+    /// </summary>
     public static ScreenReading ToReading(this HudState state) => new(
         state.Clock, state.Food, state.Wood, state.Gold, state.Stone, state.Villagers,
-        Population: null, PopulationCap: null, state.NewEvents);
+        state.Population, state.PopulationCap, state.NewEvents);
 }
