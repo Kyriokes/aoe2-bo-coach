@@ -21,7 +21,8 @@
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //
-// <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen) o "blue" (números azules).
+// <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
+// el negro del mod) o "blue" (números azules).
 // Con el HUD del mod BoCoach HUD, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
 // (lo que está a la derecha del cuadrado).
 
@@ -73,7 +74,10 @@ static InkSpec Ink(string color) => color switch
     // Umbral por imagen (Otsu) entre 110 y 200: para los números del stock en los distintos diseños de HUD.
     "white-auto" => new InkSpec { Color = "white", Low = 110, High = 200, Adaptive = true },
     "blue" => new InkSpec { Color = "blue", Low = 120, High = 190 },
-    _ => throw new ArgumentException($"Tinta desconocida: {color} (usá white o blue)."),
+    // Blanco sobre el negro puro del mod BoCoach HUD: umbral bajo para que entren los trazos finos (el "0" del reloj
+    // tiene las curvas de arriba y abajo muy finas y con 180 se partía en dos palitos).
+    "white-on-black" => new InkSpec { Color = "white", Low = 50, High = 150 },
+    _ => throw new ArgumentException($"Tinta desconocida: {color} (usá white, white-auto, white-on-black o blue)."),
 };
 
 static int Option(string[] args, string name, int fallback)

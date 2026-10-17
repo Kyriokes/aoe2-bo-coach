@@ -38,8 +38,54 @@ public static class ModPanel
         if (blocks.Count == 0)
             return null;
 
-        CapturedImage Block((int Start, int Length) b) => image.Crop(new PixelRect(b.Start, 0, b.Length, h));
-        return (Block(blocks[0]), blocks.Count > 1 ? Block(blocks[1]) : null);
+        // Otros paneles (KoBHV) también tienen fondos negro puro; lo único del mod es la franja de un solo color
+        // justo arriba del negro del cuadrado.
+        var square = Body(image, blocks[0]);
+        if (!HasBandAbove(image, blocks[0], square.Top))
+            return null;
+        return (Crop(image, blocks[0], square), blocks.Count > 1 ? Crop(image, blocks[1], Body(image, blocks[1])) : null);
+    }
+
+    /// <summary>
+    /// Las filas del bloque sin lo de arriba y abajo que no es negro: la franja de color del cuadrado y el panel que
+    /// la caja toma de más. Son las filas seguidas (las más) donde los dos bordes del bloque son negros.
+    /// </summary>
+    private static (int Top, int Height) Body(CapturedImage image, (int Start, int Length) block)
+    {
+        var (left, right) = (block.Start, block.Start + block.Length - 1);
+        var (bestTop, bestHeight) = (0, 0);
+        for (var y = 0; y < image.Height; y++)
+        {
+            if (!(IsBlack(image, left, y) && IsBlack(image, right, y)))
+                continue;
+            var top = y;
+            while (y < image.Height && IsBlack(image, left, y) && IsBlack(image, right, y))
+                y++;
+            if (y - top > bestHeight)
+                (bestTop, bestHeight) = (top, y - top);
+        }
+        return bestHeight == 0 ? (0, image.Height) : (bestTop, bestHeight);
+    }
+
+    private static CapturedImage Crop(CapturedImage image, (int Start, int Length) block, (int Top, int Height) body) =>
+        image.Crop(new PixelRect(block.Start, body.Top, block.Length, body.Height));
+
+    /// <summary>Si dos filas arriba del cuerpo hay un color parejo y no oscuro de borde a borde (la franja del mod).</summary>
+    private static bool HasBandAbove(CapturedImage image, (int Start, int Length) block, int bodyTop)
+    {
+        var y = bodyTop - 2;
+        if (y < 0 || block.Length < 6)
+            return false;
+        int minR = 255, minG = 255, minB = 255, maxR = 0, maxG = 0, maxB = 0;
+        for (var x = block.Start + 2; x < block.Start + block.Length - 2; x++)
+        {
+            var (r, g, b) = image.Pixel(x, y);
+            (minR, maxR) = (Math.Min(minR, r), Math.Max(maxR, r));
+            (minG, maxG) = (Math.Min(minG, g), Math.Max(maxG, g));
+            (minB, maxB) = (Math.Min(minB, b), Math.Max(maxB, b));
+        }
+        const int even = 30;
+        return maxR - minR <= even && maxG - minG <= even && maxB - minB <= even && Math.Max(maxR, Math.Max(maxG, maxB)) >= 80;
     }
 
     /// <summary>Si la región tiene el fondo negro del mod (el reloj): más de un tercio de los píxeles negro puro.</summary>

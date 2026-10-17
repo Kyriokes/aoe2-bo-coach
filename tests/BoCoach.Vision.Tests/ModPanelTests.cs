@@ -5,8 +5,9 @@ namespace BoCoach.Vision.Tests;
 
 public class ModPanelTests
 {
-    // Caja de 60×20: panel gris, cuadrado negro (x 2..19) con un dígito blanco, panel, fondo negro del stock (x 24..55).
-    private static CapturedImage Box(bool withStock = true)
+    // Caja de 60×20 sobre panel con textura: cuadrado (x 2..19) con franja de color arriba (y 0..6) y un dígito
+    // blanco abajo, panel, fondo negro del stock (x 24..55) con su número.
+    private static CapturedImage Box(bool withStock = true, bool withBand = true)
     {
         const int w = 60, h = 20;
         var bgra = new byte[w * h * 4];
@@ -14,11 +15,16 @@ public class ModPanelTests
         {
             for (var x = 0; x < w; x++)
             {
-                var black = (x is >= 2 and <= 19) || (withStock && x is >= 24 and <= 55);
+                var inSquare = x is >= 2 and <= 19;
+                var band = withBand && inSquare && y <= 6;
+                var black = (inSquare && !band) || (withStock && x is >= 24 and <= 55);
                 var digit = (x is >= 9 and <= 11 && y is >= 10 and <= 17) || (x is >= 30 and <= 33 && y is >= 6 and <= 14);
-                byte v = digit && black ? (byte)255 : black ? (byte)0 : (byte)120;
+                var (r, g, b) = band ? (230, 102, 102)
+                    : digit && black ? (255, 255, 255)
+                    : black ? (0, 0, 0)
+                    : (100 + (x * 7 + y * 13) % 60, 90, 80);
                 var i = (y * w + x) * 4;
-                (bgra[i], bgra[i + 1], bgra[i + 2], bgra[i + 3]) = (v, v, v, 255);
+                (bgra[i], bgra[i + 1], bgra[i + 2], bgra[i + 3]) = ((byte)b, (byte)g, (byte)r, 255);
             }
         }
         return new CapturedImage(w, h, bgra);
@@ -31,7 +37,15 @@ public class ModPanelTests
 
         Assert.NotNull(parts);
         Assert.Equal(18, parts.Value.Square.Width);
+        Assert.Equal(13, parts.Value.Square.Height); // sin la franja de color
         Assert.Equal(32, parts.Value.Stock!.Width);
+    }
+
+    [Fact]
+    public void Un_fondo_negro_sin_la_franja_de_color_no_es_el_mod()
+    {
+        // El panel de KoBHV también tiene fondos negro puro detrás de los números.
+        Assert.Null(ModPanel.Split(Box(withBand: false)));
     }
 
     [Fact]
