@@ -2,7 +2,8 @@
 # número de prioridad más bajo, o los originales) en cada perfil que usa mods. Cambia dos cosas para leer mejor:
 #   - resourcepanel.json: el ícono de cada recurso y el de inactivos pasan a ser un cuadrado negro con la mitad
 #     de arriba del color del recurso (azul en población, rojo en inactivos) y abajo la cantidad de aldeanos
-#     grande, en blanco. Los stocks con la misma letra y tamaño. "N/M" de población y la edad no cambian.
+#     grande, en blanco. Los stocks con la misma letra y tamaño; detrás de cada stock y del "N/M" de población,
+#     un rectángulo negro. La edad no cambia.
 #   - worldtimerpanel.json: el reloj más grande con un rectángulo negro liso detrás.
 # Si el mod ya existe, parte de sus propios paneles (así no cambian las posiciones ni la calibración aunque se
 # hayan apagado los mods de los que salió). Con -Regenerar vuelve a partir de los mods activos.
@@ -60,6 +61,9 @@ function Panel-Recursos([string]$base) {
     $j = Leer $base
     $widgets = @(foreach ($w in $j.Collection.Widgets) { Todos $w.Widget })
     $fontIndex = @($widgets | Where-Object { $_.Name -eq 'WoodStorage' })[0].StateMaterials.StateNormal.Font.FontIndex
+    # Rectángulo negro detrás de cada stock y del "N/M" de población, del alto de los cuadrados y separado de ellos
+    # por un poco de panel: así el lector distingue el cuadrado del stock y nunca lee la textura del panel.
+    $fondos = @{}
     foreach ($recurso in 'Wood', 'Food', 'Gold', 'Stone', 'Population') {
         $icono = @($widgets | Where-Object { $_.Name -eq $recurso -and $_.Type -eq 'Base' })[0]
         $aldeanos = @(Hijos $icono | Where-Object { $_.Name -eq 'Workers' })[0]
@@ -68,22 +72,46 @@ function Panel-Recursos([string]$base) {
         if ($recurso -eq 'Population') {
             # La población tiene dos estados (con ícono y sin él): los dos en negro.
             $icono.StateMaterials = [pscustomobject][ordered]@{ UserStates = 2; UserState0 = Plano 0 0 0; UserState1 = Plano 0 0 0 }
+            $stock = @($widgets | Where-Object { $_.Name -eq 'PopulationCount' })[0]
+            $siguiente = @($widgets | Where-Object { $_.Name -eq 'Idle' })[0]
         } else {
             $icono.StateMaterials = [pscustomobject]@{ StateNormal = Plano 0 0 0 }
             # El stock con la misma letra y tamaño que los aldeanos, hasta el borde del cuadrado siguiente.
             $stock = @($widgets | Where-Object { $_.Name -eq "${recurso}Storage" })[0]
             $siguiente = @($widgets | Where-Object { $_.Type -eq 'Base' -and $_.ViewPort.xorigin -gt $icono.ViewPort.xorigin -and $_.Name -in 'Wood', 'Food', 'Gold', 'Stone', 'Population' } |
                 Sort-Object { $_.ViewPort.xorigin })[0]
-            $limite = $siguiente.ViewPort.xorigin - [int]($siguiente.ViewPort.width / 2) - 4
-            $stock.ViewPort = Vista $stock.ViewPort.xorigin $stock.ViewPort.yorigin ($limite - $stock.ViewPort.xorigin) $puntosNumero 'CentreLeft'
+        }
+        $limite = $siguiente.ViewPort.xorigin - [int]($ancho / 2) - 4
+        # El fondo arranca un poco después del cuadrado y el texto un poco más adentro, para que no toque el borde.
+        $x0 = $icono.ViewPort.xorigin + [int]($ancho / 2) + 5
+        $xTexto = [Math]::Max($stock.ViewPort.xorigin, $x0 + 8)
+        if ($recurso -eq 'Population') {
+            $stock.ViewPort.xorigin = $xTexto
+        } else {
+            $stock.ViewPort = Vista $xTexto $stock.ViewPort.yorigin ($limite - $xTexto) $puntosNumero 'CentreLeft'
             $stock.StateMaterials = Letra-Numero $fontIndex
         }
+        Fijar $stock ZPlaneLocalOffset 2
+        $fondos[$stock.Name] = [pscustomobject]@{ Widget = [pscustomobject][ordered]@{
+            Type              = 'Base'
+            Name              = "BoCoachBack$($stock.Name)"
+            ViewPort          = Vista $x0 ($icono.ViewPort.yorigin - [int]($alto / 2)) ($limite - $x0) $alto 'TopLeft'
+            ZPlaneLocalOffset = 1
+            StateMaterials    = [pscustomobject]@{ StateNormal = Plano 0 0 0 }
+            ChildWidgets      = @()
+        } }
         $aldeanos.ViewPort = Vista 0 $banda $ancho ($alto - $banda) 'TopLeft'
         $aldeanos.StateMaterials = Letra-Numero $fontIndex
         Fijar $aldeanos TextAnchor 'CentreCentre'
         Fijar $aldeanos ZPlaneLocalOffset 2
         $icono.ChildWidgets = @(Banda $ancho $banda $colores[$recurso]) + @($icono.ChildWidgets | Where-Object { $_.Widget.Name -ne 'BoCoachBand' })
     }
+    $fondo = $j.Collection.Widgets[0].Widget
+    $fondo.ChildWidgets = @(foreach ($c in @($fondo.ChildWidgets)) {
+        if ($c.Widget.Name -like 'BoCoachBack*') { continue }
+        if ($fondos.ContainsKey($c.Widget.Name)) { $fondos[$c.Widget.Name] }
+        $c
+    })
 
     # Inactivos: el mismo cuadrado que los recursos, a su altura (el botón de KoBHV era alto para la flecha y
     # sin sus texturas el juego estira el ícono original).

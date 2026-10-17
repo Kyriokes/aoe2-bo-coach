@@ -22,6 +22,8 @@
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen) o "blue" (números azules).
+// Con el HUD del mod BoCoach HUD, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
+// (lo que está a la derecha del cuadrado).
 
 using System.Globalization;
 using System.Text.Json;
@@ -100,7 +102,8 @@ static int Glyphs(string recording, string region, InkSpec ink, string output, i
         foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
         {
             // Ancho típico provisorio de un dígito (--ratio-percent, 70 = 0,7 del alto): sirve para partir dígitos pegados.
-            foreach (var g in region.Split(',').SelectMany(r => BoCoach.Vision.Digits.Glyphs.Extract(session.Image(frame.Index, r), ink, ratio)))
+            foreach (var g in region.Split(',').Select(r => Part(session, frame.Index, r)).OfType<CapturedImage>()
+                         .SelectMany(image => BoCoach.Vision.Digits.Glyphs.Extract(image, ink, ratio)))
             {
                 samples.Add(g.Cell);
                 ratios.Add(g.WidthRatio);
@@ -229,10 +232,32 @@ static int Read(string recording, string region, string fontPath, string[] args)
     var reader = new GlyphReader(GlyphFont.Load(fontPath));
     foreach (var frame in SelectFrames(session, args))
     {
-        var reading = reader.Read(session.Image(frame, region));
+        if (Part(session, frame, region) is not { } image)
+        {
+            Console.WriteLine($"{frame,6}  (sin el cuadrado del mod)");
+            continue;
+        }
+        var reading = region.EndsWith(":stock", StringComparison.Ordinal) ? reader.ReadRightmostGroup(image) : reader.Read(image);
         Console.WriteLine($"{frame,6}  {reading.Text,-12} {reading.Confidence:0.00}");
     }
     return 0;
+}
+
+// "región", o con el HUD del mod "región:square" (el número del cuadrado) y "región:stock" (lo que está a su derecha).
+static CapturedImage? Part(RecordedSession session, int frame, string spec)
+{
+    var parts = spec.Split(':');
+    var image = session.Image(frame, parts[0]);
+    if (parts.Length == 1)
+        return image;
+    return ModPanel.Split(image) is { } split
+        ? parts[1] switch
+        {
+            "square" => split.Square,
+            "stock" => split.Stock,
+            _ => throw new ArgumentException($"Parte desconocida: {parts[1]} (square o stock)"),
+        }
+        : null;
 }
 
 // ---- ocr: OCR de Windows sobre una región (para el log de eventos) ----

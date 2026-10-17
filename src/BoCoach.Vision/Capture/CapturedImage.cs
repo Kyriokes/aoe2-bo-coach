@@ -28,6 +28,14 @@ public sealed class CapturedImage
         return (Bgra[i + 2], Bgra[i + 1], Bgra[i]);
     }
 
+    public CapturedImage Crop(PixelRect rect)
+    {
+        var bgra = new byte[rect.Width * rect.Height * 4];
+        for (var y = 0; y < rect.Height; y++)
+            Buffer.BlockCopy(Bgra, ((rect.Y + y) * Width + rect.X) * 4, bgra, y * rect.Width * 4, rect.Width * 4);
+        return new CapturedImage(rect.Width, rect.Height, bgra);
+    }
+
     /// <summary>Escala por un factor entero (vecino más cercano): agranda los dígitos chicos del HUD para el OCR.</summary>
     public CapturedImage Scale(int factor)
     {
