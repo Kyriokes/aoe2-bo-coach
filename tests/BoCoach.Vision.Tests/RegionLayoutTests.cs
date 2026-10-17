@@ -10,9 +10,10 @@ public sealed class RegionLayoutTests : IDisposable
     public void Dispose() => File.Delete(_path);
 
     [Fact]
-    public void El_default_tiene_las_9_regiones()
+    public void El_default_tiene_las_11_regiones()
     {
-        Assert.Equal(9, RegionNames.All.Count);
+        // Las 9 que se leen más la cola de producción y los puntajes, que por ahora solo se graban.
+        Assert.Equal(11, RegionNames.All.Count);
         Assert.All(RegionNames.All, name => Assert.True(RegionLayout.Default.Regions.ContainsKey(name)));
         Assert.All(RegionNames.All, name => Assert.NotEqual(name, RegionNames.Label(name)));
     }

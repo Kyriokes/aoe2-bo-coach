@@ -34,6 +34,8 @@ public partial class CalibrationWindow : Window
         [RegionNames.EventLog] = Color.FromRgb(0xC3, 0x8B, 0xE8),
         [RegionNames.IdleVillagers] = Color.FromRgb(0xF0, 0x60, 0x60),
         [RegionNames.Age] = Color.FromRgb(0xF4, 0xF2, 0xEE),
+        [RegionNames.ProductionQueue] = Color.FromRgb(0x5F, 0xD3, 0xC4),
+        [RegionNames.Scores] = Color.FromRgb(0xF0, 0x9A, 0x3E),
     };
 
     private static readonly IntPtr HwndTopmost = new(-1);

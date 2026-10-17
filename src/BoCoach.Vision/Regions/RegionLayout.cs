@@ -3,7 +3,7 @@ using BoCoach.Vision.Capture;
 
 namespace BoCoach.Vision.Regions;
 
-/// <summary>Las regiones del HUD que se leen.</summary>
+/// <summary>Las regiones del HUD que se calibran y se graban (las dos últimas todavía no se leen).</summary>
 public static class RegionNames
 {
     public const string Clock = "clock";
@@ -16,12 +16,18 @@ public static class RegionNames
     public const string IdleVillagers = "idle_villagers";
     public const string Age = "age";
 
+    /// <summary>Íconos de lo que se está produciendo (arriba a la izquierda), con la cantidad en cola. Solo se graba.</summary>
+    public const string ProductionQueue = "production_queue";
+
+    /// <summary>Panel de puntajes de los jugadores (puntaje, civ y edad de cada uno). Solo se graba.</summary>
+    public const string Scores = "scores";
+
     /// <summary>
     /// Cada caja de recurso toma el ícono, la cantidad de aldeanos que el HUD muestra debajo y el stock:
     /// los dos números se separan por su posición dentro de la caja. Población igual: aldeanos y pop/máximo.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
-        [Wood, Food, Gold, Stone, Population, IdleVillagers, Age, Clock, EventLog];
+        [Wood, Food, Gold, Stone, Population, IdleVillagers, Age, Clock, EventLog, ProductionQueue, Scores];
 
     public static string Label(string name) => name switch
     {
@@ -34,6 +40,8 @@ public static class RegionNames
         EventLog => "Log de eventos",
         IdleVillagers => "Inactivos",
         Age => "Edad",
+        ProductionQueue => "Cola de producción",
+        Scores => "Puntajes",
         _ => name,
     };
 }
@@ -105,6 +113,9 @@ public sealed class RegionLayout
         [RegionNames.Age] = new(0.3070, 0.0080, 0.0580, 0.0220),
         [RegionNames.Clock] = new(0.3839, 0.0037, 0.0313, 0.0167),
         [RegionNames.EventLog] = new(0.0047, 0.1361, 0.2510, 0.0907),
+        // Sin medir todavía: lugares aproximados para que se vean al calibrar.
+        [RegionNames.ProductionQueue] = new(0.0031, 0.0480, 0.2500, 0.0500),
+        [RegionNames.Scores] = new(0.8200, 0.7000, 0.1700, 0.0600),
     });
 
     public PixelRect PixelsOf(string region, int screenWidth, int screenHeight) =>
