@@ -182,10 +182,16 @@ public partial class App : Application
         overlay.Apply(new CoachFrame(coach.View, null, 0, 31, new ProcessUsage(1.2, 87), false, false, null, GameWindow.PrimaryScreen));
         var window = new CoachOverlay(overlay) { Left = -30000, Top = 0 };
         window.Show();
+        // La segunda parte: los números debajo de los recursos, en otra imagen ("-recursos.png").
+        var resources = new ResourceOverlay(overlay.Resources, Vision.Regions.RegionLayout.Default);
+        resources.Show();
+        resources.PlaceOver(new Vision.Capture.PixelRect(-30000, 0, 1920, 1080));
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
             Render(window, path);
+            Render(resources, Path.ChangeExtension(path, null) + "-recursos.png");
             window.Close();
+            resources.Close();
             Shutdown(0);
         });
     }

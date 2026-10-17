@@ -1,5 +1,7 @@
+using System.IO;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Economy;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -32,11 +34,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private LiveCoach? _coach;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
+    private readonly string? _settingsPath;
 
     /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
-    public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames)
+    /// <param name="settingsPath">Dónde se guardan los ajustes (máximo de aldeanos); null para no guardarlos (tests).</param>
+    public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames, string? settingsPath = null)
     {
+        _settingsPath = settingsPath;
+        MaxVillagers = settingsPath is null ? CoachSettings.DefaultMaxVillagers : CoachSettings.Load(settingsPath).MaxVillagers;
         _data = data;
         _host = host;
         _selected = selected;
@@ -48,6 +54,30 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public partial bool IsRunning { get; set; }
 
     [ObservableProperty] public partial string Status { get; set; } = "";
+
+    /// <summary>Hasta cuántos aldeanos producen sin parar los centros urbanos (se aplica al empezar el coach).</summary>
+    [ObservableProperty] public partial int MaxVillagers { get; set; }
+
+    partial void OnMaxVillagersChanged(int value)
+    {
+        var clamped = CoachSettings.Clamp(value);
+        if (clamped != value)
+        {
+            MaxVillagers = clamped;
+            return;
+        }
+        if (_settingsPath is not null)
+        {
+            try
+            {
+                new CoachSettings { MaxVillagers = value }.Save(_settingsPath);
+            }
+            catch (IOException)
+            {
+                // Si no se puede guardar, vale para esta sesión.
+            }
+        }
+    }
 
     public string ButtonText => IsRunning ? "■ Detener coach" : "▶ Empezar coach";
 
@@ -79,7 +109,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         Stop();
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false };
-        var coach = _coach = new LiveCoach(bo, _data.GameData, _data.Events, _data.Fonts, OcrReader.TryCreate(), frames);
+        var coach = _coach = new LiveCoach(bo, _data.GameData, _data.Events, _data.Fonts, OcrReader.TryCreate(), frames,
+            new EconomySettings { MaxVillagers = MaxVillagers });
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.Updated += frame => _host.RunOnUi(() =>
         {

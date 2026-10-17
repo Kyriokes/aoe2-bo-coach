@@ -38,6 +38,12 @@
             <DockPanel>
                 <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,18,0" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <StackPanel x:Name="MaxVillagersBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                ToolTip="Hasta cuántos aldeanos producen sin parar los centros urbanos (100 a 130 según la estrategia). La comida nunca baja de lo que necesitan. Se aplica al empezar el coach">
+                        <TextBlock Text="Máx. aldeanos" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Text="{Binding MaxVillagers, UpdateSourceTrigger=LostFocus}" Width="44" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Máximo de aldeanos" />
+                    </StackPanel>
                     <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
                             ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
                     <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
@@ -90,6 +96,8 @@
                         <ContentControl Content="{Binding Gold}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
                         <ContentControl Content="{Binding Stone}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
                     </ItemsControl>
+                    <TextBlock Text="{Binding FoodFloor}" Foreground="#E8C26A" FontSize="12" Margin="0,4,0,0"
+                               Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
                     <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
                                Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />

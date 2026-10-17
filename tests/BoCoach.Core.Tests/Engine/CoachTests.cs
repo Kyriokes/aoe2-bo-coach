@@ -1,3 +1,4 @@
+using BoCoach.Core.Economy;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
@@ -320,11 +321,17 @@ public class PartidaDeScoutsGrabadaTests(Xunit.Abstractions.ITestOutputHelper ou
 
         // Según el total de aldeanos del HUD: de 4:14 a 4:50 y de 6:05 a 6:47 no salió ninguno (un aldeano tarda 25 s).
         // De 8:27 a 11:27 tampoco, pero el centro urbano estaba investigando telar y Feudal: no es estar parado.
-        Assert.Equal(2, idle.Count);
+        // Terminada la BO el centro urbano tiene que seguir hasta el máximo de aldeanos: en Feudal paró de 11:52 a
+        // 13:48 y de 13:56 a 14:39 (con 25 s + 8 de margen, avisa desde 12:25 y 14:21).
+        Assert.Equal(4, idle.Count);
         Assert.Equal(Clock("4:47"), idle[0].From, 1.5);
         Assert.Equal(Clock("4:50"), idle[0].To, 1.5);
         Assert.Equal(Clock("6:38"), idle[1].From, 1.5);
         Assert.Equal(Clock("6:47"), idle[1].To, 1.5);
+        Assert.Equal(Clock("12:25"), idle[2].From, 1.5);
+        Assert.Equal(Clock("13:48"), idle[2].To, 1.5);
+        Assert.Equal(Clock("14:21"), idle[3].From, 1.5);
+        Assert.Equal(Clock("14:39"), idle[3].To, 1.5);
     }
 }
 
@@ -350,10 +357,20 @@ public class CentroUrbanoParadoTests
     }
 
     [Fact]
-    public void Si_la_BO_ya_no_pide_aldeanos_no_avisa()
+    public void Sin_aldeanos_en_la_BO_avisa_igual_hasta_el_maximo()
     {
         var bo = Scouts with { Steps = Scouts.Steps.Where(s => s.What != "villager").ToList() };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(100, 6));
+
+        Assert.NotNull(coach.Update(At(200, 6)).TownCenterIdle);
+    }
+
+    [Fact]
+    public void Con_el_maximo_de_aldeanos_y_la_BO_terminada_no_avisa()
+    {
+        var bo = Scouts with { Steps = Scouts.Steps.Where(s => s.What != "villager").ToList() };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events, economy: new EconomySettings { MaxVillagers = 6 });
         coach.Update(At(100, 6));
 
         Assert.Null(coach.Update(At(200, 6)).TownCenterIdle);

@@ -1,3 +1,4 @@
+using BoCoach.Core.Economy;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -109,11 +110,11 @@ public sealed class LiveCoach : IDisposable
     private string? _error;
     private PixelRect _area;
 
-    public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames)
+    public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames, EconomySettings? economy = null)
     {
         BuildOrder = bo;
         Frames = frames;
-        _coach = new Coach(bo, data, events);
+        _coach = new Coach(bo, data, events, economy: economy);
         _builder = new SnapshotBuilder(data);
         _reader = new ScreenReader(fonts, ocr, events);
     }

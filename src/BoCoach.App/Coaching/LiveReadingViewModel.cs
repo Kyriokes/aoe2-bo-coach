@@ -37,6 +37,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     [ObservableProperty] public partial string Step { get; set; } = "";
     [ObservableProperty] public partial string Problems { get; set; } = "";
     [ObservableProperty] public partial string Usage { get; set; } = "";
+    [ObservableProperty] public partial string FoodFloor { get; set; } = "";
 
     /// <summary>Los últimos eventos que se leyeron del log, el más nuevo arriba.</summary>
     public ObservableCollection<string> Events { get; } = [];
@@ -54,7 +55,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         Stone.Stock = Stock(hud?.Stone);
 
         var plan = view.Distribution;
-        string Plan(Resource r) => plan is { } d ? $"aldeanos: {d[r]:0}" : "aldeanos: —";
+        var actual = view.Actual;
+        string Plan(Resource r) =>
+            (plan is { } d ? $"aldeanos: {d[r]:0}" : "aldeanos: —") + (actual is { } a ? $" (hay ~{a[r]:0})" : "");
         Food.Villagers = Plan(Resource.Food);
         Wood.Villagers = Plan(Resource.Wood);
         Gold.Villagers = Plan(Resource.Gold);
@@ -63,6 +66,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         Villagers = hud?.Villagers is { } v ? $"{v}" : "no se lee";
         Idle = hud?.IdleVillagers is { } idle ? $"{idle}" : "—";
         Population = $"{view.Population}/{view.PopulationCap} (estimada)";
+        FoodFloor = view.FoodFloor > 0 ? $"mínimo en comida para no parar el centro urbano: {view.FoodFloor}" : "";
         Age = hud?.Age is { } age ? BuildOrderValidator.AgeName(age) : "no se lee";
         Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }
