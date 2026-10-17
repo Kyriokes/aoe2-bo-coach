@@ -188,70 +188,127 @@ def valores_por_jugador(archivo) -> dict[int, tuple[int, ...]]:
 
 
 class Objetos:
-    """Lo que existe, según las sincronizaciones: cuántos objetos tiene el jugador (valor 6) y la suma de sus ids
-    (valor 10). Las órdenes dicen lo que el jugador pidió; esto dice lo que pasó.
+    """Lo que existe, según las sincronizaciones: cuántos objetos tiene el jugador (valor 6), la suma de sus ids
+    (valor 10) y lo que guardan (valor 4). Las órdenes dicen lo que el jugador pidió; esto dice lo que pasó.
 
-    Cada objeto que aparece suma su id y cada uno que se pierde lo resta. Si entre dos sincronizaciones cambió uno
-    solo, se sabe exactamente cuál. Los objetos nuevos (unidades, cimientos) tienen un id mayor que todos los
-    anteriores; los del mapa que pasan a ser del jugador (una oveja encontrada) tienen uno chico.
-    Verificado: el aldeano que nació a las 3:01 en la partida de prueba sumó +6921, su id en las órdenes posteriores.
+    Cada objeto que aparece suma su id y cada uno que se va lo resta: si entre dos sincronizaciones cambió uno solo,
+    se sabe exactamente cuál. Los ids nuevos son siempre mayores que todos los anteriores; los objetos del mapa que
+    pasan a ser del jugador (una oveja encontrada) tienen uno chico.
+
+    Verificado en dos partidas de prueba (2026-10-17):
+    - Nacer: +1 objeto y la suma sube su id (el aldeano 6921, el mismo id que usan las órdenes siguientes).
+    - Morir: el objeto se convierte en sus restos (ruinas, cadáver), que tienen un id nuevo: misma cantidad, la suma
+      sube (nuevo - viejo) y el valor 4 sube el tiempo que les queda, que baja 1 por segundo. Cuando llega a 0 los
+      restos desaparecen (-1 objeto): eso lo hace el juego solo, no es una orden. Ej.: el centro urbano 5110 pasó a
+      ser las ruinas 6185 (+1075, valor 4 +55) y a los 61 s se fueron; el aldeano 6181 pasó a ser el cadáver 6194.
+    - El centro urbano son 5 objetos: el edificio y 4 partes con los ids siguientes (5111 a 5114). Al caer, las
+      partes desaparecen sin restos (-4 objetos, suma -20450) y en la misma sincronización el juego devuelve lo que
+      estaba en la cola (+150 de stock por 3 aldeanos).
     """
+
+    GENERICOS = ("edificio", "unidad")
 
     def __init__(self):
         self.cantidad: int | None = None
         self.suma = 0
-        self.nombres: dict[int, str] = {}  # ids que aparecieron en órdenes propias
+        self.guardado = 0  # valor 4: carga de los aldeanos, comida de las ovejas y tiempo que les queda a los restos
+        self.nombres: dict[int, str] = {}  # de órdenes propias o de cuando nació
+        self.vivos: set[int] = set()  # ids propios conocidos que siguen vivos
         self.con_cola: set[int] = set()  # edificios donde se encoló algo
+        self.ultimo_encolado: dict[int, str] = {}  # edificio -> lo último que se encoló ahí
+        self.cimientos: list[str] = []  # edificios pedidos desde la sincronización anterior
+        self.restos: dict[int, str] = {}  # id de los restos -> de qué son
         self.mayor_id = 0
+
+    def _nombrar(self, i: int, nombre: str) -> None:
+        if self.nombres.get(i) in (None, *self.GENERICOS):
+            self.nombres[i] = nombre
+        self.vivos.add(i)  # si recibe órdenes, está vivo
 
     def orden(self, nombre: str, d: dict) -> None:
         ids = list(d.get("object_ids") or [])
         if nombre in ("SPECIAL", "UNGARRISON"):
             ids = [i >> 8 if i > 0xFFFFF else i for i in ids]  # mgz los lee corridos 8 bits
         if nombre in ("DE_QUEUE", "QUEUE", "MULTIQUEUE"):
+            unidad = d.get("unit_id")
             for i in ids:
-                self.nombres.setdefault(i, DONDE_UNIDAD.get(d.get("unit_id"), "edificio"))
+                self._nombrar(i, DONDE_UNIDAD.get(unidad, "edificio"))
                 self.con_cola.add(i)
+                self.ultimo_encolado[i] = UNIDADES.get(unidad, f"unidad {unidad}")
         elif nombre == "RESEARCH":
             for i in ids:
-                self.nombres.setdefault(i, DONDE_TECH.get(d.get("technology_id"), "edificio"))
+                self._nombrar(i, DONDE_TECH.get(d.get("technology_id"), "edificio"))
         elif nombre in ("GATHER_POINT", "SPECIAL"):
             for i in ids:
-                self.nombres.setdefault(i, "edificio")
+                self._nombrar(i, "edificio")
         else:
             for i in ids:
-                self.nombres.setdefault(i, "unidad")
+                self._nombrar(i, "unidad")
+        if nombre in ("BUILD", "WALL"):
+            self.cimientos.append(UNIDADES.get(d.get("building_id"), "edificio"))
         self.mayor_id = max([self.mayor_id, *ids])
 
     def _nombre(self, i: int) -> str:
         return f"{self.nombres[i]} {i}" if i in self.nombres else f"objeto {i}"
 
-    def cambio(self, cantidad: int, suma: int) -> str | None:
+    def _cola(self, edificio: int) -> str:
+        if edificio not in self.con_cola:
+            return ""
+        self.con_cola.discard(edificio)
+        return " Lo que tenía en cola ya no va a salir (si el juego lo devuelve, se ve en el stock)."
+
+    def cambio(self, cantidad: int, suma: int, guardado: int) -> str | None:
         """Qué cambió desde la sincronización anterior, o None si nada."""
+        cimientos, self.cimientos = self.cimientos, []
         if self.cantidad is None:
-            self.cantidad, self.suma = cantidad, suma
-            return f"Objetos tuyos: {cantidad}"
-        dn, ds = cantidad - self.cantidad, suma - self.suma
-        self.cantidad, self.suma = cantidad, suma
+            self.cantidad, self.suma, self.guardado = cantidad, suma, guardado
+            return f"Objetos tuyos al empezar: {cantidad} (el centro urbano cuenta como 5: el edificio y 4 partes)"
+        dn, ds, dg = cantidad - self.cantidad, suma - self.suma, guardado - self.guardado
+        self.cantidad, self.suma, self.guardado = cantidad, suma, guardado
         if dn == 0 and ds == 0:
             return None
-        if dn == 1 and ds > self.mayor_id:
-            self.mayor_id = ds
-            return f"Apareció el objeto {ds} (nuevo: una unidad que salió o un cimiento) · total {cantidad}"
+
+        if dn == 1 and ds > self.mayor_id:  # nació algo
+            nuevo = self.mayor_id = ds
+            self.vivos.add(nuevo)
+            if cimientos:
+                self.nombres[nuevo] = f"cimiento de {cimientos[0]}"
+                return f"Apareció el {self.nombres[nuevo]} (objeto {nuevo}) · total {cantidad}"
+            edificio = next((e for e in reversed(self.ultimo_encolado) if e in self.vivos), None)
+            if edificio is not None:
+                self.nombres[nuevo] = self.ultimo_encolado[edificio]
+                return f"Salió {self.nombres[nuevo]} {nuevo} de {self._nombre(edificio)} · total {cantidad}"
+            self.nombres[nuevo] = "unidad nueva"
+            return f"Apareció el objeto {nuevo} (nuevo) · total {cantidad}"
         if dn == 1 and ds > 0:
             return f"Se sumó el objeto {ds}, que ya estaba en el mapa (una oveja encontrada, por ejemplo) · total {cantidad}"
-        if dn == -1 and ds < 0:
-            perdido = -ds
-            cola = " Tenía cola: lo que estaba encolado ahí ya no va a salir." if perdido in self.con_cola else ""
-            return f"Se perdió {self._nombre(perdido)} · total {cantidad}.{cola}"
-        # Varios cambios juntos: solo se sabe la cantidad y la suma. Se nombran los edificios con cola que podrían
-        # estar entre los perdidos (el centro urbano tiene partes que también son objetos).
-        texto = f"Cambiaron varios objetos a la vez: {dn:+} objetos, suma de ids {ds:+} · total {cantidad}"
-        if dn < 0:
-            candidatos = [self._nombre(e) for e in sorted(self.con_cola) if e <= -ds]
+
+        if dn == -1 and -ds in self.restos:  # el juego borró unos restos
+            return (f"Desaparecieron los restos de {self.restos.pop(-ds)} (objeto {-ds}): los borra el juego solo, "
+                    f"no es una orden · total {cantidad}")
+
+        if dn == 0 and ds > 0 and dg > 0:  # murió algo: pasó a ser sus restos, con un id nuevo
+            # El muerto es el objeto vivo cuyo id + la diferencia da un id nuevo, el más cercano a los últimos.
+            candidatos = [(k + ds - self.mayor_id, k) for k in self.vivos if k + ds > self.mayor_id]
             if candidatos:
-                texto += f" (puede incluir: {', '.join(candidatos)})"
-        return texto
+                _, muerto = min(candidatos)
+                restos = self.mayor_id = muerto + ds
+                self.vivos.discard(muerto)
+                self.restos[restos] = self._nombre(muerto)
+                return (f"Murió {self._nombre(muerto)}: quedan sus restos (objeto {restos}, duran unos {dg} s y "
+                        f"los borra el juego).{self._cola(muerto)}")
+
+        if dn <= -2:  # un edificio perdió sus partes: m ids seguidos al suyo (el centro urbano tiene 4)
+            m = -dn
+            for k in sorted(self.vivos):
+                if -ds == m * k + m * (m + 1) // 2:
+                    return f"Se destruyeron las {m} partes de {self._nombre(k)}: el edificio cayó.{self._cola(k)}"
+
+        if dn == -1 and ds < 0:  # se fue sin dejar restos (una oveja que se terminó, por ejemplo)
+            self.vivos.discard(-ds)
+            return f"Se fue {self._nombre(-ds)} sin dejar restos (una oveja que se terminó, por ejemplo) · total {cantidad}"
+
+        return f"Cambiaron varios objetos a la vez: {dn:+} objetos, suma de ids {ds:+} (no los puedo separar) · total {cantidad}"
 
 
 def reloj(ms: int) -> str:
@@ -320,7 +377,7 @@ class Replay:
                     propio = valores_por_jugador(archivo).get(salida.jugador) if "current_time" in valores else None
                     if propio:
                         mostrar(lambda t=self.tiempo, total=propio[1]: salida.recursos(t, total, tamano))
-                        cambio = self.objetos.cambio(propio[6], propio[10])
+                        cambio = self.objetos.cambio(propio[6], propio[10], propio[4])
                         if cambio:
                             mostrar(lambda t=self.tiempo, texto=cambio: salida.objetos(t, texto, tamano))
                 elif operacion == Operation.ACTION:
@@ -422,23 +479,24 @@ def buscar(carpetas: list[tuple[Path, tuple[str, ...]]]) -> dict[Path, int]:
 
 
 def main() -> int:
+    os.system("")  # activa los colores en la consola de Windows
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # antes de la ayuda, que tiene tildes y flechas
+
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--jugador", type=int, default=1, help="número de jugador tuyo en la partida (por defecto 1)")
     parser.add_argument("--sin-sonido", action="store_true", help="no pitar con cada orden")
     parser.add_argument("--carpeta", type=Path, action="append", help="otra carpeta donde buscar replays")
     parser.add_argument("--segundos", type=float, help="cortar solo después de N segundos")
+    parser.add_argument("--registro", type=Path, help=r"dónde guardar el CSV (por defecto %%LOCALAPPDATA%%\BoCoach\replay-vivo)")
     args = parser.parse_args()
-
-    os.system("")  # activa los colores en la consola de Windows
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     if args.carpeta:
         carpetas = [(c, ("*.aoe2record",)) for c in args.carpeta]
     else:
         # Por si el juego escribe la grabación en otro lado y la mueve al final, también se mira TEMP.
         carpetas = [(CARPETA_JUEGO, PATRONES_DEL_JUEGO), (Path(os.environ["TEMP"]), ("*.aoe2record",))]
-    registro = CARPETA_REGISTROS / f"{datetime.now():%Y%m%d-%H%M%S}.csv"
+    registro = args.registro or CARPETA_REGISTROS / f"{datetime.now():%Y%m%d-%H%M%S}.csv"
     salida = Salida(args.jugador, not args.sin_sonido, registro)
 
     print("BoCoach · replay en vivo")
