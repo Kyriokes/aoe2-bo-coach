@@ -52,6 +52,12 @@ public sealed record EconomySettings
 
     /// <summary>v2: cuánto tiene que mejorar la economía para que valga la pena sugerir.</summary>
     public double MinGain { get; init; } = 15;
+
+    /// <summary>
+    /// Máximo de aldeanos que quiere el jugador (100 a 130 según la estrategia). Hasta llegar, los centros urbanos
+    /// producen sin parar y la comida nunca baja de lo que eso necesita (<see cref="VillagerFloor"/>).
+    /// </summary>
+    public int MaxVillagers { get; init; } = 120;
 }
 
 /// <summary>Aldeanos por recurso estimados, y la eficiencia aprendida (1 = lo que asume el Planner).</summary>
@@ -78,7 +84,11 @@ public sealed record EconomyReport(
     ResourceAmounts Demand,
     ResourceAmounts Deficit,
     Suggestion? Candidate,
-    Suggestion? Suggestion);
+    Suggestion? Suggestion)
+{
+    /// <summary>Aldeanos en comida que hacen falta para que los centros urbanos no paren (0 si ya se llegó al máximo).</summary>
+    public int FoodFloor { get; init; }
+}
 
 /// <summary>
 /// Economía: tasas observadas, aldeanos estimados, demanda hasta el próximo hito de la BO, déficit en un horizonte H
@@ -131,12 +141,20 @@ public sealed class EconomyAdvisor
         var projectedRates = Multiply(villagers.PerResource, effective);
 
         var demand = Demand(tracker, plan, state.Time);
+        var foodFloor = 0;
+        if (villagers.Total < _settings.MaxVillagers)
+        {
+            // La BO puede pedir más comida (subir de edad), pero nunca menos de la que mantiene los centros urbanos.
+            var production = VillagerFloor.FoodPerSecond(_data, _civ, _age, VillagerFloor.TownCenters(tracker));
+            demand = demand.With(Resource.Food, Math.Max(demand.Food, production));
+            foodFloor = Math.Min(villagers.Total, VillagerFloor.FoodVillagers(production, effective.Food));
+        }
         var h = _settings.Horizon;
         var deficit = demand * h - (state.Stock + projectedRates * h);
 
         var candidate = VillagerAllocator.Choose(deficit, villagers.PerResource, effective, _settings);
         var suggestion = _gate.Update(state.Time, candidate);
-        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion);
+        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion) { FoodFloor = foodFloor };
     }
 
     /// <summary>Recurso por segundo de un aldeano en cada recurso, según de qué fuentes saca la BO ese recurso.</summary>

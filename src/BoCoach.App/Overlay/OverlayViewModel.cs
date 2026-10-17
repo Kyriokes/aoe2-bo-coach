@@ -15,6 +15,12 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     public string BuildOrderName { get; } = buildOrderName;
 
+    /// <summary>Los números debajo de cada recurso del HUD (la segunda parte del overlay).</summary>
+    public IReadOnlyList<ResourceTargetViewModel> Resources { get; } =
+    [
+        new(RegionNames.Wood), new(RegionNames.Food), new(RegionNames.Gold), new(RegionNames.Stone),
+    ];
+
     [ObservableProperty] public partial string Clock { get; set; } = "--:--";
     [ObservableProperty] public partial string Progress { get; set; } = "";
     [ObservableProperty] public partial string Current { get; set; } = "Esperando la partida…";
@@ -51,9 +57,23 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Alert = lines.Alert;
         Idle = lines.Idle;
         Distribution = lines.Distribution;
+        foreach (var target in Resources)
+        {
+            var resource = ResourceOf(target.Region);
+            // Los aldeanos por recurso todavía no se leen del HUD (falta la letra de esos números): se estiman.
+            target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: true);
+        }
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
     }
+
+    private static Resource ResourceOf(string region) => region switch
+    {
+        RegionNames.Food => Resource.Food,
+        RegionNames.Wood => Resource.Wood,
+        RegionNames.Stone => Resource.Stone,
+        _ => Resource.Gold,
+    };
 
     private static string? WarningFor(CoachFrame frame) => frame switch
     {

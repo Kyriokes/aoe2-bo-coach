@@ -47,6 +47,15 @@ public sealed record CoachView(
     /// el total.
     /// </summary>
     public ResourceAmounts? Distribution { get; init; }
+
+    /// <summary>
+    /// Aldeanos que hay ahora en cada recurso (estimados por la economía hasta que se lean del HUD), para comparar con
+    /// <see cref="Distribution"/>, o null si todavía no hay estimación.
+    /// </summary>
+    public ResourceAmounts? Actual { get; init; }
+
+    /// <summary>Aldeanos en comida que mantienen los centros urbanos produciendo (0 si ya se llegó al máximo).</summary>
+    public int FoodFloor { get; init; }
 }
 
 /// <summary>
@@ -62,6 +71,7 @@ public sealed class Coach
     private readonly GameData _data;
     private readonly Planner _planner;
     private readonly EconomyAdvisor _economy;
+    private readonly EconomySettings _economySettings;
     private PlanResult? _plan;
     private double _plannedAt = double.NegativeInfinity;
     private Suggestion? _suggestion;
@@ -77,7 +87,8 @@ public sealed class Coach
     {
         _data = data;
         _planner = new Planner(data, planner);
-        _economy = new EconomyAdvisor(data, planner, economy);
+        _economySettings = economy ?? new EconomySettings();
+        _economy = new EconomyAdvisor(data, planner, _economySettings);
         Tracker = new Tracker(bo, data, events);
         Tracker.Update(State);
         View = BuildView();
@@ -193,12 +204,15 @@ public sealed class Coach
 
     /// <summary>
     /// Cuánto lleva el centro urbano sin producir, contando desde el último aldeano (o desde que terminó de investigar)
-    /// más lo que tarda uno. Solo si la BO todavía pide aldeanos.
+    /// más lo que tarda uno. El centro urbano produce siempre hasta el máximo de aldeanos, salvo que la BO todavía
+    /// pida aldeanos (entonces avisa aunque el máximo sea menor).
     /// </summary>
     private double? TownCenterIdle()
     {
-        if (_villagers is null || !_data.TryGet("villager", out var villager)
-            || !Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped)))
+        if (_villagers is not { } villagers || !_data.TryGet("villager", out var villager))
+            return null;
+        var pending = Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped));
+        if (!pending && villagers >= _economySettings.MaxVillagers)
             return null;
         var civ = _data.Civ(Tracker.BuildOrder.Civ);
         var age = LivePlan.Start(Tracker).Age;
@@ -218,8 +232,10 @@ public sealed class Coach
     /// <summary>
     /// El reparto de la BO con lo hecho hasta ahora (aldeanos por recurso), llevado al total de aldeanos que muestra el
     /// HUD: si hay más o menos de lo que dice el plan, se reparte en la misma proporción (enteros que suman el total).
+    /// La comida nunca queda debajo de lo que necesitan los centros urbanos para no parar: lo que falta sale del
+    /// recurso que más tiene.
     /// </summary>
-    private ResourceAmounts? Distribution()
+    private ResourceAmounts? Distribution(int foodFloor)
     {
         if (_villagers is not { } total || total <= 0)
             return null;
@@ -228,14 +244,27 @@ public sealed class Coach
             planned[source.Resource()] = planned.GetValueOrDefault(source.Resource()) + count;
         var sum = planned.Values.Sum();
         if (sum <= 0)
-            return null;
+        {
+            planned[Resource.Food] = 1;
+            sum = 1;
+        }
 
         var exact = Enum.GetValues<Resource>().ToDictionary(r => r, r => planned.GetValueOrDefault(r) * total / sum);
         var whole = exact.ToDictionary(e => e.Key, e => (int)Math.Floor(e.Value));
         foreach (var r in exact.OrderByDescending(e => e.Value - Math.Floor(e.Value)).Take(total - whole.Values.Sum()).Select(e => e.Key))
             whole[r]++;
+        while (whole[Resource.Food] < Math.Min(foodFloor, total))
+        {
+            var donor = whole.Where(w => w.Key != Resource.Food).MaxBy(w => w.Value).Key;
+            whole[donor]--;
+            whole[Resource.Food]++;
+        }
         return new ResourceAmounts(whole[Resource.Food], whole[Resource.Wood], whole[Resource.Stone], whole[Resource.Gold]);
     }
+
+    private ResourceAmounts? Actual() => Economy?.Villagers.PerResource is { } estimate
+        ? new ResourceAmounts(Math.Round(estimate.Food), Math.Round(estimate.Wood), Math.Round(estimate.Stone), Math.Round(estimate.Gold))
+        : null;
 
     private void Replan()
     {
@@ -274,7 +303,9 @@ public sealed class Coach
             Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
             TownCenterIdle = TownCenterIdle(),
             SourceVillagers = SourceVillagers(current),
-            Distribution = Distribution(),
+            Distribution = Distribution(Economy?.FoodFloor ?? 0),
+            Actual = _villagers is null ? null : Actual(),
+            FoodFloor = Economy?.FoodFloor ?? 0,
         };
     }
 }

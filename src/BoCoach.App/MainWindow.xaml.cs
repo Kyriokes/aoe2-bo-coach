@@ -24,6 +24,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private readonly RecordingIndicator _indicator = new();
     private GlobalHotkeys? _hotkeys;
     private CoachOverlay? _overlay;
+    private ResourceOverlay? _resources;
     private bool _calibrating;
 
     public MainWindow(CoachData data)
@@ -33,8 +34,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         DataContext = ViewModel;
         Tools = new CaptureToolsViewModel(_screen, this);
         ToolsBar.DataContext = Tools;
-        Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () => new ScreenFrames(_screen, Tools.Layout));
+        Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () => new ScreenFrames(_screen, Tools.Layout), CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
+        MaxVillagersBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
         Coach.PropertyChanged += (_, e) =>
         {
@@ -107,24 +109,39 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _overlay = new CoachOverlay(overlay);
         _overlay.Show();
         _overlay.PlaceOver(area);
+        _resources = new ResourceOverlay(overlay.Resources, Tools.Layout);
+        _resources.Show();
+        _resources.PlaceOver(area);
     }
 
-    public void PlaceOverlay(PixelRect area) => _overlay?.PlaceOver(area);
+    public void PlaceOverlay(PixelRect area)
+    {
+        _overlay?.PlaceOver(area);
+        _resources?.PlaceOver(area);
+    }
 
     public void SetOverlayVisible(bool visible)
     {
         if (_overlay is null)
             return;
         if (visible)
+        {
             _overlay.Show();
+            _resources?.Show();
+        }
         else
+        {
             _overlay.Hide();
+            _resources?.Hide();
+        }
     }
 
     public void CloseOverlay()
     {
         _overlay?.Close();
         _overlay = null;
+        _resources?.Close();
+        _resources = null;
     }
 
     public void RunOnUi(Action action) => Dispatcher.BeginInvoke(action);

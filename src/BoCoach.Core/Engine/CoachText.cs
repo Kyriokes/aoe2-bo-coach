@@ -63,6 +63,18 @@ public static class CoachText
             DistributionText(view.Distribution));
     }
 
+    /// <summary>
+    /// Cómo están los aldeanos de un recurso contra lo que pide el reparto: <see cref="TargetMatch.Ok"/> si coinciden,
+    /// <see cref="TargetMatch.Short"/> si faltan, <see cref="TargetMatch.Over"/> si sobran, o null si no se sabe cuántos hay.
+    /// </summary>
+    public static TargetMatch? Match(double target, double? actual) => actual switch
+    {
+        null => null,
+        { } a when Math.Round(a) < Math.Round(target) => TargetMatch.Short,
+        { } a when Math.Round(a) > Math.Round(target) => TargetMatch.Over,
+        _ => TargetMatch.Ok,
+    };
+
     /// <summary>"Reparto: comida 9 · madera 4 · oro 0 · piedra 0".</summary>
     public static string? DistributionText(ResourceAmounts? d) => d is { } v
         ? $"Reparto: comida {v.Food:0} · madera {v.Wood:0} · oro {v.Gold:0} · piedra {v.Stone:0}"
@@ -119,4 +131,12 @@ public static class CoachText
 
     private static string Join(IReadOnlyList<string> parts) =>
         parts.Count == 1 ? parts[0] : $"{string.Join(", ", parts.Take(parts.Count - 1))} y {parts[^1]}";
+}
+
+/// <summary>Aldeanos de un recurso contra el reparto: verde, rojo o amarillo en el overlay.</summary>
+public enum TargetMatch
+{
+    Ok,
+    Short,
+    Over,
 }
