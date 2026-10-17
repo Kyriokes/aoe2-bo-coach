@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:editor="clr-namespace:BoCoach.App.Editor"
+        xmlns:app="clr-namespace:BoCoach.App"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance editor:MainViewModel}"
-        Title="AoE2 BO Coach · Editor de build orders"
+        Title="{x:Static app:AppVersion.WindowTitle}"
         Width="1440" Height="880" MinWidth="1100" MinHeight="640"
         FontFamily="Segoe UI" FontSize="13"
         Background="{StaticResource Background}" Foreground="{StaticResource Text}">
@@ -36,7 +37,10 @@
         <!-- Herramientas de captura: calibrar la pantalla y grabar partidas -->
         <Border x:Name="ToolsBar" DockPanel.Dock="Top" Background="#2B2622" Padding="12,7">
             <DockPanel>
-                <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,18,0" />
+                <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="#A39A8F" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0"
+                           ToolTip="Versión · commit · cuándo se compiló" />
+
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <StackPanel x:Name="MaxVillagersBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Hasta cuántos aldeanos producen sin parar los centros urbanos (100 a 130 según la estrategia). La comida nunca baja de lo que necesitan. Se aplica al empezar el coach">
