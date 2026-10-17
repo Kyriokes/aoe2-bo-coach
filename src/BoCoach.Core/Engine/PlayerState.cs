@@ -38,6 +38,9 @@ public sealed class PlayerState
     /// <summary>Último total de aldeanos leído del HUD, o null si nunca se leyó.</summary>
     public int? Villagers => _lastVillagers;
 
+    /// <summary>Últimos aldeanos por recurso leídos del HUD (con el mod), o null si nunca se leyeron.</summary>
+    public ResourceAmounts? VillagersOn { get; private set; }
+
     /// <summary>Eventos en orden de llegada, incluidos los sintéticos.</summary>
     public IReadOnlyList<GameEvent> Events => _events;
 
@@ -50,6 +53,7 @@ public sealed class PlayerState
         Time = snapshot.Time;
         Stock = snapshot.Stock;
         PopulationCap = snapshot.PopulationCap;
+        VillagersOn = snapshot.VillagersOn ?? VillagersOn;
 
         if (snapshot.Villagers is not null || _lastVillagers is not null)
             ApplyVillagersFromHud(snapshot);

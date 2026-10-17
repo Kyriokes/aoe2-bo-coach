@@ -60,8 +60,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         foreach (var target in Resources)
         {
             var resource = ResourceOf(target.Region);
-            // Los aldeanos por recurso todavía no se leen del HUD (falta la letra de esos números): se estiman.
-            target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: true);
+            // Con el mod, los que hay salen del HUD; si no, de la estimación de la economía.
+            target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: !view.ActualFromHud);
         }
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";

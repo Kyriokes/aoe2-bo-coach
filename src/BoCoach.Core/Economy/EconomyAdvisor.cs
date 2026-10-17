@@ -200,15 +200,24 @@ public sealed class EconomyAdvisor
         var plannedSum = Sum(planned);
         planned = plannedSum > 0 ? planned * (total / plannedSum) : ResourceAmounts.Of(Resource.Food, total);
 
-        if (_observer.Coverage < _settings.RateWindow * 0.75)
-            return new VillagerEstimate(planned, 1, total);
-
-        // Según lo observado: aldeanos "a eficiencia 1", y la eficiencia que hace que sumen el total.
+        // Según lo observado: aldeanos "a eficiencia 1".
         var raw = ResourceAmounts.Zero;
         var observed = _observer.Rates;
         foreach (var r in Enum.GetValues<Resource>())
             raw = raw.With(r, perVillager[r] > 0 ? observed[r] / perVillager[r] : 0);
         var rawSum = Sum(raw);
+        var enoughRates = _observer.Coverage >= _settings.RateWindow * 0.75 && rawSum > 0;
+
+        // Con el mod, el HUD dice cuántos hay en cada recurso: no hace falta estimarlo. Las tasas solo dan la
+        // eficiencia (cuánto rinde cada uno contra lo que asume el Planner).
+        if (state.VillagersOn is { } seen && Sum(seen) > 0)
+        {
+            var seenEfficiency = enoughRates ? Math.Clamp(rawSum / Sum(seen), 0.3, 1.5) : 1;
+            return new VillagerEstimate(seen, seenEfficiency, total);
+        }
+
+        if (_observer.Coverage < _settings.RateWindow * 0.75)
+            return new VillagerEstimate(planned, 1, total);
         if (rawSum <= 0)
             return new VillagerEstimate(planned, 1, total);
 

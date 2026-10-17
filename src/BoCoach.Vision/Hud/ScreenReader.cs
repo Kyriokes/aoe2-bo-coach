@@ -62,5 +62,8 @@ public static class HudStateExtensions
     /// </summary>
     public static ScreenReading ToReading(this HudState state) => new(
         state.Clock, state.Food, state.Wood, state.Gold, state.Stone, state.Villagers,
-        state.Population, state.PopulationCap, state.NewEvents);
+        state.Population, state.PopulationCap, state.NewEvents,
+        state.VillagersOn is { Count: 4 } on
+            ? new ResourceAmounts(on[Resource.Food], on[Resource.Wood], on[Resource.Stone], on[Resource.Gold])
+            : null);
 }

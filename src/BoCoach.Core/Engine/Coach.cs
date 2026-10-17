@@ -54,6 +54,9 @@ public sealed record CoachView(
     /// </summary>
     public ResourceAmounts? Actual { get; init; }
 
+    /// <summary>True si <see cref="Actual"/> salió del HUD (con el mod) y no de la estimación de la economía.</summary>
+    public bool ActualFromHud { get; init; }
+
     /// <summary>Aldeanos en comida que mantienen los centros urbanos produciendo (0 si ya se llegó al máximo).</summary>
     public int FoodFloor { get; init; }
 }
@@ -304,7 +307,8 @@ public sealed class Coach
             TownCenterIdle = TownCenterIdle(),
             SourceVillagers = SourceVillagers(current),
             Distribution = Distribution(Economy?.FoodFloor ?? 0),
-            Actual = _villagers is null ? null : Actual(),
+            Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
+            ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
         };
     }

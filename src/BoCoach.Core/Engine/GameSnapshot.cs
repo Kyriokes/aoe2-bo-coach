@@ -27,4 +27,10 @@ public sealed record GameSnapshot(
     /// lee, los aldeanos nuevos salen de este número y no del log, que muestra varios aldeanos seguidos como uno.
     /// </summary>
     public int? Villagers { get; init; }
+
+    /// <summary>
+    /// Aldeanos en cada recurso según el HUD (los números chicos de cada recurso; se leen con el mod BoCoach HUD), o
+    /// null si no se leyeron los cuatro. No incluye a los que construyen ni a los inactivos.
+    /// </summary>
+    public ResourceAmounts? VillagersOn { get; init; }
 }

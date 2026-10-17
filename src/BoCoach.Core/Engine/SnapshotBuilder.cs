@@ -7,6 +7,7 @@ namespace BoCoach.Core.Engine;
 /// número cortado, pantalla de carga).
 /// </summary>
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura (ids de data/events.json).</param>
+/// <param name="VillagersOn">Aldeanos en cada recurso según el HUD, o null si no se leyeron los cuatro.</param>
 public sealed record ScreenReading(
     double? Clock,
     double? Food,
@@ -16,7 +17,8 @@ public sealed record ScreenReading(
     int? Villagers,
     int? Population,
     int? PopulationCap,
-    IReadOnlyList<string> NewEvents);
+    IReadOnlyList<string> NewEvents,
+    ResourceAmounts? VillagersOn = null);
 
 /// <summary>
 /// Arma los <see cref="GameSnapshot"/> del motor a partir de las lecturas de pantalla:
@@ -110,7 +112,7 @@ public sealed class SnapshotBuilder(GameData data)
             return null;
         var events = _pendingEvents.Select(id => new GameEvent(id, clock)).ToList();
         _pendingEvents.Clear();
-        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers };
+        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn };
     }
 
     private void InferHousesFromCap(int cap, double now)
