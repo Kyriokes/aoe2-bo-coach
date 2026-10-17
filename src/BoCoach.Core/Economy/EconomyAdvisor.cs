@@ -88,6 +88,9 @@ public sealed record EconomyReport(
 {
     /// <summary>Aldeanos en comida que hacen falta para que los centros urbanos no paren (0 si ya se llegó al máximo).</summary>
     public int FoodFloor { get; init; }
+
+    /// <summary>Lo que junta por segundo un aldeano en cada recurso, con la eficiencia observada.</summary>
+    public ResourceAmounts EffectiveRates { get; init; } = ResourceAmounts.Zero;
 }
 
 /// <summary>
@@ -147,14 +150,16 @@ public sealed class EconomyAdvisor
             // La BO puede pedir más comida (subir de edad), pero nunca menos de la que mantiene los centros urbanos.
             var production = VillagerFloor.FoodPerSecond(_data, _civ, _age, VillagerFloor.TownCenters(tracker));
             demand = demand.With(Resource.Food, Math.Max(demand.Food, production));
-            foodFloor = Math.Min(villagers.Total, VillagerFloor.FoodVillagers(production, effective.Food));
+            // Con lo que rinde un aldeano según el modelo, no con la eficiencia observada: esa sale de descargas
+            // sueltas y baja mucho en las ovejas o mientras caminan, y el mínimo saltaba de 6 a 12 y de vuelta.
+            foodFloor = Math.Min(villagers.Total, VillagerFloor.FoodVillagers(production, perVillager.Food));
         }
         var h = _settings.Horizon;
         var deficit = demand * h - (state.Stock + projectedRates * h);
 
         var candidate = VillagerAllocator.Choose(deficit, villagers.PerResource, effective, _settings);
         var suggestion = _gate.Update(state.Time, candidate);
-        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion) { FoodFloor = foodFloor };
+        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion) { FoodFloor = foodFloor, EffectiveRates = effective };
     }
 
     /// <summary>Recurso por segundo de un aldeano en cada recurso, según de qué fuentes saca la BO ese recurso.</summary>

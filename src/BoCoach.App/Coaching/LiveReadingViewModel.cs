@@ -54,15 +54,16 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         Gold.Stock = Stock(hud?.Gold);
         Stone.Stock = Stock(hud?.Stone);
 
-        var plan = view.Distribution;
+        var guide = view.Distribution;
+        var bo = view.BoDistribution;
         var actual = view.Actual;
-        // Lo que se ve en el HUD (con el mod) o, si no, lo que estima la economía; y lo que pide la BO.
+        // Lo que se ve en el HUD (con el mod) o, si no, lo que estima la economía; la GD y el reparto de la BO.
         string Plan(Resource r)
         {
             var seen = hud?.VillagersOn is { } on && on.TryGetValue(r, out var n) ? $"hay {n}"
                 : actual is { } a ? $"hay ~{a[r]:0}"
                 : "hay —";
-            return $"aldeanos: {seen} · la BO pide {(plan is { } d ? $"{d[r]:0}" : "—")}";
+            return $"aldeanos: {seen} · GD {(guide is { } g ? $"{g[r]:0}" : "—")} (BO {(bo is { } b ? $"{b[r]:0}" : "—")})";
         }
         Food.Villagers = Plan(Resource.Food);
         Wood.Villagers = Plan(Resource.Wood);

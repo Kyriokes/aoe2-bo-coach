@@ -59,6 +59,21 @@ public static class LivePlan
     }
 
     /// <summary>
+    /// Dónde quiere la BO a los aldeanos en el punto en que va el jugador: todos los pasos anteriores al actual como
+    /// hechos (lo que planea la BO, no lo que el Tracker les asignó) más lo que avanzó el actual. A diferencia de
+    /// <see cref="Start"/>, no salta cuando el Tracker reparte los aldeanos nuevos entre varios pasos abiertos.
+    /// </summary>
+    public static IReadOnlyDictionary<GatherSource, int> IntendedVillagers(Tracker tracker)
+    {
+        var current = tracker.Current;
+        var upTo = current?.Index ?? tracker.Steps.Count;
+        var steps = tracker.Steps.Take(upTo).Select(s => (s.Step, s.Required, true)).ToList();
+        if (current is not null)
+            steps.Add((current.Step, current.Completed, false));
+        return Layout(steps).Villagers;
+    }
+
+    /// <summary>
     /// Un paso de aldeanos con fuente: su 'count' es cuántos tiene que haber en esa fuente al terminarlo, contando los
     /// que ya estaban (como el contador del HUD), no cuántos se entrenan.
     /// </summary>

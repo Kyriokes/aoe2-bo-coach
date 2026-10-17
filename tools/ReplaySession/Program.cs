@@ -15,9 +15,9 @@
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
 //   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
-//         [--economy] [--allocator exact|greedy]
+//         [--economy] [--guide] [--allocator exact|greedy]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
-//       y al final el estado de cada paso.
+//       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //
@@ -346,6 +346,13 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             continue;
         last = text;
         Console.WriteLine($"{index,5} {BoCoach.Core.GameClock.Format(view.Time),6} pob {view.Population}/{view.PopulationCap}  {text}");
+        if (args.Contains("--guide"))
+        {
+            static string F(ResourceAmounts? r) => r is { } v ? $"F{v.Food:0} W{v.Wood:0} S{v.Stone:0} G{v.Gold:0}" : "—";
+            var current = coach.Tracker.Current;
+            Console.WriteLine($"        hay {F(view.Actual)}{(view.ActualFromHud ? "" : " (estimado)")} · GD {F(view.Distribution)} · BO {F(view.BoDistribution)}"
+                + $" · paso {current?.Step.Id} {current?.Completed}/{current?.Required}");
+        }
         if (args.Contains("--economy") && coach.Economy is { } e)
             Console.WriteLine($"        tasas {e.ObservedRates} · aldeanos {e.Villagers.PerResource} (efic {e.Villagers.Efficiency:0.00}) · demanda {e.Demand} · déficit {e.Deficit} · candidata {e.Candidate}");
     }

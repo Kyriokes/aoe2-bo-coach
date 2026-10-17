@@ -43,10 +43,13 @@ public sealed record CoachView(
     public (int Current, int Target)? SourceVillagers { get; init; }
 
     /// <summary>
-    /// Cómo repartir los aldeanos que hay ahora (total del HUD) según la BO en este punto, o null si todavía no se leyó
-    /// el total.
+    /// La guía dinámica (GD): cómo repartir los aldeanos que hay ahora (total del HUD) para volver a la BO por el camino
+    /// más corto (<see cref="GuideDistribution"/>), o null si todavía no se leyó el total.
     /// </summary>
     public ResourceAmounts? Distribution { get; init; }
+
+    /// <summary>El reparto de la BO en este punto, llevado al total de aldeanos de ahora (sin adaptar a los recursos).</summary>
+    public ResourceAmounts? BoDistribution { get; init; }
 
     /// <summary>
     /// Aldeanos que hay ahora en cada recurso (estimados por la economía hasta que se lean del HUD), para comparar con
@@ -85,6 +88,11 @@ public sealed class Coach
     private int? _villagers;
     private double _lastVillagerAt;
     private double _townCenterBusyAt = double.NegativeInfinity;
+
+    // GD: la que se muestra y la que espera sostenerse para reemplazarla.
+    private ResourceAmounts? _guide;
+    private ResourceAmounts? _guideCandidate;
+    private double _guideCandidateSince;
 
     public Coach(BuildOrder bo, GameData data, EventCatalog? events = null, PlannerSettings? planner = null, EconomySettings? economy = null)
     {
@@ -132,7 +140,54 @@ public sealed class Coach
             Replan();
         Economy = _economy.Update(Tracker, _plan);
         _suggestion = Economy.Suggestion;
+        UpdateGuide(snapshot.Time);
         return View = BuildView();
+    }
+
+    /// <summary>
+    /// Cuántos segundos tiene que sostenerse una GD distinta para reemplazar a la que se muestra (que no cambie a
+    /// cada rato por una descarga). Si cambia el total de aldeanos, se actualiza al instante.
+    /// </summary>
+    public double GuideSettleSeconds { get; init; } = 12;
+
+    private void UpdateGuide(double now)
+    {
+        var foodFloor = Economy?.FoodFloor ?? 0;
+        if (Distribution(foodFloor) is not { } bo)
+        {
+            _guide = null;
+            return;
+        }
+        var candidate = Economy is { } report
+            ? GuideDistribution.Adjust(bo, State.Stock, report.Demand, report.EffectiveRates, _economySettings.Horizon,
+                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves)
+            : bo;
+        if (_guide is not { } shown || Total(shown) != Total(candidate) || candidate == shown)
+        {
+            (_guide, _guideCandidate) = (candidate, null);
+            return;
+        }
+        if (_guideCandidate != candidate)
+            (_guideCandidate, _guideCandidateSince) = (candidate, now);
+        else if (now - _guideCandidateSince >= GuideSettleSeconds)
+            (_guide, _guideCandidate) = (candidate, null);
+    }
+
+    private static double Total(ResourceAmounts r) => r.Food + r.Wood + r.Gold + r.Stone;
+
+    /// <summary>
+    /// Con los aldeanos por recurso del HUD, la sugerencia sale de comparar con la GD: del que más sobra al que más
+    /// falta. Sin el HUD, la de la economía.
+    /// </summary>
+    private Suggestion? GuideSuggestion()
+    {
+        if (State.VillagersOn is not { } actual || _guide is not { } guide)
+            return _suggestion;
+        var resources = Enum.GetValues<Resource>();
+        var from = resources.MaxBy(r => actual[r] - guide[r]);
+        var to = resources.MaxBy(r => guide[r] - actual[r]);
+        var count = (int)Math.Min(actual[from] - guide[from], guide[to] - actual[to]);
+        return count >= 1 ? new Suggestion(from, to, count) : null;
     }
 
     /// <summary>Atajo "avanzar": da por hecho el paso actual.</summary>
@@ -243,7 +298,7 @@ public sealed class Coach
         if (_villagers is not { } total || total <= 0)
             return null;
         var planned = new Dictionary<Resource, double>();
-        foreach (var (source, count) in LivePlan.Start(Tracker).Villagers)
+        foreach (var (source, count) in LivePlan.IntendedVillagers(Tracker))
             planned[source.Resource()] = planned.GetValueOrDefault(source.Resource()) + count;
         var sum = planned.Values.Sum();
         if (sum <= 0)
@@ -299,14 +354,15 @@ public sealed class Coach
             missing,
             eta,
             deviations,
-            _suggestion,
+            GuideSuggestion(),
             Tracker.Steps.Count(s => s.State is StepState.Done or StepState.Skipped),
             Tracker.Steps.Count)
         {
             Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
             TownCenterIdle = TownCenterIdle(),
             SourceVillagers = SourceVillagers(current),
-            Distribution = Distribution(Economy?.FoodFloor ?? 0),
+            Distribution = _guide ?? Distribution(Economy?.FoodFloor ?? 0),
+            BoDistribution = Distribution(Economy?.FoodFloor ?? 0),
             Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
