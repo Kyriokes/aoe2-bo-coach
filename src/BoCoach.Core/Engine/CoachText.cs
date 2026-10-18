@@ -31,7 +31,12 @@ public static class CoachText
     {
         // Las metas en curso del paso mixto se ven en su renglón de meta, no también en "En curso".
         var goalIndexes = view.Goals.Select(g => g.Index).ToHashSet();
-        var running = view.Running.Where(r => !goalIndexes.Contains(r.Progress.Index)).Select(r => Running(r, view.Time)).ToList();
+        // Producción militar en marcha: un renglón por unidad, sumando las tandas ("12 + 12 arqueros" = 1/24).
+        static bool Producing(RunningStep r) => r.Progress.State != StepState.InProgress && r.Progress.Step is { Do: StepAction.Train, What: not null };
+        var running = view.Running.Where(r => !goalIndexes.Contains(r.Progress.Index) && !Producing(r)).Select(r => Running(r, view.Time))
+            .Concat(view.Running.Where(Producing).GroupBy(r => r.Progress.Step.What!)
+                .Select(g => $"Seguí produciendo {StepText.Name(g.Key, 2)}: {g.Sum(r => r.Progress.Completed)}/{g.Sum(r => r.Progress.Required)}"))
+            .ToList();
         if (view.Current is not { } current)
         {
             return new CoachLines(

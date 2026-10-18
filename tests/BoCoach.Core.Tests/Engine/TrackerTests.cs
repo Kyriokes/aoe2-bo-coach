@@ -25,7 +25,9 @@ public class TrackerTests
 
         for (var i = 0; i < Scouts.Steps.Count; i++)
         {
-            Assert.Equal(Scouts.Steps[i].Id, tracker.Current?.Step.Id);
+            // Las granjas no se avisan en el log: siguen siendo el paso actual hasta que avanza el siguiente.
+            var farmBefore = i > 0 && EventConventions.EventFor(Scouts.Steps[i - 1]) is { } e && EventConventions.Unannounced.Contains(e);
+            Assert.Equal(farmBefore ? Scouts.Steps[i - 1].Id : Scouts.Steps[i].Id, tracker.Current?.Step.Id);
             partida.Play(Scouts, i, i);
             tracker.Update(partida.State);
         }
@@ -103,6 +105,32 @@ public class TrackerTests
         partida.Event("villager_created");
         tracker.Update(partida.State);
         Assert.Equal(1, tracker.Steps[Index("s3")].Completed);
+    }
+
+    [Fact]
+    public void La_produccion_militar_empezada_no_frena_la_BO()
+    {
+        // Como la guía de arqueros: 12 + 12 arqueros y después la economía. Partida 20261018-021924: el coach quedaba
+        // 7 minutos en "Entrenar 12 arqueros" sin mostrar las granjas ni lo demás.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "s1", Do = StepAction.Train, What = "archer", Count = 3 },
+                new Step { Id = "s2", Do = StepAction.Train, What = "archer", Count = 3 },
+                new Step { Id = "s3", Do = StepAction.Build, What = "house", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            ],
+        };
+        var tracker = new Tracker(bo, TestData.GameData);
+        Assert.Equal("s1", tracker.Current?.Step.Id); // todavía no salió ninguno: hay que empezar
+
+        tracker.Update(new Partida().Event("archer_created").State);
+
+        Assert.Equal("s3", tracker.Current?.Step.Id);
+        Assert.Equal(["s1", "s2"], tracker.Producing.Select(s => s.Step.Id));
+        var view = new CoachView(0, 0, 0, tracker.Current, null, [], tracker.Producing.Select(s => new RunningStep(s, null)).ToList(), ResourceAmounts.Zero, null, [], null, 0, 3);
+        Assert.Equal("Seguí produciendo arqueros: 1/6", CoachText.Lines(view, TestData.GameData).Running.Single());
     }
 
     [Fact]

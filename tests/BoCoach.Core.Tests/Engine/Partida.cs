@@ -56,14 +56,22 @@ internal sealed class Partida
         return this;
     }
 
-    /// <summary>Juega los pasos indicados de la BO tal cual, emitiendo su evento de confirmación.</summary>
+    /// <summary>
+    /// Juega los pasos indicados de la BO tal cual, emitiendo su evento de confirmación (salvo los que el juego no
+    /// avisa, como las granjas: pasa el tiempo sin evento).
+    /// </summary>
     public Partida Play(BuildOrder bo, int fromStep, int toStep, double dt = 10)
     {
         var units = LivePlan.Units(bo);
         for (var i = fromStep; i <= toStep && i < bo.Steps.Count; i++)
         {
             if (EventConventions.EventFor(bo.Steps[i]) is { } e)
-                Events(e, units[i], dt);
+            {
+                if (EventConventions.Unannounced.Contains(e))
+                    Wait(units[i] * dt);
+                else
+                    Events(e, units[i], dt);
+            }
         }
         return this;
     }

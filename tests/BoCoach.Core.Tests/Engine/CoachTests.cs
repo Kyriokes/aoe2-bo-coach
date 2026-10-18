@@ -501,9 +501,10 @@ public class PartidaDeScoutsGrabadaTests(Xunit.Abstractions.ITestOutputHelper ou
         Assert.Equal(Clock("13:56"), steps["s15"].DoneAt!.Value, 1.5);
         Assert.Equal(Clock("15:42"), steps["s17"].DoneAt!.Value, 1.5);
 
-        // Todo hecho menos las granjas: en la partida no se vio ningún "Farm Built".
-        Assert.All(steps.Values.Where(s => s.Step.Id != "s16"), s => Assert.Equal(StepState.Done, s.State));
-        Assert.Equal("s16", coach.View.Current?.Step.Id);
+        // Todo hecho. Las granjas, sin "Farm Built" (el juego no lo avisa): se dan por hechas cuando avanzan los
+        // exploradores, el paso siguiente.
+        Assert.All(steps.Values, s => Assert.Equal(StepState.Done, s.State));
+        Assert.Null(coach.View.Current);
         Assert.Empty(coach.Tracker.Late);
 
         // La sugerencia de aldeanos no salta a cada captura (en esta partida cambia 17 veces en 18 minutos).

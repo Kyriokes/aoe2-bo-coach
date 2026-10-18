@@ -106,8 +106,24 @@ public sealed class Tracker
     public IReadOnlyList<ExtraAction> Extras => _extras;
     public PlayerState State => _state;
 
-    /// <summary>Paso a mostrar en grande: el primero pendiente que no quedó atrasado.</summary>
-    public StepProgress? Current => _steps.FirstOrDefault(IsOpen);
+    /// <summary>
+    /// Paso a mostrar en grande: el primero pendiente que no quedó atrasado ni es producción militar ya empezada.
+    /// </summary>
+    public StepProgress? Current => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s));
+
+    /// <summary>
+    /// Producción militar en marcha ("12 arqueros" con alguno ya hecho): sigue sola en sus edificios mientras la
+    /// economía avanza, así que no frena la BO (con 12 + 12 arqueros el coach quedaba 7 minutos sin decir otra cosa).
+    /// </summary>
+    public IEnumerable<StepProgress> Producing => _steps.Where(s => IsOpen(s) && IsProducing(s));
+
+    /// <summary>
+    /// Unidades que no son aldeanos y ya empezaron a salir: de este paso, o de un paso anterior con la misma unidad
+    /// (el segundo "12 arqueros" sigue al primero).
+    /// </summary>
+    private bool IsProducing(StepProgress s) =>
+        s.Step is { Do: StepAction.Train, What: { } what } && what != "villager"
+        && (s.Completed > 0 || _steps.Take(s.Index).Any(p => p.Step.Do == StepAction.Train && p.Step.What == what && p.Completed > 0));
 
     /// <summary>
     /// Si el paso actual es parte de un paso mixto (<see cref="Step.Group"/>): todas sus metas, en el orden de la BO y
@@ -119,7 +135,7 @@ public sealed class Tracker
 
     /// <summary>El primer paso pendiente después del actual que no es otra meta del mismo paso mixto.</summary>
     public StepProgress? Next => Current is { } current
-        ? _steps.Where(IsOpen).FirstOrDefault(s => s.Index != current.Index && !SameGroup(s.Index, current.Index))
+        ? _steps.Where(s => IsOpen(s) && !IsProducing(s)).FirstOrDefault(s => s.Index != current.Index && !SameGroup(s.Index, current.Index))
         : null;
 
     /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
@@ -242,7 +258,7 @@ public sealed class Tracker
     private string? ConfirmableEvent(Step step)
     {
         var id = EventConventions.EventFor(step);
-        return id is not null && (_events is null || _events.Contains(id)) ? id : null;
+        return id is not null && !EventConventions.Unannounced.Contains(id) && (_events is null || _events.Contains(id)) ? id : null;
     }
 
     private int Required(int index) => _units[index];
@@ -315,6 +331,17 @@ public sealed class Tracker
         {
             if (_confirmEvent[i] is not null || IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i))
                 continue;
+            // Lo que el juego nunca avisa (granjas), en un paso mixto: hecho cuando las otras metas están hechas (los
+            // aldeanos a granjas y sus granjas). Lo que el log avisa pero no se pudo leer espera a un paso posterior:
+            // terminar el cuartel no dice que la Feudal terminó.
+            var mates = EventConventions.EventFor(_bo.Steps[i]) is { } silent && EventConventions.Unannounced.Contains(silent)
+                ? Enumerable.Range(0, n).Where(j => j != i && SameGroup(i, j)).ToList()
+                : [];
+            if (mates.Count > 0 && mates.All(IsDone))
+            {
+                doneAt[i] = mates.Max(j => doneAt[j] ?? _manualDone.GetValueOrDefault(j));
+                continue;
+            }
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
                 .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j)))
                 .Select(j => FirstProgressTime(j, doneAt))

@@ -10,6 +10,12 @@ public static class EventConventions
 {
     public const string VillagerCreated = "villager_created";
 
+    /// <summary>
+    /// Eventos que el juego no avisa en el log aunque estén en events.json: las granjas terminadas (en las partidas
+    /// 20261018-001030, 011721 y 021924 hubo granjas y ningún "Farm Built"). Un paso así no espera al log.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Unannounced = new HashSet<string> { "farm_built" };
+
     public static string? EventFor(StepAction action, string? what) => what is null
         ? null
         : action switch
