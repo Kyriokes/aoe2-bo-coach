@@ -66,6 +66,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
             var resource = ResourceOf(target.Region);
             // Con el mod, los que hay salen del HUD; si no, de la estimación de la economía.
             target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: !view.ActualFromHud);
+            if (frame.Hud?.ModBands is { } bands && bands.TryGetValue(target.Region, out var band))
+                target.Band = band;
         }
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";

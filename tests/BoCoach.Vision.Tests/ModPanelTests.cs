@@ -44,6 +44,31 @@ public class ModPanelTests
     }
 
     [Fact]
+    public void La_franja_de_color_es_la_parte_de_arriba_del_cuadrado()
+    {
+        // En la caja de prueba la franja ocupa las filas 0 a 6 y el cuadrado las columnas 2 a 19.
+        var band = ModPanel.Band(Box());
+
+        Assert.Equal(new PixelRect(2, 0, 18, 7), band);
+    }
+
+    [Fact]
+    public void La_GD_dibujada_en_la_franja_no_la_achica()
+    {
+        // En vivo la captura incluye nuestro overlay: un número oscuro en el medio de la franja (filas 0 a 3).
+        var box = Box();
+        for (var y = 0; y <= 3; y++)
+            for (var x = 6; x <= 15; x++)
+            {
+                var i = (y * box.Width + x) * 4;
+                (box.Bgra[i], box.Bgra[i + 1], box.Bgra[i + 2]) = (40, 40, 40);
+            }
+
+        Assert.Equal(new PixelRect(2, 0, 18, 7), ModPanel.Band(box));
+        Assert.NotNull(ModPanel.Split(box));
+    }
+
+    [Fact]
     public void Un_borde_suavizado_no_rompe_el_cuadrado()
     {
         // Grabación 20261017-021002: la última columna del cuadrado de madera tenía 4 píxeles negros de 40.

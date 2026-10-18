@@ -23,7 +23,35 @@ public static class ModPanel
     /// siguiente), o null si la caja no tiene el cuadrado (juego sin el mod). El stock es null si la caja no lo tiene
     /// (inactivos).
     /// </summary>
-    public static (CapturedImage Square, CapturedImage? Stock)? Split(CapturedImage image)
+    public static (CapturedImage Square, CapturedImage? Stock)? Split(CapturedImage image) =>
+        Find(image) is { } found
+            ? (Crop(image, found.Square), found.Stock is { } stock ? Crop(image, stock) : null)
+            : null;
+
+    /// <summary>
+    /// La franja de color del cuadrado (la mitad de arriba, que es decoración del mod), en píxeles de la caja, o null
+    /// si la caja no tiene el cuadrado. Ahí dibuja el overlay la GD sin tapar nada del juego. Las últimas filas, justo
+    /// arriba del negro, se usan para reconocer el mod: el overlay no las tiene que tocar.
+    /// </summary>
+    public static PixelRect? Band(CapturedImage image)
+    {
+        if (Find(image) is not { } found)
+            return null;
+        var (left, right, bodyTop, _) = found.Square;
+        // Se mide por el costado: en vivo la captura incluye nuestro overlay, que dibuja la GD centrada en la franja.
+        var x = left + Math.Max(1, (right - left) / 20);
+        var reference = image.Pixel(x, bodyTop - 2);
+        var top = bodyTop - 2;
+        while (top > 0 && Similar(image.Pixel(x, top - 1), reference))
+            top--;
+        return new PixelRect(left, top, right - left + 1, bodyTop - top);
+    }
+
+    private static bool Similar((byte R, byte G, byte B) a, (byte R, byte G, byte B) b) =>
+        Math.Abs(a.R - b.R) <= 30 && Math.Abs(a.G - b.G) <= 30 && Math.Abs(a.B - b.B) <= 30;
+
+    /// <summary>El cuerpo negro del cuadrado y el del stock (si hay), o null si la caja no es del mod.</summary>
+    private static ((int Left, int Right, int Top, int Height) Square, (int Left, int Right, int Top, int Height)? Stock)? Find(CapturedImage image)
     {
         var (w, h) = (image.Width, image.Height);
         var blocks = new List<(int Start, int Length)>();
@@ -46,7 +74,7 @@ public static class ModPanel
         var square = Body(image, blocks[0]);
         if (!HasBandAbove(image, square))
             return null;
-        return (Crop(image, square), blocks.Count > 1 ? Crop(image, Body(image, blocks[1])) : null);
+        return (square, blocks.Count > 1 ? Body(image, blocks[1]) : null);
     }
 
     /// <summary>

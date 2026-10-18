@@ -54,7 +54,7 @@ public partial class App : Application
 
         if (Argument(args, "--overlay-screenshot") is { } overlayShot)
         {
-            CaptureOverlayAndExit(data, overlayShot, Argument(args, "--readings"), Argument(args, "--bo"), Argument(args, "--at"), args.Contains("--debug"));
+            CaptureOverlayAndExit(data, overlayShot, Argument(args, "--readings"), Argument(args, "--bo"), Argument(args, "--at"), args.Contains("--debug"), args.Contains("--bands"));
             return;
         }
 
@@ -157,7 +157,11 @@ public partial class App : Application
     /// Dibuja el overlay como se vería en un momento de una partida grabada y cierra.
     /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo nombre --at 8:20 [--debug].
     /// </summary>
-    private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug)
+    /// <param name="bands">
+    /// Simula la franja de color del mod en cada recurso (filas 2 a 16 y columnas 1 a 36 de la caja, como en las
+    /// grabaciones) y usa la calibración del usuario, para ver dónde cae la GD sin el juego abierto.
+    /// </param>
+    private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false)
     {
         var entry = data.Library.List().FirstOrDefault(e => bo is null || e.Name.Contains(bo, StringComparison.OrdinalIgnoreCase));
         if (entry?.BuildOrder is not { } buildOrder || readings is null)
@@ -183,7 +187,13 @@ public partial class App : Application
         var window = new CoachOverlay(overlay) { Left = -30000, Top = 0 };
         window.Show();
         // La segunda parte: los números debajo de los recursos, en otra imagen ("-recursos.png").
-        var resources = new ResourceOverlay(overlay.Resources, Vision.Regions.RegionLayout.Default);
+        var layout = bands ? Vision.Regions.RegionLayout.LoadOrDefault(Vision.Regions.RegionLayout.DefaultPath) : Vision.Regions.RegionLayout.Default;
+        if (bands)
+        {
+            foreach (var target in overlay.Resources)
+                target.Band = new Vision.Capture.PixelRect(1, 2, 36, 15);
+        }
+        var resources = new ResourceOverlay(overlay.Resources, layout);
         resources.Show();
         resources.PlaceOver(new Vision.Capture.PixelRect(-30000, 0, 1920, 1080));
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>

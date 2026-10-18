@@ -9,9 +9,10 @@ using BoCoach.Vision.Regions;
 namespace BoCoach.App.Overlay;
 
 /// <summary>
-/// La segunda parte del overlay: un número grande debajo de cada recurso del HUD con los aldeanos que tendría que
-/// haber ahí (verde si coincide, rojo si faltan, amarillo si sobran). Se ubica con las cajas calibradas de cada
-/// recurso, así que sigue al HUD si se calibra de nuevo o se mueve la ventana del juego. Click-through.
+/// La segunda parte del overlay: la GD, un número por recurso del HUD con los aldeanos que tendría que haber ahí
+/// (verde si coincide, rojo si faltan, amarillo si sobran). Con el mod va chico dentro de la franja de color del
+/// cuadrado de cada recurso (así no tapa la cola de producción del juego, que aparece debajo del panel); sin el mod,
+/// grande debajo de cada caja. Sigue a las cajas calibradas y a la ventana del juego. Click-through.
 /// </summary>
 public sealed class ResourceOverlay : Window
 {
@@ -83,31 +84,76 @@ public sealed class ResourceOverlay : Window
         _ => UnknownBrush,
     };
 
-    /// <summary>Ocupa el ancho del juego y la franja de debajo de la barra de recursos; cada número va centrado bajo su caja.</summary>
+    /// <summary>Filas de abajo de la franja que la GD deja libres: el lector las usa para reconocer el cuadrado del mod.</summary>
+    public const int BandMargin = 4;
+
+    private PixelRect? _area;
+
+    /// <summary>
+    /// Ocupa el ancho del juego desde arriba hasta la franja de debajo de la barra de recursos. Con el mod, cada número
+    /// va chico dentro de la franja de color de su cuadrado; sin el mod, centrado debajo de su caja.
+    /// </summary>
     public void PlaceOver(PixelRect area)
     {
-        var scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1;
-        var boxes = _items.Keys.Where(t => _layout.Regions.ContainsKey(t.Region)).ToDictionary(t => t, t => _layout.PixelsOf(t.Region, area));
-        var top = boxes.Count > 0 ? boxes.Values.Max(b => b.Y + b.Height) + Gap : area.Y;
+        _area = area;
+        var scale = Scale();
+        var boxes = Boxes(area);
+        var bottom = boxes.Count > 0 ? boxes.Values.Max(b => b.Y + b.Height) + Gap + BandHeight : area.Y + BandHeight;
         Width = area.Width / scale;
-        Height = BandHeight / scale;
-        OverlayWindows.MoveTo(this, area.X, top);
-        foreach (var (target, (box, _)) in _items)
+        Height = (bottom - area.Y) / scale;
+        OverlayWindows.MoveTo(this, area.X, area.Y);
+        foreach (var target in _items.Keys)
+            Position(target);
+    }
+
+    private double Scale() => PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1;
+
+    private Dictionary<ResourceTargetViewModel, PixelRect> Boxes(PixelRect area) =>
+        _items.Keys.Where(t => _layout.Regions.ContainsKey(t.Region)).ToDictionary(t => t, t => _layout.PixelsOf(t.Region, area));
+
+    private void Position(ResourceTargetViewModel target)
+    {
+        var (box, text) = _items[target];
+        if (_area is not { } area || !_layout.Regions.ContainsKey(target.Region))
         {
-            if (!boxes.TryGetValue(target, out var rect))
-            {
-                box.Visibility = Visibility.Collapsed;
-                continue;
-            }
+            box.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var scale = Scale();
+        var rect = _layout.PixelsOf(target.Region, area);
+        if (target.Band is { } band)
+        {
+            // Dentro de la franja, sin tocar sus últimas filas ni sus costados (el lector mide la franja por ahí).
+            var height = Math.Max(8, band.Height - BandMargin);
+            box.Width = band.Width * 0.7 / scale;
+            box.Height = height / scale;
+            box.Padding = new Thickness(0);
+            box.CornerRadius = new CornerRadius(3);
+            text.FontSize = Math.Max(7, height * 0.8) / scale;
+            text.VerticalAlignment = VerticalAlignment.Center;
+            Canvas.SetLeft(box, (rect.X - area.X + band.X + band.Width * 0.15) / scale);
+            Canvas.SetTop(box, (rect.Y - area.Y + band.Y) / scale);
+        }
+        else
+        {
+            var below = Boxes(area).Values.Max(b => b.Y + b.Height) + Gap;
+            box.Width = BoxWidth;
+            box.Height = double.NaN;
+            box.Padding = new Thickness(8, 0, 8, 2);
+            box.CornerRadius = new CornerRadius(5);
+            text.FontSize = 26;
             Canvas.SetLeft(box, (rect.X - area.X + rect.Width / 2.0) / scale - BoxWidth / 2);
-            Canvas.SetTop(box, 0);
+            Canvas.SetTop(box, (below - area.Y) / scale);
         }
     }
 
     private void OnTargetChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is ResourceTargetViewModel target)
-            Refresh(target);
+        if (sender is not ResourceTargetViewModel target)
+            return;
+        if (e.PropertyName == nameof(ResourceTargetViewModel.Band))
+            Position(target);
+        Refresh(target);
     }
 
     private void Refresh(ResourceTargetViewModel target)

@@ -13,6 +13,7 @@ namespace BoCoach.Vision.Hud;
 /// <param name="Population">"N" de "N/M" (solo con el mod BoCoach HUD).</param>
 /// <param name="PopulationCap">"M" de "N/M" (solo con el mod BoCoach HUD).</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD (solo con el mod BoCoach HUD).</param>
+/// <param name="ModBands">Franja de color del cuadrado de cada recurso en su caja (con el mod), para dibujar la GD.</param>
 public sealed record HudState(
     double RealTime,
     double? Clock,
@@ -28,7 +29,8 @@ public sealed record HudState(
     bool ClockRead = true,
     int? Population = null,
     int? PopulationCap = null,
-    IReadOnlyDictionary<Resource, int>? VillagersOn = null)
+    IReadOnlyDictionary<Resource, int>? VillagersOn = null,
+    IReadOnlyDictionary<string, Capture.PixelRect>? ModBands = null)
 {
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
@@ -97,7 +99,8 @@ public sealed class HudTracker
             reading.Clock is not null,
             population,
             cap,
-            villagersOn.Count > 0 ? villagersOn : null);
+            villagersOn.Count > 0 ? villagersOn : null,
+            reading.ModBands);
     }
 
     private void UpdateAge(Age? read)

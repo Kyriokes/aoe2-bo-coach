@@ -36,6 +36,7 @@ public sealed record HudFonts(
 /// <param name="VillagersOn">Aldeanos en cada recurso (solo con el mod BoCoach HUD).</param>
 /// <param name="Population">Población "N" de "N/M" (solo con el mod BoCoach HUD).</param>
 /// <param name="PopulationCap">Tope "M" de "N/M" (solo con el mod BoCoach HUD).</param>
+/// <param name="ModBands">Franja de color del cuadrado de cada recurso, en píxeles de su caja (con el mod): ahí va la GD.</param>
 public sealed record HudReading(
     double? Clock,
     int? Food,
@@ -47,7 +48,8 @@ public sealed record HudReading(
     IReadOnlyList<string> Clipped,
     IReadOnlyDictionary<Resource, int>? VillagersOn = null,
     int? Population = null,
-    int? PopulationCap = null)
+    int? PopulationCap = null,
+    IReadOnlyDictionary<string, PixelRect>? ModBands = null)
 {
     public int? Stock(Resource resource) => resource switch
     {
@@ -85,6 +87,7 @@ public sealed class HudReader(HudFonts fonts)
     {
         var clipped = new List<string>();
         var villagersOn = new Dictionary<Resource, int>();
+        var bands = new Dictionary<string, PixelRect>();
 
         int? Parse(GlyphReading reading, string region)
         {
@@ -108,6 +111,8 @@ public sealed class HudReader(HudFonts fonts)
                 return Parse(_stock.ReadRightmostGroup(img), region);
             if (Parse(_modNumbers!.Read(parts.Square), region) is { } villagers)
                 villagersOn[resource] = villagers;
+            if (ModPanel.Band(img) is { } band)
+                bands[region] = band;
             return parts.Right is { } right ? Parse(_modNumbers.Read(right), region) : null;
         }
 
@@ -178,7 +183,8 @@ public sealed class HudReader(HudFonts fonts)
             clipped,
             villagersOn.Count > 0 ? villagersOn : null,
             population,
-            cap);
+            cap,
+            bands.Count > 0 ? bands : null);
     }
 
     /// <summary>Lee una captura grabada.</summary>

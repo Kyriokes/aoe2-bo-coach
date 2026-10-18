@@ -21,6 +21,12 @@ public sealed partial class ResourceTargetViewModel(string region) : ObservableO
     /// <summary>"hay 12" para el panel de la app.</summary>
     [ObservableProperty] public partial string? Actual { get; set; }
 
+    /// <summary>
+    /// Con el mod: la franja de color del cuadrado del recurso, en píxeles de su caja calibrada. La GD se dibuja ahí,
+    /// chica, y no tapa la cola de producción del juego (que aparece debajo del panel). null = debajo de la caja.
+    /// </summary>
+    [ObservableProperty] public partial Vision.Capture.PixelRect? Band { get; set; }
+
     public void Apply(double? target, double? actual, bool estimated)
     {
         Target = target is { } t ? $"{t:0}" : null;
