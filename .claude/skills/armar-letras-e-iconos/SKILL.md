@@ -39,7 +39,7 @@ Los íconos miden 33×33 a 1920×1080 y cambian de color con el estado: verde co
 ```bash
 dotnet run -c Release --project tools/ReplaySession -- teach <grabación> <captura> <lugar> <clave> data/icons/production_queue.json
 ```
-El lugar empieza en 0 a la izquierda. Antes mirá la captura (hoja de contactos con `queues.ps1` o el PNG de la región) para estar seguro de qué es; si no lo podés identificar, dejalo como "?" (no suma edificios ni confunde nada). Para lo que no es un ícono (adornos del panel, mapa) usá la clave `-`.
+El lugar empieza en 0 a la izquierda. Antes mirá la captura (el PNG de la región, o una hoja de contactos con un script `.ps1` en el scratchpad si son varias) para estar seguro de qué es; si no lo podés identificar, dejalo como "?" (no suma edificios ni confunde nada). Para lo que no es un ícono (adornos del panel, mapa) usá la clave `-`.
 
 **Para armar la biblioteca de nuevo:**
 
