@@ -34,6 +34,25 @@ public class BuildOrderValidatorTests
     }
 
     [Fact]
+    public void Avisa_si_la_poblacion_del_clic_nunca_se_alcanza()
+    {
+        // La copia vieja de arqueros: 6 en ovejas con los 3 iniciales y Feudal a 23, pero solo llegaba a 19 aldeanos.
+        var bo = Bo(
+            new Step { Id = "s1", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+            Villagers("s2", 6),
+            new Step { Id = "s3", Do = StepAction.Train, What = "villager", Count = 4, Assign = GatherSource.Wood },
+            Build("s4", "lumber_camp"),
+            Build("s5", "mill"),
+            new Step { Id = "s6", Do = StepAction.Research, What = "feudal_age", AtPop = 23 });
+
+        var result = Validator.Validate(bo);
+
+        var warning = Assert.Single(result.Warnings, w => w.StepId == "s6");
+        Assert.Contains("nunca llega a 23", warning.Message);
+        Assert.Contains("hay 11", warning.Message); // 10 aldeanos y el explorador
+    }
+
+    [Fact]
     public void Aldeanos_sin_recurso_asignado()
     {
         var error = SingleError(Bo(Villagers("s1", assign: null)));

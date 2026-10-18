@@ -87,6 +87,20 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
                 Warn(bo.Steps[i].Id, $"Antes de este paso ya hay {bo.Steps[i].Count} o más aldeanos en {StepText.Source(bo.Steps[i].Assign!.Value)}: no entrena ninguno (la cantidad es el total en el recurso, como en el HUD).");
         }
 
+        // "A N de población" que los pasos anteriores nunca alcanzan: el paso no arranca y el coach espera para siempre.
+        var population = Engine.PlanStart.Standard.Population;
+        for (var i = 0; i < units.Length; i++)
+        {
+            var step = bo.Steps[i];
+            if (step.AtPop is { } atPop && atPop > population)
+            {
+                Warn(step.Id, $"La población nunca llega a {atPop}: con los pasos anteriores hay {population} (aldeanos y unidades, " +
+                              $"con el explorador). Faltan {atPop - population} aldeanos antes, o bajá 'a N de población'.");
+            }
+            if (step.Do == StepAction.Train && step.What is not null && gameData.TryGet(step.What, out var unit))
+                population += units[i] * Math.Max(1, unit.Pop);
+        }
+
         foreach (var cycle in FindCycles(bo.Steps))
             Error(cycle[0], $"Dependencia circular en 'after': {string.Join(" → ", cycle)}.");
 
