@@ -17,13 +17,20 @@ public sealed record HudFonts(
     GlyphFont Clock, GlyphFont Stock, GlyphFont Villagers,
     GlyphFont? ModNumbers = null, GlyphFont? ModClock = null, GlyphFont? ModPopulation = null)
 {
+    /// <summary>Los íconos de la cola de producción (data/icons/production_queue.json), o null si no están.</summary>
+    public IconLibrary? QueueIcons { get; init; }
+
+    /// <param name="directory">data/fonts; los íconos de la cola están al lado, en data/icons.</param>
     public static HudFonts Load(string directory) => new(
         GlyphFont.Load(Path.Combine(directory, "clock.json")),
         GlyphFont.Load(Path.Combine(directory, "stock.json")),
         GlyphFont.Load(Path.Combine(directory, "villagers.json")),
         Optional(Path.Combine(directory, "mod_numbers.json")),
         Optional(Path.Combine(directory, "mod_clock.json")),
-        Optional(Path.Combine(directory, "mod_population.json")));
+        Optional(Path.Combine(directory, "mod_population.json")))
+    {
+        QueueIcons = IconLibrary.TryLoad(Path.Combine(directory, "..", "icons", "production_queue.json")),
+    };
 
     private static GlyphFont? Optional(string path) => File.Exists(path) ? GlyphFont.Load(path) : null;
 }

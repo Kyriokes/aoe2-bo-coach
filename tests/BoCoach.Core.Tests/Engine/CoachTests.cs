@@ -360,6 +360,21 @@ public class CoachTests
     }
 
     [Fact]
+    public void Con_la_cola_leida_el_centro_urbano_investigando_no_esta_parado()
+    {
+        // Partida 20261018-021924: se quejaba de centro urbano parado mientras investigaba la carretilla (no estaba
+        // como paso en curso de la BO).
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, params string[] queue) => At(time, 200, villagers: 30) with { Queue = queue };
+
+        coach.Update(Queue(1000, "villager"));
+        Assert.Null(coach.Update(Queue(1060, "wheelbarrow", "archer")).TownCenterIdle);  // un minuto sin aldeanos, investigando
+        Assert.Null(coach.Update(Queue(1063, "archer")).TownCenterIdle);                 // recién terminó: margen
+        Assert.NotNull(coach.Update(Queue(1066, "archer")).TownCenterIdle);              // 6 s sin nada del centro urbano
+    }
+
+    [Fact]
     public void El_overlay_muestra_como_quedan_los_aldeanos_al_terminar_el_paso()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);

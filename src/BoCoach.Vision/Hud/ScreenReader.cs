@@ -14,6 +14,7 @@ namespace BoCoach.Vision.Hud;
 public sealed class ScreenReader
 {
     private readonly HudReader _hud;
+    private readonly IconLibrary? _queueIcons;
     private readonly HudTracker _tracker = new();
     private readonly OcrReader? _ocr;
     private readonly EventLogReader? _log;
@@ -23,6 +24,7 @@ public sealed class ScreenReader
     public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog)
     {
         _hud = new HudReader(fonts);
+        _queueIcons = fonts.QueueIcons;
         _ocr = ocr;
         _log = ocr is null ? null : new EventLogReader(ocr, catalog);
     }
@@ -50,7 +52,10 @@ public sealed class ScreenReader
             _lastAgeRead = realTime;
         }
 
-        return _tracker.Update(realTime, reading, events, age);
+        // La cola de producción: íconos comparados con la biblioteca (rápido: unos pocos lugares de 11×11 colores).
+        var queue = _queueIcons is not null && regions(RegionNames.ProductionQueue) is { } queueImage ? _queueIcons.Read(queueImage) : null;
+
+        return _tracker.Update(realTime, reading, events, age) with { Queue = queue };
     }
 }
 
@@ -65,5 +70,6 @@ public static class HudStateExtensions
         state.Population, state.PopulationCap, state.NewEvents,
         state.VillagersOn is { Count: 4 } on
             ? new ResourceAmounts(on[Resource.Food], on[Resource.Wood], on[Resource.Stone], on[Resource.Gold])
-            : null);
+            : null,
+        state.Queue);
 }

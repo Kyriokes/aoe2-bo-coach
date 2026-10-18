@@ -8,6 +8,7 @@ namespace BoCoach.Core.Engine;
 /// </summary>
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura (ids de data/events.json).</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD, o null si no se leyeron los cuatro.</param>
+/// <param name="Queue">La cola de producción (claves de game_data), o null si no se lee.</param>
 public sealed record ScreenReading(
     double? Clock,
     double? Food,
@@ -18,7 +19,8 @@ public sealed record ScreenReading(
     int? Population,
     int? PopulationCap,
     IReadOnlyList<string> NewEvents,
-    ResourceAmounts? VillagersOn = null);
+    ResourceAmounts? VillagersOn = null,
+    IReadOnlyList<string>? Queue = null);
 
 /// <summary>
 /// Arma los <see cref="GameSnapshot"/> del motor a partir de las lecturas de pantalla:
@@ -149,7 +151,7 @@ public sealed class SnapshotBuilder(GameData data)
             return null;
         var events = _pendingEvents.Select(id => new GameEvent(id, clock)).ToList();
         _pendingEvents.Clear();
-        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn };
+        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn, Queue = reading.Queue };
     }
 
     /// <summary>Un "X Created" del log que no es un aldeano.</summary>

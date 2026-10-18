@@ -32,6 +32,12 @@ public sealed record HudState(
     IReadOnlyDictionary<Resource, int>? VillagersOn = null,
     IReadOnlyDictionary<string, Capture.PixelRect>? ModBands = null)
 {
+    /// <summary>
+    /// Lo que hay en la cola de producción, de izquierda a derecha (claves de game_data, "housed" o "?"), o null si
+    /// no se lee (región sin calibrar o sin los íconos).
+    /// </summary>
+    public IReadOnlyList<string>? Queue { get; init; }
+
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
         ? new ResourceAmounts(f, w, s, g)

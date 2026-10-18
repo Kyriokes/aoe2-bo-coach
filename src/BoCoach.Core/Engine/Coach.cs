@@ -284,7 +284,36 @@ public sealed class Coach
         }
         if (Tracker.InProgress.Any(s => s.Step.What is { } what && _data.TryGet(what, out var e) && e.MadeIn == "town_center"))
             _townCenterBusyAt = snapshot.Time;
+        if (snapshot.Queue is { } queue)
+        {
+            if (snapshot.Time - _queueSeenAt > QueueStaleSeconds)
+                _queueFirstSeenAt = snapshot.Time;
+            _queueSeenAt = snapshot.Time;
+            if (queue.Any(IsTownCenterWork))
+                _townCenterQueuedAt = snapshot.Time;
+        }
     }
+
+    /// <summary>
+    /// Algo de la cola que tiene ocupado al centro urbano: aldeanos, sus tecnologías (telar, carretilla, edades) o
+    /// lo que espera población (de eso avisa el recordatorio de la casa, no el del centro urbano).
+    /// </summary>
+    private bool IsTownCenterWork(string key) =>
+        key is "villager" or "housed" || (_data.TryGet(key, out var entity) && entity.MadeIn == BuildOrderValidator.StartingBuilding);
+
+    /// <summary>
+    /// Con la cola de producción leída, el centro urbano está parado si hace <see cref="QueueIdleGrace"/> segundos
+    /// que no hay nada suyo en la cola. Sin ella, se deduce de los aldeanos (y se quejaba mientras investigaba algo
+    /// que la BO no tenía, como la carretilla).
+    /// </summary>
+    public double QueueIdleGrace { get; init; } = 5; // con 3, el cambio de un aldeano al telar o al clic de Feudal avisaba 1 s
+
+    /// <summary>Segundos sin leer la cola a partir de los que se vuelve a deducir por los aldeanos.</summary>
+    private const double QueueStaleSeconds = 5;
+
+    private double _queueSeenAt = double.NegativeInfinity;
+    private double _queueFirstSeenAt = double.NegativeInfinity;
+    private double _townCenterQueuedAt = double.NegativeInfinity;
 
     /// <summary>
     /// Cuánto lleva el centro urbano sin producir, contando desde el último aldeano (o desde que terminó de investigar)
@@ -298,6 +327,12 @@ public sealed class Coach
         var pending = Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped));
         if (!pending && villagers >= _economySettings.MaxVillagers)
             return null;
+        if (State.Time - _queueSeenAt <= QueueStaleSeconds)
+        {
+            // Desde la última vez que la cola tuvo algo del centro urbano (o desde que se empezó a leer).
+            var idleFor = State.Time - Math.Max(_townCenterQueuedAt, _queueFirstSeenAt);
+            return idleFor >= QueueIdleGrace ? idleFor : null;
+        }
         var civ = _data.Civ(Tracker.BuildOrder.Civ);
         var age = LivePlan.Start(Tracker).Age;
         var train = civ.Time(villager, age) / civ.WorkRate("town_center", age);

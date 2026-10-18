@@ -33,4 +33,10 @@ public sealed record GameSnapshot(
     /// null si no se leyeron los cuatro. No incluye a los que construyen ni a los inactivos.
     /// </summary>
     public ResourceAmounts? VillagersOn { get; init; }
+
+    /// <summary>
+    /// Lo que hay en la cola de producción del juego (claves de game_data; "housed" = esperando población, "?" = ícono
+    /// desconocido), o null si no se leyó. Vacía = no se está produciendo nada.
+    /// </summary>
+    public IReadOnlyList<string>? Queue { get; init; }
 }
