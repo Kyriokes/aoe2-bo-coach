@@ -20,6 +20,14 @@
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
+//   icons <grabación[;grabación...]> <salida> [--every 4] [--offset-y 0]
+//       Recorta los lugares de la cola de producción (production_queue), los agrupa por parecido y escribe
+//       clusters.json y clusters.png (una fila por grupo, con ejemplos) para etiquetarlos mirando la imagen.
+//   iconlib <salida> <etiquetas> <íconos.json>
+//       Arma la biblioteca de íconos de la cola con las etiquetas "grupo=clave" (claves de game_data, por ejemplo
+//       "0=villager,3=archer"). Los grupos sin etiqueta (mapa, negro) se descartan.
+//   queue <grabación> <íconos.json> [--every 2]
+//       Lee la cola de producción y muestra cada cambio.
 //   import <guía.json> <salida.json> [--id ejemplo-arqueros]
 //       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
 //       pasos y los avisos, y la simula.
@@ -62,6 +70,9 @@ try
         "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
+        "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
+        "iconlib" => IconLib(args[1], args[2], args[3]),
+        "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -69,6 +80,119 @@ catch (Exception e) when (e is ArgumentException or IndexOutOfRangeException or 
 {
     Console.Error.WriteLine($"Error: {e.Message}");
     return 1;
+}
+
+// ---- icons / iconlib / queue: la cola de producción ----
+static int QueueIcons(string recordings, string output, int every, int offsetY)
+{
+    const float join = 0.05f;
+    var size = ProductionQueue.IconSize;
+    var clusters = new List<(float[] Sum, int Count, List<CapturedImage> Samples)>();
+    foreach (var session in recordings.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(RecordedSession.Load))
+    {
+        foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
+        {
+            if (!session.Has(frame.Index, RegionNames.ProductionQueue))
+                continue;
+            var image = session.Image(frame.Index, RegionNames.ProductionQueue);
+            foreach (var (x, y) in ProductionQueue.Slots(image, 0, offsetY).Take(6))
+            {
+                var features = ProductionQueue.Features(image, x, y);
+                var best = -1;
+                var bestDistance = float.MaxValue;
+                for (var c = 0; c < clusters.Count; c++)
+                {
+                    var d = ProductionQueue.Distance(features, clusters[c].Sum.Select(v => v / clusters[c].Count).ToArray());
+                    if (d < bestDistance)
+                        (best, bestDistance) = (c, d);
+                }
+                var crop = image.Crop(new PixelRect(x, y, size, size));
+                if (best >= 0 && bestDistance < join)
+                {
+                    var c = clusters[best];
+                    for (var k = 0; k < c.Sum.Length; k++)
+                        c.Sum[k] += features[k];
+                    if (c.Samples.Count < 12)
+                        c.Samples.Add(crop);
+                    clusters[best] = (c.Sum, c.Count + 1, c.Samples);
+                }
+                else
+                {
+                    clusters.Add(((float[])features.Clone(), 1, [crop]));
+                }
+            }
+        }
+    }
+
+    var ordered = clusters.Where(c => c.Count >= 3).OrderByDescending(c => c.Count).ToList();
+    Directory.CreateDirectory(output);
+    File.WriteAllText(Path.Combine(output, "clusters.json"), JsonSerializer.Serialize(ordered.Select((c, id) => new
+    {
+        id,
+        count = c.Count,
+        centroid = c.Sum.Select(v => v / c.Count).ToArray(),
+    })));
+
+    // Una fila por grupo (hasta 12 ejemplos a tamaño real), 15 grupos por imagen, con el número de grupo a la izquierda.
+    const int gap = 3, perPage = 15, label = 0;
+    var width = label + 12 * (size + gap) + gap;
+    for (var page = 0; page * perPage < ordered.Count; page++)
+    {
+        var rows = ordered.Skip(page * perPage).Take(perPage).ToList();
+        var height = rows.Count * (size + gap) + gap;
+        var pixels = new byte[width * height * 4];
+        for (var p = 0; p < pixels.Length; p += 4)
+            (pixels[p], pixels[p + 1], pixels[p + 2], pixels[p + 3]) = (255, 0, 255, 255);
+        for (var r = 0; r < rows.Count; r++)
+        {
+            for (var k = 0; k < rows[r].Samples.Count; k++)
+            {
+                var sample = rows[r].Samples[k];
+                var ox = label + gap + k * (size + gap);
+                var oy = gap + r * (size + gap);
+                for (var yy = 0; yy < size; yy++)
+                    Array.Copy(sample.Bgra, yy * size * 4, pixels, ((oy + yy) * width + ox) * 4, size * 4);
+            }
+        }
+        Png.Write(new CapturedImage(width, height, pixels), Path.Combine(output, page == 0 ? "clusters.png" : $"clusters-{page + 1}.png"));
+    }
+    Console.WriteLine($"{ordered.Count} grupos (fila = grupo, {perPage} por imagen):");
+    for (var i = 0; i < ordered.Count; i++)
+        Console.WriteLine($"  grupo {i,2}: {ordered[i].Count,5} lugares");
+    return 0;
+}
+
+static int IconLib(string clustersDir, string labels, string output)
+{
+    using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(clustersDir, "clusters.json")));
+    var centroids = doc.RootElement.EnumerateArray().ToDictionary(
+        e => e.GetProperty("id").GetInt32(),
+        e => e.GetProperty("centroid").EnumerateArray().Select(v => v.GetSingle()).ToArray());
+    var icons = labels.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(pair => pair.Split('='))
+        .Select(p => new QueueIcon(p[1].Trim(), centroids[int.Parse(p[0], CultureInfo.InvariantCulture)]))
+        .ToList();
+    new IconLibrary(icons).Save(output);
+    Console.WriteLine($"{icons.Count} íconos ({string.Join(", ", icons.Select(i => i.Key).Distinct())}) → {output}");
+    return 0;
+}
+
+static int ReadQueue(string recording, string libraryPath, int every)
+{
+    var library = IconLibrary.Load(libraryPath);
+    var session = RecordedSession.Load(recording);
+    var last = "";
+    foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
+    {
+        if (!session.Has(frame.Index, RegionNames.ProductionQueue))
+            continue;
+        var text = string.Join(" ", library.Read(session.Image(frame.Index, RegionNames.ProductionQueue)));
+        if (text == last)
+            continue;
+        last = text;
+        Console.WriteLine($"{frame.Index,6}  {(text.Length == 0 ? "(vacía)" : text)}");
+    }
+    return 0;
 }
 
 // ---- import: una guía de RTS Overlay (buildorderguide.com) a nuestro formato ----
