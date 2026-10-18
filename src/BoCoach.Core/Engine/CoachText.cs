@@ -44,8 +44,7 @@ public static class CoachText
                 false,
                 view.Suggestion?.ToString(),
                 AlertText(view.Alert),
-                IdleText(view.TownCenterIdle),
-                DistributionText(view.Distribution));
+                IdleText(view.TownCenterIdle));
         }
 
         var title = StepText.Describe(current.Step);
@@ -66,7 +65,8 @@ public static class CoachText
             view.Suggestion?.ToString(),
             AlertText(view.Alert),
             IdleText(view.TownCenterIdle),
-            DistributionText(view.Distribution))
+            // La GD (debajo de cada recurso) dice dónde ponerlos ahora; acá, cómo quedan al terminar el paso.
+            view.StepTarget is { } target ? StepTargetText(target) : DistributionText(view.Distribution))
         {
             Goals = view.Goals.Where(g => g.Index != current.Index).Select(Goal).ToList(),
         };
@@ -98,6 +98,10 @@ public static class CoachText
         { } a when Math.Round(a) > Math.Round(target) => TargetMatch.Over,
         _ => TargetMatch.Ok,
     };
+
+    /// <summary>"Al terminar el paso: madera 4 · comida 6 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
+    public static string StepTargetText(ResourceAmounts t) =>
+        $"Al terminar el paso: madera {t.Wood:0} · comida {t.Food:0} · oro {t.Gold:0} · piedra {t.Stone:0}";
 
     /// <summary>"Reparto: madera 4 · comida 9 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
     public static string? DistributionText(ResourceAmounts? d) => d is { } v

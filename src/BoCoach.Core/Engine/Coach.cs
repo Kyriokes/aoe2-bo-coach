@@ -52,6 +52,13 @@ public sealed record CoachView(
     public ResourceAmounts? BoDistribution { get; init; }
 
     /// <summary>
+    /// Cómo quiere la BO a los aldeanos cuando se termine el paso actual (si es mixto, todas sus metas), contando los
+    /// iniciales, como el HUD. Es lo que muestra el overlay: la GD dice dónde ponerlos ahora y esto, a dónde se va.
+    /// null si la BO terminó.
+    /// </summary>
+    public ResourceAmounts? StepTarget { get; init; }
+
+    /// <summary>
     /// Aldeanos que hay ahora en cada recurso (estimados por la economía hasta que se lean del HUD), para comparar con
     /// <see cref="Distribution"/>, o null si todavía no hay estimación.
     /// </summary>
@@ -330,6 +337,19 @@ public sealed class Coach
         return new ResourceAmounts(whole[Resource.Food], whole[Resource.Wood], whole[Resource.Stone], whole[Resource.Gold]);
     }
 
+    private ResourceAmounts? StepTarget(StepProgress? current)
+    {
+        if (current is null)
+            return null;
+        var last = Tracker.CurrentGoals.Select(g => g.Index).DefaultIfEmpty(current.Index).Max();
+        var perResource = new Dictionary<Resource, double>();
+        foreach (var (source, count) in LivePlan.PlannedVillagers(Tracker.BuildOrder, last))
+            perResource[source.Resource()] = perResource.GetValueOrDefault(source.Resource()) + count;
+        return new ResourceAmounts(
+            perResource.GetValueOrDefault(Resource.Food), perResource.GetValueOrDefault(Resource.Wood),
+            perResource.GetValueOrDefault(Resource.Stone), perResource.GetValueOrDefault(Resource.Gold));
+    }
+
     private ResourceAmounts? Actual() => Economy?.Villagers.PerResource is { } estimate
         ? new ResourceAmounts(Math.Round(estimate.Food), Math.Round(estimate.Wood), Math.Round(estimate.Stone), Math.Round(estimate.Gold))
         : null;
@@ -373,6 +393,7 @@ public sealed class Coach
             SourceVillagers = SourceVillagers(current),
             Distribution = _guide ?? Distribution(Economy?.FoodFloor ?? 0),
             BoDistribution = Distribution(Economy?.FoodFloor ?? 0),
+            StepTarget = StepTarget(current),
             Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,

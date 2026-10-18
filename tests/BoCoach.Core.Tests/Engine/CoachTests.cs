@@ -334,7 +334,20 @@ public class CoachTests
         // La BO tiene los 3 iniciales en ovejas; el HUD dice 5: van todos a la comida.
         var view = coach.Update(At(65, 200, 5));
         Assert.Equal(new ResourceAmounts(5, 0, 0, 0), view.Distribution);
-        Assert.Equal("Reparto: madera 0 · comida 5 · oro 0 · piedra 0", CoachText.Lines(view, TestData.GameData).Distribution);
+    }
+
+    [Fact]
+    public void El_overlay_muestra_como_quedan_los_aldeanos_al_terminar_el_paso()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+        var view = coach.Update(At(40, 200, 3, "house_built", "house_built"));
+
+        // Paso "aldeanos a ovejas": al terminarlo, todos los de la BO en ovejas.
+        Assert.Equal("s2", view.Current?.Step.Id);
+        var target = LivePlan.PlannedVillagers(Scouts, Index("s2"))[GatherSource.Sheep];
+        Assert.Equal(new ResourceAmounts(target, 0, 0, 0), view.StepTarget);
+        Assert.Equal($"Al terminar el paso: madera 0 · comida {target} · oro 0 · piedra 0", CoachText.Lines(view, TestData.GameData).Distribution);
     }
 
     [Fact]
