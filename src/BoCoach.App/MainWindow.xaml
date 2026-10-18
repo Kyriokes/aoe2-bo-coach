@@ -106,6 +106,7 @@
                     </ItemsControl>
                     <TextBlock Text="{Binding FoodFloor}" Foreground="#E8C26A" FontSize="12" Margin="0,4,0,0"
                                Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
+                    <TextBlock Text="{Binding Queue}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" />
                     <DockPanel Margin="0,6,0,0">
                         <!-- Lo mismo que Ctrl+Alt+← / → / ↓ desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">

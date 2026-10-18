@@ -39,6 +39,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     [ObservableProperty] public partial string Usage { get; set; } = "";
     [ObservableProperty] public partial string FoodFloor { get; set; } = "";
 
+    /// <summary>"Cola: aldeano, carretilla, arquero" (lo que se lee de la cola de producción del juego).</summary>
+    [ObservableProperty] public partial string Queue { get; set; } = "";
+
     /// <summary>Los últimos eventos que se leyeron del log, el más nuevo arriba.</summary>
     public ObservableCollection<string> Events { get; } = [];
 
@@ -75,6 +78,12 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         Population = hud is { Population: { } p, PopulationCap: { } c } ? $"{p}/{c}" : $"{view.Population}/{view.PopulationCap} (estimada)";
         FoodFloor = view.FoodFloor > 0 ? $"mínimo en comida para no parar el centro urbano: {view.FoodFloor}" : "";
         Age = hud?.Age is { } age ? BuildOrderValidator.AgeName(age) : "no se lee";
+        Queue = hud?.Queue switch
+        {
+            null => "Cola de producción: no se lee (calibrá su caja)",
+            [] => "Cola de producción: vacía",
+            var items => $"Cola de producción: {string.Join(", ", items.Select(QueueName))}",
+        };
         Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }
             ? $"Números cortados en: {string.Join(", ", hud.Clipped.Select(RegionNames.Label))}"
@@ -90,4 +99,12 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     }
 
     public void Clear() => Events.Clear();
+
+    private static string QueueName(string key) => key switch
+    {
+        Vision.Hud.IconLibrary.Housed => "sin población",
+        Vision.Hud.IconLibrary.Unknown => "?",
+        _ when StepText.HasName(key) => StepText.Name(key),
+        _ => key,
+    };
 }
