@@ -17,6 +17,9 @@ public class TrackerTests
 
     private static readonly StepState[] Open = [StepState.Pending, StepState.Ready];
 
+    private static bool Silent(Step s) =>
+        s.Group is null && EventConventions.EventFor(s) is { } e && EventConventions.Unannounced.Contains(e);
+
     [Fact]
     public void Partida_perfecta_completa_todos_los_pasos_en_orden()
     {
@@ -25,9 +28,12 @@ public class TrackerTests
 
         for (var i = 0; i < Scouts.Steps.Count; i++)
         {
-            // Las granjas no se avisan en el log: siguen siendo el paso actual hasta que avanza el siguiente.
-            var farmBefore = i > 0 && EventConventions.EventFor(Scouts.Steps[i - 1]) is { } e && EventConventions.Unannounced.Contains(e);
-            Assert.Equal(farmBefore ? Scouts.Steps[i - 1].Id : Scouts.Steps[i].Id, tracker.Current?.Step.Id);
+            // Las granjas no se avisan en el log: no son el paso actual (nada las confirmaría), se muestran aparte y
+            // quedan hechas cuando avanza el siguiente.
+            var expected = Enumerable.Range(i, Scouts.Steps.Count - i).Select(j => Scouts.Steps[j]).First(s => !Silent(s));
+            Assert.Equal(expected.Id, tracker.Current?.Step.Id);
+            if (Silent(Scouts.Steps[i]))
+                Assert.Contains(tracker.Silent, s => s.Index == i);
             partida.Play(Scouts, i, i);
             tracker.Update(partida.State);
         }
@@ -290,7 +296,9 @@ public class TrackerTests
         tracker.Update(partida.State);
 
         Assert.Equal(StepState.Done, StateOf(tracker, "s13"));
-        Assert.Equal("s16", tracker.Current?.Step.Id);
+        // s16 son granjas, que el juego no avisa: se muestran aparte y el paso actual es el siguiente.
+        Assert.Equal("s17", tracker.Current?.Step.Id);
+        Assert.Contains(tracker.Silent, s => s.Step.Id == "s16");
     }
 
     [Fact]
@@ -366,5 +374,26 @@ public class TrackerTests
         tracker.MarkStarted(Index("s13"), 520);
 
         Assert.Equal(StepState.Late, StateOf(tracker, "s12"));
+    }
+
+    [Fact]
+    public void Las_granjas_no_traban_la_BO_y_quedan_hechas_al_empezar_un_paso_posterior()
+    {
+        // La partida 20261018-132830: después de la casa del paso 39 la BO pide 4 granjas, carretilla y Castillos.
+        // El juego no avisa las granjas, y el coach mostró "Construir 4 granjas" desde las 18:00 hasta el final.
+        var archers = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json"));
+        var farms = archers.Steps.Select(s => s.Id).ToList().IndexOf("s40");
+        var tracker = new Tracker(archers, TestData.GameData);
+        tracker.Update(new Partida().Play(archers, 0, farms).State);
+
+        Assert.Equal("s41", tracker.Current?.Step.Id);
+        Assert.Contains(tracker.Silent, s => s.Step.Id == "s40");
+
+        // Hace clic en Castillos sin la carretilla: las granjas ya están, la carretilla queda atrasada.
+        tracker.MarkStarted(archers.Steps.Select(s => s.Id).ToList().IndexOf("s42"), 1226);
+
+        Assert.Equal(StepState.Done, tracker.Steps[farms].State);
+        Assert.Empty(tracker.Silent);
+        Assert.Equal(StepState.Late, tracker.Steps[farms + 1].State);
     }
 }

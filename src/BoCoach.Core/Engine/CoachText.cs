@@ -131,6 +131,9 @@ public static class CoachText
     private static string Running(RunningStep running, double now)
     {
         var step = running.Progress.Step;
+        // Lo que el juego no avisa (granjas): no frena la BO, pero sigue en pantalla hasta que avance un paso posterior.
+        if (running.Progress.State is StepState.Pending or StepState.Ready && step.Do == StepAction.Build)
+            return $"Hacé también: {StepText.Describe(step)}";
         var name = step.What is { } what ? StepText.Name(what) : StepText.Describe(step);
         return running.EndsAt is { } end && end > now
             ? $"En curso: {name} (termina en {GameClock.Format(end - now)})"

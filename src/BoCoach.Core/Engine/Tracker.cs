@@ -109,13 +109,25 @@ public sealed class Tracker
     /// <summary>
     /// Paso a mostrar en grande: el primero pendiente que no quedó atrasado ni es producción militar ya empezada.
     /// </summary>
-    public StepProgress? Current => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s));
+    public StepProgress? Current => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s));
 
     /// <summary>
     /// Producción militar en marcha ("12 arqueros" con alguno ya hecho): sigue sola en sus edificios mientras la
     /// economía avanza, así que no frena la BO (con 12 + 12 arqueros el coach quedaba 7 minutos sin decir otra cosa).
     /// </summary>
     public IEnumerable<StepProgress> Producing => _steps.Where(s => IsOpen(s) && IsProducing(s));
+
+    /// <summary>
+    /// Lo que el juego nunca avisa (las granjas), fuera de un paso mixto, que ya le toca al jugador: no puede ser el
+    /// paso actual porque nada lo confirmaría y la BO quedaba trabada (en la 20261018-132830, "Construir 4 granjas"
+    /// desde las 18:00 hasta el final). Se muestra aparte y queda hecho cuando avanza un paso posterior.
+    /// </summary>
+    public IEnumerable<StepProgress> Silent => Current is { } current
+        ? _steps.Where(s => s.Index < current.Index && IsOpen(s) && IsSilent(s))
+        : _steps.Where(s => IsOpen(s) && IsSilent(s));
+
+    private static bool IsSilent(StepProgress s) =>
+        s.Step.Group is null && EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id);
 
     /// <summary>
     /// Unidades que no son aldeanos y ya empezaron a salir: de este paso, o de un paso anterior con la misma unidad
@@ -135,7 +147,7 @@ public sealed class Tracker
 
     /// <summary>El primer paso pendiente después del actual que no es otra meta del mismo paso mixto.</summary>
     public StepProgress? Next => Current is { } current
-        ? _steps.Where(s => IsOpen(s) && !IsProducing(s)).FirstOrDefault(s => s.Index != current.Index && !SameGroup(s.Index, current.Index))
+        ? _steps.Where(s => IsOpen(s) && !IsProducing(s)).FirstOrDefault(s => s.Index > current.Index && !SameGroup(s.Index, current.Index))
         : null;
 
     /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
@@ -343,7 +355,7 @@ public sealed class Tracker
                 continue;
             }
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
-                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j)))
+                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || _started.ContainsKey(j)))
                 .Select(j => FirstProgressTime(j, doneAt))
                 .Min();
             if (progressAfter is not null)
@@ -417,5 +429,6 @@ public sealed class Tracker
     private double? FirstProgressTime(int i, double?[] doneAt) =>
         _manualDone.TryGetValue(i, out var manual) ? manual
         : _allocated.TryGetValue(i, out var events) && events.Count > 0 ? events[0].Time
+        : _started.TryGetValue(i, out var started) ? started // una investigación pagada: el jugador ya siguió
         : doneAt[i];
 }

@@ -425,7 +425,8 @@ public sealed class Coach
             Tracker.Next,
             Tracker.Late.ToList(),
             Tracker.InProgress.Select(s => new RunningStep(s, _plan?.For(s.Step.Id)?.End))
-                .Concat(Tracker.Producing.Select(s => new RunningStep(s, null))).ToList(),
+                .Concat(Tracker.Producing.Select(s => new RunningStep(s, null)))
+                .Concat(Tracker.Silent.Select(s => new RunningStep(s, null))).ToList(),
             missing,
             eta,
             deviations,
