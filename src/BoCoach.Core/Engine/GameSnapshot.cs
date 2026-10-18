@@ -35,8 +35,17 @@ public sealed record GameSnapshot(
     public ResourceAmounts? VillagersOn { get; init; }
 
     /// <summary>
-    /// Lo que hay en la cola de producción del juego (claves de game_data; "housed" = esperando población, "?" = ícono
-    /// desconocido), o null si no se leyó. Vacía = no se está produciendo nada.
+    /// Lo que hay en la cola de producción del juego, o null si no se leyó. Vacía = no se está produciendo nada.
     /// </summary>
-    public IReadOnlyList<string>? Queue { get; init; }
+    public IReadOnlyList<QueueItem>? Queue { get; init; }
+}
+
+/// <summary>
+/// Un ícono de la cola de producción: la clave de game_data ("housed" = esperando población, "?" = ícono desconocido)
+/// y si espera detrás de otra cosa del mismo edificio (el juego lo pinta de amarillo). La cola tiene un ícono por
+/// edificio trabajando más los que esperan, así que dos íconos iguales que no esperan son dos edificios.
+/// </summary>
+public sealed record QueueItem(string Key, bool Waiting = false)
+{
+    public override string ToString() => Waiting ? $"{Key}…" : Key;
 }

@@ -82,7 +82,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         {
             null => "Cola de producción: no se lee (calibrá su caja)",
             [] => "Cola de producción: vacía",
-            var items => $"Cola de producción: {string.Join(", ", items.Select(QueueName))}",
+            var items => $"Cola de producción: {string.Join(", ", items.Select(i => i.Waiting ? $"{QueueName(i.Key)} (espera)" : QueueName(i.Key)))}",
         };
         Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }

@@ -366,7 +366,7 @@ public class CoachTests
         // como paso en curso de la BO).
         var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
-        GameSnapshot Queue(double time, params string[] queue) => At(time, 200, villagers: 30) with { Queue = queue };
+        GameSnapshot Queue(double time, params string[] queue) => At(time, 200, villagers: 30) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
 
         coach.Update(Queue(1000, "villager"));
         Assert.Null(coach.Update(Queue(1060, "wheelbarrow", "archer")).TownCenterIdle);  // un minuto sin aldeanos, investigando

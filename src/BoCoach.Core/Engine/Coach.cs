@@ -289,7 +289,7 @@ public sealed class Coach
             if (snapshot.Time - _queueSeenAt > QueueStaleSeconds)
                 _queueFirstSeenAt = snapshot.Time;
             _queueSeenAt = snapshot.Time;
-            if (queue.Any(IsTownCenterWork))
+            if (queue.Any(item => IsTownCenterWork(item.Key)))
                 _townCenterQueuedAt = snapshot.Time;
         }
     }

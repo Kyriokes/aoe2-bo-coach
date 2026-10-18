@@ -8,7 +8,7 @@ namespace BoCoach.Core.Engine;
 /// </summary>
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura (ids de data/events.json).</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD, o null si no se leyeron los cuatro.</param>
-/// <param name="Queue">La cola de producción (claves de game_data), o null si no se lee.</param>
+/// <param name="Queue">La cola de producción, o null si no se lee.</param>
 public sealed record ScreenReading(
     double? Clock,
     double? Food,
@@ -20,7 +20,7 @@ public sealed record ScreenReading(
     int? PopulationCap,
     IReadOnlyList<string> NewEvents,
     ResourceAmounts? VillagersOn = null,
-    IReadOnlyList<string>? Queue = null);
+    IReadOnlyList<QueueItem>? Queue = null);
 
 /// <summary>
 /// Arma los <see cref="GameSnapshot"/> del motor a partir de las lecturas de pantalla:

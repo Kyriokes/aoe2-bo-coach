@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 
 namespace BoCoach.Vision.Hud;
@@ -75,6 +76,28 @@ public static class ProductionQueue
         return sum / count;
     }
 
+    /// <summary>
+    /// El ícono que empieza en (x, y) espera detrás de otra cosa del mismo edificio: el juego lo tiñe de amarillo o
+    /// naranja, así que en promedio (sin la esquina del número) tiene mucho rojo y casi nada de azul. En la
+    /// 20261018-132830 los que esperan dan rojo 148 a 171 y azul 3 a 27; los que avanzan, rojo hasta 109 (el telar) o
+    /// azul de más de un tercio del rojo (la pluma naranja del emplumado: 83, 60, 27).
+    /// </summary>
+    public static bool IsWaiting(CapturedImage image, int x, int y)
+    {
+        long red = 0, blue = 0;
+        var total = 0;
+        for (var py = y + 4; py < y + IconSize - 1; py++)
+        {
+            for (var px = x + 12; px < x + IconSize - 2; px++)
+            {
+                var (r, _, b) = image.Pixel(px, py);
+                (red, blue) = (red + r, blue + b);
+                total++;
+            }
+        }
+        return red > 130L * total && blue < red * 0.2;
+    }
+
     /// <summary>Lugares de la cola que entran en la caja, empezando en (offsetX, offsetY).</summary>
     public static IEnumerable<(int X, int Y)> Slots(CapturedImage image, int offsetX = 0, int offsetY = 0)
     {
@@ -132,7 +155,23 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
     /// corrimientos verticales con el primer lugar, y corta en el primer lugar que no se parece a ningún ícono.
     /// Vacía si no hay nada en producción.
     /// </summary>
-    public IReadOnlyList<string> Read(CapturedImage image)
+    public IReadOnlyList<QueueItem> Read(CapturedImage image)
+    {
+        if (Row(image) is not { } row)
+            return [];
+
+        var items = new List<QueueItem>();
+        foreach (var (x, y) in ProductionQueue.Slots(image, 0, row))
+        {
+            if (Match(ProductionQueue.Features(image, x, y)) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
+                break;
+            items.Add(new QueueItem(m.Key, ProductionQueue.IsWaiting(image, x, y)));
+        }
+        return items;
+    }
+
+    /// <summary>Altura de la fila de íconos dentro de la caja (la que mejor parece un ícono en el primer lugar), o null si no hay ninguno.</summary>
+    public int? Row(CapturedImage image)
     {
         var bestOffset = -1;
         var bestDistance = float.MaxValue;
@@ -141,17 +180,25 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
             if (image.Width >= ProductionQueue.IconSize && Match(ProductionQueue.Features(image, 0, dy), iconsOnly: true) is { } m && m.Distance < bestDistance)
                 (bestOffset, bestDistance) = (dy, m.Distance);
         }
-        if (bestOffset < 0 || bestDistance > MatchThreshold)
-            return [];
+        return bestOffset < 0 || bestDistance > MatchThreshold ? null : bestOffset;
+    }
 
-        var keys = new List<string>();
-        foreach (var (x, y) in ProductionQueue.Slots(image, 0, bestOffset))
+    /// <summary>
+    /// Corrige la biblioteca con un lugar visto: si se parece a un ícono sin identificar ("?"), le pone la clave; si
+    /// no, lo agrega como ícono nuevo. Devuelve qué hizo.
+    /// </summary>
+    public (IconLibrary Library, string Change) Teach(float[] features, string key)
+    {
+        var icons = Icons.ToList();
+        var nearest = icons.Select((icon, i) => (i, d: ProductionQueue.Distance(features, icon.Features))).MinBy(x => x.d);
+        if (icons.Count > 0 && nearest.d <= MatchThreshold && icons[nearest.i].Key == Unknown)
         {
-            if (Match(ProductionQueue.Features(image, x, y)) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
-                break;
-            keys.Add(m.Key);
+            icons[nearest.i] = icons[nearest.i] with { Key = key };
+            return (new IconLibrary(icons), $"el ícono {nearest.i} (\"?\", a {nearest.d:0.000}) pasa a \"{key}\"");
         }
-        return keys;
+        icons.Add(new QueueIcon(key, features));
+        var was = icons.Count > 1 ? $" (el más parecido era \"{icons[nearest.i].Key}\", a {nearest.d:0.000})" : "";
+        return (new IconLibrary(icons), $"ícono nuevo \"{key}\"{was}");
     }
 
     public static IconLibrary Load(string path) =>
