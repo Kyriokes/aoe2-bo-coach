@@ -198,7 +198,7 @@ public partial class App : Application
         resources.Show();
         resources.PlaceOver(new Vision.Capture.PixelRect(-30000, 0, 1920, 1080));
         // Los recordatorios del mouse, sin mostrar la ventana (aparecería donde está el mouse): solo su contenido.
-        overlay.HouseReminder = overlay.TownCenterReminder = bands;
+        overlay.HouseReminder = overlay.TownCenterReminder = overlay.IdleReminder = bands;
         overlay.CursorReminders = false; // así la ventana no se muestra
         var cursor = new CursorReminder(overlay);
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>

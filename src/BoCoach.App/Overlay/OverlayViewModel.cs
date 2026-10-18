@@ -60,7 +60,12 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [NotifyPropertyChangedFor(nameof(ShowCursorReminder))]
     public partial bool TownCenterReminder { get; set; }
 
-    public bool ShowCursorReminder => CursorReminders && (HouseReminder || TownCenterReminder);
+    /// <summary>Hay aldeanos inactivos según el HUD: el botón de inactivos del juego junto al mouse.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCursorReminder))]
+    public partial bool IdleReminder { get; set; }
+
+    public bool ShowCursorReminder => CursorReminders && (HouseReminder || TownCenterReminder || IdleReminder);
 
     public void Apply(CoachFrame frame)
     {
@@ -96,6 +101,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         var playing = frame is { Ended: false, Paused: false, SecondsWithoutClock: < ClockWarningSeconds };
         HouseReminder = playing && view.NeedsHouse;
         TownCenterReminder = playing && view.TownCenterReminder;
+        IdleReminder = playing && IdleAlert.Alert;
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
     }
