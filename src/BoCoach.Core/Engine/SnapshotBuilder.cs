@@ -121,6 +121,8 @@ public sealed class SnapshotBuilder(GameData data)
         }
         if (reading.PopulationCap is { } readCap)
             InferHousesFromCap(readCap, now);
+        if (reading.Queue is { } queue)
+            BuildingsFromQueue(queue);
         if (reading.Clock is { } c)
             _lastClock = c;
 
@@ -249,6 +251,36 @@ public sealed class SnapshotBuilder(GameData data)
             _pendingEvents.Add(EventConventions.EventFor(BuildOrders.StepAction.Build, building)!);
         _buildings[building] = known;
     }
+
+    /// <summary>
+    /// La cola de producción tiene un ícono por edificio trabajando (más los que esperan, teñidos): dos arqueros que
+    /// avanzan a la vez son dos galerías. En la 20261018-132830 se ven a las 12:14, cuando el log había avisado una
+    /// sola (las dos terminaron juntas) y el coach seguía pidiendo la segunda hasta que salieron los arqueros, a las
+    /// 12:53. Por las dudas se toma el máximo por clave (no se suman claves distintas) y la cuenta tiene que repetirse
+    /// en dos lecturas seguidas.
+    /// </summary>
+    private void BuildingsFromQueue(IReadOnlyList<QueueItem> queue)
+    {
+        var counts = new Dictionary<string, int>();
+        foreach (var group in queue.Where(i => !i.Waiting).GroupBy(i => i.Key))
+        {
+            if (data.TryGet(group.Key, out var entity) && entity.MadeIn is { } building)
+                counts[building] = Math.Max(counts.GetValueOrDefault(building), group.Count());
+        }
+        var previous = _lastQueueBuildings;
+        _lastQueueBuildings = counts;
+        foreach (var (building, count) in counts)
+        {
+            if (previous.GetValueOrDefault(building) < count)
+                continue;
+            var known = _buildings.GetValueOrDefault(building);
+            for (; known < count; known++)
+                _pendingEvents.Add(EventConventions.EventFor(BuildOrders.StepAction.Build, building)!);
+            _buildings[building] = known;
+        }
+    }
+
+    private Dictionary<string, int> _lastQueueBuildings = [];
 
     private void PruneUnits(double now)
     {
