@@ -72,6 +72,12 @@ public sealed record CoachView(
 
     /// <summary>Si el paso actual es un paso mixto: todas sus metas (ver <see cref="Tracker.CurrentGoals"/>).</summary>
     public IReadOnlyList<StepProgress> Goals { get; init; } = [];
+
+    /// <summary>Recordatorio: quedan <see cref="Coach.HouseMargin"/> lugares de población o menos (y no se llegó a 200).</summary>
+    public bool NeedsHouse { get; init; }
+
+    /// <summary>Recordatorio: el centro urbano está parado y todavía no se llegó al máximo de aldeanos elegido.</summary>
+    public bool TownCenterReminder { get; init; }
 }
 
 /// <summary>
@@ -159,6 +165,9 @@ public sealed class Coach
     /// cada rato por una descarga). Si cambia el total de aldeanos, se actualiza al instante.
     /// </summary>
     public double GuideSettleSeconds { get; init; } = 12;
+
+    /// <summary>Lugares de población libres desde los que se recuerda hacer una casa (lo que tarda en salir lo que hay en cola).</summary>
+    public const int HouseMargin = 3;
 
     private void UpdateGuide(double now)
     {
@@ -398,6 +407,8 @@ public sealed class Coach
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
             Goals = Tracker.CurrentGoals,
+            NeedsHouse = State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin,
+            TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
         };
     }
 }

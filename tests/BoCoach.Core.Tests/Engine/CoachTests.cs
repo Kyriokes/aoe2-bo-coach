@@ -337,6 +337,29 @@ public class CoachTests
     }
 
     [Fact]
+    public void Recuerda_la_casa_cuando_quedan_3_lugares_de_poblacion()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+
+        Assert.False(coach.Update(At(300, 200, villagers: 20)).NeedsHouse); // 21/25
+        Assert.True(coach.Update(At(301, 200, villagers: 21)).NeedsHouse);  // 22/25
+    }
+
+    [Fact]
+    public void Recuerda_el_centro_urbano_parado_solo_debajo_del_maximo_de_aldeanos()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Research, What = "loom" }] };
+        var below = new Coach(bo, TestData.GameData, TestData.Events, economy: new EconomySettings { MaxVillagers = 30 });
+        var reached = new Coach(bo, TestData.GameData, TestData.Events, economy: new EconomySettings { MaxVillagers = 20 });
+        foreach (var coach in new[] { below, reached })
+            coach.Update(At(300, 200, villagers: 20));
+
+        // Un minuto sin aldeanos nuevos: el centro urbano está parado.
+        Assert.True(below.Update(At(360, 200, villagers: 20)).TownCenterReminder);
+        Assert.False(reached.Update(At(360, 200, villagers: 20)).TownCenterReminder);
+    }
+
+    [Fact]
     public void El_overlay_muestra_como_quedan_los_aldeanos_al_terminar_el_paso()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
