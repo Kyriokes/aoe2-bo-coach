@@ -157,6 +157,87 @@ public class SnapshotBuilderTests
         Assert.True(builder.PopulationEstimated);
     }
 
+    private static ScreenReading WithPop(double clock, int villagers, int population, params string[] events) =>
+        new(clock, 200, 200, 100, 200, villagers, population, 50, events);
+
+    private static int Archers(SnapshotBuilder builder, params ScreenReading[] readings) =>
+        readings.Sum(r => builder.Build(r)?.Events.Count(e => e.EventId == "archer_created") ?? 0);
+
+    [Fact]
+    public void Dos_arqueros_a_la_vez_son_dos_aunque_el_log_muestre_uno()
+    {
+        // Dos galerías sacan un arquero cada una: el log no agrega un renglón si el mensaje ya es el último.
+        var builder = new SnapshotBuilder(TestData.GameData);
+
+        var archers = Archers(builder,
+            WithPop(10, 26, 30), WithPop(10.5, 26, 30), WithPop(11, 26, 30),
+            WithPop(12, 26, 32, "archer_created"), WithPop(12.5, 26, 32), WithPop(13, 26, 32), WithPop(14, 26, 32),
+            WithPop(15, 26, 32), WithPop(16, 26, 32));
+
+        Assert.Equal(2, archers);
+    }
+
+    [Fact]
+    public void Si_la_poblacion_sube_antes_que_el_log_las_unidades_toman_el_tipo_del_aviso()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+
+        var archers = Archers(builder,
+            WithPop(10, 26, 30), WithPop(10.5, 26, 30), WithPop(11, 26, 30),
+            WithPop(12, 26, 32), WithPop(12.5, 26, 32), WithPop(13, 26, 32), WithPop(14, 26, 32, "archer_created"),
+            WithPop(15, 26, 32), WithPop(16, 26, 32));
+
+        Assert.Equal(2, archers);
+    }
+
+    [Fact]
+    public void Un_aviso_del_log_que_llega_tarde_no_es_otra_unidad()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        Archers(builder,
+            WithPop(10, 26, 30), WithPop(10.5, 26, 30), WithPop(11, 26, 30),
+            WithPop(12, 26, 31, "archer_created"), WithPop(12.5, 26, 31), WithPop(13, 26, 31));
+
+        // La población delata otro arquero antes que el log, que lo avisa después.
+        var archers = Archers(builder,
+            WithPop(15, 26, 32), WithPop(15.5, 26, 32), WithPop(16, 26, 32), WithPop(18, 26, 32, "archer_created"));
+
+        Assert.Equal(1, archers);
+    }
+
+    [Fact]
+    public void Aldeanos_y_poblacion_leidos_en_capturas_distintas_no_inventan_unidades()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        Archers(builder, WithPop(5, 26, 30, "archer_created"));
+
+        // Sale un aldeano: el total azul cambia una captura antes que el "N/M".
+        var archers = Archers(builder,
+            WithPop(10, 26, 30), WithPop(10.5, 26, 30), WithPop(11, 26, 30),
+            WithPop(12, 27, 30), WithPop(12.5, 27, 30), WithPop(13, 27, 30), WithPop(15, 27, 30), WithPop(17, 27, 30),
+            WithPop(17.5, 27, 31), WithPop(18, 27, 31), WithPop(19, 27, 31), WithPop(21, 27, 31), WithPop(23, 27, 31));
+        // Otro aldeano, al revés: el "N/M" cambia antes que el total azul.
+        archers += Archers(builder,
+            WithPop(24, 27, 32), WithPop(24.5, 27, 32), WithPop(25.5, 27, 32), WithPop(26, 28, 32), WithPop(28, 28, 32),
+            WithPop(30, 28, 32));
+
+        Assert.Equal(0, archers);
+    }
+
+    [Fact]
+    public void Una_unidad_que_muere_no_tapa_a_la_siguiente()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        Archers(builder, WithPop(5, 26, 30, "archer_created"));
+
+        // Muere un arquero (las unidades bajan de 4 a 3 y quedan así) y después sale otro.
+        var archers = Archers(builder,
+            WithPop(10, 26, 30), WithPop(12, 26, 29), WithPop(15, 26, 29), WithPop(18, 26, 29), WithPop(21, 26, 29),
+            WithPop(23, 26, 29), WithPop(25, 26, 30), WithPop(27, 26, 30), WithPop(29, 26, 30));
+
+        Assert.Equal(1, archers);
+    }
+
     [Fact]
     public void El_tope_estimado_nunca_queda_debajo_de_la_poblacion()
     {

@@ -31,6 +31,9 @@ public sealed record ScreenReading(
 /// <item>Si se ve, el tope delata las casas que el log no avisó (una segunda "House Built" mientras la primera sigue
 /// siendo el último renglón no cambia nada en el log): una suba que ningún edificio avisado explica es una casa
 /// terminada. Si el aviso llega después, no se cuenta de nuevo.</item>
+/// <item>Con el "N/M" y el total de aldeanos, las unidades militares son la diferencia. Si suben más de lo que avisó
+/// el log (dos galerías sacan un arquero cada una y el log muestra un solo renglón), las de más son del tipo del último
+/// aviso de unidad. Mismo cuidado que con las casas: un aviso que llega después no es otra unidad.</item>
 /// </list>
 /// </summary>
 public sealed class SnapshotBuilder(GameData data)
@@ -58,6 +61,27 @@ public sealed class SnapshotBuilder(GameData data)
     private int _cap = PlanStart.Standard.PopulationCap;
     private int? _villagers;
 
+    /// <summary>
+    /// Segundos que las unidades militares tienen que quedarse en un valor nuevo para tomarlo como firme. El total de
+    /// aldeanos y el "N/M" (que cerca del tope el juego muestra una captura sí y otra no) cambian en capturas
+    /// distintas: al salir un aldeano, la diferencia baja o sube por unos segundos sin que haya pasado nada (en la
+    /// 20261018-001030, 5 s). Una baja (unidades que mueren) se espera más, porque contarla de más haría contar dos
+    /// veces la unidad siguiente.
+    /// </summary>
+    private const double RiseSeconds = 3;
+    private const double DropSeconds = 10;
+
+    /// <summary>Unidades de más en una sola suba para creerla (si no, es una lectura mala).</summary>
+    private const int MaxUnitsAtOnce = 6;
+
+    private int? _steadyMilitary;
+    private (int Military, double Since)? _militaryRun;
+    private double _lastMilitaryRead = double.NegativeInfinity;
+    private readonly List<double> _unitCredits = [];
+    private readonly List<double> _unexplainedUnits = [];
+    private readonly List<(string Id, double Time)> _inferredUnits = [];
+    private string? _lastUnit;
+
     /// <summary>True si la última población salió de la estimación y no de la pantalla.</summary>
     public bool PopulationEstimated { get; private set; } = true;
 
@@ -73,9 +97,12 @@ public sealed class SnapshotBuilder(GameData data)
                 _inferredHouses.RemoveAt(0);
                 continue;
             }
-            _pendingEvents.Add(id);
             if (EventConventions.IsUnitCreated(id) && id != EventConventions.VillagerCreated)
-                _military++;
+            {
+                LoggedUnit(id, now);
+                continue;
+            }
+            _pendingEvents.Add(id);
             if (EventConventions.Parse(id) is { Action: BuildOrders.StepAction.Build } built && data.TryGet(built.What, out var entity) && entity.PopBonus > 0)
             {
                 _builtCap += entity.PopBonus;
@@ -100,6 +127,8 @@ public sealed class SnapshotBuilder(GameData data)
         {
             (_population, _cap) = (population, cap);
             PopulationEstimated = false;
+            if (readVillagers is { } v && population >= v)
+                InferUnitsFromPopulation(population - v, now);
         }
         else if (_villagers is { } villagers)
         {
@@ -113,6 +142,82 @@ public sealed class SnapshotBuilder(GameData data)
         var events = _pendingEvents.Select(id => new GameEvent(id, clock)).ToList();
         _pendingEvents.Clear();
         return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn };
+    }
+
+    /// <summary>Un "X Created" del log que no es un aldeano.</summary>
+    private void LoggedUnit(string id, double now)
+    {
+        PruneUnits(now);
+        _lastUnit = id;
+        // Una unidad que la población ya había delatado: el aviso llegó tarde.
+        var inferred = _inferredUnits.FindIndex(u => u.Id == id);
+        if (inferred >= 0)
+        {
+            _inferredUnits.RemoveAt(inferred);
+            return;
+        }
+        AddUnit(id);
+        if (_unexplainedUnits.Count == 0)
+        {
+            _unitCredits.Add(now);
+            return;
+        }
+        // La población subió antes de saber qué era: este aviso dice el tipo de todas (salieron juntas).
+        _unexplainedUnits.RemoveAt(0);
+        foreach (var _ in _unexplainedUnits)
+            AddUnit(id);
+        _unexplainedUnits.Clear();
+    }
+
+    private void InferUnitsFromPopulation(int military, double now)
+    {
+        PruneUnits(now);
+        // Después de un rato sin leer, el log pudo avisar esas unidades: se arranca de nuevo.
+        if (now - _lastMilitaryRead > CapGapSeconds)
+            (_steadyMilitary, _militaryRun) = (military, null);
+        _lastMilitaryRead = now;
+        if (_steadyMilitary is not { } steady || military == steady)
+        {
+            _militaryRun = null;
+            return;
+        }
+        if (_militaryRun is not { } run || run.Military != military)
+            _militaryRun = run = (military, now);
+        if (now - run.Since < (military > steady ? RiseSeconds : DropSeconds))
+            return;
+
+        var rise = military - steady;
+        (_steadyMilitary, _militaryRun) = (military, null);
+        if (rise <= 0 || rise > MaxUnitsAtOnce)
+            return;
+        // Primero, lo que explican los avisos del log.
+        var explained = Math.Min(rise, _unitCredits.Count);
+        _unitCredits.RemoveRange(0, explained);
+        for (var i = explained; i < rise; i++)
+        {
+            if (_lastUnit is { } id)
+            {
+                AddUnit(id);
+                _inferredUnits.Add((id, now));
+            }
+            else
+            {
+                _unexplainedUnits.Add(now);
+            }
+        }
+    }
+
+    private void AddUnit(string id)
+    {
+        _pendingEvents.Add(id);
+        _military++;
+    }
+
+    private void PruneUnits(double now)
+    {
+        _unitCredits.RemoveAll(t => now - t > CreditSeconds);
+        _unexplainedUnits.RemoveAll(t => now - t > CreditSeconds);
+        _inferredUnits.RemoveAll(u => now - u.Time > CreditSeconds);
     }
 
     private void InferHousesFromCap(int cap, double now)
