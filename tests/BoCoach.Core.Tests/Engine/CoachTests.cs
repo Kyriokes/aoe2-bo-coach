@@ -225,7 +225,7 @@ public class CoachTests
         // La BO tiene los 3 iniciales en ovejas; el HUD dice 5: van todos a la comida.
         var view = coach.Update(At(65, 200, 5));
         Assert.Equal(new ResourceAmounts(5, 0, 0, 0), view.Distribution);
-        Assert.Equal("Reparto: comida 5 · madera 0 · oro 0 · piedra 0", CoachText.Lines(view, TestData.GameData).Distribution);
+        Assert.Equal("Reparto: madera 0 · comida 5 · oro 0 · piedra 0", CoachText.Lines(view, TestData.GameData).Distribution);
     }
 
     [Fact]

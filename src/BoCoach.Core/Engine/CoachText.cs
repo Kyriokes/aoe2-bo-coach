@@ -99,9 +99,9 @@ public static class CoachText
         _ => TargetMatch.Ok,
     };
 
-    /// <summary>"Reparto: comida 9 · madera 4 · oro 0 · piedra 0".</summary>
+    /// <summary>"Reparto: madera 4 · comida 9 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
     public static string? DistributionText(ResourceAmounts? d) => d is { } v
-        ? $"Reparto: comida {v.Food:0} · madera {v.Wood:0} · oro {v.Gold:0} · piedra {v.Stone:0}"
+        ? $"Reparto: madera {v.Wood:0} · comida {v.Food:0} · oro {v.Gold:0} · piedra {v.Stone:0}"
         : null;
 
     /// <summary>"Centro urbano parado hace 12 s" (lo que pasó de más desde que tendría que haber salido otro aldeano).</summary>
