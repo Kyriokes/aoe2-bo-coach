@@ -54,6 +54,58 @@ public class TrackerTests
     }
 
     [Fact]
+    public void Un_paso_de_aldeanos_cuenta_los_que_ya_hay_en_el_recurso_segun_el_HUD()
+    {
+        // s3: "4 aldeanos en madera". El jugador ya mandó 2 a madera por su cuenta: faltan 2, no 4.
+        var tracker = NewTracker();
+        var partida = new Partida().Events("house_built", 2).Events("villager_created", 6)
+            .Hud(new ResourceAmounts(Food: 7, Wood: 2, Stone: 0, Gold: 0));
+        tracker.Update(partida.State);
+
+        var s3 = tracker.Steps[Index("s3")];
+        Assert.Equal((2, 2), (s3.Completed, s3.Remaining));
+    }
+
+    [Fact]
+    public void Un_paso_de_aldeanos_se_cumple_cuando_el_HUD_tiene_el_total_aunque_no_se_vieron_salir()
+    {
+        // Partida 20261018-014649: había 8 en oro (el total de la BO) y el coach seguía pidiendo aldeanos al oro.
+        var tracker = NewTracker();
+        var partida = new Partida().Events("house_built", 2).Events("villager_created", 6)
+            .Hud(new ResourceAmounts(Food: 9, Wood: 4, Stone: 0, Gold: 0));
+        tracker.Update(partida.State);
+        Assert.NotEqual(StepState.Done, StateOf(tracker, "s3")); // una sola lectura no alcanza
+
+        partida.Hud(new ResourceAmounts(Food: 9, Wood: 4, Stone: 0, Gold: 0), dt: 3);
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Done, StateOf(tracker, "s3"));
+        // Y si después mueve gente de la madera, el paso no se deshace.
+        partida.Hud(new ResourceAmounts(Food: 12, Wood: 1, Stone: 0, Gold: 0), dt: 5);
+        tracker.Update(partida.State);
+        Assert.Equal(StepState.Done, StateOf(tracker, "s3"));
+    }
+
+    [Fact]
+    public void Los_aldeanos_que_ya_conto_un_paso_no_pasan_al_siguiente_cuando_el_HUD_lo_completa()
+    {
+        // s2 (ovejas) ya tenía 3 de sus 6 aldeanos nuevos; el HUD lo completa: esos 3 no son de la madera (s3).
+        var tracker = NewTracker();
+        var partida = new Partida().Events("house_built", 2).Events("villager_created", 3)
+            .Hud(new ResourceAmounts(Food: 9, Wood: 0, Stone: 0, Gold: 0));
+        tracker.Update(partida.State);
+        partida.Hud(new ResourceAmounts(Food: 9, Wood: 0, Stone: 0, Gold: 0), dt: 3);
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Done, StateOf(tracker, "s2"));
+        Assert.Equal(0, tracker.Steps[Index("s3")].Completed);
+
+        partida.Event("villager_created");
+        tracker.Update(partida.State);
+        Assert.Equal(1, tracker.Steps[Index("s3")].Completed);
+    }
+
+    [Fact]
     public void Paso_salteado_queda_atrasado_y_no_se_pierde()
     {
         var tracker = NewTracker();

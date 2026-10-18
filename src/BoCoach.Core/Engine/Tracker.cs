@@ -71,6 +71,19 @@ public sealed class Tracker
     private readonly int[] _units;
     private List<ExtraAction> _extras = [];
 
+    /// <summary>
+    /// Pasos de aldeanos con fuente: el recurso y cuántos tiene que haber ahí al terminar el paso según la BO (lo que
+    /// mostraría el HUD). Con los aldeanos por recurso del HUD, el paso cuenta los que ya hay, no los que se vieron salir.
+    /// </summary>
+    private readonly (Resource Resource, int Total)?[] _hudTarget;
+
+    /// <summary>Segundos que el HUD tiene que mostrar el total para dar el paso por hecho (una lectura mala no alcanza).</summary>
+    public const double HudConfirmSeconds = 2;
+
+    private readonly Dictionary<int, double> _hudSince = [];
+    private readonly Dictionary<int, double> _hudDone = [];
+    private readonly HashSet<int> _noHud = [];
+
     /// <param name="events">Eventos que Vision sabe reconocer. Un paso cuyo evento no está acá no se puede
     /// confirmar por el log y se da por hecho cuando avanza un paso posterior. Null = todos reconocibles.</param>
     public Tracker(BuildOrder bo, GameData data, EventCatalog? events = null)
@@ -81,8 +94,12 @@ public sealed class Tracker
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
         _units = LivePlan.Units(bo);
         _actor = bo.Steps.Select(Actor).ToArray();
+        _hudTarget = bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? HudTarget(bo, i, s.Assign!.Value.Resource()) : null).ToArray();
         Recompute();
     }
+
+    private static (Resource, int)? HudTarget(BuildOrder bo, int index, Resource resource) =>
+        (resource, LivePlan.PlannedVillagers(bo, index).Where(v => v.Key.Resource() == resource).Sum(v => v.Value));
 
     public BuildOrder BuildOrder => _bo;
     public IReadOnlyList<StepProgress> Steps => _steps;
@@ -117,7 +134,32 @@ public sealed class Tracker
     public void Update(PlayerState state)
     {
         _state = state;
+        TrackHud();
         Recompute();
+    }
+
+    /// <summary>
+    /// Un paso de aldeanos queda hecho cuando el HUD muestra en su recurso el total que pide la BO al terminarlo,
+    /// durante <see cref="HudConfirmSeconds"/>. Ya hecho no se deshace si después se mueven aldeanos.
+    /// </summary>
+    private void TrackHud()
+    {
+        if (_state.VillagersOn is not { } on)
+            return;
+        for (var i = 0; i < _hudTarget.Length; i++)
+        {
+            if (_hudTarget[i] is not { } target || _hudDone.ContainsKey(i) || _noHud.Contains(i))
+                continue;
+            if (on[target.Resource] < target.Total)
+            {
+                _hudSince.Remove(i);
+                continue;
+            }
+            if (!_hudSince.TryGetValue(i, out var since))
+                _hudSince[i] = since = _state.Time;
+            if (_state.Time - since >= HudConfirmSeconds)
+                _hudDone[i] = since;
+        }
     }
 
     /// <summary>Hotkey "avanzar": da por hecho el paso actual.</summary>
@@ -183,6 +225,10 @@ public sealed class Tracker
         {
             _started.Remove(i);
         }
+        else if (_hudDone.Remove(i))
+        {
+            _noHud.Add(i); // el jugador dice que no: el HUD ya no lo da por hecho
+        }
         else if (!_skipped.Remove(i) && !_manualDone.Remove(i))
         {
             if (_allocated.TryGetValue(i, out var events) && events.Count > 0)
@@ -225,7 +271,9 @@ public sealed class Tracker
             var target = -1;
             for (var i = 0; i < n; i++)
             {
+                // Un paso que el HUD dio por hecho se queda con los aldeanos que salieron antes; los de después siguen.
                 if (_confirmEvent[i] == e.EventId && !_skipped.ContainsKey(i) && !_manualDone.ContainsKey(i)
+                    && !(_hudDone.TryGetValue(i, out var hudAt) && e.Time > hudAt)
                     && completed[i] < Required(i))
                 {
                     target = i;
@@ -244,6 +292,20 @@ public sealed class Tracker
             (_allocated.TryGetValue(target, out var list) ? list : _allocated[target] = []).Add(e);
             if (completed[target] == Required(target))
                 doneAt[target] = e.Time;
+        }
+
+        // 1b. Pasos de aldeanos según el HUD: hechos si mostró el total, y si no, lo que ya hay en el recurso.
+        for (var i = 0; i < n; i++)
+        {
+            if (_hudDone.TryGetValue(i, out var hudAt))
+            {
+                doneAt[i] ??= hudAt;
+                completed[i] = Required(i);
+            }
+            else if (_hudTarget[i] is { } target && _state.VillagersOn is { } on && !_noHud.Contains(i))
+            {
+                completed[i] = Math.Max(completed[i], Required(i) - Math.Max(0, target.Total - (int)Math.Round(on[target.Resource])));
+            }
         }
 
         bool IsDone(int i) => doneAt[i] is not null || _manualDone.ContainsKey(i);

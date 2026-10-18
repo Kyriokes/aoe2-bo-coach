@@ -41,6 +41,14 @@ internal sealed class Partida
         return this;
     }
 
+    /// <summary>Una captura con los aldeanos por recurso del HUD (con el mod).</summary>
+    public Partida Hud(ResourceAmounts villagersOn, double dt = 1)
+    {
+        Time += dt;
+        State.Apply(new GameSnapshot(Time, Stock, Population, PopulationCap) { VillagersOn = villagersOn });
+        return this;
+    }
+
     public Partida Wait(double seconds)
     {
         Time += seconds;
