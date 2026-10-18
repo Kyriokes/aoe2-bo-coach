@@ -91,6 +91,12 @@ public sealed record EconomyReport(
 
     /// <summary>Lo que junta por segundo un aldeano en cada recurso, con la eficiencia observada.</summary>
     public ResourceAmounts EffectiveRates { get; init; } = ResourceAmounts.Zero;
+
+    /// <summary>
+    /// Lo que junta por segundo un aldeano en cada recurso según el modelo, sin la eficiencia observada (que sale de
+    /// descargas sueltas y en las ovejas baja hasta 0,35).
+    /// </summary>
+    public ResourceAmounts NominalRates { get; init; } = ResourceAmounts.Zero;
 }
 
 /// <summary>
@@ -159,7 +165,7 @@ public sealed class EconomyAdvisor
 
         var candidate = VillagerAllocator.Choose(deficit, villagers.PerResource, effective, _settings);
         var suggestion = _gate.Update(state.Time, candidate);
-        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion) { FoodFloor = foodFloor, EffectiveRates = effective };
+        return new EconomyReport(_observer.Rates, villagers, demand, deficit, candidate, suggestion) { FoodFloor = foodFloor, EffectiveRates = effective, NominalRates = perVillager };
     }
 
     /// <summary>Recurso por segundo de un aldeano en cada recurso, según de qué fuentes saca la BO ese recurso.</summary>

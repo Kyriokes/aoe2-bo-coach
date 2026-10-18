@@ -161,10 +161,17 @@ public sealed class Coach
             _guide = null;
             return;
         }
-        var candidate = Economy is { } report
-            ? GuideDistribution.Adjust(bo, State.Stock, report.Demand, report.EffectiveRates, _economySettings.Horizon,
-                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves)
+        // Con los aldeanos por recurso del HUD, la GD parte de lo que hay y solo mueve si algo va a faltar: partiendo
+        // del reparto de la BO, en la 20261018-001030 pedía pasar 8 de madera a comida con 500 de comida y 37 de madera.
+        // Sin el HUD, parte del reparto de la BO. Lo que junta cada aldeano sale del modelo y no de la eficiencia
+        // observada: con las ovejas bajaba a 0,35 y la GD pedía pasar 4 o 5 de madera a comida en plena Alta Edad Media.
+        var start = State.VillagersOn is { } actual
+            ? new ResourceAmounts(Math.Round(actual.Food), Math.Round(actual.Wood), Math.Round(actual.Stone), Math.Round(actual.Gold))
             : bo;
+        var candidate = Economy is { } report
+            ? GuideDistribution.Adjust(start, State.Stock, report.Demand, report.NominalRates, _economySettings.Horizon,
+                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves)
+            : start;
         if (_guide is not { } shown || Total(shown) != Total(candidate) || candidate == shown)
         {
             (_guide, _guideCandidate) = (candidate, null);

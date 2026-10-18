@@ -3,14 +3,14 @@ using BoCoach.Core.Data;
 namespace BoCoach.Core.Economy;
 
 /// <summary>
-/// La guía dinámica (GD): dónde tendrían que estar los aldeanos ahora para volver a la BO por el camino más corto.
-/// Parte del reparto de la BO y, si con ese reparto algo va a faltar en el horizonte (lo que pide la BO hasta el
+/// La guía dinámica (GD): dónde tendrían que estar los aldeanos ahora. Parte de un reparto (el que muestra el HUD si
+/// se lee, si no el de la BO) y, si con ese reparto algo va a faltar en el horizonte (lo que pide la BO hasta el
 /// próximo hito, contra el stock y lo que se va a juntar), pasa aldeanos desde los recursos que sobran hasta cubrirlo.
-/// Cuando el stock se pone al día, el faltante desaparece y la GD vuelve sola al reparto de la BO.
+/// Si no va a faltar nada, no cambia nada.
 /// </summary>
 public static class GuideDistribution
 {
-    /// <param name="bo">Reparto de la BO para el total de aldeanos de ahora.</param>
+    /// <param name="bo">De dónde se parte: los aldeanos por recurso del HUD, o el reparto de la BO para el total de ahora.</param>
     /// <param name="demand">Lo que pide la BO por segundo hasta el próximo hito.</param>
     /// <param name="perVillager">Lo que junta por segundo un aldeano en cada recurso.</param>
     /// <param name="horizon">Segundos que se miran hacia adelante.</param>

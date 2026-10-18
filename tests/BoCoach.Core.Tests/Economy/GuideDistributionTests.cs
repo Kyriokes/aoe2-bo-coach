@@ -46,6 +46,30 @@ public class GuideDistributionTests
     }
 
     [Fact]
+    public void Desde_el_reparto_real_no_pide_comida_si_sobra()
+    {
+        // Partida 20261018-001030, 15:11: 500 de comida y 37 de madera, y la GD pedía pasar 8 de madera a comida
+        // porque partía del reparto de la BO (14 en comida). Desde lo que dice el HUD no falta nada: queda igual.
+        var actual = new ResourceAmounts(Food: 5, Wood: 16, Stone: 0, Gold: 6);
+
+        var guide = Guide(actual, stock: new(Food: 500, Wood: 37, Stone: 200, Gold: 381), demand: new(Food: 2, Wood: 1, Stone: 0, Gold: 2));
+
+        Assert.Equal(actual, guide);
+    }
+
+    [Fact]
+    public void Desde_el_reparto_real_pasa_aldeanos_solo_si_algo_va_a_faltar()
+    {
+        // Mucha comida y nada de madera, con la BO pidiendo madera: pasa de comida a madera.
+        var actual = new ResourceAmounts(Food: 12, Wood: 2, Stone: 0, Gold: 0);
+
+        var guide = Guide(actual, stock: new(Food: 600, Wood: 0, Stone: 0, Gold: 0), demand: new(Food: 1, Wood: 4, Stone: 0, Gold: 0));
+
+        Assert.True(guide.Wood > actual.Wood);
+        Assert.True(guide.Food < actual.Food);
+    }
+
+    [Fact]
     public void No_saca_de_comida_los_aldeanos_que_mantienen_al_centro_urbano()
     {
         // Falta madera y sobra comida, pero 6 de comida son el mínimo para no parar el centro urbano.

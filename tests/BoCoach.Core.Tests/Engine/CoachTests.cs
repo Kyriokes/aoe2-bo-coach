@@ -310,6 +310,20 @@ public class CoachTests
     }
 
     [Fact]
+    public void Con_los_aldeanos_por_recurso_del_HUD_la_GD_parte_de_lo_que_hay()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+        coach.Update(At(40, 200, 3, "house_built", "house_built"));
+
+        // La BO los quiere a todos en ovejas, pero hay 3 en madera y nada va a faltar: la GD no pide moverlos.
+        var view = coach.Update(At(65, 600, 5) with { VillagersOn = new ResourceAmounts(2, 3, 0, 0) });
+
+        Assert.Equal(new ResourceAmounts(2, 3, 0, 0), view.Distribution);
+        Assert.Equal(new ResourceAmounts(5, 0, 0, 0), view.BoDistribution);
+    }
+
+    [Fact]
     public void Un_aviso_del_log_se_muestra_unos_segundos()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
