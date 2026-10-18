@@ -28,6 +28,10 @@
 //       "0=villager,3=archer"). Los grupos sin etiqueta (mapa, negro) se descartan.
 //   queue <grabación> <íconos.json> [--every 2]
 //       Lee la cola de producción y muestra cada cambio.
+//   teach <grabación> <captura> <lugar> <clave> <íconos.json> [--row N]
+//       Corrige la biblioteca con un lugar de la cola (0 = el de la izquierda): si se parece a un "?", le pone la clave;
+//       si no, lo agrega. La fila se busca como al leer (o --row si no hay ningún ícono conocido). Clave "-" para lo
+//       que no es un ícono (adornos del panel, mapa).
 //   import <guía.json> <salida.json> [--id ejemplo-arqueros]
 //       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
 //       pasos y los avisos, y la simula.
@@ -73,6 +77,7 @@ try
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
         "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
+        "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -192,6 +197,18 @@ static int ReadQueue(string recording, string libraryPath, int every)
         last = text;
         Console.WriteLine($"{frame.Index,6}  {(text.Length == 0 ? "(vacía)" : text)}");
     }
+    return 0;
+}
+
+static int TeachIcon(string recording, int frame, int slot, string key, string libraryPath, string[] args)
+{
+    var library = IconLibrary.Load(libraryPath);
+    var image = RecordedSession.Load(recording).Image(frame, RegionNames.ProductionQueue);
+    var row = args.Contains("--row") ? Option(args, "--row", 0) : library.Row(image) ?? throw new ArgumentException("no hay ningún ícono conocido en la captura: pasá --row");
+    var (taught, change) = library.Teach(ProductionQueue.Features(image, slot * ProductionQueue.IconSize, row), key);
+    taught.Save(libraryPath);
+    Console.WriteLine($"{change} → {libraryPath} ({taught.Icons.Count} íconos)");
+    Console.WriteLine($"ahora se lee: {string.Join(" ", taught.Read(image))}");
     return 0;
 }
 
