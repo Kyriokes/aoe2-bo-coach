@@ -36,6 +36,36 @@ public sealed class EditorTests : IDisposable
         public string? AskText(string title, string message, string initial = "") => null;
         public BoCoach.App.Web.WebSettings? EditWebAccount(BoCoach.App.Web.WebSettings current) => null;
         public void OpenUrl(string url) { }
+        public string? Clipboard { get; set; }
+        public string? ClipboardText() => Clipboard;
+    }
+
+    [Fact]
+    public void Pegar_una_BO_de_buildorderguide_la_convierte_y_la_agrega()
+    {
+        var dialogs = new FakeDialogs
+        {
+            Clipboard = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "rts-overlay", "23p-archers.json")),
+        };
+        var vm = new MainViewModel(_data, dialogs);
+
+        vm.PasteCommand.Execute(null);
+
+        Assert.Empty(dialogs.Errors);
+        Assert.Equal("23p Archers", vm.Editor?.Name);
+        Assert.Contains(vm.Entries, e => e.BuildOrder?.Name == "23p Archers");
+        Assert.Equal("Importada \"23p Archers\".", vm.Status);
+    }
+
+    [Fact]
+    public void Pegar_sin_nada_copiado_avisa()
+    {
+        var dialogs = new FakeDialogs();
+        var vm = new MainViewModel(_data, dialogs);
+
+        vm.PasteCommand.Execute(null);
+
+        Assert.Single(dialogs.Errors);
     }
 
     /// <summary>

@@ -125,7 +125,10 @@
                              ToolTip="Buscar por nombre, civ, tags o descripción" Margin="0,0,0,8" />
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                         <Button Content="Nueva" Command="{Binding NewCommand}" ToolTip="Ctrl+N" Margin="0,0,6,6" />
-                        <Button Content="Importar…" Command="{Binding ImportCommand}" Margin="0,0,6,6" />
+                        <Button Content="Importar…" Command="{Binding ImportCommand}" Margin="0,0,6,6"
+                                ToolTip="Un archivo de BO: de esta app o exportado de buildorderguide.com" />
+                        <Button Content="Pegar BO" Command="{Binding PasteCommand}" Margin="0,0,6,6"
+                                ToolTip="La BO copiada: por ejemplo, el texto que da Exportar en buildorderguide.com" />
                         <Button Content="Desde la web…" Command="{Binding ImportFromWebCommand}" Margin="0,0,6,6"
                                 ToolTip="Importar una BO de la biblioteca web con su código" />
                         <Button Content="A la papelera" Command="{Binding TrashCommand}" Margin="0,0,6,6" />

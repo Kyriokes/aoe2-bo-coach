@@ -30,6 +30,9 @@ public interface IDialogs
 
     /// <summary>Abre una dirección de la web en el navegador.</summary>
     void OpenUrl(string url);
+
+    /// <summary>El texto copiado en el portapapeles, o null si no hay.</summary>
+    string? ClipboardText() => null;
 }
 
 /// <summary>Biblioteca local a la izquierda y el editor de la BO elegida.</summary>
@@ -127,6 +130,7 @@ public sealed partial class MainViewModel : ObservableObject
         Status = $"Duplicada como \"{copy.Name}\".";
     }
 
+    /// <summary>Importa un archivo: una BO nuestra o una exportada de buildorderguide.com (formato de RTS Overlay).</summary>
     [RelayCommand]
     private void Import()
     {
@@ -134,16 +138,48 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         try
         {
-            LeaveCurrent();
-            var imported = _app.Library.Import(path);
-            RefreshList();
-            SelectedEntry = Entries.FirstOrDefault(e => e.Path == _app.Library.PathFor(imported));
-            Status = $"Importada \"{imported.Name}\".";
+            AddImported(File.ReadAllText(path));
         }
         catch (Exception e) when (e is BuildOrderFormatException or IOException)
         {
             _dialogs.ShowError($"No se pudo importar el archivo.\n\n{e.Message}");
         }
+    }
+
+    /// <summary>Importa la BO copiada (por ejemplo, el JSON que da "Exportar" en buildorderguide.com).</summary>
+    [RelayCommand]
+    private void Paste()
+    {
+        if (_dialogs.ClipboardText() is not { Length: > 0 } text)
+        {
+            _dialogs.ShowError("No hay nada copiado. En buildorderguide.com, exportá la BO, copiá el texto y volvé a tocar \"Pegar BO\".");
+            return;
+        }
+        try
+        {
+            AddImported(text);
+        }
+        catch (BuildOrderFormatException e)
+        {
+            _dialogs.ShowError($"Lo copiado no es una build order.\n\n{e.Message}");
+        }
+    }
+
+    private void AddImported(string json)
+    {
+        IReadOnlyList<string> warnings = [];
+        BuildOrder bo;
+        if (RtsOverlayImporter.IsRtsOverlay(json))
+            (bo, warnings) = RtsOverlayImporter.Convert(json, _app.GameData);
+        else
+            bo = BuildOrderSerializer.Parse(json);
+        LeaveCurrent();
+        var imported = _app.Library.Add(bo);
+        RefreshList();
+        SelectedEntry = Entries.FirstOrDefault(e => e.Path == _app.Library.PathFor(imported));
+        Status = warnings.Count == 0
+            ? $"Importada \"{imported.Name}\"."
+            : $"Importada \"{imported.Name}\", revisala: {string.Join(" · ", warnings.Take(3))}{(warnings.Count > 3 ? $" (y {warnings.Count - 3} más)" : "")}";
     }
 
     /// <summary>

@@ -238,6 +238,18 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
 
     public string? AskText(string title, string message, string initial = "") => TextPrompt.Ask(this, title, message, initial);
 
+    public string? ClipboardText()
+    {
+        try
+        {
+            return Clipboard.ContainsText() ? Clipboard.GetText() : null;
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            return null; // otro programa tiene el portapapeles abierto
+        }
+    }
+
     public WebSettings? EditWebAccount(WebSettings current)
     {
         var window = new WebAccountWindow(current) { Owner = this };
