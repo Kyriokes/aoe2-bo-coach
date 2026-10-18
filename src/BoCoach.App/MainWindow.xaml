@@ -102,7 +102,18 @@
                     </ItemsControl>
                     <TextBlock Text="{Binding FoodFloor}" Foreground="#E8C26A" FontSize="12" Margin="0,4,0,0"
                                Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
-                    <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
+                    <DockPanel Margin="0,6,0,0">
+                        <!-- Lo mismo que Ctrl+Alt+← / → / ↓ desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                            <Button Content="◀ Atrás" Command="{Binding DataContext.BackCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
+                                    ToolTip="Deshace lo último que se completó o salteó (Ctrl+Alt+← desde el juego)" />
+                            <Button Content="Ya está ▶" Command="{Binding DataContext.AdvanceCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
+                                    ToolTip="Da por hecho el paso actual, por ejemplo si el coach no vio que lo terminaste (Ctrl+Alt+→ desde el juego)" />
+                            <Button Content="Saltear" Command="{Binding DataContext.SkipCommand, ElementName=LivePanel}" Padding="8,1"
+                                    ToolTip="Saltea el paso actual: no lo vas a hacer (Ctrl+Alt+↓ desde el juego)" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
                     <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
                                Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
                     <TextBlock Text="{Binding Usage}" Foreground="#A39A8F" FontSize="11" />
