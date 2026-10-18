@@ -21,6 +21,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         new(RegionNames.Wood), new(RegionNames.Food), new(RegionNames.Gold), new(RegionNames.Stone),
     ];
 
+    /// <summary>El aviso que parpadea sobre el botón de inactivos mientras haya aldeanos sin hacer nada.</summary>
+    public ResourceTargetViewModel IdleAlert { get; } = new(RegionNames.IdleVillagers);
+
     [ObservableProperty] public partial string Clock { get; set; } = "--:--";
     [ObservableProperty] public partial string Progress { get; set; } = "";
     [ObservableProperty] public partial string Current { get; set; } = "Esperando la partida…";
@@ -69,6 +72,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
             if (frame.Hud?.ModBands is { } bands && bands.TryGetValue(target.Region, out var band))
                 target.Band = band;
         }
+        IdleAlert.Alert = frame.Hud?.IdleVillagers > 0;
+        if (frame.Hud?.ModBands is { } modBands && modBands.TryGetValue(IdleAlert.Region, out var idleBand))
+            IdleAlert.Band = idleBand;
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
     }

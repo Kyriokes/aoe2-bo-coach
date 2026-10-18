@@ -190,10 +190,11 @@ public partial class App : Application
         var layout = bands ? Vision.Regions.RegionLayout.LoadOrDefault(Vision.Regions.RegionLayout.DefaultPath) : Vision.Regions.RegionLayout.Default;
         if (bands)
         {
-            foreach (var target in overlay.Resources)
+            foreach (var target in overlay.Resources.Append(overlay.IdleAlert))
                 target.Band = new Vision.Capture.PixelRect(1, 2, 36, 15);
+            overlay.IdleAlert.Alert = true;
         }
-        var resources = new ResourceOverlay(overlay.Resources, layout);
+        var resources = new ResourceOverlay(overlay.Resources, layout, overlay.IdleAlert);
         resources.Show();
         resources.PlaceOver(new Vision.Capture.PixelRect(-30000, 0, 1920, 1080));
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>

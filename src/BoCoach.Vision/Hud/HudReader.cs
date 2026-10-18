@@ -36,7 +36,7 @@ public sealed record HudFonts(
 /// <param name="VillagersOn">Aldeanos en cada recurso (solo con el mod BoCoach HUD).</param>
 /// <param name="Population">Población "N" de "N/M" (solo con el mod BoCoach HUD).</param>
 /// <param name="PopulationCap">Tope "M" de "N/M" (solo con el mod BoCoach HUD).</param>
-/// <param name="ModBands">Franja de color del cuadrado de cada recurso, en píxeles de su caja (con el mod): ahí va la GD.</param>
+/// <param name="ModBands">Franja de color del cuadrado de cada recurso, en píxeles de su caja (con el mod): ahí va la GD. También la del botón de inactivos, donde parpadea el aviso.</param>
 public sealed record HudReading(
     double? Clock,
     int? Food,
@@ -121,6 +121,9 @@ public sealed class HudReader(HudFonts fonts)
         {
             if (image(RegionNames.IdleVillagers) is not { } img)
                 return null;
+            // Su franja también: ahí parpadea el aviso de inactivos.
+            if (_modNumbers is not null && ModPanel.Band(img) is { } band)
+                bands[RegionNames.IdleVillagers] = band;
             return ModParts(img) is { } parts
                 ? Parse(_modNumbers!.Read(parts.Square), RegionNames.IdleVillagers)
                 : Parse(_stock.ReadRightmostGroup(img), RegionNames.IdleVillagers);

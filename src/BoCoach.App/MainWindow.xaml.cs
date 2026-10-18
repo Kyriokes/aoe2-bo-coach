@@ -109,7 +109,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _overlay = new CoachOverlay(overlay);
         _overlay.Show();
         _overlay.PlaceOver(area);
-        _resources = new ResourceOverlay(overlay.Resources, Tools.Layout);
+        _resources = new ResourceOverlay(overlay.Resources, Tools.Layout, overlay.IdleAlert);
         _resources.Show();
         _resources.PlaceOver(area);
     }

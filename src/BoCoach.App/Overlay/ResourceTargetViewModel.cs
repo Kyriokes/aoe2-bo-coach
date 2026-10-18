@@ -27,6 +27,9 @@ public sealed partial class ResourceTargetViewModel(string region) : ObservableO
     /// </summary>
     [ObservableProperty] public partial Vision.Capture.PixelRect? Band { get; set; }
 
+    /// <summary>Aviso que parpadea en rojo y amarillo (el de inactivos, mientras haya aldeanos sin hacer nada).</summary>
+    [ObservableProperty] public partial bool Alert { get; set; }
+
     public void Apply(double? target, double? actual, bool estimated)
     {
         Target = target is { } t ? $"{t:0}" : null;

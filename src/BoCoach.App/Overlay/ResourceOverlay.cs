@@ -30,11 +30,17 @@ public sealed class ResourceOverlay : Window
     public static readonly Brush OverBrush = Frozen(0xF2, 0xD0, 0x4A);
     public static readonly Brush UnknownBrush = Frozen(0xF4, 0xF2, 0xEE);
 
+    /// <summary>Cada cuánto cambia de color el aviso de inactivos.</summary>
+    public static readonly TimeSpan BlinkInterval = TimeSpan.FromMilliseconds(350);
+
     private readonly RegionLayout _layout;
     private readonly Canvas _canvas = new();
     private readonly Dictionary<ResourceTargetViewModel, (Border Box, TextBlock Text)> _items = [];
+    private readonly ResourceTargetViewModel? _idle;
+    private readonly Border _idleBox = new() { CornerRadius = new CornerRadius(3), Visibility = Visibility.Collapsed };
+    private readonly System.Windows.Threading.DispatcherTimer _blink;
 
-    public ResourceOverlay(IReadOnlyList<ResourceTargetViewModel> targets, RegionLayout layout)
+    public ResourceOverlay(IReadOnlyList<ResourceTargetViewModel> targets, RegionLayout layout, ResourceTargetViewModel? idleAlert = null)
     {
         _layout = layout;
         WindowStyle = WindowStyle.None;
@@ -68,12 +74,64 @@ public sealed class ResourceOverlay : Window
             target.PropertyChanged += OnTargetChanged;
             Refresh(target);
         }
+
+        // Inactivos: un rectángulo que alterna rojo y amarillo, molesto a propósito, mientras haya aldeanos parados.
+        _blink = new System.Windows.Threading.DispatcherTimer { Interval = BlinkInterval };
+        _blink.Tick += (_, _) => _idleBox.Background = _idleBox.Background == ShortBrush ? OverBrush : ShortBrush;
+        _idle = idleAlert;
+        if (_idle is not null)
+        {
+            _canvas.Children.Add(_idleBox);
+            _idle.PropertyChanged += OnIdleChanged;
+        }
         SourceInitialized += (_, _) => OverlayWindows.MakeClickThrough(this);
         Closed += (_, _) =>
         {
+            _blink.Stop();
             foreach (var target in _items.Keys)
                 target.PropertyChanged -= OnTargetChanged;
+            if (_idle is not null)
+                _idle.PropertyChanged -= OnIdleChanged;
         };
+    }
+
+    private void OnIdleChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ResourceTargetViewModel.Band))
+            PositionIdle();
+        RefreshIdle();
+    }
+
+    private void RefreshIdle()
+    {
+        var on = _idle is { Alert: true } && _area is not null && _layout.Regions.ContainsKey(_idle.Region);
+        _idleBox.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        if (on && !_blink.IsEnabled)
+        {
+            _idleBox.Background = ShortBrush;
+            _blink.Start();
+        }
+        else if (!on)
+        {
+            _blink.Stop();
+        }
+    }
+
+    /// <summary>
+    /// Con el mod, sobre la franja del botón de inactivos (sin sus costados ni sus últimas filas, como la GD); sin el
+    /// mod, una franja debajo de la caja.
+    /// </summary>
+    private void PositionIdle()
+    {
+        if (_idle is null || _area is not { } area || !_layout.Regions.ContainsKey(_idle.Region))
+            return;
+        var scale = Scale();
+        var rect = _layout.PixelsOf(_idle.Region, area);
+        var band = _idle.Band ?? new PixelRect(0, rect.Height + Gap, rect.Width, 12 + BandMargin);
+        _idleBox.Width = band.Width * 0.8 / scale;
+        _idleBox.Height = Math.Max(6, band.Height - BandMargin) / scale;
+        Canvas.SetLeft(_idleBox, (rect.X - area.X + band.X + band.Width * 0.1) / scale);
+        Canvas.SetTop(_idleBox, (rect.Y - area.Y + band.Y) / scale);
     }
 
     public static Brush BrushFor(TargetMatch? match) => match switch
@@ -104,6 +162,8 @@ public sealed class ResourceOverlay : Window
         OverlayWindows.MoveTo(this, area.X, area.Y);
         foreach (var target in _items.Keys)
             Position(target);
+        PositionIdle();
+        RefreshIdle();
     }
 
     private double Scale() => PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1;
