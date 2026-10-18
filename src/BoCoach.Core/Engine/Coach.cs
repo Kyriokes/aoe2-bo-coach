@@ -150,7 +150,7 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
-        var clicked = DetectResearchClick(snapshot);
+        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
         TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
@@ -263,6 +263,29 @@ public sealed class Coach
         }
         return false;
     }
+
+    /// <summary>
+    /// Una investigación de la BO que aparece en la cola (avanzando o esperando) ya se pagó: queda en curso aunque la
+    /// baja del stock no se haya visto. En la 20261018-132830 el clic en Castillos (20:26) no se vio en el stock y la
+    /// cola lo mostraba. Tiene que estar en dos lecturas seguidas de la cola.
+    /// </summary>
+    private bool ResearchInQueue(GameSnapshot snapshot)
+    {
+        var previous = _lastQueueKeys;
+        _lastQueueKeys = snapshot.Queue?.Select(i => i.Key).ToHashSet() ?? [];
+        var started = false;
+        foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready or StepState.Late))
+        {
+            if (step.Step.What is { } tech && _lastQueueKeys.Contains(tech) && previous.Contains(tech))
+            {
+                Tracker.MarkStarted(step.Index, snapshot.Time);
+                started = true;
+            }
+        }
+        return started;
+    }
+
+    private HashSet<string> _lastQueueKeys = [];
 
     /// <summary>
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores

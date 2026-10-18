@@ -241,6 +241,36 @@ public class SnapshotBuilderTests
     }
 
     [Fact]
+    public void Dos_arqueros_avanzando_en_la_cola_son_dos_galerias()
+    {
+        // Partida 20261018-132830: las galerías terminaron juntas a las 11:57 (un solo aviso) y a las 12:14 la cola
+        // muestra un arquero en cada una. Lo que espera detrás (teñido) no es otro edificio.
+        var builder = new SnapshotBuilder(TestData.GameData);
+        static QueueItem[] Q(params (string Key, bool Waiting)[] items) => items.Select(i => new QueueItem(i.Key, i.Waiting)).ToArray();
+        var waiting = Q(("villager", false), ("villager", true), ("loom", true));
+        var twoRanges = Q(("villager", false), ("archer", false), ("archer", false));
+
+        Assert.Equal(0, Built(builder, "town_center_built", Reading(280) with { Queue = waiting }, Reading(281) with { Queue = waiting }));
+        var ranges = Built(builder, "archery_range_built",
+            Reading(717, events: "archery_range_built"),
+            Reading(734) with { Queue = twoRanges }, Reading(734.5) with { Queue = twoRanges }, Reading(735) with { Queue = twoRanges });
+
+        Assert.Equal(2, ranges);
+    }
+
+    [Fact]
+    public void Una_lectura_suelta_de_la_cola_no_suma_edificios()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        QueueItem[] twoRanges = [new("archer"), new("archer")];
+
+        var ranges = Built(builder, "archery_range_built",
+            Reading(717, events: "archery_range_built"), Reading(734) with { Queue = twoRanges }, Reading(735) with { Queue = [new("archer")] });
+
+        Assert.Equal(1, ranges);
+    }
+
+    [Fact]
     public void Arqueros_al_ritmo_de_una_galeria_no_suman_galerias()
     {
         var builder = new SnapshotBuilder(TestData.GameData);
@@ -372,6 +402,29 @@ public class CoachTests
         Assert.Null(coach.Update(Queue(1060, "wheelbarrow", "archer")).TownCenterIdle);  // un minuto sin aldeanos, investigando
         Assert.Null(coach.Update(Queue(1063, "archer")).TownCenterIdle);                 // recién terminó: margen
         Assert.NotNull(coach.Update(Queue(1066, "archer")).TownCenterIdle);              // 6 s sin nada del centro urbano
+    }
+
+    [Fact]
+    public void Una_investigacion_en_la_cola_queda_en_curso()
+    {
+        // Partida 20261018-132830: el clic en Castillos (20:26) no se vio en el stock, pero la cola lo mostraba.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 4, Assign = GatherSource.Wood },
+                new Step { Id = "s2", Do = StepAction.Research, What = "loom" },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, params QueueItem[] queue) => At(time, 200, villagers: 4) with { Queue = queue };
+
+        coach.Update(Queue(100, new QueueItem("villager"), new QueueItem("loom", Waiting: true)));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);   // una lectura sola no alcanza
+        coach.Update(Queue(100.5, new QueueItem("villager"), new QueueItem("loom", Waiting: true)));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
     }
 
     [Fact]
