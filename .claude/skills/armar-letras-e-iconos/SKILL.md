@@ -33,7 +33,15 @@ Todos los comandos son `dotnet run -c Release --project tools/ReplaySession -- <
 
 ## Íconos de la cola de producción
 
-Los íconos miden 33×33 a 1920×1080 y cambian de color con el estado: verde con el progreso, amarillo esperando, rojo sin población. Por eso un mismo ícono tiene varios grupos (todos con la misma clave).
+Los íconos miden 33×33 a 1920×1080 y cambian de color con el estado: verde con el progreso, amarillo o naranja esperando, rojo sin población. Por eso un mismo ícono tiene varios grupos (todos con la misma clave). Si espera o avanza no sale de la biblioteca sino del color (`ProductionQueue.IsWaiting`); `queue` lo muestra con "…".
+
+**Si son pocos íconos** (un "?" que aparece, uno confundido con otro), no hace falta reagrupar: `teach` toma el lugar de una captura y renombra el "?" más parecido o lo agrega como ícono nuevo, y muestra cómo se lee la captura después.
+```bash
+dotnet run -c Release --project tools/ReplaySession -- teach <grabación> <captura> <lugar> <clave> data/icons/production_queue.json
+```
+El lugar empieza en 0 a la izquierda. Antes mirá la captura (hoja de contactos con `queues.ps1` o el PNG de la región) para estar seguro de qué es; si no lo podés identificar, dejalo como "?" (no suma edificios ni confunde nada). Para lo que no es un ícono (adornos del panel, mapa) usá la clave `-`.
+
+**Para armar la biblioteca de nuevo:**
 
 1. **Recortar y agrupar.** `iconlib` arma la biblioteca entera desde un solo `clusters.json`, así que para agregar íconos hay que volver a agrupar con las grabaciones de siempre más la nueva, y etiquetar todo de nuevo:
    ```bash
