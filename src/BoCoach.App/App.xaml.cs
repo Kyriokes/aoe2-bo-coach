@@ -197,10 +197,26 @@ public partial class App : Application
         var resources = new ResourceOverlay(overlay.Resources, layout, overlay.IdleAlert);
         resources.Show();
         resources.PlaceOver(new Vision.Capture.PixelRect(-30000, 0, 1920, 1080));
+        // Los recordatorios del mouse, sin mostrar la ventana (aparecería donde está el mouse): solo su contenido.
+        overlay.HouseReminder = overlay.TownCenterReminder = bands;
+        overlay.CursorReminders = false; // así la ventana no se muestra
+        var cursor = new CursorReminder(overlay);
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
             Render(window, path);
             Render(resources, Path.ChangeExtension(path, null) + "-recursos.png");
+            if (bands && cursor.Content is FrameworkElement badges)
+            {
+                badges.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                badges.Arrange(new Rect(badges.DesiredSize));
+                var bitmap = new RenderTargetBitmap((int)Math.Ceiling(badges.ActualWidth), (int)Math.Ceiling(badges.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(badges);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using var file = File.Create(Path.ChangeExtension(path, null) + "-mouse.png");
+                encoder.Save(file);
+            }
+            cursor.Close();
             window.Close();
             resources.Close();
             Shutdown(0);

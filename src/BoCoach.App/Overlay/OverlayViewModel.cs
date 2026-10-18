@@ -45,6 +45,23 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string Debug { get; set; } = "";
     [ObservableProperty] public partial bool ShowDebug { get; set; }
 
+    /// <summary>Recordatorios junto al mouse prendidos (el jugador los puede apagar).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCursorReminder))]
+    public partial bool CursorReminders { get; set; } = true;
+
+    /// <summary>Quedan 3 lugares de población o menos: casa junto al mouse.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCursorReminder))]
+    public partial bool HouseReminder { get; set; }
+
+    /// <summary>El centro urbano está parado y no se llegó al máximo de aldeanos: centro urbano junto al mouse.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCursorReminder))]
+    public partial bool TownCenterReminder { get; set; }
+
+    public bool ShowCursorReminder => CursorReminders && (HouseReminder || TownCenterReminder);
+
     public void Apply(CoachFrame frame)
     {
         var view = frame.View;
@@ -75,6 +92,10 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         IdleAlert.Alert = frame.Hud?.IdleVillagers > 0;
         if (frame.Hud?.ModBands is { } modBands && modBands.TryGetValue(IdleAlert.Region, out var idleBand))
             IdleAlert.Band = idleBand;
+        // Sin reloj (menú, pantalla de carga) no se recuerda nada: el estado puede ser viejo.
+        var playing = frame is { Ended: false, Paused: false, SecondsWithoutClock: < ClockWarningSeconds };
+        HouseReminder = playing && view.NeedsHouse;
+        TownCenterReminder = playing && view.TownCenterReminder;
         Warning = WarningFor(frame);
         Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
     }

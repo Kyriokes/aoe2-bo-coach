@@ -16,15 +16,23 @@ public sealed class CoachSettings
     /// <summary>Hasta cuántos aldeanos producen sin parar los centros urbanos.</summary>
     public int MaxVillagers { get; set; } = DefaultMaxVillagers;
 
+    /// <summary>Recordatorios junto al mouse (casa, centro urbano parado).</summary>
+    public bool CursorReminders { get; set; } = true;
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
     {
         try
         {
-            if (File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject json
-                && json["max_villagers"]?.GetValue<int>() is { } max)
-                return new CoachSettings { MaxVillagers = Clamp(max) };
+            if (File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject json)
+            {
+                return new CoachSettings
+                {
+                    MaxVillagers = json["max_villagers"]?.GetValue<int>() is { } max ? Clamp(max) : DefaultMaxVillagers,
+                    CursorReminders = json["cursor_reminders"]?.GetValue<bool>() ?? true,
+                };
+            }
         }
         catch (Exception e) when (e is IOException or JsonException or InvalidOperationException or FormatException)
         {
@@ -36,7 +44,7 @@ public sealed class CoachSettings
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = new JsonObject { ["max_villagers"] = MaxVillagers };
+        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders };
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

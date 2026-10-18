@@ -42,6 +42,38 @@ public sealed class CoachSessionTests : IDisposable
         new(view, hud, withoutClock, 30, new ProcessUsage(1.5, 80), false, ended, null, new PixelRect(0, 0, 1920, 1080));
 
     [Fact]
+    public void Recordatorio_de_casa_junto_al_mouse_salvo_que_este_apagado_o_no_se_vea_el_reloj()
+    {
+        var coach = new Coach(Scouts, _data.GameData, _data.Events);
+        var view = coach.Update(new GameSnapshot(300, new ResourceAmounts(100, 200, 200, 100), 23, 25) { Villagers = 22 });
+        var overlay = new OverlayViewModel(_data.GameData, Scouts.Name);
+
+        overlay.Apply(Frame(view));
+        Assert.True(overlay.HouseReminder);
+        Assert.True(overlay.ShowCursorReminder);
+
+        overlay.CursorReminders = false;
+        Assert.False(overlay.ShowCursorReminder);
+
+        overlay.CursorReminders = true;
+        overlay.Apply(Frame(view, withoutClock: 10));
+        Assert.False(overlay.ShowCursorReminder);
+    }
+
+    [Fact]
+    public void Los_recordatorios_en_el_mouse_se_guardan_con_los_ajustes()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.True(session.CursorReminders);
+
+        session.ToggleCursorRemindersCommand.Execute(null);
+
+        Assert.False(CoachSettings.Load(path).CursorReminders);
+        Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
+    }
+
+    [Fact]
     public void El_overlay_muestra_el_paso_actual_lo_que_esta_en_curso_y_el_objetivo()
     {
         var coach = new Coach(Scouts, _data.GameData, _data.Events);

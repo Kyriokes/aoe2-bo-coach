@@ -48,6 +48,10 @@
                         <TextBox Text="{Binding MaxVillagers, UpdateSourceTrigger=LostFocus}" Width="44" VerticalContentAlignment="Center"
                                  AutomationProperties.Name="Máximo de aldeanos" />
                     </StackPanel>
+                    <CheckBox x:Name="CursorRemindersBox" IsChecked="{Binding CursorReminders}" VerticalAlignment="Center" Margin="0,0,10,0"
+                              ToolTip="Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con Ctrl+Alt+M desde el juego">
+                        <TextBlock Text="Recordatorios en el mouse" Foreground="#C9C1B6" />
+                    </CheckBox>
                     <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
                             ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
                     <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />

@@ -25,6 +25,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private GlobalHotkeys? _hotkeys;
     private CoachOverlay? _overlay;
     private ResourceOverlay? _resources;
+    private CursorReminder? _cursor;
     private bool _calibrating;
 
     public MainWindow(CoachData data)
@@ -37,6 +38,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () => new ScreenFrames(_screen, Tools.Layout), CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;
+        CursorRemindersBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
         Coach.PropertyChanged += (_, e) =>
         {
@@ -94,6 +96,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             (Key.P, "P", () => Coach.TogglePauseCommand.Execute(null)),
             (Key.H, "H", () => Coach.ToggleOverlayCommand.Execute(null)),
             (Key.D, "D", () => Coach.ToggleDebugCommand.Execute(null)),
+            (Key.M, "M", () => Coach.ToggleCursorRemindersCommand.Execute(null)),
         };
         var missing = keys.Where(k => !_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, k.Key, k.Action)).Select(k => $"Ctrl+Alt+{k.Name}").ToList();
         ViewModel.Status = missing.Count > 0
@@ -112,6 +115,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _resources = new ResourceOverlay(overlay.Resources, Tools.Layout, overlay.IdleAlert);
         _resources.Show();
         _resources.PlaceOver(area);
+        _cursor = new CursorReminder(overlay);
     }
 
     public void PlaceOverlay(PixelRect area)
@@ -134,6 +138,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             _overlay.Hide();
             _resources?.Hide();
         }
+        _cursor?.SetHidden(!visible);
     }
 
     public void CloseOverlay()
@@ -142,6 +147,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _overlay = null;
         _resources?.Close();
         _resources = null;
+        _cursor?.Close();
+        _cursor = null;
     }
 
     public void RunOnUi(Action action) => Dispatcher.BeginInvoke(action);

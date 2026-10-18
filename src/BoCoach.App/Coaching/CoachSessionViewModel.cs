@@ -41,8 +41,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <param name="settingsPath">Dónde se guardan los ajustes (máximo de aldeanos); null para no guardarlos (tests).</param>
     public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames, string? settingsPath = null)
     {
+        var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
+        MaxVillagers = settings.MaxVillagers;
+        CursorReminders = settings.CursorReminders;
         _settingsPath = settingsPath;
-        MaxVillagers = settingsPath is null ? CoachSettings.DefaultMaxVillagers : CoachSettings.Load(settingsPath).MaxVillagers;
         _data = data;
         _host = host;
         _selected = selected;
@@ -66,16 +68,36 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             MaxVillagers = clamped;
             return;
         }
-        if (_settingsPath is not null)
+        SaveSettings();
+    }
+
+    /// <summary>
+    /// Recordatorios junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está
+    /// parado. Se prende y apaga desde la ventana o con Ctrl+Alt+M, y queda guardado.
+    /// </summary>
+    [ObservableProperty] public partial bool CursorReminders { get; set; }
+
+    partial void OnCursorRemindersChanged(bool value)
+    {
+        if (Overlay is not null)
+            Overlay.CursorReminders = value;
+        SaveSettings();
+    }
+
+    [RelayCommand]
+    private void ToggleCursorReminders() => CursorReminders = !CursorReminders;
+
+    private void SaveSettings()
+    {
+        if (_settingsPath is null)
+            return;
+        try
         {
-            try
-            {
-                new CoachSettings { MaxVillagers = value }.Save(_settingsPath);
-            }
-            catch (IOException)
-            {
-                // Si no se puede guardar, vale para esta sesión.
-            }
+            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders }.Save(_settingsPath);
+        }
+        catch (IOException)
+        {
+            // Si no se puede guardar, vale para esta sesión.
         }
     }
 
@@ -108,7 +130,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public void Start(BuildOrder bo, IFrameSource frames)
     {
         Stop();
-        Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false };
+        Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.Events, _data.Fonts, OcrReader.TryCreate(), frames,
             new EconomySettings { MaxVillagers = MaxVillagers });
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
@@ -123,7 +145,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _host.ShowOverlay(Overlay, _placedOver);
         _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\". Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta.";
+        Status = $"Coach con \"{bo.Name}\". Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
     }
 
     public void Stop()
