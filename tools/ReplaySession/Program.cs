@@ -20,6 +20,9 @@
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
+//   import <guía.json> <salida.json> [--id ejemplo-arqueros]
+//       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
+//       pasos y los avisos, y la simula.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
 // el negro del mod) o "blue" (números azules).
@@ -58,6 +61,7 @@ try
         "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
         "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
+        "import" => ImportGuide(args[1], args[2], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
 }
@@ -65,6 +69,26 @@ catch (Exception e) when (e is ArgumentException or IndexOutOfRangeException or 
 {
     Console.Error.WriteLine($"Error: {e.Message}");
     return 1;
+}
+
+// ---- import: una guía de RTS Overlay (buildorderguide.com) a nuestro formato ----
+static int ImportGuide(string guide, string output, string[] args)
+{
+    var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+    var result = RtsOverlayImporter.Convert(File.ReadAllText(guide), data);
+    var bo = result.BuildOrder;
+    if (Text(args, "--id", "") is { Length: > 0 } id)
+        bo = bo with { Id = id };
+    BuildOrderSerializer.Save(bo, output);
+    foreach (var warning in result.Warnings)
+        Console.WriteLine($"  aviso: {warning}");
+    foreach (var step in bo.Steps)
+        Console.WriteLine($"  {step.Id,-4} {StepText.Describe(step)}{(step.Group is null ? "" : $" [{step.Group}]")}{(step.Note is null ? "" : $" · {step.Note}")}");
+    var plan = new Planner(data).Simulate(bo);
+    Console.WriteLine($"{bo.Steps.Count} pasos → {output}. Simulada: Feudal {Clock(plan.ClickTime("feudal_age"))}, Castillos {Clock(plan.ClickTime("castle_age"))}, {(plan.Completed ? "completa" : "no se completa")}.");
+    return 0;
+
+    static string Clock(double? seconds) => seconds is { } s ? BoCoach.Core.GameClock.Format(s) : "-";
 }
 
 static InkSpec Ink(string color) => color switch
