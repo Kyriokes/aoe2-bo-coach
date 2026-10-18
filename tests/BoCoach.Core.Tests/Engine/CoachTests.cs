@@ -224,6 +224,34 @@ public class SnapshotBuilderTests
         Assert.Equal(0, archers);
     }
 
+    private static int Built(SnapshotBuilder builder, string building, params ScreenReading[] readings) =>
+        readings.Sum(r => builder.Build(r)?.Events.Count(e => e.EventId == building) ?? 0);
+
+    [Fact]
+    public void Dos_arqueros_mas_seguidos_de_lo_que_saca_una_galeria_son_dos_galerias()
+    {
+        // Partida 20261018-011721: las dos galerías terminaron juntas y el log mostró un solo "Archery Range Built";
+        // después salieron arqueros a las 12:40 y 12:45 (un arquero tarda 35 s).
+        var builder = new SnapshotBuilder(TestData.GameData);
+
+        var ranges = Built(builder, "archery_range_built",
+            Reading(722, events: "archery_range_built"), Reading(760, events: "archer_created"), Reading(765, events: "archer_created"));
+
+        Assert.Equal(2, ranges);
+    }
+
+    [Fact]
+    public void Arqueros_al_ritmo_de_una_galeria_no_suman_galerias()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+
+        var ranges = Built(builder, "archery_range_built",
+            Reading(722, events: "archery_range_built"), Reading(760, events: "archer_created"), Reading(796, events: "archer_created"),
+            Reading(832, events: "archer_created"));
+
+        Assert.Equal(1, ranges);
+    }
+
     [Fact]
     public void Una_unidad_que_muere_no_tapa_a_la_siguiente()
     {

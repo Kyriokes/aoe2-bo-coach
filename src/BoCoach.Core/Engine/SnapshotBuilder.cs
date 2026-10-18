@@ -82,6 +82,10 @@ public sealed class SnapshotBuilder(GameData data)
     private readonly List<(string Id, double Time)> _inferredUnits = [];
     private string? _lastUnit;
 
+    /// <summary>Edificios terminados según el log (y los deducidos), y cuándo salió cada unidad de cada tipo.</summary>
+    private readonly Dictionary<string, int> _buildings = new() { [BuildOrders.BuildOrderValidator.StartingBuilding] = 1 };
+    private readonly Dictionary<string, List<double>> _unitTimes = [];
+
     /// <summary>True si la última población salió de la estimación y no de la pantalla.</summary>
     public bool PopulationEstimated { get; private set; } = true;
 
@@ -103,10 +107,14 @@ public sealed class SnapshotBuilder(GameData data)
                 continue;
             }
             _pendingEvents.Add(id);
-            if (EventConventions.Parse(id) is { Action: BuildOrders.StepAction.Build } built && data.TryGet(built.What, out var entity) && entity.PopBonus > 0)
+            if (EventConventions.Parse(id) is { Action: BuildOrders.StepAction.Build } built)
             {
-                _builtCap += entity.PopBonus;
-                _capCredits.Add((now, entity.PopBonus));
+                _buildings[built.What] = _buildings.GetValueOrDefault(built.What) + 1;
+                if (data.TryGet(built.What, out var entity) && entity.PopBonus > 0)
+                {
+                    _builtCap += entity.PopBonus;
+                    _capCredits.Add((now, entity.PopBonus));
+                }
             }
         }
         if (reading.PopulationCap is { } readCap)
@@ -156,7 +164,7 @@ public sealed class SnapshotBuilder(GameData data)
             _inferredUnits.RemoveAt(inferred);
             return;
         }
-        AddUnit(id);
+        AddUnit(id, now);
         if (_unexplainedUnits.Count == 0)
         {
             _unitCredits.Add(now);
@@ -165,7 +173,7 @@ public sealed class SnapshotBuilder(GameData data)
         // La población subió antes de saber qué era: este aviso dice el tipo de todas (salieron juntas).
         _unexplainedUnits.RemoveAt(0);
         foreach (var _ in _unexplainedUnits)
-            AddUnit(id);
+            AddUnit(id, now);
         _unexplainedUnits.Clear();
     }
 
@@ -197,7 +205,7 @@ public sealed class SnapshotBuilder(GameData data)
         {
             if (_lastUnit is { } id)
             {
-                AddUnit(id);
+                AddUnit(id, now);
                 _inferredUnits.Add((id, now));
             }
             else
@@ -207,10 +215,37 @@ public sealed class SnapshotBuilder(GameData data)
         }
     }
 
-    private void AddUnit(string id)
+    private void AddUnit(string id, double now)
     {
         _pendingEvents.Add(id);
         _military++;
+        BuildingsFromProduction(id, now);
+    }
+
+    /// <summary>
+    /// Parte del tiempo de entrenamiento dentro de la que dos unidades iguales tienen que salir de edificios distintos
+    /// (ni con las bonificaciones de civ un edificio saca una unidad en la mitad de su tiempo).
+    /// </summary>
+    private const double SameBuildingWindow = 0.5;
+
+    /// <summary>
+    /// Si salen más unidades iguales juntas de las que pueden sacar los edificios avisados por el log, hay más
+    /// edificios: el log no agrega renglón si dos terminan a la vez (dos galerías de tiro con arco) y el paso de la BO
+    /// quedaba trabado.
+    /// </summary>
+    private void BuildingsFromProduction(string unitEvent, double now)
+    {
+        if (EventConventions.Parse(unitEvent) is not { Action: BuildOrders.StepAction.Train } unit
+            || !data.TryGet(unit.What, out var entity) || entity.MadeIn is not { } building || entity.Time <= 0)
+            return;
+        if (!_unitTimes.TryGetValue(unit.What, out var times))
+            _unitTimes[unit.What] = times = [];
+        times.RemoveAll(t => now - t > entity.Time * SameBuildingWindow);
+        times.Add(now);
+        var known = _buildings.GetValueOrDefault(building);
+        for (; known < times.Count; known++)
+            _pendingEvents.Add(EventConventions.EventFor(BuildOrders.StepAction.Build, building)!);
+        _buildings[building] = known;
     }
 
     private void PruneUnits(double now)
