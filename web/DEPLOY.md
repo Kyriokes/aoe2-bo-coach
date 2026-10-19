@@ -43,9 +43,14 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
 3. Andá a **Clientes** (o **Credenciales** → **Crear credenciales** → **ID de cliente de OAuth**):
    - **Tipo de aplicación:** Aplicación web.
    - **URIs de redireccionamiento autorizados:** `https://<proyecto>.supabase.co/auth/v1/callback`.
-   - Tocá **Crear** y copiá el **ID de cliente** y el **Secreto del cliente**.
+   - Tocá **Crear** y copiá el **ID de cliente** (termina en `.apps.googleusercontent.com`) y el **Secreto del
+     cliente** (empieza con `GOCSPX-`). El secreto puede no volver a mostrarse.
 4. En Supabase: **Authentication** → **Sign In / Providers** → **Google**. Activalo, pegá el ID y el secreto y tocá
-   **Save**.
+   **Save**. Ojo: en **Client IDs** va el ID de cliente, no el nombre del proyecto (si no, no se guarda y Google queda
+   apagado).
+5. Para que pueda entrar cualquiera: en **Desarrollo de la marca** cargá la página principal (la de Vercel) y la
+   política de privacidad (`https://<tu-sitio>.vercel.app/privacidad`), y en **Público** tocá **Publicar app**. Mientras
+   esté en **Prueba**, solo entran los mails de **Usuarios de prueba**.
 
 ## 4. Vercel: el sitio
 
@@ -62,8 +67,12 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
 4. Tocá **Deploy**. Al terminar, Vercel te da la dirección del sitio (por ejemplo `https://aoe2-bo-coach.vercel.app`).
    El sitio de producción sale de la rama `main`.
 5. De vuelta en Supabase: **Authentication** → **URL Configuration**:
-   - **Site URL:** la dirección de Vercel.
+   - **Site URL:** la dirección de Vercel, entera y con `https://`. Con una mal escrita (pasó `ttps://`), el login
+     vuelve en loop a la página de Google o de Discord.
    - **Redirect URLs:** agregá `https://<tu-sitio>.vercel.app/auth/callback` y `http://localhost:3000/auth/callback`.
+
+   Para revisarlo sin el panel: `curl -sD - "https://<proyecto>.supabase.co/auth/v1/callback?error=x&state=x"` muestra
+   el Site URL en la línea `Location`.
 
 ## 5. Conectar la app
 
