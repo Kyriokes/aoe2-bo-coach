@@ -27,7 +27,7 @@ export function BoCard({ bo }: { bo: BuildOrderSummary }) {
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {bo.tags.map((tag) => (
             <li key={tag}>
-              <Link href={`/?tag=${encodeURIComponent(tag)}`} className="rounded bg-panel-2 px-2 py-0.5 text-xs text-muted hover:text-amber">
+              <Link href={`/biblioteca?tag=${encodeURIComponent(tag)}`} className="rounded bg-panel-2 px-2 py-0.5 text-xs text-muted hover:text-amber">
                 {tag}
               </Link>
             </li>

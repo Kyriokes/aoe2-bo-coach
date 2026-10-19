@@ -45,7 +45,7 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
     <article className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
         <p className="text-sm">
-          <Link href="/" className="text-faint hover:text-amber">
+          <Link href="/biblioteca" className="text-faint hover:text-amber">
             ← Biblioteca
           </Link>
         </p>
@@ -66,7 +66,7 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
           <ul className="flex flex-wrap gap-1.5">
             {bo.tags.map((tag) => (
               <li key={tag}>
-                <Link href={`/?tag=${encodeURIComponent(tag)}`} className="rounded bg-panel-2 px-2 py-0.5 text-xs text-muted hover:text-amber">
+                <Link href={`/biblioteca?tag=${encodeURIComponent(tag)}`} className="rounded bg-panel-2 px-2 py-0.5 text-xs text-muted hover:text-amber">
                   {tag}
                 </Link>
               </li>
