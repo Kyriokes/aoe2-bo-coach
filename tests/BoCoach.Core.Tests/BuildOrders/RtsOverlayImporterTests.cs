@@ -19,6 +19,36 @@ public class RtsOverlayImporterTests
         Assert.False(RtsOverlayImporter.IsRtsOverlay("no es json"));
     }
 
+    private static string Guide(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "rts-overlay", name));
+
+    [Fact]
+    public void Scouts_de_Cicero_el_establo_mal_escrito_y_el_separador()
+    {
+        // "hammer 1 staple with 2 aldeanos" es el establo; "-------" separa y no es nota.
+        var result = Import(Guide("22p-scouts.json"));
+        var bo = result.BuildOrder;
+
+        Assert.Empty(result.Warnings);
+        Assert.Contains(bo.Steps, s => s is { Do: StepAction.Build, What: "stable" });
+        var steps = bo.Steps.ToList();
+        Assert.True(steps.FindIndex(s => s.What == "stable") < steps.FindIndex(s => s.What == "scout_cavalry"));
+        Assert.DoesNotContain(bo.Steps, s => s.Note?.Contains("---") == true);
+    }
+
+    [Fact]
+    public void Los_consejos_entre_parentesis_quedan_como_nota_y_no_repiten_edificios()
+    {
+        // "(2 aldeanos hacen el mercado, 1 la herrería)" y "(no te olvides de 1-2 casas ... Castillos)" no son pasos.
+        var result = Import(Guide("absolute-beginner-fc.json"));
+        var bo = result.BuildOrder;
+
+        Assert.Empty(result.Warnings);
+        Assert.Equal(1, bo.Steps.Where(s => s.What == "market").Sum(s => s.Count));
+        Assert.Equal(1, bo.Steps.Where(s => s.What == "blacksmith").Sum(s => s.Count));
+        Assert.DoesNotContain(bo.Steps, s => s.What == "castle");
+        Assert.Contains(bo.Steps, s => s.Note?.Contains("Market") == true);
+    }
+
     [Fact]
     public void Los_aldeanos_de_cada_paso_coinciden_con_la_guia()
     {

@@ -1,0 +1,169 @@
+{
+    "name": "22p Scouts",
+    "civilization": "Any",
+    "author": "Cicero7800",
+    "source": "https://buildorderguide.com",
+    "description": "22p Scouts",
+    "build_order": [
+        {
+            "villager_count": 6,
+            "age": 1,
+            "resources": {
+                "wood": 0,
+                "food": 6,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 6 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 9,
+            "age": 1,
+            "resources": {
+                "wood": 3,
+                "food": 6,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 3 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@"
+            ]
+        },
+        {
+            "villager_count": 10,
+            "age": 1,
+            "resources": {
+                "wood": 3,
+                "food": 7,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 1 @resource/MaleVillDE.jpg@ on @animal/Boar_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 11,
+            "age": 1,
+            "resources": {
+                "wood": 3,
+                "food": 8,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 1 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 15,
+            "age": 1,
+            "resources": {
+                "wood": 3,
+                "food": 12,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 4 @resource/MaleVillDE.jpg@ on @resource/BerryBushDE.png@",
+                "50% @animal/Boar_aoe2DE.png@ --> Lure @animal/Boar_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 17,
+            "age": 1,
+            "resources": {
+                "wood": 3,
+                "food": 14,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 2 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@"
+            ]
+        },
+        {
+            "villager_count": 19,
+            "age": 1,
+            "resources": {
+                "wood": 5,
+                "food": 14,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 2 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@"
+            ]
+        },
+        {
+            "villager_count": 21,
+            "age": 1,
+            "resources": {
+                "wood": 7,
+                "food": 14,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 2 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@",
+                "Research @town_center/LoomDE.png@",
+                "Click up to feudalAge"
+            ]
+        },
+        {
+            "villager_count": 21,
+            "age": 2,
+            "resources": {
+                "wood": 10,
+                "food": 11,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Before @age/FeudalAgeIconDE_alpha.png@",
+                "Move 3 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @resource/Aoe2de_wood.png@",
+                "@resource/Aoe2de_hammer.png@ 1 @barracks/Barracks_aoe2DE.png@",
+                "@resource/Aoe2de_hammer.png@ 1 @other/House_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 28,
+            "age": 2,
+            "resources": {
+                "wood": 10,
+                "food": 18,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "In @age/FeudalAgeIconDE_alpha.png@",
+                "Create 7 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@",
+                "@resource/Aoe2de_hammer.png@ 1 staple with 2 @resource/MaleVillDE.jpg@",
+                "Research doubleBitAxe, horseCollar",
+                "--------------------------",
+                "Move 5 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @mill/FarmDE.png@",
+                "Train 5 @stable/Scoutcavalry_aoe2DE.png@",
+                "@resource/Aoe2de_hammer.png@ 1 @other/House_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 33,
+            "age": 2,
+            "resources": {
+                "wood": 10,
+                "food": 18,
+                "gold": 5,
+                "stone": 0
+            },
+            "notes": [
+                "Create 5 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_gold.png@",
+                "Move 4 @resource/MaleVillDE.jpg@ from @resource/BerryBushDE.png@ to @mill/FarmDE.png@",
+                "Research @town_center/WheelbarrowDE.png@",
+                "@resource/Aoe2de_hammer.png@ 1 @blacksmith/Blacksmith_aoe2de.png@",
+                "Click up to castleAge"
+            ]
+        }
+    ]
+}

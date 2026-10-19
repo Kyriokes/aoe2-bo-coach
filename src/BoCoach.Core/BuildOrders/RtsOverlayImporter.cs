@@ -135,6 +135,16 @@ public static partial class RtsOverlayImporter
             var tokens = Tokenize(note);
             var words = Words(tokens);
             var numbers = tokens.Where(t => t.Number is not null).Select(t => t.Number!.Value).ToList();
+            // Separadores ("-------"): sin palabras ni íconos, no son una acción ni una nota.
+            if (tokens.Count == 0)
+                return;
+            // Entre paréntesis van consejos ("(2 aldeanos hacen el mercado, 1 la herrería)"): repiten acciones de la
+            // nota anterior y leídas como acciones duplicaban edificios.
+            if (note.TrimStart().StartsWith('('))
+            {
+                _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
+                return;
+            }
 
             if (words.Contains("create") && SourceAfter(tokens, "on") is { } to)
             {
@@ -219,7 +229,7 @@ public static partial class RtsOverlayImporter
                 return;
 
             _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
-            if (!LooksLikeAdvice(words))
+            if (!LooksLikeAdvice(words) && !note.Contains('→')) // "FC → Boom": un título, no una acción
                 _warnings.Add($"Paso {guideStep} de la guía: no entendí \"{Clean(note)}\" (quedó como nota).");
         }
 
@@ -479,6 +489,7 @@ public static partial class RtsOverlayImporter
         "scout" or "scoutcavalry" => "scout_cavalry",
         "maa" or "manatarms" => "man_at_arms",
         "tc" or "towncenter" => "town_center",
+        "staple" => "stable", // errata común ("22p Scouts" de Cicero7800)
         _ => Snake(name),
     };
 

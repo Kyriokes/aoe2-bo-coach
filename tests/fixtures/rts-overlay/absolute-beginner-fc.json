@@ -1,0 +1,195 @@
+{
+    "name": "Absolute Beginner FC",
+    "civilization": "Any",
+    "author": "WololoCrash",
+    "source": "https://buildorderguide.com",
+    "description": "This is the easiest to learn Fast Castle. The numbers in each resource are as easy to remember as possible, the house placements are as easy as possible. The deer is not being used on purpose and some basic suggestions are being made. Loom is researched in Dark Age as this is an important habit, eventhough this can be delayed on maps like Arena where you'd most likely use this BO. No eco-bonus of any civ is needed.",
+    "build_order": [
+        {
+            "villager_count": 6,
+            "age": 1,
+            "resources": {
+                "wood": 0,
+                "food": 6,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 6 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@",
+                "(I suggest putting your @stable/Scoutcavalry_aoe2DE.png@ on \"1\" and your sheep-Vills on \"2\". This will make scouting and force-dropping easier. @animal/Boar_aoe2DE.png@ luring as well.)"
+            ]
+        },
+        {
+            "villager_count": 10,
+            "age": 1,
+            "resources": {
+                "wood": 4,
+                "food": 6,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 4 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@"
+            ]
+        },
+        {
+            "villager_count": 11,
+            "age": 1,
+            "resources": {
+                "wood": 4,
+                "food": 7,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 1 @resource/MaleVillDE.jpg@ on @animal/Boar_aoe2DE.png@",
+                "(I suggest putting your Boar-Vill on \"3\" as soon as he leaves your TC)"
+            ]
+        },
+        {
+            "villager_count": 15,
+            "age": 1,
+            "resources": {
+                "wood": 4,
+                "food": 11,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 4 @resource/MaleVillDE.jpg@ on @resource/BerryBushDE.png@"
+            ]
+        },
+        {
+            "villager_count": 16,
+            "age": 1,
+            "resources": {
+                "wood": 4,
+                "food": 12,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 1 @resource/MaleVillDE.jpg@ on @animal/Boar_aoe2DE.png@"
+            ]
+        },
+        {
+            "villager_count": 20,
+            "age": 1,
+            "resources": {
+                "wood": 8,
+                "food": 12,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 4 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@"
+            ]
+        },
+        {
+            "villager_count": 24,
+            "age": 1,
+            "resources": {
+                "wood": 8,
+                "food": 16,
+                "gold": 0,
+                "stone": 0
+            },
+            "notes": [
+                "Create 4 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@"
+            ]
+        },
+        {
+            "villager_count": 26,
+            "age": 1,
+            "resources": {
+                "wood": 8,
+                "food": 16,
+                "gold": 2,
+                "stone": 0
+            },
+            "notes": [
+                "Create 2 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_gold.png@",
+                "Move 4 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @mill/FarmDE.png@",
+                "(with your weakest TC-Vills)",
+                "Research @town_center/LoomDE.png@",
+                "Click up to feudalAge"
+            ]
+        },
+        {
+            "villager_count": 26,
+            "age": 2,
+            "resources": {
+                "wood": 11,
+                "food": 12,
+                "gold": 3,
+                "stone": 0
+            },
+            "notes": [
+                "Before @age/FeudalAgeIconDE_alpha.png@",
+                "Move 3 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @resource/Aoe2de_wood.png@",
+                "Move 1 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @resource/Aoe2de_gold.png@",
+                "(I suggest putting 3 of your Wood-Vills on \"3\" so you will quickly have them by hand as soon as you hit Feudal Age)"
+            ]
+        },
+        {
+            "villager_count": 26,
+            "age": 2,
+            "resources": {
+                "wood": 11,
+                "food": 12,
+                "gold": 3,
+                "stone": 0
+            },
+            "notes": [
+                "In @age/FeudalAgeIconDE_alpha.png@",
+                "@resource/Aoe2de_hammer.png@ 1 market, 1 @blacksmith/Blacksmith_aoe2de.png@",
+                "(2 @resource/MaleVillDE.jpg@ @resource/Aoe2de_hammer.png@ a Market, 1 builds a Blacksmith)"
+            ]
+        },
+        {
+            "villager_count": 28,
+            "age": 2,
+            "resources": {
+                "wood": 13,
+                "food": 12,
+                "gold": 3,
+                "stone": 0
+            },
+            "notes": [
+                "Create 2 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@",
+                "Click up to castleAge"
+            ]
+        },
+        {
+            "villager_count": 28,
+            "age": 3,
+            "resources": {
+                "wood": 13,
+                "food": 12,
+                "gold": 3,
+                "stone": 0
+            },
+            "notes": [
+                "Before @age/CastleAgeIconDE_alpha.png@",
+                "Research doubleBitAxe, horseCollar",
+                "(Dont forget to @resource/Aoe2de_hammer.png@ 1-2 @other/House_aoe2DE.png@ here, as you will not have a lot of time for that after hitting @castle/Castle_aoe2DE.png@ Age)"
+            ]
+        },
+        {
+            "villager_count": 28,
+            "age": 3,
+            "resources": {
+                "wood": 13,
+                "food": 12,
+                "gold": 3,
+                "stone": 0
+            },
+            "notes": [
+                "In @age/CastleAgeIconDE_alpha.png@",
+                "FC → Boom",
+                "@resource/Aoe2de_hammer.png@ 2 townCenter",
+                "Research bowSaw, heavyPlow"
+            ]
+        }
+    ]
+}
