@@ -41,6 +41,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string? Alert { get; set; }
     [ObservableProperty] public partial string? Idle { get; set; }
     [ObservableProperty] public partial string? Distribution { get; set; }
+    [ObservableProperty] public partial string? DistributionNow { get; set; }
     [ObservableProperty] public partial string? Warning { get; set; }
     [ObservableProperty] public partial string Debug { get; set; } = "";
     [ObservableProperty] public partial bool ShowDebug { get; set; }
@@ -86,6 +87,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Alert = lines.Alert;
         Idle = lines.Idle;
         Distribution = lines.Distribution;
+        DistributionNow = lines.DistributionNow;
         foreach (var target in Resources)
         {
             var resource = ResourceOf(target.Region);

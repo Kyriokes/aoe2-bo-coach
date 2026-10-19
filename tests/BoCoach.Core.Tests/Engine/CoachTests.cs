@@ -442,6 +442,34 @@ public class CoachTests
     }
 
     [Fact]
+    public void En_un_paso_largo_el_overlay_muestra_tambien_como_repartir_los_de_ahora()
+    {
+        // Pedido del usuario: partir los pasos largos en "ahora" y "al terminar". A "aldeanos a ovejas" le faltan más
+        // de 3: además de cómo quedan al terminar, cómo quiere la BO a los 3 que hay.
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+        var view = coach.Update(At(40, 200, 3, "house_built", "house_built"));
+
+        Assert.Equal(new ResourceAmounts(3, 0, 0, 0), view.NowTarget);
+        var lines = CoachText.Lines(view, TestData.GameData);
+        Assert.Equal("Ahora: madera 0 · comida 3 · oro 0 · piedra 0", lines.DistributionNow);
+        Assert.StartsWith("Al terminar el paso:", lines.Distribution);
+    }
+
+    [Fact]
+    public void En_un_paso_corto_no_hay_renglon_de_ahora()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        coach.Update(At(10, 200, villagers: 3));
+        coach.Update(At(40, 200, 3, "house_built", "house_built"));
+
+        // A "aldeanos a ovejas" le faltan 2: alcanza con cómo quedan al terminar.
+        var view = coach.Update(At(150, 200, villagers: Scouts.Steps[Index("s2")].Count - 2));
+        Assert.Equal("s2", view.Current?.Step.Id);
+        Assert.Null(view.NowTarget);
+    }
+
+    [Fact]
     public void Con_los_aldeanos_por_recurso_del_HUD_la_GD_parte_de_lo_que_hay()
     {
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);

@@ -59,6 +59,14 @@ public sealed record CoachView(
     public ResourceAmounts? StepTarget { get; init; }
 
     /// <summary>
+    /// En un paso largo, cómo quiere la BO a los aldeanos que hay ahora (<see cref="BoDistribution"/>), para mostrarlo
+    /// junto a <see cref="StepTarget"/>: mientras sube de edad, "8 en oro al terminar" no dice qué hacer con los 23 que
+    /// ya están (pedido del usuario: partir los pasos largos en "ahora" y "al terminar"). null si el paso es corto o si
+    /// los dos coinciden.
+    /// </summary>
+    public ResourceAmounts? NowTarget { get; init; }
+
+    /// <summary>
     /// Aldeanos que hay ahora en cada recurso (estimados por la economía hasta que se lean del HUD), para comparar con
     /// <see cref="Distribution"/>, o null si todavía no hay estimación.
     /// </summary>
@@ -417,6 +425,23 @@ public sealed class Coach
             perResource.GetValueOrDefault(Resource.Stone), perResource.GetValueOrDefault(Resource.Gold));
     }
 
+    /// <summary>Aldeanos que le faltan a un paso de aldeanos para que valga la pena mostrar "ahora" (unos 75 s de centro urbano).</summary>
+    public const int LongStepVillagers = 3;
+
+    /// <summary>
+    /// Paso largo: el centro urbano está investigando (edades, carretilla, telar: no salen aldeanos y el paso no
+    /// avanza) o al paso le faltan <see cref="LongStepVillagers"/> aldeanos o más.
+    /// </summary>
+    private ResourceAmounts? NowTarget(StepProgress? current, ResourceAmounts? now, ResourceAmounts? end)
+    {
+        if (current is null || now is not { } n || end is not { } e || n == e)
+            return null;
+        var researching = Tracker.InProgress.Any(s => s.Step.What is { } what && _data.TryGet(what, out var entity)
+            && entity.MadeIn == BuildOrderValidator.StartingBuilding);
+        var remaining = SourceVillagers(current) is { } on ? on.Target - on.Current : current.Remaining;
+        return researching || (LivePlan.IsVillagerTarget(current.Step) && remaining >= LongStepVillagers) ? n : null;
+    }
+
     private ResourceAmounts? Actual() => Economy?.Villagers.PerResource is { } estimate
         ? new ResourceAmounts(Math.Round(estimate.Food), Math.Round(estimate.Wood), Math.Round(estimate.Stone), Math.Round(estimate.Gold))
         : null;
@@ -463,6 +488,7 @@ public sealed class Coach
             Distribution = _guide ?? Distribution(Economy?.FoodFloor ?? 0),
             BoDistribution = Distribution(Economy?.FoodFloor ?? 0),
             StepTarget = StepTarget(current),
+            NowTarget = NowTarget(current, Distribution(Economy?.FoodFloor ?? 0), StepTarget(current)),
             Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,

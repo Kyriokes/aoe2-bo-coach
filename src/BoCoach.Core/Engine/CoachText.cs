@@ -18,6 +18,9 @@ public sealed record CoachLines(
     string? Idle = null,
     string? Distribution = null)
 {
+    /// <summary>En un paso largo, cómo repartir los aldeanos de ahora ("Ahora: madera 10 · ..."), arriba del de al terminar.</summary>
+    public string? DistributionNow { get; init; }
+
     /// <summary>Paso mixto: las otras metas del paso actual, una por renglón ("✓" las hechas).</summary>
     public IReadOnlyList<string> Goals { get; init; } = [];
 }
@@ -74,6 +77,7 @@ public static class CoachText
             view.StepTarget is { } target ? StepTargetText(target) : DistributionText(view.Distribution))
         {
             Goals = view.Goals.Where(g => g.Index != current.Index).Select(Goal).ToList(),
+            DistributionNow = view.NowTarget is { } now ? NowTargetText(now) : null,
         };
     }
 
@@ -105,6 +109,9 @@ public static class CoachText
     };
 
     /// <summary>"Al terminar el paso: madera 4 · comida 6 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
+    public static string NowTargetText(ResourceAmounts t) =>
+        $"Ahora: madera {t.Wood:0} · comida {t.Food:0} · oro {t.Gold:0} · piedra {t.Stone:0}";
+
     public static string StepTargetText(ResourceAmounts t) =>
         $"Al terminar el paso: madera {t.Wood:0} · comida {t.Food:0} · oro {t.Gold:0} · piedra {t.Stone:0}";
 

@@ -84,8 +84,12 @@
                 </TextBlock.Style>
             </TextBlock>
 
-            <!-- Cómo repartir los aldeanos de ahora según la BO -->
-            <TextBlock Text="{Binding Distribution}" FontSize="13" Foreground="#C9C1B6" Margin="0,8,0,0"
+            <!-- En un paso largo: cómo repartir los aldeanos de ahora según la BO -->
+            <TextBlock Text="{Binding DistributionNow}" FontSize="13" Foreground="#E8DFC9" Margin="0,8,0,0"
+                       Visibility="{Binding DistributionNow, Converter={StaticResource NotEmptyToVisibility}}" />
+
+            <!-- Cómo quedan los aldeanos al terminar el paso según la BO -->
+            <TextBlock Text="{Binding Distribution}" FontSize="13" Foreground="#C9C1B6" Margin="0,2,0,0"
                        Visibility="{Binding Distribution, Converter={StaticResource NotEmptyToVisibility}}" />
 
             <!-- Centro urbano sin producir aldeanos -->

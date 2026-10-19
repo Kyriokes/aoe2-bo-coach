@@ -15,9 +15,10 @@
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
 //   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
-//         [--economy] [--guide] [--allocator exact|greedy]
+//         [--economy] [--guide] [--allocator exact|greedy] [--until m:ss]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
+//       --until corta en ese minuto de partida (el estado de cada paso queda el de ese momento).
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //   icons <grabación[;grabación...]> <salida> [--every 4] [--offset-y 0]
@@ -497,10 +498,13 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     string? last = null;
     BoCoach.Core.Economy.Suggestion? shown = null;
     var suggestions = 0;
+    double? until = args.Contains("--until") && BoCoach.Core.GameClock.TryParse(Text(args, "--until", ""), out var stop) ? stop : (double?)null;
     await foreach (var (index, reading) in Readings(recording, args))
     {
         if (builder.Build(reading) is not { } snapshot)
             continue;
+        if (snapshot.Time > until)
+            break;
         var view = coach.Update(snapshot);
         if (view.Suggestion is { } s && (shown is null || (shown.From, shown.To) != (s.From, s.To)))
             suggestions++;
@@ -516,7 +520,8 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             static string F(ResourceAmounts? r) => r is { } v ? $"F{v.Food:0} W{v.Wood:0} S{v.Stone:0} G{v.Gold:0}" : "—";
             var current = coach.Tracker.Current;
             Console.WriteLine($"        hay {F(view.Actual)}{(view.ActualFromHud ? "" : " (estimado)")} · GD {F(view.Distribution)} · BO {F(view.BoDistribution)}"
-                + $" · paso {current?.Step.Id} {current?.Completed}/{current?.Required}");
+                + $" · paso {current?.Step.Id} {current?.Completed}/{current?.Required}"
+                + $" · al terminar {F(view.StepTarget)}{(view.NowTarget is { } now ? $" · ahora {F(now)}" : "")}");
         }
         if (args.Contains("--economy") && coach.Economy is { } e)
             Console.WriteLine($"        tasas {e.ObservedRates} · aldeanos {e.Villagers.PerResource} (efic {e.Villagers.Efficiency:0.00}) · demanda {e.Demand} · déficit {e.Deficit} · candidata {e.Candidate}");
