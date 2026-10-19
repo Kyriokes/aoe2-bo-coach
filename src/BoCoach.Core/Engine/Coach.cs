@@ -186,7 +186,7 @@ public sealed class Coach
             : bo;
         var candidate = Economy is { } report
             ? GuideDistribution.Adjust(start, State.Stock, report.Demand, report.NominalRates, _economySettings.Horizon,
-                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves)
+                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves, StepTarget(Tracker.Current))
             : start;
         if (_guide is not { } shown || Total(shown) != Total(candidate) || candidate == shown)
         {

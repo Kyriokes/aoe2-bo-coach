@@ -17,14 +17,19 @@ public static class GuideDistribution
     /// <param name="foodFloor">Aldeanos en comida que mantienen los centros urbanos produciendo: nunca se sacan de ahí.</param>
     /// <param name="shortage">Faltante a partir del cual un recurso "va a faltar".</param>
     /// <param name="maxMoves">Lo más que la GD se aleja del reparto de la BO.</param>
+    /// <param name="keep">
+    /// Cómo quiere la BO a los aldeanos al terminar el paso actual: de un recurso no se sacan aldeanos si quedaría
+    /// debajo de eso (solo se mueve lo que sobra). En la 20261018-132830, con 6 en comida y 3 en madera y el paso
+    /// pidiendo 4 en madera, la GD pedía pasar la madera a comida porque con 100 de stock "no faltaba".
+    /// </param>
     public static ResourceAmounts Adjust(
         ResourceAmounts bo, ResourceAmounts stock, ResourceAmounts demand, ResourceAmounts perVillager,
-        double horizon, int foodFloor, double shortage, int maxMoves)
+        double horizon, int foodFloor, double shortage, int maxMoves, ResourceAmounts? keep = null)
     {
         var resources = Enum.GetValues<Resource>();
         var x = resources.ToDictionary(r => r, r => (int)Math.Round(bo[r]));
         double Deficit(Resource r, int villagers) => demand[r] * horizon - stock[r] - villagers * perVillager[r] * horizon;
-        int Min(Resource r) => r == Resource.Food ? foodFloor : 0;
+        int Min(Resource r) => Math.Max(r == Resource.Food ? foodFloor : 0, keep is { } k ? (int)Math.Round(k[r]) : 0);
 
         for (var moves = 0; moves < maxMoves; moves++)
         {

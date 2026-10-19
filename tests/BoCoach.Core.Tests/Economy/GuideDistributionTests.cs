@@ -12,6 +12,26 @@ public class GuideDistributionTests
         GuideDistribution.Adjust(bo, stock, demand, PerVillager, horizon: 60, foodFloor, shortage: 25, maxMoves: 5);
 
     [Fact]
+    public void No_saca_aldeanos_de_lo_que_el_paso_quiere_al_terminar()
+    {
+        // Partida 20261018-132830, 2:35: 6 en comida y 3 en madera, el paso pide 4 en madera y 6 en comida. Falta comida
+        // para seguir sacando aldeanos y a la madera le sobra stock, pero sacarla contradice al paso.
+        var hay = new ResourceAmounts(6, 3, 0, 0);
+        var stock = new ResourceAmounts(25, 100, 200, 100);
+        var demand = new ResourceAmounts(4, 0.5, 0, 0);
+
+        Assert.True(Guide(hay, stock, demand).Wood < 3);   // sin la meta, la saca
+        var guided = GuideDistribution.Adjust(hay, stock, demand, PerVillager, horizon: 60, foodFloor: 0, shortage: 25, maxMoves: 5,
+            keep: new ResourceAmounts(6, 4, 0, 0));
+        Assert.Equal(hay, guided);
+
+        // Lo que sobra sobre la meta sí se puede mover.
+        var extra = GuideDistribution.Adjust(new ResourceAmounts(6, 6, 0, 0), stock, demand, PerVillager, horizon: 60, foodFloor: 0,
+            shortage: 25, maxMoves: 5, keep: new ResourceAmounts(6, 4, 0, 0));
+        Assert.Equal(new ResourceAmounts(7, 5, 0, 0), extra);
+    }
+
+    [Fact]
     public void Si_no_va_a_faltar_nada_es_el_reparto_de_la_BO()
     {
         var bo = new ResourceAmounts(Food: 6, Wood: 4, Stone: 0, Gold: 0);
