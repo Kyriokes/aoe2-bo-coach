@@ -191,7 +191,7 @@ public sealed class EditorTests : IDisposable
     public void Reordenar_mueve_y_renumera()
     {
         var editor = new BuildOrderEditorViewModel(
-            BuildOrderSerializer.Load(Path.Combine(CoachData.DataDir, "build_orders", "scouts_feudal.json")), _data);
+            BuildOrderSerializer.Load(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")), _data);
         var last = editor.Steps[^1];
 
         editor.MoveStep(editor.Steps.Count - 1, 0);
@@ -263,7 +263,7 @@ public sealed class EditorTests : IDisposable
 
         main.SearchText = "castle";
 
-        Assert.Equal("Fast Castle (27 + 2)", Assert.Single(main.Entries).Name);
+        Assert.Equal("Fast Castle para principiantes (27 + 2)", Assert.Single(main.Entries).Name);
     }
 
     [Fact]

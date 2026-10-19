@@ -21,7 +21,8 @@ public sealed class CoachSessionTests : IDisposable
 
     public void Dispose() => _library.Delete(recursive: true);
 
-    private BuildOrder Scouts => _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>().First(b => b.Name.Contains("Scouts"));
+    // La BO de scouts vieja (a mano, con horarios objetivo): los tests miran el desvío contra esos horarios.
+    private static readonly BuildOrder Scouts = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "build_orders", "scouts_feudal.json"));
 
     private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
 

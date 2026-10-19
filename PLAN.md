@@ -120,7 +120,7 @@ aoe2-bo-coach/
 │  │  └─ v8.9.json
 │  └─ events.json             # frases del log conocidas → id de evento
 ├─ build_orders/              # BO de ejemplo
-│  └─ scouts_feudal.json
+│  └─ scouts_22p.json
 ├─ src/
 │  ├─ BoCoach.Core/           # net10.0, lógica pura, sin dependencias de Windows
 │  │  ├─ Data/                # modelos de game_data y carga

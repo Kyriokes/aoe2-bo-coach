@@ -29,7 +29,7 @@ describe("Core en WebAssembly", () => {
   });
 
   it("simula la BO de scouts igual que la app", () => {
-    const result = coach.analyze(readFileSync(join(repo, "build_orders", "scouts_feudal.json"), "utf8"));
+    const result = coach.analyze(readFileSync(join(repo, "tests", "fixtures", "build_orders", "scouts_feudal.json"), "utf8"));
 
     expect(result.ok).toBe(true);
     const analysis = result as Analysis;

@@ -94,7 +94,7 @@ public sealed class WebTests : IDisposable
     public async Task Importa_una_BO_de_la_web_con_el_enlace_de_la_pagina()
     {
         var (vm, web, dialogs, _) = Editor();
-        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_feudal.json")));
+        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
         web.Respond = _ => (HttpStatusCode.OK, new JsonObject
         {
             ["code"] = "k7m2xq",

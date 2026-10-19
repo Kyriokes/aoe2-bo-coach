@@ -1,0 +1,336 @@
+{
+  "schema_version": 2,
+  "id": "ejemplo-scouts-22p",
+  "name": "Scouts Feudal (22 pop)",
+  "civ": "any",
+  "author": "Cicero7800",
+  "description": "Exploradores en Feudal a 22 de población y Castillos con 33 aldeanos. Importada de \"22p Scouts\" de Cicero7800 en https://buildorderguide.com.",
+  "tags": [
+    "feudal",
+    "scouts",
+    "arabia",
+    "importada"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar. Al 50% del jabalí, atraé el otro"
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s11",
+      "do": "build",
+      "what": "farm",
+      "count": 2,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s12",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s14",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 22
+    },
+    {
+      "id": "s17",
+      "do": "move",
+      "count": 3,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "train",
+      "what": "villager",
+      "count": 9,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "farm",
+      "count": 7,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s22",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "farm",
+      "count": 1,
+      "assign": "farm",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "farm",
+      "count": 4,
+      "assign": "farm",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s28",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 5,
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s30",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s32",
+      "do": "build",
+      "what": "farm",
+      "count": 4,
+      "assign": "farm",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s33",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s34",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s35",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 14,
+      "wood": 7,
+      "gold": 0,
+      "stone": 0,
+      "total": 21
+    },
+    "villagers_at_castle": {
+      "food": 18,
+      "wood": 10,
+      "gold": 5,
+      "stone": 0,
+      "total": 33
+    }
+  }
+}
