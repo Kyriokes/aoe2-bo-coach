@@ -1,3 +1,5 @@
+# Respaldo: la app hace lo mismo con el botón "Instalar mod del HUD" (Capture/HudMod.cs), que además instala en los
+# perfiles sin lista de mods y avisa si otro mod con más prioridad pisa el panel.
 # Genera el mod local "BoCoach HUD" a partir de los paneles que el juego usa hoy (los del mod activo con el
 # número de prioridad más bajo, o los originales) en cada perfil que usa mods. Cambia dos cosas para leer mejor:
 #   - resourcepanel.json: el ícono de cada recurso y el de inactivos pasan a ser un cuadrado negro con la mitad
