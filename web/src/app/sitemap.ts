@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base, changeFrequency: "monthly", priority: 1 },
     { url: `${base}/biblioteca`, changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/subir`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${base}/privacidad`, changeFrequency: "yearly", priority: 0.1 },
     ...buildOrders.map((bo) => ({
       url: `${base}/bo/${bo.code}`,
       lastModified: bo.updated_at,

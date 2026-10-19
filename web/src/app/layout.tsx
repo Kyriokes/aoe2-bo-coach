@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
 import { SITE_NAME } from "@/lib/share";
@@ -39,7 +40,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
         <footer className="border-t border-line px-4 py-4 text-center text-xs text-faint">
           AoE2 BO Coach es un proyecto de la comunidad, sin relación con Microsoft ni con los estudios del juego. Solo
-          lee la pantalla: no toca la memoria del juego ni manda inputs.
+          lee la pantalla: no toca la memoria del juego ni manda inputs.{" "}
+          <Link href="/privacidad" className="hover:text-amber">
+            Privacidad
+          </Link>
         </footer>
       </body>
     </html>
