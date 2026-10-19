@@ -174,6 +174,15 @@ public sealed class Tracker
         ? _steps.Where(s => IsOpen(s) && !IsProducing(s)).FirstOrDefault(s => s.Index > current.Index && !SameGroup(s.Index, current.Index))
         : null;
 
+    /// <summary>
+    /// Hacer el paso j del mismo actor deja atrás al paso i. No si i entrena y j no: el centro urbano que investiga el
+    /// telar antes de tiempo sigue sacando aldeanos después (en la 20261018-132830, el telar a las 3:14 dejaba
+    /// "atrasados" a los aldeanos de caza y de bayas). Tampoco lo que el juego no avisa (granjas): no se sabe si se hizo.
+    /// </summary>
+    private bool Skips(int i, int j) =>
+        (_bo.Steps[i].Do != StepAction.Train || _bo.Steps[j].Do == StepAction.Train)
+        && !(EventConventions.EventFor(_bo.Steps[i]) is { } id && EventConventions.Unannounced.Contains(id));
+
     /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
     private bool SameGroup(int i, int j) => _bo.Steps[i].Group is { } g && g == _bo.Steps[j].Group;
 
@@ -393,13 +402,20 @@ public sealed class Tracker
             var mates = EventConventions.EventFor(_bo.Steps[i]) is { } silent && EventConventions.Unannounced.Contains(silent)
                 ? Enumerable.Range(0, n).Where(j => j != i && SameGroup(i, j)).ToList()
                 : [];
-            if (mates.Count > 0 && mates.All(IsDone))
+            if (mates.Count > 0)
             {
-                doneAt[i] = mates.Max(j => doneAt[j] ?? _manualDone.GetValueOrDefault(j));
+                // Solo con sus compañeras: en la 20261018-132830 el telar terminado temprano (4:21) daba por hecha la
+                // granja de "1 aldeano a granjas" y dejaba atrasados la casa y el molino de antes.
+                if (mates.All(IsDone))
+                    doneAt[i] = mates.Max(j => doneAt[j] ?? _manualDone.GetValueOrDefault(j));
                 continue;
             }
+            // Una investigación empezada da por hechas las granjas sueltas de antes (el clic en Castillos con las granjas
+            // pendientes), pero no lo de un paso mixto: el telar se puede pagar temprano sin haber hecho la granja.
+            var loose = _bo.Steps[i].Group is null && mates.Count == 0 && EventConventions.EventFor(_bo.Steps[i]) is { } ev
+                && EventConventions.Unannounced.Contains(ev);
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
-                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || _started.ContainsKey(j)))
+                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || (loose && _started.ContainsKey(j))))
                 .Select(j => FirstProgressTime(j, doneAt))
                 .Min();
             if (progressAfter is not null)
@@ -440,7 +456,7 @@ public sealed class Tracker
             {
                 state = StepState.InProgress;
             }
-            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && !SameGroup(i, j) && (IsDone(j) || _started.ContainsKey(j))))
+            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && !SameGroup(i, j) && Skips(i, j) && (IsDone(j) || _started.ContainsKey(j))))
             {
                 state = StepState.Late;
             }

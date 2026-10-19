@@ -377,6 +377,22 @@ public class TrackerTests
     }
 
     [Fact]
+    public void Pagar_el_telar_temprano_no_atrasa_los_aldeanos_ni_hace_la_granja()
+    {
+        // Partida 20261018-132830: telar a las 3:14, antes de los aldeanos de caza y de bayas (todo del centro urbano).
+        var archers = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json"));
+        var ids = archers.Steps.Select(s => s.Id).ToList();
+        var tracker = new Tracker(archers, TestData.GameData);
+        tracker.Update(new Partida().Play(archers, 0, ids.IndexOf("s4")).State);
+
+        tracker.MarkStarted(ids.IndexOf("s15"), 194);
+
+        Assert.Equal("s5", tracker.Current?.Step.Id);
+        Assert.Empty(tracker.Late);
+        Assert.NotEqual(StepState.Done, tracker.Steps[ids.IndexOf("s11")].State);   // la granja del paso mixto
+    }
+
+    [Fact]
     public void Una_casa_queda_hecha_si_el_tope_ya_llego_a_lo_que_espera_la_BO()
     {
         // El usuario tenía 35/55 y el coach seguía con "Construí una casa": las había hecho antes y el log no las avisó.
