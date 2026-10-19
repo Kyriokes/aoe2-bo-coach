@@ -377,6 +377,34 @@ public class TrackerTests
     }
 
     [Fact]
+    public void Una_casa_queda_hecha_si_el_tope_ya_llego_a_lo_que_espera_la_BO()
+    {
+        // El usuario tenía 35/55 y el coach seguía con "Construí una casa": las había hecho antes y el log no las avisó.
+        var archers = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json"));
+        var ids = archers.Steps.Select(s => s.Id).ToList();
+        var tracker = new Tracker(archers, TestData.GameData);
+        var partida = new Partida().Play(archers, 0, ids.IndexOf("s5"));
+        tracker.Update(partida.State);
+        Assert.Equal("s6", tracker.Current?.Step.Id);   // la casa de los 15 de población
+
+        partida.CapGrows(10).Wait(1);                    // de 15 a 25
+        tracker.Update(partida.State);
+        Assert.Equal("s6", tracker.Current?.Step.Id);   // tiene que sostenerse 2 s
+        partida.Wait(2);
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Done, tracker.Steps[ids.IndexOf("s6")].State);
+        Assert.Equal(StepState.Done, tracker.Steps[ids.IndexOf("s13")].State);  // con 25 también estaba la siguiente
+        Assert.NotEqual(StepState.Done, tracker.Steps[ids.IndexOf("s20")].State);
+
+        // "Atrás" lo deshace y el tope no lo vuelve a dar.
+        tracker.Back();
+        partida.Wait(3);
+        tracker.Update(partida.State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[ids.IndexOf("s13")].State);
+    }
+
+    [Fact]
     public void Las_granjas_no_traban_la_BO_y_quedan_hechas_al_empezar_un_paso_posterior()
     {
         // La partida 20261018-132830: después de la casa del paso 39 la BO pide 4 granjas, carretilla y Castillos.

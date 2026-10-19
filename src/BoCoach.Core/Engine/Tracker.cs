@@ -95,8 +95,32 @@ public sealed class Tracker
         _units = LivePlan.Units(bo);
         _actor = bo.Steps.Select(Actor).ToArray();
         _hudTarget = bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? HudTarget(bo, i, s.Assign!.Value.Resource()) : null).ToArray();
+        _capTarget = CapTargets(bo, data);
         Recompute();
     }
+
+    /// <summary>
+    /// Para cada paso que construye algo que da población (casas): el tope que la BO espera al terminarlo. Si el tope
+    /// del juego ya llegó, el paso está hecho aunque el log no lo haya avisado (un "House Built" repetido no agrega
+    /// renglón) o las casas se hayan hecho antes: el usuario tenía 35/55 y el coach seguía pidiendo una casa.
+    /// </summary>
+    private static int?[] CapTargets(BuildOrder bo, GameData data)
+    {
+        var civ = data.Civ(bo.Civ);
+        var cap = PlanStart.For(civ, data).PopulationCap;
+        var targets = new int?[bo.Steps.Count];
+        for (var i = 0; i < bo.Steps.Count; i++)
+        {
+            var step = bo.Steps[i];
+            if (step.Do != StepAction.Build || step.What is not { } what || !data.TryGet(what, out var entity) || civ.PopBonus(entity, Age.Dark) <= 0)
+                continue;
+            cap = Math.Min(BuildOrderValidator.MaxPopulation, cap + civ.PopBonus(entity, Age.Dark) * step.Count);
+            targets[i] = cap;
+        }
+        return targets;
+    }
+
+    private readonly int?[] _capTarget;
 
     private static (Resource, int)? HudTarget(BuildOrder bo, int index, Resource resource) =>
         (resource, LivePlan.PlannedVillagers(bo, index).Where(v => v.Key.Resource() == resource).Sum(v => v.Value));
@@ -172,6 +196,7 @@ public sealed class Tracker
     /// </summary>
     private void TrackHud()
     {
+        TrackCap();
         if (_state.VillagersOn is not { } on)
             return;
         for (var i = 0; i < _hudTarget.Length; i++)
@@ -179,6 +204,25 @@ public sealed class Tracker
             if (_hudTarget[i] is not { } target || _hudDone.ContainsKey(i) || _noHud.Contains(i))
                 continue;
             if (on[target.Resource] < target.Total)
+            {
+                _hudSince.Remove(i);
+                continue;
+            }
+            if (!_hudSince.TryGetValue(i, out var since))
+                _hudSince[i] = since = _state.Time;
+            if (_state.Time - since >= HudConfirmSeconds)
+                _hudDone[i] = since;
+        }
+    }
+
+    /// <summary>Pasos de casas hechos por el tope de población: como los del HUD, tiene que sostenerse 2 s.</summary>
+    private void TrackCap()
+    {
+        for (var i = 0; i < _capTarget.Length; i++)
+        {
+            if (_capTarget[i] is not { } target || _hudDone.ContainsKey(i) || _noHud.Contains(i))
+                continue;
+            if (_state.PopulationCap < target)
             {
                 _hudSince.Remove(i);
                 continue;

@@ -41,6 +41,15 @@ internal sealed class Partida
         return this;
     }
 
+    /// <summary>Sube el tope de población sin que el log lo avise (casas hechas antes, o un "House Built" repetido).</summary>
+    public Partida CapGrows(int amount, double dt = 10)
+    {
+        Time += dt;
+        PopulationCap += amount;
+        State.Apply(new GameSnapshot(Time, Stock, Population, PopulationCap));
+        return this;
+    }
+
     /// <summary>Una captura con los aldeanos por recurso del HUD (con el mod).</summary>
     public Partida Hud(ResourceAmounts villagersOn, double dt = 1)
     {
