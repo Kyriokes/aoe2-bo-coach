@@ -36,7 +36,8 @@ export interface LibraryQuery {
 export const LIBRARY_TAG = "biblioteca";
 export const buildOrderTag = (code: string) => `bo-${code}`;
 
-const summaryColumns = "id, code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, profiles(display_name)";
+// "!owner_id": la BO llega a profiles por su dueño y también por los votos; sin decir cuál, Supabase no la arma.
+const summaryColumns = "id, code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, profiles!owner_id(display_name)";
 
 interface Row extends Omit<BuildOrderSummary, "author"> {
   profiles: { display_name: string } | null;
