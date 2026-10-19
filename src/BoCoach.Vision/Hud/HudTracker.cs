@@ -111,7 +111,11 @@ public sealed class HudTracker
 
     private void UpdateAge(Age? read)
     {
-        if (read is null || read == _age)
+        // Sin lectura (la edad se lee cada 2 s, o el OCR no entendió): la cuenta sigue como estaba. Si la borrara,
+        // la edad nueva nunca llegaría a confirmarse (en la 20261019-202635 quedó en "Dark" toda la partida).
+        if (read is null)
+            return;
+        if (read == _age)
         {
             _pendingAge = null;
             _pendingAgeCount = 0;

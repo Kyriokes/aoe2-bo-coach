@@ -87,6 +87,26 @@ public class HudTests
         Assert.Equal(Age.Feudal, tracker.Update(3, empty, ageRead: Age.Feudal).Age);
     }
 
+    [Fact]
+    public void Las_capturas_sin_lectura_de_edad_no_borran_la_cuenta()
+    {
+        // ScreenReader lee la edad cada 2 s: en las capturas del medio no hay lectura (null). En la partida
+        // 20261019-202635 la edad quedó en "Dark" hasta el final aunque el HUD decía "Feudal Age" desde las 11:08.
+        var tracker = new HudTracker { ConfirmAge = 3 };
+        var empty = new HudReading(null, null, null, null, null, null, null, []);
+        tracker.Update(0, empty, ageRead: Age.Dark);
+
+        var t = 0.0;
+        for (var read = 0; read < 3; read++)
+        {
+            Assert.Equal(Age.Dark, tracker.Update(t += 0.5, empty, ageRead: null).Age);
+            Assert.Equal(Age.Dark, tracker.Update(t += 0.5, empty, ageRead: null).Age);
+            Assert.Equal(Age.Dark, tracker.Update(t += 0.5, empty, ageRead: null).Age);
+            var age = tracker.Update(t += 0.5, empty, ageRead: Age.Feudal).Age;
+            Assert.Equal(read < 2 ? Age.Dark : Age.Feudal, age);
+        }
+    }
+
     private static void AssertResource(string expected, int? read, bool clipped, int frame)
     {
         if (expected.EndsWith('*'))
