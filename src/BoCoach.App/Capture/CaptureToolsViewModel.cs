@@ -1,4 +1,6 @@
 using System.IO;
+using System.Text.Json;
+using BoCoach.App.Overlay;
 using BoCoach.Core;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Recording;
@@ -15,23 +17,31 @@ public interface ICaptureHost
     RegionLayout? Calibrate(RegionLayout current);
 
     void OpenFolder(string path);
+
+    /// <summary>Un mensaje con aceptar (por ejemplo, cómo quedó la instalación del mod).</summary>
+    void ShowMessage(string title, string text, bool warning);
 }
 
-/// <summary>Calibrar la pantalla y grabar partidas (RecordSession).</summary>
+/// <summary>Calibrar la pantalla, grabar partidas (RecordSession) e instalar el mod del HUD.</summary>
 public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposable
 {
     private readonly IScreenSource _screen;
     private readonly ICaptureHost _host;
     private readonly string _regionsPath;
     private readonly string _recordingsRoot;
+    private readonly Func<string?> _findGame;
+    private readonly string _gameProfiles;
     private SessionRecorder? _recorder;
 
-    public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null)
+    public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
+        Func<string?>? findGame = null, string? gameProfiles = null)
     {
         _screen = screen;
         _host = host;
         _regionsPath = regionsPath ?? RegionLayout.DefaultPath;
         _recordingsRoot = recordingsRoot ?? SessionRecorder.DefaultOutputRoot;
+        _findGame = findGame ?? GameIcons.FindGame;
+        _gameProfiles = gameProfiles ?? HudMod.DefaultProfilesRoot;
         UpdateCalibrationStatus();
     }
 
@@ -84,6 +94,54 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     {
         Directory.CreateDirectory(_recordingsRoot);
         _host.OpenFolder(_recorder?.Folder ?? _recordingsRoot);
+    }
+
+    /// <summary>
+    /// Arma el mod "BoCoach HUD" en los perfiles del juego (cuadrados negros con los aldeanos de cada recurso y el
+    /// reloj grande, que es lo que mejor lee el coach) y cuenta cómo quedó.
+    /// </summary>
+    [RelayCommand]
+    private void InstallMod()
+    {
+        const string title = "Mod del HUD";
+        if (_findGame() is not { } game)
+        {
+            _host.ShowMessage(title, "No encontré Age of Empires II: DE en las bibliotecas de Steam. Abrí el juego y volvé a probar.", true);
+            return;
+        }
+        HudModResult result;
+        try
+        {
+            result = HudMod.Install(game, _gameProfiles);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
+        {
+            _host.ShowMessage(title, $"No se pudo instalar el mod.\n\n{e.Message}", true);
+            return;
+        }
+        _host.ShowMessage(title, ModText(result), !result.Ok || result.Warnings.Count > 0);
+    }
+
+    internal static string ModText(HudModResult result)
+    {
+        var lines = new List<string>();
+        if (result.Ok)
+        {
+            lines.Add($"Listo: el mod \"{HudMod.Name}\" quedó instalado.");
+            lines.Add("");
+            lines.AddRange(result.Installed);
+            lines.Add("");
+            lines.Add("Si el juego está abierto, cerralo y volvé a abrirlo. En Mods → Mods instalados tiene que figurar activo. "
+                + "Después calibrá la pantalla de nuevo: los cuadrados de los recursos cambian de aspecto.");
+        }
+        if (result.Warnings.Count > 0)
+        {
+            if (lines.Count > 0)
+                lines.Add("");
+            lines.Add("Ojo:");
+            lines.AddRange(result.Warnings.Select(w => $"• {w}"));
+        }
+        return string.Join("\n", lines);
     }
 
     /// <summary>La vista lo llama cada segundo para actualizar el estado de la grabación.</summary>

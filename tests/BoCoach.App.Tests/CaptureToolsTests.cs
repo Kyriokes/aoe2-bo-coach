@@ -27,11 +27,40 @@ public sealed class CaptureToolsTests : IDisposable
         public Func<RegionLayout, RegionLayout?> OnCalibrate { get; set; } = _ => null;
         public string? OpenedFolder { get; private set; }
 
+        public (string Text, bool Warning)? Message { get; private set; }
+
         public RegionLayout? Calibrate(RegionLayout current) => OnCalibrate(current);
         public void OpenFolder(string path) => OpenedFolder = path;
+        public void ShowMessage(string title, string text, bool warning) => Message = (text, warning);
     }
 
-    private CaptureToolsViewModel Tools(FakeHost host) => new(new FakeScreen(), host, RegionsPath, RecordingsRoot);
+    private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null) =>
+        new(new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"));
+
+    [Fact]
+    public void Instalar_el_mod_sin_el_juego_avisa()
+    {
+        var host = new FakeHost();
+
+        Tools(host).InstallModCommand.Execute(null);
+
+        Assert.True(host.Message?.Warning);
+        Assert.Contains("No encontré Age of Empires", host.Message?.Text);
+    }
+
+    [Fact]
+    public void Instalar_el_mod_cuenta_en_que_perfil_quedo()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "76561198000000000", "mods"));
+        var host = new FakeHost();
+
+        Tools(host, () => game).InstallModCommand.Execute(null);
+
+        Assert.False(host.Message?.Warning, host.Message?.Text);
+        Assert.Contains("quedó instalado", host.Message?.Text);
+        Assert.Contains("Perfil 76561198000000000: recursos de original", host.Message?.Text);
+    }
 
     [Fact]
     public void Sin_calibrar_avisa_que_usa_posiciones_aproximadas()

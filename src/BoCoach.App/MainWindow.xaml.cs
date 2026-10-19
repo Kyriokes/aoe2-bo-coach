@@ -183,6 +183,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     public void OpenFolder(string path) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
 
+    public void ShowMessage(string title, string text, bool warning) =>
+        MessageBox.Show(this, text, title, MessageBoxButton.OK, warning ? MessageBoxImage.Warning : MessageBoxImage.Information);
+
     // ---- Reordenar pasos arrastrando ----
 
     private void DragHandle_MouseMove(object sender, MouseEventArgs e)
