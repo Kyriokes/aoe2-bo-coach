@@ -10,11 +10,14 @@ export function Header() {
           AoE2 BO Coach
         </Link>
         <nav aria-label="Principal" className="flex gap-4 text-sm text-muted">
-          <Link href="/" className="hover:text-amber">
+          <Link href="/biblioteca" className="hover:text-amber">
             Biblioteca
           </Link>
           <Link href="/subir" className="hover:text-amber">
             Subir una BO
+          </Link>
+          <Link href="/#descargar" className="hover:text-amber">
+            Descargar
           </Link>
         </nav>
         <div className="ml-auto">

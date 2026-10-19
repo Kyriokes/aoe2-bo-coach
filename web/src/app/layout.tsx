@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const description =
-  "Biblioteca de build orders para Age of Empires II: Definitive Edition. Mirá la línea de tiempo de cada BO y abrila en BO Coach para seguirla durante la partida.";
+  "Overlay para Age of Empires II: Definitive Edition que lee la pantalla, sigue tu build order paso a paso y te dice dónde poner cada aldeano. Con una biblioteca para compartir build orders.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
