@@ -40,8 +40,11 @@
 //       Busca el HUD del mod en una captura de pantalla entera y muestra las cajas y la escala del HUD. --read recorta
 //       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
 //       (y el cuadrado y el stock del mod) para mirarlos.
+//   loading <pantalla.png> [--nombre "tu nombre"]
+//       Lee la pantalla de carga de una captura de pantalla entera (por ejemplo la de diagnóstico): cada jugador con su
+//       equipo, nombre, civ y color, y el mapa. Con --nombre marca cuál sos y muestra tus aliados y rivales.
 //
-// --idioma en|es|mx (replay, coach, bench, ocr, autocalibrate --read): el juego en inglés (por defecto), en castellano
+// --idioma en|es|mx (replay, coach, bench, ocr, autocalibrate --read, loading): el juego en inglés (por defecto), en castellano
 // de España o de Latinoamérica. Elige el OCR y suma las frases del log de data/events.<idioma>.json.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
@@ -83,6 +86,7 @@ try
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
+        "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
         "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
@@ -495,6 +499,29 @@ static async Task<int> Replay(string recording, string[] args)
 
 // ---- coach: el loop completo (visión + motor + economía) sobre una grabación o sus lecturas.csv ----
 /// <summary>Calibración sola sobre una captura de pantalla entera (hoja de ruta B4): las cajas que encuentra y la escala del HUD.</summary>
+// ---- loading: la pantalla de carga ----
+static async Task<int> Loading(string screenshot, string[] args)
+{
+    var screen = Png.Read(screenshot);
+    var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+    var reader = new BoCoach.Vision.Loading.LoadingScreenReader(RequiredOcr(args), data, Language(args).Code);
+    if (await reader.ReadAsync(screen) is not { } reading)
+    {
+        Console.WriteLine($"{screenshot} ({screen.Width}×{screen.Height}) no es la pantalla de carga: el título no dice \"Starting Game\" ni \"Iniciando partida\".");
+        return 1;
+    }
+    var me = reading.Find(Text(args, "--nombre", ""));
+    Console.WriteLine($"Pantalla de carga, {screen.Width}×{screen.Height}, mapa: {reading.Map ?? "-"}");
+    foreach (var p in reading.Players)
+        Console.WriteLine($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  {p.Name,-24} {p.CivText,-16} → {p.Civ ?? "?",-12} color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
+    if (me is not null)
+    {
+        Console.WriteLine($"Aliados: {string.Join(", ", reading.Allies(me).Select(p => $"{p.Name} ({p.Civ ?? "?"})"))}");
+        Console.WriteLine($"Rivales: {string.Join(", ", reading.Opponents(me).Select(p => $"{p.Name} ({p.Civ ?? "?"})"))}");
+    }
+    return 0;
+}
+
 static int AutoCalibrate(string screenshot, string[] args)
 {
     var screen = Png.Read(screenshot);
