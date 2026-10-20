@@ -92,6 +92,9 @@
                               ToolTip="Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con Ctrl+Alt+M desde el juego">
                         <TextBlock Text="Recordatorios en el mouse" Foreground="#C9C1B6" />
                     </CheckBox>
+                    <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0"
+                            ToolTip="Si algo no se lee bien: a los 2 s guarda la pantalla entera sin pérdida y un .txt con lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico, para mandar esa carpeta. También con Ctrl+Alt+X desde el juego" />
+                    <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </StackPanel>
         </Border>

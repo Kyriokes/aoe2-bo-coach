@@ -33,7 +33,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         InitializeComponent();
         ViewModel = new MainViewModel(data, this);
         DataContext = ViewModel;
-        Tools = new CaptureToolsViewModel(_screen, this);
+        // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
+        Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English);
         ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual.
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () =>
@@ -104,6 +105,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             (Key.H, "H", () => Coach.ToggleOverlayCommand.Execute(null)),
             (Key.D, "D", () => Coach.ToggleDebugCommand.Execute(null)),
             (Key.M, "M", () => Coach.ToggleCursorRemindersCommand.Execute(null)),
+            (Key.X, "X", () => Tools.DiagnosticCommand.Execute(null)),
         };
         var missing = keys.Where(k => !_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, k.Key, k.Action)).Select(k => $"Ctrl+Alt+{k.Name}").ToList();
         ViewModel.Status = missing.Count > 0
