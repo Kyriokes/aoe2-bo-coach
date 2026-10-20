@@ -34,6 +34,10 @@ public sealed class OcrReader
         return engine is null ? null : new OcrReader(engine);
     }
 
+    /// <summary>Idiomas del OCR que tiene instalados este Windows (por ejemplo "en-US", "es-MX").</summary>
+    public static IReadOnlyList<string> AvailableLanguages() =>
+        OcrEngine.AvailableRecognizerLanguages.Select(l => l.LanguageTag).ToList();
+
     /// <summary>Texto leído, una línea por renglón detectado (de arriba hacia abajo).</summary>
     public async Task<string> ReadAsync(CapturedImage image, int scale = 3) =>
         string.Join("\n", (await ReadLinesAsync(image, scale)).Select(l => l.Text));
