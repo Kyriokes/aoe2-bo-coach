@@ -6,7 +6,11 @@ using BoCoach.Vision.Regions;
 namespace BoCoach.App.Coaching;
 
 /// <summary>Una captura: la imagen de cada región (se pide por nombre), cuándo se tomó y dónde está el juego.</summary>
-public sealed record Frame(Func<string, CapturedImage?> Region, double RealTime, PixelRect Area);
+/// <param name="Screen">
+/// Un rectángulo cualquiera de la pantalla del juego (relativo a <paramref name="Area"/>), para la pantalla de carga;
+/// null si la fuente no lo tiene (las grabaciones solo guardan las regiones).
+/// </param>
+public sealed record Frame(Func<string, CapturedImage?> Region, double RealTime, PixelRect Area, Func<PixelRect, CapturedImage?>? Screen = null);
 
 /// <summary>De dónde salen las capturas: la pantalla en vivo o una grabación.</summary>
 public interface IFrameSource
@@ -45,7 +49,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
         return new Frame(
             region => captured.TryGetValue(region, out var image) ? image : captured[region] = Capture(region, area),
             _clock.Elapsed.TotalSeconds,
-            area);
+            area,
+            rect => rect.IsEmpty ? null : screen.Capture(rect with { X = area.X + rect.X, Y = area.Y + rect.Y }));
     }
 
     private CapturedImage? Capture(string region, PixelRect area)

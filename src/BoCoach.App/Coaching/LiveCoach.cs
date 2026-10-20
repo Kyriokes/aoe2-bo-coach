@@ -7,6 +7,7 @@ using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 
 namespace BoCoach.App.Coaching;
@@ -80,6 +81,9 @@ public sealed class UsageMeter
 /// <param name="Area">Zona del juego en la pantalla en la última captura.</param>
 /// <param name="StartOffset">Segundos del reloj del juego antes de que el jugador empezara a jugar (ver <see cref="SnapshotBuilder.StartOffset"/>).</param>
 /// <param name="HudScale">Tamaño del HUD respecto de 1080p: las franjas de <see cref="HudState.ModBands"/> están medidas a 1080p.</param>
+/// <param name="Loading">Lo leído en la última pantalla de carga (la de esta partida), o null.</param>
+/// <param name="Me">El jugador de la pantalla de carga con el nombre puesto en la app, o null.</param>
+/// <param name="Civ">La civ con que corre el coach (clave de game_data, o "any").</param>
 public sealed record CoachFrame(
     CoachView View,
     HudState? Hud,
@@ -91,19 +95,32 @@ public sealed record CoachFrame(
     string? Error,
     PixelRect Area,
     double StartOffset = 0,
-    double HudScale = 1);
+    double HudScale = 1,
+    LoadingReading? Loading = null,
+    LoadingPlayer? Me = null,
+    string Civ = "any");
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
 /// y actualiza el <see cref="Coach"/>. Corre en segundo plano; los atajos (avanzar, retroceder, saltear) llegan
 /// desde la ventana y se aplican con un lock. <see cref="Updated"/> se dispara fuera del hilo de la interfaz.
+/// Mientras no se ve el reloj, mira cada tanto si está la pantalla de carga: al verla empieza la partida de cero
+/// (el coach, el armado de snapshots y la lectura del HUD), con la civ del jugador si encontró su nombre.
 /// </summary>
 public sealed class LiveCoach : IDisposable
 {
+    /// <summary>Cada cuánto se mira el título de la pantalla de carga mientras no se ve el reloj.</summary>
+    public static readonly TimeSpan LoadingInterval = TimeSpan.FromSeconds(2);
+
     private readonly object _gate = new();
-    private readonly Coach _coach;
-    private readonly SnapshotBuilder _builder;
-    private readonly ScreenReader _reader;
+    private readonly GameData _data;
+    private readonly HudFonts _fonts;
+    private readonly OcrReader? _ocr;
+    private readonly EconomySettings? _economy;
+    private readonly LoadingScreenReader? _loading;
+    private Coach _coach;
+    private SnapshotBuilder _builder;
+    private ScreenReader _reader;
     private readonly UsageMeter _usage = new();
     private CancellationTokenSource? _cancel;
     private HudState? _hud;
@@ -113,19 +130,37 @@ public sealed class LiveCoach : IDisposable
     private bool _ended;
     private string? _error;
     private PixelRect _area;
+    private double? _lastLoadingTry;
+    private bool _loadingDone;
+    private LoadingReading? _loadingReading;
+    private LoadingPlayer? _me;
 
-    public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames, EconomySettings? economy = null)
+    /// <param name="playerName">El nombre del jugador en el juego, para encontrar su renglón en la pantalla de carga.</param>
+    /// <param name="language">Idioma del juego (<see cref="GameLanguage.Code"/>), para los nombres de las civs.</param>
+    public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames,
+        EconomySettings? economy = null, string? playerName = null, string language = "en")
     {
         BuildOrder = bo;
         Frames = frames;
-        _coach = new Coach(bo, data, events, economy: economy);
-        _builder = new SnapshotBuilder(data, data.Civ(bo.Civ));
         Events = events;
-        _reader = new ScreenReader(fonts, ocr, events);
+        PlayerName = playerName;
+        _data = data;
+        _fonts = fonts;
+        _ocr = ocr;
+        _economy = economy;
+        _loading = ocr is null ? null : new LoadingScreenReader(ocr, data, language);
+        Civ = bo.Civ;
+        (_coach, _builder, _reader) = NewGame(bo);
     }
 
+    /// <summary>La BO con que se empezó (con la civ elegida en la ventana).</summary>
     public BuildOrder BuildOrder { get; }
     public IFrameSource Frames { get; }
+
+    public string? PlayerName { get; }
+
+    /// <summary>La civ con que corre el coach: la de la BO, o la del jugador desde la última pantalla de carga.</summary>
+    public string Civ { get; private set; }
 
     /// <summary>Las frases del log con que lee (las del idioma del juego).</summary>
     public EventCatalog Events { get; }
@@ -169,7 +204,11 @@ public sealed class LiveCoach : IDisposable
                 return false;
             }
 
+            if (await LoadingScreenAsync(frame) is { } reading)
+                StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
+            if (hud.ClockRead)
+                _loadingDone = false;
             var snapshot = _builder.Build(hud.ToReading());
             lock (_gate)
             {
@@ -196,6 +235,43 @@ public sealed class LiveCoach : IDisposable
         Publish();
         return true;
     }
+
+    /// <summary>
+    /// La pantalla de carga, si está: sin reloj en la captura anterior, se mira el título cada
+    /// <see cref="LoadingInterval"/>, y si es el de la pantalla de carga se lee entera. Una vez leída no se vuelve a
+    /// leer hasta que aparezca el reloj (la pantalla dura varios segundos).
+    /// </summary>
+    private async Task<LoadingReading?> LoadingScreenAsync(Frame frame)
+    {
+        if (_loading is null || frame.Screen is not { } screen || _loadingDone || _hud?.ClockRead == true
+            || _lastLoadingTry is { } last && frame.RealTime - last < LoadingInterval.TotalSeconds)
+            return null;
+        _lastLoadingTry = frame.RealTime;
+        var (w, h) = (frame.Area.Width, frame.Area.Height);
+        if (screen(LoadingScreen.Title(w, h)) is not { } title || !await _loading.IsTitleAsync(title, h))
+            return null;
+        return screen(new PixelRect(0, 0, w, h)) is { } whole ? await _loading.ReadAsync(whole) : null;
+    }
+
+    /// <summary>Empieza una partida nueva: todo de cero, con la civ del jugador si se lo encontró en la lista.</summary>
+    private void StartGame(LoadingReading reading)
+    {
+        _loadingDone = true;
+        var me = reading.Find(PlayerName);
+        var bo = me?.Civ is { } civ ? BuildOrder with { Civ = civ } : BuildOrder;
+        var (coach, builder, reader) = NewGame(bo);
+        lock (_gate)
+        {
+            (_coach, _builder, _reader) = (coach, builder, reader);
+            (_loadingReading, _me, Civ) = (reading, me, bo.Civ);
+            _hud = null;
+        }
+    }
+
+    private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (
+        new Coach(bo, _data, Events, economy: _economy),
+        new SnapshotBuilder(_data, _data.Civ(bo.Civ)),
+        new ScreenReader(_fonts, _ocr, Events));
 
     private async Task RunAsync(CancellationToken token)
     {
@@ -232,6 +308,7 @@ public sealed class LiveCoach : IDisposable
         lock (_gate)
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
-        Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset, Frames.HudScale));
+        Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
+            Frames.HudScale, _loadingReading, _me, Civ));
     }
 }

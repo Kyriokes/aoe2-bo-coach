@@ -24,6 +24,14 @@ public sealed partial class LoadingScreenReader(OcrReader ocr, GameData data, st
         LoadingScreen.IsTitle(await ReadCellAsync(screen, LoadingScreen.Title(screen.Width, screen.Height)));
 
     /// <summary>
+    /// Lo mismo, con solo la caja del título (<see cref="LoadingScreen.Title"/>) de una pantalla de
+    /// <paramref name="screenHeight"/> de alto: en vivo se mira eso cada tanto mientras no se ve el reloj, que es
+    /// mucho más barato que capturar la pantalla entera.
+    /// </summary>
+    public async Task<bool> IsTitleAsync(CapturedImage title, int screenHeight) =>
+        LoadingScreen.IsTitle(string.Join(" ", await OcrAsync(Prepared(title, screenHeight))));
+
+    /// <summary>
     /// Los jugadores y el mapa, o null si la captura no es la pantalla de carga. <paramref name="screen"/> es el área
     /// entera del juego.
     /// </summary>
@@ -57,12 +65,14 @@ public sealed partial class LoadingScreenReader(OcrReader ocr, GameData data, st
     private async Task<IReadOnlyList<string>> ReadLinesAsync(CapturedImage screen, PixelRect box) =>
         box.IsEmpty ? [] : await OcrAsync(Prepared(screen, box));
 
+    private static CapturedImage Prepared(CapturedImage screen, PixelRect box) => Prepared(screen.Crop(box), screen.Height);
+
     private async Task<IReadOnlyList<string>> OcrAsync(CapturedImage prepared) =>
         (await ocr.ReadPreparedLinesAsync(prepared.Padded(Margin), 1, Margin)).Select(l => l.Text).ToList();
 
     /// <summary>La celda llevada al tamaño del diseño (3840×2160) y con texto oscuro sobre claro.</summary>
-    private static CapturedImage Prepared(CapturedImage screen, PixelRect box) =>
-        DarkOnLight(screen.Crop(box).Resample(LoadingScreen.DesignHeight / screen.Height));
+    private static CapturedImage Prepared(CapturedImage cell, int screenHeight) =>
+        DarkOnLight(cell.Resample(LoadingScreen.DesignHeight / screenHeight));
 
     /// <summary>Dos celdas del mismo renglón una al lado de la otra, con fondo blanco entre medio.</summary>
     private static CapturedImage Beside(CapturedImage left, CapturedImage right)
