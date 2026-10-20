@@ -50,6 +50,13 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         ["imperial_age"] = Age.Imperial,
     };
 
+    /// <summary>Los edificios de la edad anterior que pide una edad (2 de ellos), o null si no hay regla cargada.</summary>
+    public static (Age Requires, IReadOnlyList<string> Buildings)? AgeUpRequirement(string ageTech) =>
+        AgeUpRequirements.TryGetValue(ageTech, out var r) ? (r.Requires, r.Buildings) : null;
+
+    /// <summary>La edad a la que lleva una tecnología de edad ("castle_age" → Castillos), o null si no es una.</summary>
+    public static Age? AgeOf(string tech) => AgeTechs.TryGetValue(tech, out var age) ? age : null;
+
     public ValidationResult Validate(BuildOrder bo)
     {
         var issues = new List<ValidationIssue>();
@@ -125,7 +132,22 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         }
 
         ValidateTargets(bo.Targets, Error);
+        ValidatePosture(bo.Posture, age, Warn);
         return new ValidationResult(issues);
+    }
+
+    /// <summary>La postura de cierre: unidades que se entrenan en algún edificio y una edad posterior a la de la BO.</summary>
+    private void ValidatePosture(ClosingPosture? posture, Age age, Action<string?, string> warn)
+    {
+        if (posture is null)
+            return;
+        foreach (var unit in posture.Queue)
+        {
+            if (!gameData.TryGet(unit, out var entity) || entity.Kind != EntityKind.Unit || entity.MadeIn is null)
+                warn(null, $"Postura: '{unit}' no es una unidad que se entrene en un edificio.");
+        }
+        if (posture.NextAge is { } next && (AgeOf(next) is not { } target || target <= age))
+            warn(null, $"Postura: '{next}' no es una edad posterior a la última de la BO ({AgeName(age)}).");
     }
 
     private void ValidateStep(

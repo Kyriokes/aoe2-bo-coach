@@ -67,6 +67,14 @@ public static class BuildOrderAnalysis
         if (bo.Targets?.CastleClickTime is { } castle)
             w.WriteNumber("castle_click_time", castle);
         w.WriteEndObject();
+        // La postura de cierre (D2), escrita o deducida de los pasos.
+        var (posture, derived) = Posture.Effective(bo);
+        w.WriteStartObject("posture");
+        w.WriteString("text", posture.Queue.Count == 0 ? null
+            : $"{string.Join(" y ", posture.Queue.Select(u => StepText.Name(u, 2)))} siempre en cola");
+        w.WriteString("next_age", posture.NextAge is { } next ? StepText.Name(next) : null);
+        w.WriteBoolean("derived", derived);
+        w.WriteEndObject();
         // La BO normalizada (migrada a la versión actual), para guardarla tal cual.
         w.WritePropertyName("build_order");
         using var doc = JsonDocument.Parse(BuildOrderSerializer.Serialize(bo));

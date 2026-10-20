@@ -92,6 +92,9 @@ public sealed record CoachView(
     /// vista no tiene paso actual, siguiente ni atrasados: quedan los avisos y la GD contra lo que hay.
     /// </summary>
     public string? Abandoned { get; init; }
+
+    /// <summary>Sin paso actual (la BO terminada, salvo granjas o producción) y no abandonada, la postura de cierre (D2); si no, null.</summary>
+    public PostureView? Posture { get; init; }
 }
 
 /// <summary>
@@ -121,6 +124,8 @@ public sealed class Coach
 
     // GD: la que se muestra y la que espera sostenerse para reemplazarla.
     private ResourceAmounts? _guide;
+    private readonly PostureCoach _posture;
+    private IReadOnlyList<QueueItem>? _queue;
     private ResourceAmounts? _guideCandidate;
     private double _guideCandidateSince;
 
@@ -133,6 +138,7 @@ public sealed class Coach
         Tracker = new Tracker(bo, data, events);
         Tracker.Update(State);
         Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
+        _posture = new PostureCoach(Tracker.BuildOrder, data);
         View = BuildView();
     }
 
@@ -357,6 +363,7 @@ public sealed class Coach
             _townCenterBusyAt = snapshot.Time;
         if (snapshot.Queue is { } queue)
         {
+            _queue = queue;
             if (snapshot.Time - _queueSeenAt > QueueStaleSeconds)
                 _queueFirstSeenAt = snapshot.Time;
             _queueSeenAt = snapshot.Time;
@@ -538,8 +545,18 @@ public sealed class Coach
             Goals = Tracker.CurrentGoals,
             NeedsHouse = NeedsHouse(),
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
+            Posture = PostureView(),
         };
     }
+
+    /// <summary>
+    /// La postura de cierre, cuando no queda paso actual (la cola, si se leyó hace poco). Pueden quedar abiertos lo que
+    /// el juego no avisa (granjas) y la producción militar a medias: esos nunca se cierran solos.
+    /// </summary>
+    private PostureView? PostureView() => Tracker.Current is null
+        ? _posture.View(State, State.Time - _queueSeenAt <= QueueStaleSeconds ? _queue : null, LivePlan.Start(Tracker).Age,
+            _data.Civ(Tracker.BuildOrder.Civ))
+        : null;
 
     private bool NeedsHouse() => State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin;
 

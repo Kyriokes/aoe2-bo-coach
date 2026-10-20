@@ -56,6 +56,22 @@ public static class CoachText
                 IdleText(view.TownCenterIdle),
                 DistributionText(view.Distribution));
         }
+        if (view.Current is null && view.Posture is { } posture)
+        {
+            // D2: la BO terminó y queda su postura de cierre.
+            return new CoachLines(
+                PostureTitle(posture),
+                PostureStatus(posture),
+                null,
+                [.. posture.Gaps.Select(GapText), .. running],
+                [],
+                null,
+                false,
+                view.Suggestion?.ToString(),
+                AlertText(view.Alert),
+                IdleText(view.TownCenterIdle),
+                DistributionText(view.Distribution));
+        }
         if (view.Current is not { } current)
         {
             return new CoachLines(
@@ -123,6 +139,36 @@ public static class CoachText
         { } a when Math.Round(a) > Math.Round(target) => TargetMatch.Over,
         _ => TargetMatch.Ok,
     };
+
+    /// <summary>"Postura: aldeanos y exploradores siempre en cola" (D2).</summary>
+    public static string PostureTitle(PostureView posture) => posture.Queue.Count == 0
+        ? "BO terminada"
+        : $"Postura: {Join(posture.Queue.Select(u => StepText.Name(u, 2)).ToList())} siempre en cola";
+
+    /// <summary>La próxima edad de la postura: en curso, qué edificios faltan, qué recursos faltan o "Hacé clic".</summary>
+    public static string? PostureStatus(PostureView posture)
+    {
+        if (posture.NextAge is not { } next)
+            return null;
+        var name = StepText.Name(next);
+        if (posture.NextAgeInProgress)
+            return $"{name}: en curso";
+        if (posture.NextAgeBuildingsMissing > 0 && BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
+        {
+            var count = posture.NextAgeBuildingsMissing;
+            return $"Para {name}: te falta{(count > 1 ? "n" : "")} {count} edificio{(count > 1 ? "s" : "")} de {BuildOrderValidator.AgeName(requirement.Requires)}";
+        }
+        var missing = Enum.GetValues<Resource>().Where(r => posture.NextAgeMissing[r] >= 1)
+            .Select(r => $"{Math.Ceiling(posture.NextAgeMissing[r]):0} de {Suggestion.Name(r)}").ToList();
+        return missing.Count == 0 ? $"Hacé clic en {name}" : $"{name}: faltan {Join(missing)} (guardando para la producción)";
+    }
+
+    /// <summary>"Establo parado: poné exploradores en cola" o "Sin establo: los exploradores no tienen dónde salir".</summary>
+    public static string GapText(PostureGap gap) => gap.Missing
+        ? $"Sin {StepText.Name(gap.Building)}: los {StepText.Name(gap.Unit, 2)} no tienen dónde salir"
+        : $"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count}) parados" : " parado")}: poné {StepText.Name(gap.Unit, 2)} en cola";
+
+    private static string Capitalized(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
     /// <summary>"Al terminar el paso: madera 4 · comida 6 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
     public static string NowTargetText(ResourceAmounts t) =>

@@ -25,6 +25,11 @@ public class BuildOrderAnalysisTests
         Assert.NotEmpty(r.GetProperty("timeline").EnumerateArray());
         Assert.Equal(540, r.GetProperty("targets").GetProperty("feudal_click_time").GetInt32());
         Assert.Equal(BuildOrder.CurrentSchemaVersion, r.GetProperty("build_order").GetProperty("schema_version").GetInt32());
+        // D2: la postura de cierre deducida (la BO no la trae).
+        var posture = r.GetProperty("posture");
+        Assert.Equal("aldeanos y exploradores siempre en cola", posture.GetProperty("text").GetString());
+        Assert.Equal("Edad de los Castillos", posture.GetProperty("next_age").GetString());
+        Assert.True(posture.GetProperty("derived").GetBoolean());
     }
 
     [Fact]

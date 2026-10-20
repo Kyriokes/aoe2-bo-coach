@@ -36,6 +36,13 @@ public sealed record BuildOrder
     public IReadOnlyList<string> Tags { get; set; } = [];
     public IReadOnlyList<Step> Steps { get; set; } = [];
     public Targets? Targets { get; set; }
+
+    /// <summary>
+    /// Cómo cierra la BO (D2): qué se produce siempre y a qué edad se apunta cuando se terminan los pasos. Opcional y
+    /// sin subir <see cref="SchemaVersion"/>: las versiones viejas ignoran el campo. Sin ella, se deduce
+    /// (<see cref="Engine.Posture.Effective"/>).
+    /// </summary>
+    public ClosingPosture? Posture { get; set; }
 }
 
 public sealed record Step
@@ -83,6 +90,16 @@ public sealed record Step
     public string? Group { get; set; }
 
     public string? Note { get; set; }
+}
+
+/// <summary>La postura de cierre de una BO.</summary>
+public sealed record ClosingPosture
+{
+    /// <summary>Unidades siempre en cola ("villager", "scout_cavalry"), cada una en todos los edificios que la producen.</summary>
+    public IReadOnlyList<string> Queue { get; set; } = [];
+
+    /// <summary>La edad a la que se apunta con lo que sobra ("castle_age"), o null.</summary>
+    public string? NextAge { get; set; }
 }
 
 public sealed record Targets
