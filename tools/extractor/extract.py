@@ -212,6 +212,11 @@ PRIMER_RENGLON = {37160: (" Player %s", " el jugador %s")}
 # "Jinete"), así que el archivo junta los dos.
 IDIOMAS = {"events.es.json": ("es",), "events.mx.json": ("mx",)}
 
+# Nombre de cada civ como lo muestra el juego (la pantalla de carga): el texto 10270 + número de civ en el .dat
+# ("Britons" es el 10271). Verificado para las 62 civs en inglés y en los dos castellanos.
+TEXTO_NOMBRE_DE_CIV = 10270
+IDIOMAS_DE_NOMBRES = ("es", "mx")
+
 TIPO_DE_NODO = {"Unit": "unit", "Building": "building", "Tech": "tech"}
 
 # Frases verificadas en una partida real (2026-10-15); el resto sigue las mismas plantillas.
@@ -746,6 +751,18 @@ class Extractor:
         }
 
 
+def nombres_de_civs(dat: DatFile, textos_por_idioma: dict[str, dict[int, str]]) -> dict[str, dict[str, str]]:
+    """Clave de civ -> {idioma: nombre que muestra el juego}."""
+    nombres = {}
+    for civ_id, civ in enumerate(dat.civs):
+        if civ_id == CIV_BASE:
+            continue
+        nombres[clave_de_civ(civ.name)] = {idioma: textos[TEXTO_NOMBRE_DE_CIV + civ_id]
+                                           for idioma, textos in textos_por_idioma.items()
+                                           if TEXTO_NOMBRE_DE_CIV + civ_id in textos}
+    return nombres
+
+
 def _edad_por_nivel(nivel: int) -> str:
     return next(nombre for nombre, n in NIVEL_EDAD.items() if n == nivel)
 
@@ -817,6 +834,11 @@ def main() -> int:
     dat = DatFile.parse(str(args.dat))
     extractor = Extractor(dat)
     datos = extractor.exportar()
+    recursos = args.dat.parents[2]
+    textos_por_idioma = {"en": textos} | {c: cargar_textos(recursos / c / "strings" / "key-value") for c in IDIOMAS_DE_NOMBRES
+                                          if (recursos / c / "strings" / "key-value").is_dir()}
+    for clave, nombres in nombres_de_civs(dat, textos_por_idioma).items():
+        datos["civs"][clave]["names"] = nombres
 
     eventos, conflictos = extractor.eventos(textos, disponibles)
     escribir_eventos(eventos, args.eventos)
@@ -827,7 +849,6 @@ def main() -> int:
         print(f"  frase repetida: {conflicto}")
 
     # Los mismos eventos con el juego en otros idiomas, al lado de events.json.
-    recursos = args.dat.parents[2]
     for archivo, carpetas in IDIOMAS.items():
         traducciones = [cargar_textos(recursos / c / "strings" / "key-value") for c in carpetas
                         if (recursos / c / "strings" / "key-value").is_dir()]

@@ -880,6 +880,11 @@
           1.1,
           1.1
         ]
+      },
+      "names": {
+        "en": "Britons",
+        "es": "Britanos",
+        "mx": "Britanos"
       }
     },
     "franks": {
@@ -933,6 +938,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Franks",
+        "es": "Francos",
+        "mx": "Francos"
       }
     },
     "goths": {
@@ -998,6 +1008,11 @@
           1.2,
           1.2
         ]
+      },
+      "names": {
+        "en": "Goths",
+        "es": "Godos",
+        "mx": "Godos"
       }
     },
     "teutons": {
@@ -1017,6 +1032,11 @@
             "wood": 36
           }
         ]
+      },
+      "names": {
+        "en": "Teutons",
+        "es": "Teutones",
+        "mx": "Teutones"
       }
     },
     "japanese": {
@@ -1064,6 +1084,11 @@
             "wood": 50
           }
         ]
+      },
+      "names": {
+        "en": "Japanese",
+        "es": "Japoneses",
+        "mx": "Japoneses"
       }
     },
     "chinese": {
@@ -1518,6 +1543,11 @@
         "food": -200,
         "wood": -50,
         "villagers": 3
+      },
+      "names": {
+        "en": "Chinese",
+        "es": "Chinos",
+        "mx": "Chinos"
       }
     },
     "byzantines": {
@@ -1591,6 +1621,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Byzantines",
+        "es": "Bizantinos",
+        "mx": "Bizantinos"
       }
     },
     "persians": {
@@ -1612,6 +1647,11 @@
       "start": {
         "food": 50,
         "wood": 50
+      },
+      "names": {
+        "en": "Persians",
+        "es": "Persas",
+        "mx": "Persas"
       }
     },
     "saracens": {
@@ -1631,6 +1671,11 @@
             "wood": 75
           }
         ]
+      },
+      "names": {
+        "en": "Saracens",
+        "es": "Sarracenos",
+        "mx": "Sarracenos"
       }
     },
     "turks": {
@@ -1658,6 +1703,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Turks",
+        "es": "Turcos",
+        "mx": "Turcos"
       }
     },
     "vikings": {
@@ -1703,6 +1753,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Vikings",
+        "es": "Vikingos",
+        "mx": "Vikingos"
       }
     },
     "mongols": {
@@ -1714,6 +1769,11 @@
           1.4,
           1.4
         ]
+      },
+      "names": {
+        "en": "Mongols",
+        "es": "Mongoles",
+        "mx": "Mongoles"
       }
     },
     "celts": {
@@ -1733,6 +1793,11 @@
           1.2,
           1.2
         ]
+      },
+      "names": {
+        "en": "Celts",
+        "es": "Celtas",
+        "mx": "Celtas"
       }
     },
     "spanish": {
@@ -1758,6 +1823,11 @@
             "food": 100
           }
         ]
+      },
+      "names": {
+        "en": "Spanish",
+        "es": "Españoles",
+        "mx": "Españoles"
       }
     },
     "aztecs": {
@@ -1852,6 +1922,11 @@
       },
       "start": {
         "gold": 50
+      },
+      "names": {
+        "en": "Aztecs",
+        "es": "Aztecas",
+        "mx": "Aztecas"
       }
     },
     "mayan": {
@@ -1907,6 +1982,11 @@
       "start": {
         "food": -50,
         "villagers": 1
+      },
+      "names": {
+        "en": "Maya",
+        "es": "Maya",
+        "mx": "Mayas"
       }
     },
     "huns": {
@@ -1922,6 +2002,11 @@
       "start": {
         "wood": -100,
         "no_houses": true
+      },
+      "names": {
+        "en": "Huns",
+        "es": "Hunos",
+        "mx": "Hunos"
       }
     },
     "koreans": {
@@ -2003,6 +2088,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Koreans",
+        "es": "Coreanos",
+        "mx": "Coreanos"
       }
     },
     "italians": {
@@ -2022,6 +2112,11 @@
             "wood": 64
           }
         ]
+      },
+      "names": {
+        "en": "Italians",
+        "es": "Italianos",
+        "mx": "Italianos"
       }
     },
     "hindustanis": {
@@ -2041,6 +2136,11 @@
             "food": 38
           }
         ]
+      },
+      "names": {
+        "en": "Hindustanis",
+        "es": "Indostanos",
+        "mx": "Indostaníes"
       }
     },
     "incas": {
@@ -2146,6 +2246,11 @@
           10,
           10
         ]
+      },
+      "names": {
+        "en": "Inca",
+        "es": "Inca",
+        "mx": "Incas"
       }
     },
     "magyars": {
@@ -2179,6 +2284,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Magyars",
+        "es": "Magiares",
+        "mx": "Magiares"
       }
     },
     "slavs": {
@@ -2218,10 +2328,20 @@
           1.15,
           1.15
         ]
+      },
+      "names": {
+        "en": "Slavs",
+        "es": "Eslavos",
+        "mx": "Eslavos"
       }
     },
     "portuguese": {
-      "dat_name": "Portuguese"
+      "dat_name": "Portuguese",
+      "names": {
+        "en": "Portuguese",
+        "es": "Portugueses",
+        "mx": "Portugueses"
+      }
     },
     "ethiopians": {
       "dat_name": "Ethiopians",
@@ -2238,6 +2358,11 @@
           "food": 100,
           "gold": 100
         }
+      },
+      "names": {
+        "en": "Ethiopians",
+        "es": "Etíopes",
+        "mx": "Etíopes"
       }
     },
     "malians": {
@@ -2501,6 +2626,11 @@
           1.8,
           1.8
         ]
+      },
+      "names": {
+        "en": "Malians",
+        "es": "Malíes",
+        "mx": "Malíes"
       }
     },
     "berbers": {
@@ -2544,10 +2674,20 @@
             "gold": 60
           }
         ]
+      },
+      "names": {
+        "en": "Berbers",
+        "es": "Bereberes",
+        "mx": "Bereberes"
       }
     },
     "khmer": {
-      "dat_name": "Khmer"
+      "dat_name": "Khmer",
+      "names": {
+        "en": "Khmer",
+        "es": "Jemeres",
+        "mx": "Jemeres"
+      }
     },
     "malay": {
       "dat_name": "Malay",
@@ -2576,6 +2716,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Malay",
+        "es": "Malayos",
+        "mx": "Malayos"
       }
     },
     "burmese": {
@@ -2607,6 +2752,11 @@
           0.0,
           0.0
         ]
+      },
+      "names": {
+        "en": "Burmese",
+        "es": "Birmanos",
+        "mx": "Birmanos"
       }
     },
     "vietnamese": {
@@ -2814,6 +2964,11 @@
           37.5,
           37.5
         ]
+      },
+      "names": {
+        "en": "Vietnamese",
+        "es": "Vietnamitas",
+        "mx": "Vietnamitas"
       }
     },
     "bulgarians": {
@@ -2915,10 +3070,20 @@
           1.8,
           1.8
         ]
+      },
+      "names": {
+        "en": "Bulgarians",
+        "es": "Búlgaros",
+        "mx": "Búlgaros"
       }
     },
     "tatars": {
-      "dat_name": "Tatars"
+      "dat_name": "Tatars",
+      "names": {
+        "en": "Tatars",
+        "es": "Tártaros",
+        "mx": "Tártaros"
+      }
     },
     "cumans": {
       "dat_name": "Cumans",
@@ -2951,6 +3116,11 @@
             "wood": 100
           }
         ]
+      },
+      "names": {
+        "en": "Cumans",
+        "es": "Cumanos",
+        "mx": "Cumanos"
       }
     },
     "lithuanians": {
@@ -2965,6 +3135,11 @@
       },
       "start": {
         "food": 100
+      },
+      "names": {
+        "en": "Lithuanians",
+        "es": "Lituanos",
+        "mx": "Lituanos"
       }
     },
     "burgundians": {
@@ -3200,6 +3375,11 @@
             "food": 75
           }
         ]
+      },
+      "names": {
+        "en": "Burgundians",
+        "es": "Borgoñeses",
+        "mx": "Borgoñones"
       }
     },
     "sicilians": {
@@ -3238,6 +3418,11 @@
       },
       "start": {
         "stone": 100
+      },
+      "names": {
+        "en": "Sicilians",
+        "es": "Sicilianos",
+        "mx": "Sicilianos"
       }
     },
     "poles": {
@@ -3279,6 +3464,11 @@
             "gold": 100
           }
         ]
+      },
+      "names": {
+        "en": "Poles",
+        "es": "Polacos",
+        "mx": "Polacos"
       }
     },
     "bohemians": {
@@ -3370,6 +3560,11 @@
           1.8,
           1.8
         ]
+      },
+      "names": {
+        "en": "Bohemians",
+        "es": "Bohemios",
+        "mx": "Bohemios"
       }
     },
     "dravidians": {
@@ -3430,13 +3625,28 @@
             "gold": 20
           }
         ]
+      },
+      "names": {
+        "en": "Dravidians",
+        "es": "Dravídicos",
+        "mx": "Dravídicos"
       }
     },
     "bengalis": {
-      "dat_name": "Bengalis"
+      "dat_name": "Bengalis",
+      "names": {
+        "en": "Bengalis",
+        "es": "Bengalíes",
+        "mx": "Bengalíes"
+      }
     },
     "gurjaras": {
-      "dat_name": "Gurjaras"
+      "dat_name": "Gurjaras",
+      "names": {
+        "en": "Gurjaras",
+        "es": "Gurjara",
+        "mx": "Gurjaras"
+      }
     },
     "romans": {
       "dat_name": "Romans",
@@ -3503,13 +3713,28 @@
           1.05,
           1.05
         ]
+      },
+      "names": {
+        "en": "Romans",
+        "es": "Romanos",
+        "mx": "Romanos"
       }
     },
     "armenians": {
-      "dat_name": "Armenians"
+      "dat_name": "Armenians",
+      "names": {
+        "en": "Armenians",
+        "es": "Armenios",
+        "mx": "Armenios"
+      }
     },
     "georgians": {
-      "dat_name": "Georgians"
+      "dat_name": "Georgians",
+      "names": {
+        "en": "Georgians",
+        "es": "Georgianos",
+        "mx": "Georgianos"
+      }
     },
     "achaemenids": {
       "dat_name": "Achaemenids",
@@ -3538,10 +3763,20 @@
           26.67,
           26.67
         ]
+      },
+      "names": {
+        "en": "Achaemenids",
+        "es": "Aqueménidas",
+        "mx": "Aqueménidas"
       }
     },
     "athenians": {
-      "dat_name": "Athenians"
+      "dat_name": "Athenians",
+      "names": {
+        "en": "Athenians",
+        "es": "Atenienses",
+        "mx": "Atenienses"
+      }
     },
     "spartans": {
       "dat_name": "Spartans",
@@ -3584,19 +3819,44 @@
           26.67,
           26.67
         ]
+      },
+      "names": {
+        "en": "Spartans",
+        "es": "Espartanos",
+        "mx": "Espartanos"
       }
     },
     "shu": {
-      "dat_name": "Shu"
+      "dat_name": "Shu",
+      "names": {
+        "en": "Shu",
+        "es": "Shu",
+        "mx": "Shu"
+      }
     },
     "wu": {
-      "dat_name": "Wu"
+      "dat_name": "Wu",
+      "names": {
+        "en": "Wu",
+        "es": "Wu",
+        "mx": "Wu"
+      }
     },
     "wei": {
-      "dat_name": "Wei"
+      "dat_name": "Wei",
+      "names": {
+        "en": "Wei",
+        "es": "Wei",
+        "mx": "Wei"
+      }
     },
     "jurchens": {
-      "dat_name": "Jurchens"
+      "dat_name": "Jurchens",
+      "names": {
+        "en": "Jurchens",
+        "es": "Yurchen",
+        "mx": "Jurchens"
+      }
     },
     "khitans": {
       "dat_name": "Khitans",
@@ -3625,16 +3885,36 @@
           39.13,
           39.13
         ]
+      },
+      "names": {
+        "en": "Khitans",
+        "es": "Kitán",
+        "mx": "Kitáns"
       }
     },
     "macedonians": {
-      "dat_name": "Macedonians"
+      "dat_name": "Macedonians",
+      "names": {
+        "en": "Macedonians",
+        "es": "Macedonios",
+        "mx": "Macedonios"
+      }
     },
     "thracians": {
-      "dat_name": "Thracians"
+      "dat_name": "Thracians",
+      "names": {
+        "en": "Thracians",
+        "es": "Tracios",
+        "mx": "Tracios"
+      }
     },
     "puru": {
-      "dat_name": "Puru"
+      "dat_name": "Puru",
+      "names": {
+        "en": "Puru",
+        "es": "Purus",
+        "mx": "Puru"
+      }
     },
     "muisca": {
       "dat_name": "Muisca",
@@ -3689,10 +3969,20 @@
             "gold": 400
           }
         ]
+      },
+      "names": {
+        "en": "Muisca",
+        "es": "Muiscas",
+        "mx": "Muiscas"
       }
     },
     "mapuche": {
-      "dat_name": "Mapuche"
+      "dat_name": "Mapuche",
+      "names": {
+        "en": "Mapuche",
+        "es": "Mapuches",
+        "mx": "Mapuches"
+      }
     },
     "tupi": {
       "dat_name": "Tupi",
@@ -3739,13 +4029,28 @@
         "wood": 25,
         "stone": 25,
         "gold": 25
+      },
+      "names": {
+        "en": "Tupi",
+        "es": "Tupís",
+        "mx": "Tupíes"
       }
     },
     "saxons": {
-      "dat_name": "Saxons"
+      "dat_name": "Saxons",
+      "names": {
+        "en": "Saxons",
+        "es": "Sajones",
+        "mx": "Sajones"
+      }
     },
     "varangians": {
-      "dat_name": "Varangians"
+      "dat_name": "Varangians",
+      "names": {
+        "en": "Varangians",
+        "es": "Varegos",
+        "mx": "Varegos"
+      }
     },
     "danes": {
       "dat_name": "Danes",
@@ -3768,6 +4073,11 @@
             "gold": 14
           }
         ]
+      },
+      "names": {
+        "en": "Danes",
+        "es": "Daneses",
+        "mx": "Daneses"
       }
     }
   }
