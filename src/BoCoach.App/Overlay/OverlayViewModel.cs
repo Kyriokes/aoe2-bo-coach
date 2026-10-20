@@ -74,7 +74,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         var view = frame.View;
         var lines = CoachText.Lines(view, data);
         Clock = view.Time > 0 ? GameClock.Format(view.Time) : "--:--";
-        Progress = view.Current is { } current ? $"{current.Index + 1}/{view.TotalSteps}" : $"{view.TotalSteps}/{view.TotalSteps}";
+        Progress = view.Abandoned is not null ? "-"
+            : view.Current is { } current ? $"{current.Index + 1}/{view.TotalSteps}" : $"{view.TotalSteps}/{view.TotalSteps}";
         Current = lines.Current;
         Status = lines.Status;
         StatusReady = view.Current?.State == StepState.Ready;

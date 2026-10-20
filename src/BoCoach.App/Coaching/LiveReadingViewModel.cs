@@ -93,7 +93,8 @@ public sealed partial class LiveReadingViewModel : ObservableObject
             var items => $"Cola de producción: {string.Join(", ", items.Select(i => i.Waiting ? $"{QueueName(i.Key)} (espera)" : QueueName(i.Key)))}",
         };
         Game = GameText(frame);
-        Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
+        Step = view.Abandoned is { } reason ? $"BO abandonada: {reason} (\"◀ Atrás\" la retoma)"
+            : view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }
             ? $"Números cortados en: {string.Join(", ", hud.Clipped.Select(RegionNames.Label))}"
             : frame.Error is { } error ? $"Error: {error}" : "";
