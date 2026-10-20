@@ -15,7 +15,8 @@ public interface IScreenSource
 /// <summary>
 /// Captura de pantalla con GDI (BitBlt), solo del rectángulo pedido. Sigue a la ventana del juego, así anda
 /// en cualquier monitor y en modo ventana; si el juego no está abierto, usa la pantalla principal.
-/// Sin CAPTUREBLT, las ventanas transparentes (overlay y calibración) no salen en la captura.
+/// Aunque no se pide CAPTUREBLT, las ventanas transparentes (overlay y calibración) salen en la captura: en las
+/// grabaciones se ve la GD dentro de la franja del mod, y por eso el lector mide la franja por el costado.
 /// El proceso tiene que ser "DPI aware" para que las coordenadas sean píxeles físicos.
 /// </summary>
 public sealed class ScreenCapture : IScreenSource
