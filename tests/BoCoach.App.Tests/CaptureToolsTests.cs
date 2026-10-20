@@ -239,15 +239,19 @@ public sealed class CaptureToolsTests : IDisposable
         tools.ToggleRecordingCommand.Execute(null);
         Assert.True(tools.IsRecording);
         Assert.Equal("■ Detener grabación", tools.RecordButtonText);
-        await Task.Delay(700);
+        // Se espera la primera captura completa (las 11 regiones) en vez de un tiempo fijo: con la máquina cargada el
+        // loop de la grabación puede tardar en arrancar, y un Stop antes dejaba la carpeta sin capturas.
+        var folder = Assert.Single(Directory.EnumerateDirectories(RecordingsRoot));
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (Directory.EnumerateFiles(folder, "*.png").Count() < RegionNames.All.Count && waited.Elapsed < TimeSpan.FromSeconds(10))
+            await Task.Delay(20);
         tools.Tick();
-        Assert.StartsWith("Grabando 0:0", tools.RecordingStatus);
+        Assert.StartsWith("Grabando 0:", tools.RecordingStatus);
 
         tools.ToggleRecordingCommand.Execute(null);
 
         Assert.False(tools.IsRecording);
         Assert.StartsWith("Grabación guardada:", tools.RecordingStatus);
-        var folder = Assert.Single(Directory.EnumerateDirectories(RecordingsRoot));
         Assert.True(File.Exists(Path.Combine(folder, "session.json")));
         Assert.True(Directory.EnumerateFiles(folder, "*.png").Count() >= 7);
     }

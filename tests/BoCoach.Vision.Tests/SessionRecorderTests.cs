@@ -106,13 +106,16 @@ public sealed class SessionRecorderTests : IDisposable
         using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(50));
 
         recorder.Start();
-        await Task.Delay(400);
+        // Con la máquina cargada (todos los tests en paralelo, el CI) el loop puede tardar en arrancar: se espera la
+        // primera captura en vez de un tiempo fijo. Con 400 ms fijos, un Stop antes de que arrancara dejaba 0 capturas.
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (recorder.Frames < 2 && waited.Elapsed < TimeSpan.FromSeconds(10))
+            await Task.Delay(20);
         recorder.Stop();
         var frames = recorder.Frames;
         await Task.Delay(150);
 
-        // Con la máquina cargada (todos los tests en paralelo) el temporizador puede atrasarse: alcanza con que grabe.
-        Assert.InRange(frames, 1, 12);
+        Assert.InRange(frames, 2, 1000);
         Assert.Equal(frames, recorder.Frames);
         Assert.False(recorder.IsRecording);
         Assert.Null(recorder.LastError);
