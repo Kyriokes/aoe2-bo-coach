@@ -19,4 +19,8 @@ Para usar el coach:
      Con el mod la pantalla se calibra sola, a cualquier resolución. Sin el mod, Ctrl+Alt+C para
      ubicar las cajas a mano sobre el HUD.
 
+Si algo no se lee bien (no ve el reloj, los números no coinciden): en plena partida tocá
+Ctrl+Alt+X (o "Captura de diagnóstico") y a los 2 segundos guarda la pantalla y lo que encontró
+la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
+
 Más información: https://github.com/Kyriokes/aoe2-bo-coach
