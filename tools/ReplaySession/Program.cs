@@ -41,6 +41,9 @@
 //       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
 //       (y el cuadrado y el stock del mod) para mirarlos.
 //
+// --idioma en|es|mx (replay, coach, bench, ocr, autocalibrate --read): el juego en inglés (por defecto), en castellano
+// de España o de Latinoamérica. Elige el OCR y suma las frases del log de data/events.<idioma>.json.
+//
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
 // el negro del mod) o "blue" (números azules).
 // Con el HUD del mod BoCoach HUD, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
@@ -439,7 +442,7 @@ static CapturedImage? Part(RecordedSession session, int frame, string spec)
 static async Task<int> Ocr(string recording, string region, string[] args)
 {
     var session = RecordedSession.Load(recording);
-    var ocr = BoCoach.Vision.Ocr.OcrReader.TryCreate() ?? throw new InvalidDataException("El OCR en inglés de Windows no está instalado.");
+    var ocr = RequiredOcr(args);
     var withText = 0;
     foreach (var frame in SelectFrames(session, args))
     {
@@ -548,7 +551,7 @@ static int AutoCalibrate(string screenshot, string[] args)
         }
         if (reading.Clipped.Count > 0)
             Console.WriteLine($"  cortados   {string.Join(", ", reading.Clipped)}");
-        if (BoCoach.Vision.Ocr.OcrReader.TryCreate() is { } ocr)
+        if (Language(args).CreateOcr() is { } ocr)
         {
             var text = ocr.ReadAsync(boxes[RegionNames.Age]).GetAwaiter().GetResult();
             Console.WriteLine($"  edad       \"{text}\" → {AgeText.Parse(text)?.ToString() ?? "-"}");
@@ -619,7 +622,7 @@ static async Task<int> Bench(string recording, string[] args)
 {
     var session = RecordedSession.Load(recording);
     var hud = new HudReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))));
-    var ocr = BoCoach.Vision.Ocr.OcrReader.TryCreate() ?? throw new InvalidDataException("El OCR en inglés de Windows no está instalado.");
+    var ocr = RequiredOcr(args);
     var frames = session.Frames.Take(Option(args, "--frames", 300)).ToList();
 
     // Decodificar los PNG solo pasa en el replay: en vivo las regiones salen de la captura GDI.
@@ -686,14 +689,25 @@ static string Text(string[] args, string name, string fallback)
 
 static ScreenReader Reader(RecordedSession session, string[] args)
 {
-    var ocr = args.Contains("--no-log") ? null : BoCoach.Vision.Ocr.OcrReader.TryCreate();
+    var ocr = args.Contains("--no-log") ? null : Language(args).CreateOcr();
     return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr, Catalog(args));
 }
 
 // Frases del log, prefiriendo (ante una lectura dudosa) los eventos de las entidades de game_data, como la app.
-static EventCatalog Catalog(string[] args, GameData? data = null) =>
-    EventCatalog.Load(Text(args, "--events", Path.Combine("data", "events.json")))
-        .PreferringEntitiesOf(data ?? GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data"))));
+static EventCatalog Catalog(string[] args, GameData? data = null)
+{
+    data ??= GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+    // --events manda; si no, las frases inglesas más las del idioma del juego (--idioma es|mx).
+    return args.Contains("--events")
+        ? EventCatalog.Load(Text(args, "--events", "")).PreferringEntitiesOf(data)
+        : Language(args).LoadEvents("data", data);
+}
+
+/// <summary>--idioma en|es|mx: el idioma en que estaba el juego (OCR y frases del log), como en la app.</summary>
+static BoCoach.Vision.Ocr.GameLanguage Language(string[] args) => BoCoach.Vision.Ocr.GameLanguage.FromCode(Text(args, "--idioma", "en"));
+
+static BoCoach.Vision.Ocr.OcrReader RequiredOcr(string[] args) =>
+    Language(args).CreateOcr() ?? throw new InvalidDataException("El OCR de Windows no está instalado.");
 
 static Func<string, CapturedImage?> Regions(RecordedSession session, int frame) =>
     region => session.Has(frame, region) ? session.Image(frame, region) : null;
