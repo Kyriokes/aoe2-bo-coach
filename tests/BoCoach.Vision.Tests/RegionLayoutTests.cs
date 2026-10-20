@@ -72,6 +72,22 @@ public sealed class RegionLayoutTests : IDisposable
 
         Assert.Equal(RegionNames.All.Count, loaded.Regions.Count);
         Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X);
+        Assert.Equal(1, loaded.HudScale); // calibraciones de antes de la escala del HUD
+    }
+
+    // B4 (b): la calibración sola mide el tamaño del HUD; se guarda para reescalar las capturas al leerlas.
+    [Fact]
+    public void La_escala_del_HUD_se_guarda_y_la_calibracion_manual_la_vuelve_a_1()
+    {
+        var layout = RegionLayout.Default.WithHudScale(1.09);
+
+        layout.Save(_path);
+        var loaded = RegionLayout.LoadOrDefault(_path);
+
+        Assert.Equal(1.09, loaded.HudScale, 3);
+        Assert.Contains("\"hud_scale\"", File.ReadAllText(_path));
+        Assert.Equal(1.09, loaded.With(RegionNames.Food, new RegionRect(0.1, 0.2, 0.03, 0.02)).HudScale, 3);
+        Assert.Equal(1, loaded.WithReference(1920, 1080).HudScale);
     }
 
     [Fact]

@@ -101,7 +101,7 @@ public static class AutoCalibration
                 ? new RegionRect((double)box.X / screen.Width, (double)box.Y / screen.Height, (double)box.Width / screen.Width, (double)box.Height / screen.Height).Clamped()
                 : reference.Regions[name];
         }
-        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions), scale, squares, boxes[RegionNames.Clock]);
+        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions, scale), scale, squares, boxes[RegionNames.Clock]);
     }
 
     /// <summary>Para diagnosticar: cada rectángulo de color parejo de la franja de arriba y a qué franja del mod se parece (o null).</summary>

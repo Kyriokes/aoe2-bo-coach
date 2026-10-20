@@ -107,6 +107,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Equal(6, found.Squares.Count);
         Assert.All(found.Squares, s => Assert.InRange(s.Width, 37, 42));
         Assert.InRange(found.Scale, 1.0, 1.2);
+        Assert.Equal(found.Scale, found.Layout.HudScale); // queda en regions.json para reescalar las capturas
         var wood = found.Layout.PixelsOf(RegionNames.Wood, screen.Width, screen.Height);
         Assert.InRange(wood.X, 4, 9);
         Assert.InRange(wood.Y, 4, 8);

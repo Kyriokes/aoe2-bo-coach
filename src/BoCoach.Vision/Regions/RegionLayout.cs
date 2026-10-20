@@ -82,11 +82,12 @@ public readonly record struct RegionRect(double X, double Y, double Width, doubl
 /// </summary>
 public sealed class RegionLayout
 {
-    public RegionLayout(int referenceWidth, int referenceHeight, IReadOnlyDictionary<string, RegionRect> regions)
+    public RegionLayout(int referenceWidth, int referenceHeight, IReadOnlyDictionary<string, RegionRect> regions, double hudScale = 1)
     {
         ReferenceWidth = referenceWidth;
         ReferenceHeight = referenceHeight;
         Regions = regions;
+        HudScale = hudScale;
     }
 
     /// <summary>Resolución con la que se calibró (solo informativa: las regiones son relativas).</summary>
@@ -94,6 +95,16 @@ public sealed class RegionLayout
     public int ReferenceHeight { get; }
 
     public IReadOnlyDictionary<string, RegionRect> Regions { get; }
+
+    /// <summary>
+    /// TamaÃ±o del HUD respecto del de 1920Ã—1080 (1 = igual), medido por la calibraciÃ³n sola. Las letras y los Ã­conos
+    /// estÃ¡n medidos a esa escala, asÃ­ que las capturas se reescalan por 1/HudScale antes de leerlas. La calibraciÃ³n
+    /// manual no lo mide y lo deja en 1.
+    /// </summary>
+    public double HudScale { get; }
+
+    /// <summary>Si las capturas hay que reescalarlas antes de leerlas (el HUD difiere de 1080p en mÃ¡s de un 2 %).</summary>
+    public bool NeedsResample => Math.Abs(HudScale - 1) > 0.02;
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BoCoach", "regions.json");
@@ -127,10 +138,13 @@ public sealed class RegionLayout
     public RegionLayout With(string region, RegionRect rect)
     {
         var regions = new Dictionary<string, RegionRect>(Regions) { [region] = rect.Clamped() };
-        return new RegionLayout(ReferenceWidth, ReferenceHeight, regions);
+        return new RegionLayout(ReferenceWidth, ReferenceHeight, regions, HudScale);
     }
 
+    /// <summary>La calibraciÃ³n manual: fija la resoluciÃ³n y deja la escala del HUD en 1 (no la mide).</summary>
     public RegionLayout WithReference(int width, int height) => new(width, height, Regions);
+
+    public RegionLayout WithHudScale(double scale) => new(ReferenceWidth, ReferenceHeight, Regions, scale);
 
     /// <summary>Carga regions.json; si no existe, devuelve <see cref="Default"/>. Las regiones que falten salen del default.</summary>
     public static RegionLayout LoadOrDefault(string path)
@@ -156,7 +170,7 @@ public sealed class RegionLayout
             regions[name] = new RegionRect(values[0], values[1], values[2], values[3]).Clamped();
         }
         var reference = dto?.ReferenceResolution is { Length: 2 } r ? r : [Default.ReferenceWidth, Default.ReferenceHeight];
-        return new RegionLayout(reference[0], reference[1], regions);
+        return new RegionLayout(reference[0], reference[1], regions, dto?.HudScale is double scale && scale > 0 ? scale : 1);
     }
 
     public void Save(string path)
@@ -164,7 +178,8 @@ public sealed class RegionLayout
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var dto = new Dto(
             [ReferenceWidth, ReferenceHeight],
-            Regions.ToDictionary(r => r.Key, r => new[] { Round(r.Value.X), Round(r.Value.Y), Round(r.Value.Width), Round(r.Value.Height) }));
+            Regions.ToDictionary(r => r.Key, r => new[] { Round(r.Value.X), Round(r.Value.Y), Round(r.Value.Width), Round(r.Value.Height) }),
+            Math.Round(HudScale, 4));
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOptions) + "\n");
     }
 
@@ -178,5 +193,5 @@ public sealed class RegionLayout
         AllowTrailingCommas = true,
     };
 
-    private sealed record Dto(int[]? ReferenceResolution, Dictionary<string, double[]>? Regions);
+    private sealed record Dto(int[]? ReferenceResolution, Dictionary<string, double[]>? Regions, double? HudScale = null);
 }
