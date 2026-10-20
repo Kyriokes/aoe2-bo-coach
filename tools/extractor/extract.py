@@ -1,5 +1,6 @@
 """Exporta los datos del juego (.dat de AoE2:DE) a data/game_data/<version>.json, y las frases del log de
-eventos (textos y árboles de tecnologías del juego) a data/events.json.
+eventos (textos y árboles de tecnologías del juego) a data/events.json, y las mismas frases con el juego en
+castellano de España y de Latinoamérica a data/events.es.json y data/events.mx.json.
 
 Se corre una vez por parche:
 
@@ -202,7 +203,14 @@ AVISOS = {
 
 # Avisos largos que el log parte en dos renglones antes de una parte variable: también se reconoce el primero solo.
 # Ej. (verificado en la grabación 205040): "--Warning: You are being attacked by" / "Player 2 Timur Qutlugh!!!--".
-PRIMER_RENGLON = {37160: " Player %s"}
+# En castellano ("--Atención: ¡estás siendo atacado por el jugador %s!--") el corte es una suposición: falta ver un
+# log real.
+PRIMER_RENGLON = {37160: (" Player %s", " el jugador %s")}
+
+# Idiomas del juego además del inglés: archivo de eventos -> carpetas de textos (resources/<carpeta>). Castellano de
+# España (es) y de Latinoamérica (mx): las plantillas son iguales pero muchos nombres cambian ("Caballero" y
+# "Jinete"), así que el archivo junta los dos.
+IDIOMAS = {"events.es.json": ("es",), "events.mx.json": ("mx",)}
 
 TIPO_DE_NODO = {"Unit": "unit", "Building": "building", "Tech": "tech"}
 
@@ -639,6 +647,18 @@ class Extractor:
             datos["start"] = inicio
         return datos
 
+    def eventos_traducidos(self, textos_en: dict[int, str], traducciones: list[dict[int, str]],
+                           disponibles: dict[str, set[int]]) -> tuple[dict[str, list[str]], list[str]]:
+        """Los mismos eventos (mismos ids, que salen de los textos en inglés) con las frases de otros idiomas, juntas."""
+        eventos: dict[str, list[str]] = {}
+        conflictos: list[str] = []
+        for textos in traducciones:
+            parciales, otros = self.eventos(textos, disponibles, textos_clave=textos_en)
+            conflictos += [c for c in otros if c not in conflictos]
+            for evento, frases in parciales.items():
+                eventos.setdefault(evento, []).extend(f for f in frases if f not in eventos[evento])
+        return eventos, conflictos
+
     def nombres_de_unidad(self, uid: int, textos: dict[int, str]) -> list[str]:
         """Nombres que muestra la unidad o el edificio: primero el de Gaia y después los que cambian según la civ.
 
@@ -654,12 +674,15 @@ class Extractor:
                 nombres.append(texto)
         return nombres
 
-    def eventos(self, textos: dict[int, str], disponibles: dict[str, set[int]]) -> tuple[dict[str, list[str]], list[str]]:
+    def eventos(self, textos: dict[int, str], disponibles: dict[str, set[int]],
+                textos_clave: dict[int, str] | None = None) -> tuple[dict[str, list[str]], list[str]]:
         """id de evento -> frases del log, y los conflictos (frases que ya eran de otro evento).
 
-        La clave es la de game_data si la entidad está ahí, si no sale del nombre en inglés. Dos entidades con el
-        mismo nombre (el huscarle del castillo y el del cuartel) comparten evento: el log no las distingue.
+        La clave es la de game_data si la entidad está ahí, si no sale del nombre en inglés (de `textos_clave`, que
+        son los mismos `textos` si no se dan: así otro idioma da los mismos ids). Dos entidades con el mismo nombre
+        (el huscarle del castillo y el del cuartel) comparten evento: el log no las distingue.
         """
+        textos_clave = textos_clave or textos
         claves_tech = {i: k for k, (t, i) in ENTIDADES.items() if t == "tech"}
         ids = {tipo: set(disponibles[tipo]) for tipo in PLANTILLAS}
         for tipo, dat_id in ENTIDADES.values():
@@ -669,21 +692,27 @@ class Extractor:
         for tipo in PLANTILLAS:
             for dat_id in sorted(ids[tipo]):
                 if tipo == "tech":
-                    texto = textos.get(self.dat.techs[dat_id].language_dll_name) if dat_id < len(self.dat.techs) else None
+                    dll = self.dat.techs[dat_id].language_dll_name if dat_id < len(self.dat.techs) else None
+                    texto, texto_clave = textos.get(dll), textos_clave.get(dll)
                     nombres, conocida = ([texto] if texto else []), claves_tech.get(dat_id)
+                    nombres_clave = [texto_clave] if texto_clave else []
                 else:
                     nombres, conocida = self.nombres_de_unidad(dat_id, textos), self.clave_por_unidad.get(dat_id)
-                if nombres:
-                    candidatos.append((conocida is None, tipo, conocida or clave_de_nombre(nombres[0]), nombres))
+                    nombres_clave = self.nombres_de_unidad(dat_id, textos_clave)
+                if nombres and (conocida or nombres_clave):
+                    candidatos.append((conocida is None, tipo, conocida or clave_de_nombre(nombres_clave[0]), nombres))
 
         eventos: dict[str, list[str]] = {}
         duenio: dict[str, str] = {}
         conflictos: list[str] = []
-        # Primero las entidades de game_data: si una frase choca, gana la clave que usan las BO.
-        for _, tipo, clave, nombres in sorted(candidatos, key=lambda c: (c[0], c[2])):
+        # Primero el nombre principal de cada entidad (el de Gaia) y después los que cambian según la civ: en castellano
+        # el lancero se llama "Lancero" y el caballero de alguna civ también, y el log de casi todas es del lancero.
+        # Dentro de cada vuelta, primero las entidades de game_data: si una frase choca, gana la clave que usan las BO.
+        ordenados = sorted(candidatos, key=lambda c: (c[0], c[2]))
+        for principal, (_, tipo, clave, nombres) in [(p, c) for p in (True, False) for c in ordenados]:
             texto_id, sufijo = PLANTILLAS[tipo]
             evento = f"{clave}_{sufijo}"
-            for nombre in nombres:
+            for nombre in (nombres[:1] if principal else nombres[1:]):
                 texto = frase(textos[texto_id], nombre)
                 dueno = duenio.setdefault(re.sub(r"[^a-z]+", " ", texto.lower()).strip(), evento)
                 if dueno != evento:
@@ -693,8 +722,9 @@ class Extractor:
         for texto_id, evento in AVISOS.items():
             plantilla = textos[texto_id]
             eventos[evento] = [frase(plantilla)]
-            if texto_id in PRIMER_RENGLON:
-                eventos[evento].insert(0, frase(plantilla.split(PRIMER_RENGLON[texto_id])[0]))
+            corte = next((c for c in PRIMER_RENGLON.get(texto_id, ()) if c in plantilla), None)
+            if corte:
+                eventos[evento].insert(0, frase(plantilla.split(corte)[0]))
         return {e: f for e, f in eventos.items() if f}, conflictos
 
     def civs(self, entidades: dict) -> dict:
@@ -723,22 +753,32 @@ def _edad_por_nivel(nivel: int) -> str:
 SECCIONES_DE_EVENTOS = (("Unidades", "_created"), ("Edificios", "_built"), ("Tecnologías", "_researched"))
 
 
-def escribir_eventos(eventos: dict[str, list[str]], ruta: Path) -> None:
+ENCABEZADO_EN = [
+    "  // Frases del log de eventos del juego -> id de evento. Lo genera tools/extractor/extract.py: no editar a mano.",
+    '  // Convención de ids: "<entidad>_created" (unidades), "<entidad>_built" (edificios) y',
+    '  // "<entidad>_researched" (tecnologías), con la clave de game_data o, si no está ahí, el nombre en inglés.',
+    '  // Las frases son las plantillas del juego ("--%s Created--", "--%s Built--", "--%s Research Complete--")',
+    "  // con el nombre que muestra cada entidad, que puede cambiar según la civ. Están las entidades que alguna civ",
+    "  // puede hacer según los árboles de tecnologías del juego (CivTechTrees).",
+    f"  // Verificadas en una partida real (2026-10-15): {VERIFICADAS}.",
+    "  // Ojo: si un mensaje se repite, el juego no agrega otro renglón sino que mueve el viejo al final.",
+]
+
+ENCABEZADO_ES = [
+    "  // Frases del log con el juego en castellano -> id de evento. Lo genera tools/extractor/extract.py: no editar a mano.",
+    "  // Los ids son los mismos que en events.json (salen de los nombres en inglés); la app carga los dos archivos.",
+    '  // Plantillas del juego: "--%s: creación finalizada--", "--%s: construcción finalizada--" y',
+    '  // "--%s: desarrollo finalizado--", con los nombres de resources/es (España) y resources/mx (Latinoamérica),',
+    "  // que en muchas entidades difieren. Sin verificar todavía en una partida real.",
+]
+
+
+def escribir_eventos(eventos: dict[str, list[str]], ruta: Path, encabezado: list[str] = ENCABEZADO_EN) -> None:
     """data/events.json: JSON con comentarios, un evento por renglón y agrupado por tipo."""
     grupos = [(titulo, sorted(e for e in eventos if e.endswith(sufijo))) for titulo, sufijo in SECCIONES_DE_EVENTOS]
     grupos.append(("Otros mensajes", [e for e in eventos if not any(e.endswith(s) for _, s in SECCIONES_DE_EVENTOS)]))
 
-    renglones = [
-        "{",
-        "  // Frases del log de eventos del juego -> id de evento. Lo genera tools/extractor/extract.py: no editar a mano.",
-        '  // Convención de ids: "<entidad>_created" (unidades), "<entidad>_built" (edificios) y',
-        '  // "<entidad>_researched" (tecnologías), con la clave de game_data o, si no está ahí, el nombre en inglés.',
-        '  // Las frases son las plantillas del juego ("--%s Created--", "--%s Built--", "--%s Research Complete--")',
-        "  // con el nombre que muestra cada entidad, que puede cambiar según la civ. Están las entidades que alguna civ",
-        "  // puede hacer según los árboles de tecnologías del juego (CivTechTrees).",
-        f"  // Verificadas en una partida real (2026-10-15): {VERIFICADAS}.",
-        "  // Ojo: si un mensaje se repite, el juego no agrega otro renglón sino que mueve el viejo al final.",
-    ]
+    renglones = ["{", *encabezado]
     entradas = [
         (titulo, [f"  {json.dumps(e)}: {json.dumps(eventos[e], ensure_ascii=False)}" for e in ids])
         for titulo, ids in grupos
@@ -785,6 +825,20 @@ def main() -> int:
     print(f"{len(eventos)} eventos exportados a {args.eventos}")
     for conflicto in conflictos:
         print(f"  frase repetida: {conflicto}")
+
+    # Los mismos eventos con el juego en otros idiomas, al lado de events.json.
+    recursos = args.dat.parents[2]
+    for archivo, carpetas in IDIOMAS.items():
+        traducciones = [cargar_textos(recursos / c / "strings" / "key-value") for c in carpetas
+                        if (recursos / c / "strings" / "key-value").is_dir()]
+        if not traducciones:
+            continue
+        traducidos, conflictos = extractor.eventos_traducidos(textos, traducciones, disponibles)
+        ruta = args.eventos.parent / archivo
+        escribir_eventos(traducidos, ruta, ENCABEZADO_ES)
+        print(f"{len(traducidos)} eventos exportados a {ruta} ({', '.join(carpetas)})")
+        for conflicto in conflictos:
+            print(f"  frase repetida: {conflicto}")
 
     salida = args.out or REPO / "data" / "game_data" / nombre_de_archivo(dat.version)
     salida.parent.mkdir(parents=True, exist_ok=True)
