@@ -11,8 +11,12 @@ Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en
 así que se conserva aunque reemplaces la carpeta por una versión nueva.
 
 Para usar el coach:
-  1. Abrí el juego en "Full screen" o "Windowed".
-  2. Ctrl+Alt+C para calibrar las cajas sobre el HUD (una sola vez).
+  1. Tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en "Full screen" o "Windowed".
+     En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo.
+  2. En la segunda fila de arriba elegí el "Idioma del juego" (inglés, castellano de España o de
+     Latinoamérica: en el juego está en Opciones) y la "Civ" con la que jugás.
   3. Elegí la build order en la biblioteca y tocá "Empezar coach" (o Ctrl+Alt+S desde el juego).
+     Con el mod la pantalla se calibra sola, a cualquier resolución. Sin el mod, Ctrl+Alt+C para
+     ubicar las cajas a mano sobre el HUD.
 
 Más información: https://github.com/Kyriokes/aoe2-bo-coach
