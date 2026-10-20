@@ -66,16 +66,112 @@ public static class ModPanel
             if (x - start >= h * 0.5)
                 blocks.Add((start, x - start));
         }
-        if (blocks.Count == 0)
-            return null;
-
         // Otros paneles (KoBHV) también tienen fondos negro puro; lo único del mod es la franja de un solo color
         // justo arriba del negro del cuadrado.
-        var square = Body(image, blocks[0]);
-        if (!HasBandAbove(image, square))
-            return null;
-        return (square, blocks.Count > 1 ? Body(image, blocks[1]) : null);
+        if (blocks.Count > 0)
+        {
+            var square = Body(image, blocks[0]);
+            if (HasBandAbove(image, square))
+                return (square, blocks.Count > 1 ? Body(image, blocks[1]) : null);
+        }
+        return FromBand(image);
     }
+
+    /// <summary>Canal más alto de lo oscuro cuando el negro no es puro (captura comprimida, panel negro de otra civ).</summary>
+    private const int Dark = 60;
+
+    /// <summary>
+    /// Cuando el negro no separa el cuadrado (la civ tiene el panel negro y se une con el cuadrado y el stock, o la
+    /// captura vino comprimida y el negro dejó de ser puro), el cuadrado se ubica por su franja de color: un tramo
+    /// parejo de casi el alto de la caja, con oscuro debajo. El cuadrado tiene el ancho de la franja y es cuadrado
+    /// (franja incluida); el stock es lo oscuro a su derecha, si la caja sigue.
+    /// </summary>
+    private static ((int Left, int Right, int Top, int Height) Square, (int Left, int Right, int Top, int Height)? Stock)? FromBand(CapturedImage image)
+    {
+        var (w, h) = (image.Width, image.Height);
+        var minWidth = Math.Max(6, (int)(h * 0.6));
+        for (var y = 0; y < h - 2; y++)
+        {
+            if (EvenRun(image, y, minWidth) is not { } run)
+                continue;
+            // Las filas de la franja: el mismo tramo hacia abajo (la GD del overlay solo tapa el medio de las de arriba).
+            var bottom = y;
+            while (bottom + 1 < h && EvenRun(image, bottom + 1, minWidth) is { } next && Math.Abs(next.Left - run.Left) <= 2 && Math.Abs(next.Right - run.Right) <= 2)
+                bottom++;
+            var (left, right) = run;
+            var top = bottom + 1;
+            if (bottom - y < 2 || top >= h || !MostlyDark(image, left + 2, right - 2, Math.Min(h - 1, top + 1)))
+            {
+                y = bottom;
+                continue;
+            }
+            // Hacia abajo, mientras los dos costados sigan oscuros (con el panel negro, hasta el borde de la caja), nunca
+            // más alto que ancho.
+            var height = 0;
+            while (top + height < h && height <= right - left && IsDark(image.Pixel(left + 1, top + height)) && IsDark(image.Pixel(right - 1, top + height)))
+                height++;
+            if (height < 3)
+                return null;
+            var square = (left, right, top, height);
+            // El stock empieza en la primera columna oscura después del cuadrado (con el panel de textura, después del
+            // pedazo de panel que los separa) y va hasta el final de la caja. Su fondo negro es tan alto como el cuadrado con
+            // la franja: los números van centrados en todo ese alto.
+            var stockLeft = right + 2;
+            while (stockLeft < w && DarkInColumn(image, stockLeft, top, height) < height * 0.6)
+                stockLeft++;
+            var stockWidth = w - stockLeft;
+            return stockWidth >= (right - left + 1) / 2
+                ? (square, (stockLeft, w - 1, y, top + height - y))
+                : (square, null);
+        }
+        return null;
+    }
+
+    /// <summary>El tramo más largo de la fila con un solo color, no oscuro ni blanco, de al menos <paramref name="minWidth"/>.</summary>
+    private static (int Left, int Right)? EvenRun(CapturedImage image, int y, int minWidth)
+    {
+        (int Left, int Right)? best = null;
+        for (var x = 0; x < image.Width;)
+        {
+            var start = image.Pixel(x, y);
+            var max = Math.Max(start.R, Math.Max(start.G, start.B));
+            var min = Math.Min(start.R, Math.Min(start.G, start.B));
+            if (max < 80 || min >= 200)
+            {
+                x++;
+                continue;
+            }
+            var end = x + 1;
+            while (end < image.Width && Similar(image.Pixel(end, y), start))
+                end++;
+            if (end - x >= minWidth && (best is null || end - x > best.Value.Right - best.Value.Left + 1))
+                best = (x, end - 1);
+            x = end;
+        }
+        return best;
+    }
+
+    private static bool MostlyDark(CapturedImage image, int left, int right, int y)
+    {
+        if (right < left)
+            return false;
+        var dark = 0;
+        for (var x = left; x <= right; x++)
+            if (IsDark(image.Pixel(x, y)))
+                dark++;
+        return dark >= (right - left + 1) * 0.8;
+    }
+
+    private static int DarkInColumn(CapturedImage image, int x, int top, int height)
+    {
+        var dark = 0;
+        for (var y = top; y < top + height; y++)
+            if (IsDark(image.Pixel(x, y)))
+                dark++;
+        return dark;
+    }
+
+    private static bool IsDark((byte R, byte G, byte B) p) => p.R <= Dark && p.G <= Dark && p.B <= Dark;
 
     /// <summary>
     /// El cuerpo negro del bloque. A lo ancho, de la primera a la última columna firme (con casi tanto negro como la

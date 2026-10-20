@@ -1,5 +1,6 @@
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Regions;
 
 namespace BoCoach.Vision.Tests;
 
@@ -12,10 +13,10 @@ public class HudScaleTests
     private static readonly string Fixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "hud-20261018-132830");
     private static readonly HudReader Reader = new(HudFonts.Load(Path.Combine(AppContext.BaseDirectory, "fonts")));
 
-    private static readonly string[] Regions = ["wood", "food", "gold", "stone", "population", "idle_villagers", "clock"];
+    private static readonly string[] Boxed = ["wood", "food", "gold", "stone", "population", "idle_villagers", "clock"];
 
     private static Dictionary<string, CapturedImage> Boxes() =>
-        Regions.ToDictionary(r => r, r => Png.Read(Path.Combine(Fixture, $"000100_{r}.png")));
+        Boxed.ToDictionary(r => r, r => Png.Read(Path.Combine(Fixture, $"000100_{r}.png")));
 
     private static string Describe(HudReading r) =>
         $"reloj {r.Clock} · comida {r.Food} · madera {r.Wood} · oro {r.Gold} · piedra {r.Stone} · aldeanos {r.Villagers} "
@@ -65,5 +66,23 @@ public class HudScaleTests
 
         Assert.NotNull(expected.Clock);
         Assert.Equal(Describe(expected), Describe(actual));
+    }
+
+    // Captura real de un amigo (2026-10-20, 1920×1080, HUD a escala 1,09, panel negro de otra civ, comprimida por
+    // WhatsApp). Lo que muestra: madera 0 aldeanos y 950, comida 12 y 460, oro 0 y 700, piedra 0 y 800, población 12
+    // y 13/15, 0 inactivos, reloj 00:04:15. El "/" de "13/15" sale borroneado por la compresión y se lee "7": el
+    // "N/M" no se pide (en vivo la captura es sin pérdida).
+    [Fact]
+    public void La_captura_del_amigo_con_el_HUD_mas_grande_se_lee_reescalada()
+    {
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "amigo-20261020-1080p-panel-negro.png"));
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default)!;
+
+        var reading = Reader.Read(r => found.Layout.Regions.ContainsKey(r)
+            ? screen.Crop(found.Layout.PixelsOf(r, screen.Width, screen.Height)).Resample(1 / found.Scale)
+            : null);
+
+        Assert.Equal("reloj 255 · comida 460 · madera 950 · oro 700 · piedra 800 · aldeanos 12 · inactivos 0 · pob / · por recurso Food=12 Wood=0 Stone=0 Gold=0",
+            Describe(reading));
     }
 }

@@ -7,7 +7,7 @@ public class ModPanelTests
 {
     // Caja de 60×20 sobre panel con textura: cuadrado (x 2..19) con franja de color arriba (y 0..6) y un dígito
     // blanco abajo, panel, fondo negro del stock (x 24..55) con su número.
-    private static CapturedImage Box(bool withStock = true, bool withBand = true, bool softEdge = false)
+    private static CapturedImage Box(bool withStock = true, bool withBand = true, bool softEdge = false, bool blackPanel = false, bool noisy = false)
     {
         const int w = 60, h = 20;
         var bgra = new byte[w * h * 4];
@@ -23,7 +23,8 @@ public class ModPanelTests
                 var digit = (x is >= 9 and <= 11 && y is >= 10 and <= 17) || (x is >= 30 and <= 33 && y is >= 6 and <= 14);
                 var (r, g, b) = band ? (230, 102, 102)
                     : digit && black ? (255, 255, 255)
-                    : black ? (0, 0, 0)
+                    : (black || blackPanel) && noisy ? ((x * 7 + y * 13) % 18, (x * 5 + y * 3) % 14, (x + y) % 9) // compresión de WhatsApp: el negro deja de ser puro
+                    : black || blackPanel ? (0, 0, 0) // el panel negro de otra civ se une con el del mod
                     : (100 + (x * 7 + y * 13) % 60, 90, 80);
                 var i = (y * w + x) * 4;
                 (bgra[i], bgra[i + 1], bgra[i + 2], bgra[i + 3]) = ((byte)b, (byte)g, (byte)r, 255);
@@ -89,6 +90,37 @@ public class ModPanelTests
     public void Inactivos_tiene_solo_el_cuadrado()
     {
         var parts = ModPanel.Split(Box(withStock: false));
+
+        Assert.NotNull(parts);
+        Assert.Null(parts.Value.Stock);
+    }
+
+    // Captura del amigo (2026-10-20): su civ tiene el panel negro, así que el cuadrado, el panel y el fondo del stock
+    // son un solo bloque oscuro. Lo que sigue separando es la franja de color, que solo está arriba del cuadrado.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Con_el_panel_negro_de_otra_civ_el_cuadrado_sale_de_la_franja(bool noisy)
+    {
+        var parts = ModPanel.Split(Box(blackPanel: true, noisy: noisy));
+
+        Assert.NotNull(parts);
+        Assert.Equal(18, parts.Value.Square.Width);
+        Assert.Equal(13, parts.Value.Square.Height);
+        Assert.NotNull(parts.Value.Stock);
+        Assert.InRange(parts.Value.Stock.Width, 32, 40); // hasta el final de la caja: el panel negro no lo corta
+        Assert.Equal(new PixelRect(2, 0, 18, 7), ModPanel.Band(Box(blackPanel: true, noisy: noisy)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Con_el_panel_negro_inactivos_sigue_sin_stock(bool noisy)
+    {
+        // La caja de inactivos termina poco después del cuadrado.
+        var box = Box(withStock: false, blackPanel: true, noisy: noisy).Crop(new PixelRect(0, 0, 23, 20));
+
+        var parts = ModPanel.Split(box);
 
         Assert.NotNull(parts);
         Assert.Null(parts.Value.Stock);
