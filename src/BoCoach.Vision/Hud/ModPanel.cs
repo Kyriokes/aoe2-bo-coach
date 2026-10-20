@@ -13,7 +13,7 @@ public static class ModPanel
     /// Canal más alto de un píxel para contar como el negro del mod (que se captura 0/0/0). Más alto, la textura
     /// oscura del panel entre el cuadrado de población y su "N/M" (valores de 4 a 7) unía los dos bloques.
     /// </summary>
-    private const int Black = 2;
+    internal const int Black = 2;
 
     /// <summary>Parte de la columna en negro para que sea del cuadrado (los trazos del número tapan el resto).</summary>
     private const double SquareColumn = 0.1;
@@ -47,7 +47,7 @@ public static class ModPanel
         return new PixelRect(left, top, right - left + 1, bodyTop - top);
     }
 
-    private static bool Similar((byte R, byte G, byte B) a, (byte R, byte G, byte B) b) =>
+    internal static bool Similar((byte R, byte G, byte B) a, (byte R, byte G, byte B) b) =>
         Math.Abs(a.R - b.R) <= 30 && Math.Abs(a.G - b.G) <= 30 && Math.Abs(a.B - b.B) <= 30;
 
     /// <summary>El cuerpo negro del cuadrado y el del stock (si hay), o null si la caja no es del mod.</summary>
@@ -83,7 +83,7 @@ public static class ModPanel
     /// es negro arriba y abajo (la franja de color del cuadrado y el panel que la caja toma de más): las filas
     /// seguidas (las más) donde los dos bordes son negros.
     /// </summary>
-    private static (int Left, int Right, int Top, int Height) Body(CapturedImage image, (int Start, int Length) block)
+    internal static (int Left, int Right, int Top, int Height) Body(CapturedImage image, (int Start, int Length) block)
     {
         var counts = Enumerable.Range(block.Start, block.Length).Select(x => BlackInColumn(image, x)).ToArray();
         var firm = counts.Max() * 0.8;
@@ -107,7 +107,7 @@ public static class ModPanel
         image.Crop(new PixelRect(body.Left, body.Top, body.Right - body.Left + 1, body.Height));
 
     /// <summary>Si dos filas arriba del cuerpo hay un color parejo y no oscuro de borde a borde (la franja del mod).</summary>
-    private static bool HasBandAbove(CapturedImage image, (int Left, int Right, int Top, int Height) body)
+    internal static bool HasBandAbove(CapturedImage image, (int Left, int Right, int Top, int Height) body)
     {
         var y = body.Top - 2;
         if (y < 0 || body.Right - body.Left < 6)
@@ -135,7 +135,7 @@ public static class ModPanel
         return black * 4 > image.Width * image.Height;
     }
 
-    private static bool IsSquareColumn(CapturedImage image, int x) => BlackInColumn(image, x) >= image.Height * SquareColumn;
+    internal static bool IsSquareColumn(CapturedImage image, int x) => BlackInColumn(image, x) >= image.Height * SquareColumn;
 
     private static int BlackInColumn(CapturedImage image, int x)
     {
