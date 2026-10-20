@@ -32,16 +32,18 @@ La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders` (la primera vez se c
 
 Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número]` la dibuja en un PNG con una biblioteca temporal.
 
-## Calibrar la pantalla y grabar partidas
+## Mod del HUD, calibración y grabar partidas
 
 En la barra de arriba de la app:
 
-- **Calibrar pantalla…** (o **Ctrl+Alt+C** desde el juego) abre una capa transparente sobre la ventana del juego con un rectángulo por región (madera, comida, oro, piedra, población, inactivos, edad, reloj y log de eventos). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`, relativo a la ventana del juego, así anda en cualquier monitor y en modo ventana.
+- **Instalar mod del HUD** agrega al juego el mod local "BoCoach HUD": los aldeanos de cada recurso en cuadrados negros con una franja de color y el reloj más grande, que el coach lee mucho mejor. Se arma en la PC del jugador a partir de los paneles del juego (no se redistribuye nada) y se puede volver a tocar sin problema. Después hay que reabrir el juego y verlo activo en Mods.
+- Con el mod, la pantalla **se calibra sola** al empezar el coach, a cualquier resolución y tamaño de HUD: busca las franjas de color, mide la escala del HUD y lleva cada captura a 1080p antes de leerla.
+- **Calibrar pantalla…** (o **Ctrl+Alt+C** desde el juego) es la calibración a mano, para jugar sin el mod: una capa transparente sobre la ventana del juego con un rectángulo por región (madera, comida, oro, piedra, población, inactivos, edad, reloj, log de eventos, cola de producción y puntajes). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`, relativo a la ventana del juego, así anda en cualquier monitor y en modo ventana.
 - **Grabar partida** (o **Ctrl+Alt+R** desde el juego; arriba aparece "● Grabando") guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
 
 ## Usar el coach durante una partida
 
-1. En la biblioteca de la izquierda, elegí la build order.
+1. En la segunda fila de arriba, los ajustes de la partida: **Civ** (la que jugás; el coach usa sus bonificaciones), **Idioma del juego** (inglés, castellano de España o de Latinoamérica: el log y la edad se leen con sus frases y su OCR), **Máx. aldeanos** y **Recordatorios en el mouse**. En la biblioteca de la izquierda, elegí la build order.
 2. **▶ Empezar coach** (o **Ctrl+Alt+S** desde el juego). Arriba a la derecha del juego aparece el overlay: el paso actual en grande, qué falta para hacerlo, lo que está en curso (por ejemplo la Feudal, desde que se paga), el paso siguiente, los atrasados, el objetivo de la BO ("Feudal estimada en 9:12, objetivo 9:00") y la sugerencia de aldeanos ("Pasá 2 de madera a comida").
 3. El overlay no recibe el mouse ni el teclado. Los atajos (todos con Ctrl+Alt, que el juego no usa) lo corrigen sin salir del juego:
 
@@ -54,6 +56,8 @@ En la barra de arriba de la app:
 | Ctrl+Alt+P | Pausa o sigue la lectura |
 | Ctrl+Alt+H | Oculta o muestra el overlay |
 | Ctrl+Alt+D | Muestra CPU, RAM y milisegundos por captura |
+| Ctrl+Alt+M | Prende o apaga los recordatorios junto al mouse (casa, centro urbano parado, inactivos) |
+| Ctrl+Alt+X | Captura de diagnóstico: a los 2 s guarda la pantalla sin pérdida y un `.txt` con lo que encontró la app en `%LOCALAPPDATA%\BoCoach\diagnostico` (para mandar si algo no se lee bien) |
 
 Para probarlo sin el juego, sobre una grabación: `BoCoach.exe --replay "<carpeta de la grabación>" --bo scouts [--speed 4] [--stats uso.csv]`. Para ver cómo queda el overlay en un momento de una partida: `BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo scouts --at 8:20`.
 
@@ -73,7 +77,7 @@ Los números del HUD se leen por plantillas (`data/fonts`), sacadas de una graba
 dotnet run --project tools/ReplaySession -c Release -- replay "%LOCALAPPDATA%\BoCoach\recordings\<carpeta>"
 ```
 
-Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y avisa si alguna caja corta los números. Otros comandos (ver el comienzo de `tools/ReplaySession/Program.cs`): `coach` corre el loop completo (visión, motor y economía) con una BO y muestra lo que diría el overlay cada vez que cambia (también desde un `lecturas.csv`, sin OCR); `bench` mide cuánto tarda cada parte de la lectura; `glyphs` agrupa los caracteres de una región para etiquetarlos, `font` arma una letra con esas etiquetas, `read` lee una región y `ocr` pasa el OCR de Windows.
+Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y avisa si alguna caja corta los números. Otros comandos (ver el comienzo de `tools/ReplaySession/Program.cs`): `coach` corre el loop completo (visión, motor y economía) con una BO y muestra lo que diría el overlay cada vez que cambia (también desde un `lecturas.csv`, sin OCR); `bench` mide cuánto tarda cada parte de la lectura; `glyphs` agrupa los caracteres de una región para etiquetarlos, `font` arma una letra con esas etiquetas, `read` lee una región y `ocr` pasa el OCR de Windows; `autocalibrate <pantalla.png> --read` calibra sobre una captura entera (por ejemplo la de diagnóstico) y muestra lo que lee. Con el juego en castellano, `--idioma es` o `--idioma mx`.
 
 ## Regenerar los datos del juego (una vez por parche)
 
