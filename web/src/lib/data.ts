@@ -1,5 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
+import { filterValue } from "./filters";
 import { publicClient } from "./supabase/server";
 
 /** Lo que se muestra de una BO en la biblioteca. */
@@ -62,8 +63,11 @@ export async function listBuildOrders(query: LibraryQuery): Promise<BuildOrderSu
   let request = db.from("build_orders").select(summaryColumns).limit(60);
   const search = cleanSearch(query.q ?? "");
   if (search) request = request.or(`name.ilike.*${search}*,description.ilike.*${search}*`);
-  if (query.civ) request = request.eq("civ", query.civ);
-  if (query.tag) request = request.contains("tags", [query.tag]);
+  // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
+  const civ = filterValue(query.civ);
+  const tag = filterValue(query.tag);
+  if (civ) request = request.eq("civ", civ);
+  if (tag) request = request.contains("tags", [tag]);
   request =
     query.sort === "recientes"
       ? request.order("created_at", { ascending: false })
