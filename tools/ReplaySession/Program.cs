@@ -34,9 +34,12 @@
 //       si no, lo agrega. La fila se busca como al leer (o --row si no hay ningún ícono conocido). Clave "-" para lo
 //       que no es un ícono (adornos del panel, mapa).
 //   import <guía.json> <salida.json> [--id ejemplo-arqueros]
-//   autocalibrate <pantalla.png> [--out regions.json]: busca el HUD del mod en una captura de pantalla entera y muestra las cajas
 //       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
 //       pasos y los avisos, y la simula.
+//   autocalibrate <pantalla.png> [--out regions.json] [--read [--dump carpeta]]
+//       Busca el HUD del mod en una captura de pantalla entera y muestra las cajas y la escala del HUD. --read recorta
+//       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
+//       (y el cuadrado y el stock del mod) para mirarlos.
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
 // el negro del mod) o "blue" (números azules).
@@ -509,6 +512,41 @@ static int AutoCalibrate(string screenshot, string[] args)
     {
         found.Layout.Save(output);
         Console.WriteLine($"Guardado en {output}");
+    }
+    if (args.Contains("--read"))
+    {
+        // Lo mismo que en vivo: cada caja recortada y llevada a los píxeles de 1080p de las letras.
+        var dump = Text(args, "--dump", "");
+        if (dump.Length > 0)
+            Directory.CreateDirectory(dump);
+        var boxes = new Dictionary<string, CapturedImage>();
+        foreach (var name in RegionNames.All)
+        {
+            boxes[name] = screen.Crop(found.Layout.PixelsOf(name, screen.Width, screen.Height)).Resample(1 / found.Scale);
+            if (dump.Length == 0)
+                continue;
+            Png.Write(boxes[name], Path.Combine(dump, $"{name}.png"));
+            if (ModPanel.Split(boxes[name]) is { } parts)
+            {
+                Png.Write(parts.Square, Path.Combine(dump, $"{name}-cuadrado.png"));
+                if (parts.Stock is { } stock)
+                    Png.Write(stock, Path.Combine(dump, $"{name}-stock.png"));
+            }
+        }
+        var reading = new HudReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts")))).Read(boxes.GetValueOrDefault);
+        Console.WriteLine($"Lectura (reescalada por 1/{found.Scale:0.00}):");
+        Console.WriteLine($"  reloj      {(reading.Clock is { } c ? BoCoach.Core.GameClock.Format(c) : "-")}");
+        foreach (var resource in new[] { Resource.Wood, Resource.Food, Resource.Gold, Resource.Stone })
+            Console.WriteLine($"  {resource,-10} stock {reading.Stock(resource)?.ToString() ?? "-",5} · aldeanos {(reading.VillagersOn?.TryGetValue(resource, out var v) == true ? v.ToString() : "-")}");
+        Console.WriteLine($"  población  aldeanos {reading.Villagers?.ToString() ?? "-"} · {reading.Population?.ToString() ?? "-"}/{reading.PopulationCap?.ToString() ?? "-"}");
+        Console.WriteLine($"  inactivos  {reading.IdleVillagers?.ToString() ?? "-"}");
+        if (reading.Clipped.Count > 0)
+            Console.WriteLine($"  cortados   {string.Join(", ", reading.Clipped)}");
+        if (BoCoach.Vision.Ocr.OcrReader.TryCreate() is { } ocr)
+        {
+            var text = ocr.ReadAsync(boxes[RegionNames.Age]).GetAwaiter().GetResult();
+            Console.WriteLine($"  edad       \"{text}\" → {AgeText.Parse(text)?.ToString() ?? "-"}");
+        }
     }
     return 0;
 }
