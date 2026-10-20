@@ -38,7 +38,13 @@ public sealed record GameSnapshot(
     /// Lo que hay en la cola de producción del juego, o null si no se leyó. Vacía = no se está produciendo nada.
     /// </summary>
     public IReadOnlyList<QueueItem>? Queue { get; init; }
+
+    /// <summary>El panel de puntajes, si se leyó en esta captura (se lee cada 2 s), o null.</summary>
+    public IReadOnlyList<PlayerScore>? Scores { get; init; }
 }
+
+/// <summary>Un renglón del panel de puntajes: el jugador (por su color), su puntaje y si sigue en la Edad Oscura.</summary>
+public sealed record PlayerScore(int Slot, int Score, bool DarkAge);
 
 /// <summary>
 /// Un ícono de la cola de producción: la clave de game_data ("housed" = esperando población, "?" = ícono desconocido)

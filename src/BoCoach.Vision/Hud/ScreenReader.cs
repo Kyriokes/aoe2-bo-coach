@@ -18,7 +18,9 @@ public sealed class ScreenReader
     private readonly HudTracker _tracker = new();
     private readonly OcrReader? _ocr;
     private readonly EventLogReader? _log;
+    private readonly ScoresPanelReader? _scores;
     private double _lastAgeRead = double.NegativeInfinity;
+    private double _lastScoresRead = double.NegativeInfinity;
 
     /// <param name="ocr">OCR de Windows en inglés; sin él no se leen el log ni la edad.</param>
     public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog)
@@ -27,6 +29,7 @@ public sealed class ScreenReader
         _queueIcons = fonts.QueueIcons;
         _ocr = ocr;
         _log = ocr is null ? null : new EventLogReader(ocr, catalog);
+        _scores = ocr is null ? null : new ScoresPanelReader(ocr);
     }
 
     /// <summary>
@@ -55,7 +58,16 @@ public sealed class ScreenReader
         // La cola de producción: íconos comparados con la biblioteca (rápido: unos pocos lugares de 11×11 colores).
         var queue = _queueIcons is not null && regions(RegionNames.ProductionQueue) is { } queueImage ? _queueIcons.Read(queueImage) : null;
 
-        return _tracker.Update(realTime, reading, events, age) with { Queue = queue };
+        // El panel de puntajes, cada 2 s como la edad (D3: el clic de edad del rival se ve en su puntaje).
+        IReadOnlyList<PlayerScore>? scores = null;
+        if (_scores is not null && realTime - _lastScoresRead >= AgeEverySeconds && regions(RegionNames.Scores) is { } scoresImage)
+        {
+            scores = (await _scores.ReadAsync(scoresImage)).Where(r => r.Slot is not null)
+                .Select(r => new PlayerScore(r.Slot!.Value, r.Score, r.DarkAge)).ToList();
+            _lastScoresRead = realTime;
+        }
+
+        return _tracker.Update(realTime, reading, events, age) with { Queue = queue, Scores = scores };
     }
 }
 
@@ -71,5 +83,6 @@ public static class HudStateExtensions
         state.VillagersOn is { Count: 4 } on
             ? new ResourceAmounts(on[Resource.Food], on[Resource.Wood], on[Resource.Stone], on[Resource.Gold])
             : null,
-        state.Queue);
+        state.Queue,
+        state.Scores);
 }

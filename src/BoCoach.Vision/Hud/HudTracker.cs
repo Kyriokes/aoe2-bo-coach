@@ -38,6 +38,9 @@ public sealed record HudState(
     /// </summary>
     public IReadOnlyList<Core.Engine.QueueItem>? Queue { get; init; }
 
+    /// <summary>El panel de puntajes, si se leyó en esta captura (cada 2 s), o null.</summary>
+    public IReadOnlyList<Core.Engine.PlayerScore>? Scores { get; init; }
+
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
         ? new ResourceAmounts(f, w, s, g)

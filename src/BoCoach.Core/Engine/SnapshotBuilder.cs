@@ -9,6 +9,7 @@ namespace BoCoach.Core.Engine;
 /// <param name="NewEvents">Eventos del log que aparecieron en esta captura (ids de data/events.json).</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD, o null si no se leyeron los cuatro.</param>
 /// <param name="Queue">La cola de producción, o null si no se lee.</param>
+/// <param name="Scores">El panel de puntajes, si se leyó en esta captura, o null.</param>
 public sealed record ScreenReading(
     double? Clock,
     double? Food,
@@ -20,7 +21,8 @@ public sealed record ScreenReading(
     int? PopulationCap,
     IReadOnlyList<string> NewEvents,
     ResourceAmounts? VillagersOn = null,
-    IReadOnlyList<QueueItem>? Queue = null);
+    IReadOnlyList<QueueItem>? Queue = null,
+    IReadOnlyList<PlayerScore>? Scores = null);
 
 /// <summary>
 /// Arma los <see cref="GameSnapshot"/> del motor a partir de las lecturas de pantalla:
@@ -185,7 +187,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
         var time = GameTime(clock, reading);
         var events = _pendingEvents.Select(id => new GameEvent(id, time)).ToList();
         _pendingEvents.Clear();
-        return new GameSnapshot(time, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn, Queue = reading.Queue };
+        return new GameSnapshot(time, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn, Queue = reading.Queue, Scores = reading.Scores };
     }
 
     /// <summary>El reloj llevado al tiempo de juego (ver <see cref="StartOffset"/>); 0 mientras el jugador no haya hecho nada.</summary>
