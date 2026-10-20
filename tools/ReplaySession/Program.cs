@@ -34,6 +34,7 @@
 //       si no, lo agrega. La fila se busca como al leer (o --row si no hay ningún ícono conocido). Clave "-" para lo
 //       que no es un ícono (adornos del panel, mapa).
 //   import <guía.json> <salida.json> [--id ejemplo-arqueros]
+//   autocalibrate <pantalla.png> [--out regions.json]: busca el HUD del mod en una captura de pantalla entera y muestra las cajas
 //       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
 //       pasos y los avisos, y la simula.
 //
@@ -75,6 +76,7 @@ try
         "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
+        "autocalibrate" => AutoCalibrate(args[1], args),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
         "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
@@ -486,6 +488,31 @@ static async Task<int> Replay(string recording, string[] args)
 }
 
 // ---- coach: el loop completo (visión + motor + economía) sobre una grabación o sus lecturas.csv ----
+/// <summary>Calibración sola sobre una captura de pantalla entera (hoja de ruta B4): las cajas que encuentra y la escala del HUD.</summary>
+static int AutoCalibrate(string screenshot, string[] args)
+{
+    var screen = Png.Read(screenshot);
+    if (AutoCalibration.Detect(screen, RegionLayout.Default) is not { } found)
+    {
+        Console.WriteLine($"No encontré el HUD del mod en {screenshot} ({screen.Width}×{screen.Height}). Bloques negros de la franja de arriba:");
+        foreach (var (rect, band, black) in AutoCalibration.Candidates(screen))
+            Console.WriteLine($"  x {rect.X,5} y {rect.Y,4} {rect.Width,4}×{rect.Height,-4} franja {(band ? "sí" : "no")} negro {black:0.00}");
+        return 1;
+    }
+    Console.WriteLine($"{screen.Width}×{screen.Height}: {found.Squares.Count} cuadrados y el reloj; HUD a escala {found.Scale:0.00} respecto de 1080p.");
+    foreach (var name in RegionNames.All)
+    {
+        var r = found.Layout.PixelsOf(name, screen.Width, screen.Height);
+        Console.WriteLine($"  {name,-17} x {r.X,5} y {r.Y,4} {r.Width,4}×{r.Height}");
+    }
+    if (Text(args, "--out", "") is { Length: > 0 } output)
+    {
+        found.Layout.Save(output);
+        Console.WriteLine($"Guardado en {output}");
+    }
+    return 0;
+}
+
 static async Task<int> CoachReplay(string recording, string boPath, string[] args)
 {
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
