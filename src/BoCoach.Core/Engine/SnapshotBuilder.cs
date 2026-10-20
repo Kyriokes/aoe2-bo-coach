@@ -36,10 +36,16 @@ public sealed record ScreenReading(
 /// <item>Con el "N/M" y el total de aldeanos, las unidades militares son la diferencia. Si suben más de lo que avisó
 /// el log (dos galerías sacan un arquero cada una y el log muestra un solo renglón), las de más son del tipo del último
 /// aviso de unidad. Mismo cuidado que con las casas: un aviso que llega después no es otra unidad.</item>
+/// <item>El tiempo cuenta desde que el jugador empieza a jugar, no desde el 00:00 del reloj: en la 20261017-163738 se
+/// quedó 36 minutos quieto con los 3 aldeanos iniciales y todos los objetivos de la BO quedaban atrasados (ver
+/// <see cref="StartOffset"/>).</item>
 /// </list>
 /// </summary>
-public sealed class SnapshotBuilder(GameData data)
+/// <param name="start">Cómo arranca la partida (recursos y aldeanos iniciales de la civ); por defecto, el estándar.</param>
+public sealed class SnapshotBuilder(GameData data, PlanStart? start = null)
 {
+    private readonly PlanStart _start = start ?? PlanStart.Standard;
+
     private const int StartingCap = 5;
     private const int MaxPopulation = BuildOrders.BuildOrderValidator.MaxPopulation;
     private const string House = "house";
@@ -56,11 +62,11 @@ public sealed class SnapshotBuilder(GameData data)
     private readonly List<double> _inferredHouses = [];
     private (int Cap, double Time)? _lastReadCap;
     private double _lastClock;
-    private ResourceAmounts _stock = PlanStart.Standard.Stock;
+    private ResourceAmounts _stock = (start ?? PlanStart.Standard).Stock;
     private int _military;
     private int _builtCap = StartingCap;
-    private int _population = PlanStart.Standard.Population;
-    private int _cap = PlanStart.Standard.PopulationCap;
+    private int _population = (start ?? PlanStart.Standard).Population;
+    private int _cap = (start ?? PlanStart.Standard).PopulationCap;
     private int? _villagers;
 
     /// <summary>
@@ -90,6 +96,24 @@ public sealed class SnapshotBuilder(GameData data)
 
     /// <summary>True si la última población salió de la estimación y no de la pantalla.</summary>
     public bool PopulationEstimated { get; private set; } = true;
+
+    /// <summary>
+    /// Segundos del reloj del juego que pasaron antes de que el jugador empezara a jugar: el tiempo de los snapshots
+    /// (y de sus eventos) es el reloj menos esto. Se fija en la primera captura con acción (un aldeano más que los
+    /// iniciales, el stock distinto del inicial, un evento del log o algo en la cola de producción). Si antes se lo
+    /// vio quieto, el inicio es esa captura; si la primera captura ya tiene acción (el coach arrancó a mitad de
+    /// partida), se descuentan los aldeanos entrenados y lo demás se toma por idle solo si es casi todo el reloj.
+    /// Menos de <see cref="IdleThreshold"/> no cuenta: en una partida normal se actúa en los primeros segundos.
+    /// </summary>
+    public double StartOffset { get; private set; }
+
+    public const double IdleThreshold = 60;
+
+    /// <summary>A mitad de partida, parte del reloj que tiene que quedar sin explicar por los aldeanos para tomarla por idle.</summary>
+    private const double MostlyIdle = 0.75;
+
+    private bool _startKnown;
+    private bool _sawIdle;
 
     public GameSnapshot? Build(ScreenReading reading)
     {
@@ -151,10 +175,43 @@ public sealed class SnapshotBuilder(GameData data)
 
         if (reading.Clock is not { } clock)
             return null;
-        var events = _pendingEvents.Select(id => new GameEvent(id, clock)).ToList();
+        var time = GameTime(clock, reading);
+        var events = _pendingEvents.Select(id => new GameEvent(id, time)).ToList();
         _pendingEvents.Clear();
-        return new GameSnapshot(clock, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn, Queue = reading.Queue };
+        return new GameSnapshot(time, _stock, _population, _cap, events) { Villagers = readVillagers, VillagersOn = reading.VillagersOn, Queue = reading.Queue };
     }
+
+    /// <summary>El reloj llevado al tiempo de juego (ver <see cref="StartOffset"/>); 0 mientras el jugador no haya hecho nada.</summary>
+    private double GameTime(double clock, ScreenReading reading)
+    {
+        if (!_startKnown)
+        {
+            var villagers = _villagers ?? _start.IdleVillagers;
+            var acted = villagers > _start.IdleVillagers
+                || _stock != _start.Stock
+                || _pendingEvents.Count > 0
+                || reading.Queue is { Count: > 0 };
+            if (!acted)
+            {
+                _sawIdle = true;
+                return 0;
+            }
+            _startKnown = true;
+            if (_sawIdle)
+            {
+                StartOffset = clock >= IdleThreshold ? clock : 0;
+            }
+            else
+            {
+                var trained = Math.Max(0, villagers - _start.IdleVillagers);
+                var estimate = clock - trained * VillagerTime();
+                StartOffset = estimate >= IdleThreshold && estimate >= clock * MostlyIdle ? estimate : 0;
+            }
+        }
+        return Math.Max(0, clock - StartOffset);
+    }
+
+    private double VillagerTime() => data.TryGet("villager", out var villager) && villager.Time > 0 ? villager.Time : 25;
 
     /// <summary>Un "X Created" del log que no es un aldeano.</summary>
     private void LoggedUnit(string id, double now)
