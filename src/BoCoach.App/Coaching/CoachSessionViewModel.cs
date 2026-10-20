@@ -45,6 +45,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         MaxVillagers = settings.MaxVillagers;
         CursorReminders = settings.CursorReminders;
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
+        Language = GameLanguage.FromCode(settings.GameLanguage);
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -102,6 +103,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     public IReadOnlyList<string> CivOptions => [BoCiv, .. _data.GameData.Civs.Keys.Order()];
 
+    /// <summary>
+    /// Idioma en que está el juego: el log ("--Aldeano: creación finalizada--") y la edad ("Alta Edad Media") se leen
+    /// con su OCR y sus frases. Se aplica al empezar el coach.
+    /// </summary>
+    [ObservableProperty] public partial GameLanguage Language { get; set; } = GameLanguage.English;
+
+    partial void OnLanguageChanged(GameLanguage value) => SaveSettings();
+
+    public IReadOnlyList<GameLanguage> LanguageOptions => GameLanguage.All;
+
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
@@ -114,7 +125,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         try
         {
-            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders, GameCiv = GameCiv == BoCiv ? "" : GameCiv }.Save(_settingsPath);
+            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders, GameCiv = GameCiv == BoCiv ? "" : GameCiv, GameLanguage = Language.Code }.Save(_settingsPath);
         }
         catch (IOException)
         {
@@ -154,7 +165,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
         bo = bo with { Civ = CivFor(bo) };
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
-        var coach = _coach = new LiveCoach(bo, _data.GameData, _data.Events, _data.Fonts, OcrReader.TryCreate(), frames,
+        // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
+        var ocr = Language.CreateOcr();
+        var coach = _coach = new LiveCoach(bo, _data.GameData, _data.EventsFor(Language), _data.Fonts, ocr, frames,
             new EconomySettings { MaxVillagers = MaxVillagers });
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.Updated += frame => _host.RunOnUi(() =>
@@ -168,7 +181,18 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _host.ShowOverlay(Overlay, _placedOver);
         _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+    }
+
+    /// <summary>Qué idioma lee, si no es el inglés, y si falta el OCR de ese idioma en este Windows.</summary>
+    private string LanguageNote(OcrReader? ocr)
+    {
+        if (Language == GameLanguage.English)
+            return "";
+        var reads = ocr?.Language ?? "";
+        return reads.StartsWith("es", StringComparison.OrdinalIgnoreCase)
+            ? $", juego en {Language.Label.ToLowerInvariant()}"
+            : $", juego en {Language.Label.ToLowerInvariant()} (Windows no tiene el OCR en castellano: lee con el inglés)";
     }
 
     public void Stop()

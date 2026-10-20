@@ -43,6 +43,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         }, CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
         GameCivBox.DataContext = Coach;
+        GameLanguageBox.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;
         CursorRemindersBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
@@ -172,7 +173,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _calibrating = true;
         try
         {
-            var window = new CalibrationWindow(current, _screen, OcrReader.TryCreate());
+            var window = new CalibrationWindow(current, _screen, Coach.Language.CreateOcr());
             return window.ShowDialog() == true ? window.Layout : null;
         }
         finally

@@ -5,6 +5,7 @@ using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
 
 namespace BoCoach.App.Tests;
@@ -94,6 +95,30 @@ public sealed class CoachSessionTests : IDisposable
         session.GameCiv = CoachSessionViewModel.BoCiv;
         session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
         Assert.Equal(Scouts.Civ, session.LiveCoach!.BuildOrder.Civ);
+    }
+
+    // Amigos con el juego en castellano (2026-10-20): el log dice "--Aldeano: creación finalizada--" y la edad "Alta
+    // Edad Media". El idioma del juego se elige en la ventana, queda guardado y el coach lee con sus frases.
+    [Fact]
+    public void El_idioma_del_juego_se_elige_en_la_ventana_se_guarda_y_el_coach_usa_sus_frases()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal(GameLanguage.English, session.Language);
+        Assert.Contains(GameLanguage.SpanishLatinAmerica, session.LanguageOptions);
+
+        session.Language = GameLanguage.SpanishLatinAmerica;
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+
+        Assert.Contains("Jinete: creación finalizada", session.LiveCoach!.Events.Phrases["knight_created"]);
+        Assert.Contains("Knight Created", session.LiveCoach.Events.Phrases["knight_created"]);
+        Assert.Equal("mx", CoachSettings.Load(path).GameLanguage);
+        Assert.Equal(GameLanguage.SpanishLatinAmerica,
+            new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).Language);
+
+        session.Language = GameLanguage.English;
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        Assert.DoesNotContain("Jinete: creación finalizada", session.LiveCoach!.Events.Phrases["knight_created"]);
     }
 
     [Fact]

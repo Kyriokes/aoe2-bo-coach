@@ -120,11 +120,15 @@ public sealed class LiveCoach : IDisposable
         Frames = frames;
         _coach = new Coach(bo, data, events, economy: economy);
         _builder = new SnapshotBuilder(data, data.Civ(bo.Civ));
+        Events = events;
         _reader = new ScreenReader(fonts, ocr, events);
     }
 
     public BuildOrder BuildOrder { get; }
     public IFrameSource Frames { get; }
+
+    /// <summary>Las frases del log con que lee (las del idioma del juego).</summary>
+    public EventCatalog Events { get; }
 
     /// <summary>En pausa no se captura nada (por ejemplo, entre partidas).</summary>
     public bool Paused { get; set; }

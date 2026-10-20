@@ -22,6 +22,9 @@ public sealed class CoachSettings
     /// <summary>Civ con la que se juega (clave de game_data); vacío = la de la BO.</summary>
     public string GameCiv { get; set; } = "";
 
+    /// <summary>Idioma en que está el juego (<see cref="Vision.Ocr.GameLanguage.Code"/>): "en", "es" o "mx".</summary>
+    public string GameLanguage { get; set; } = "en";
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -35,6 +38,7 @@ public sealed class CoachSettings
                     MaxVillagers = json["max_villagers"]?.GetValue<int>() is { } max ? Clamp(max) : DefaultMaxVillagers,
                     CursorReminders = json["cursor_reminders"]?.GetValue<bool>() ?? true,
                     GameCiv = json["civ"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "",
+                    GameLanguage = Vision.Ocr.GameLanguage.FromCode(json["game_language"]?.GetValue<string>()).Code,
                 };
             }
         }
@@ -48,7 +52,7 @@ public sealed class CoachSettings
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv };
+        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage };
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

@@ -3,6 +3,7 @@ using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Ocr;
 
 namespace BoCoach.App;
 
@@ -36,6 +37,24 @@ public sealed class CoachData
     public static string UserDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BoCoach");
 
     /// <param name="libraryDir">Carpeta de la biblioteca; por defecto %APPDATA%\BoCoach\build_orders.</param>
+    private readonly Dictionary<string, EventCatalog> _eventsByLanguage = [];
+
+    /// <summary>
+    /// Las frases del log para el juego en ese idioma (las inglesas más las del idioma). <see cref="Events"/> es el
+    /// inglés: los ids son los mismos, así que el validador y el editor no dependen del idioma.
+    /// </summary>
+    public EventCatalog EventsFor(GameLanguage language)
+    {
+        if (language.EventsFile is null)
+            return Events;
+        lock (_eventsByLanguage)
+        {
+            if (!_eventsByLanguage.TryGetValue(language.Code, out var events))
+                _eventsByLanguage[language.Code] = events = language.LoadEvents(DataDir, GameData);
+            return events;
+        }
+    }
+
     public static CoachData Load(string? libraryDir = null)
     {
         var gameData = GameDataLoader.LoadLatest(Path.Combine(DataDir, "game_data"));

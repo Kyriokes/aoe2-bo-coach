@@ -36,17 +36,51 @@
 
         <!-- Herramientas de captura: calibrar la pantalla y grabar partidas -->
         <Border x:Name="ToolsBar" DockPanel.Dock="Top" Background="#2B2622" Padding="12,7">
-            <DockPanel>
-                <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="#A39A8F" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0"
-                           ToolTip="Versión · commit · cuándo se compiló" />
+            <StackPanel>
+                <DockPanel>
+                    <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="#A39A8F" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0"
+                               ToolTip="Versión · commit · cuándo se compiló" />
 
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
+                                ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
+                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
+                        <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
+                                ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
+                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
+                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#8CD17D" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRecording}" Value="True">
+                                            <Setter Property="Foreground" Value="#F08070" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </DockPanel>
+                <!-- Ajustes de la partida: se aplican al empezar el coach -->
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                     <StackPanel x:Name="GameCivBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Con qué civ jugás esta partida: el coach usa sus bonificaciones (costos, población de las casas, recursos iniciales). Por defecto, la civ que dice la BO. Se aplica al empezar el coach">
                         <TextBlock Text="Civ" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <ComboBox ItemsSource="{Binding CivOptions}" SelectedItem="{Binding GameCiv}" Width="104" VerticalContentAlignment="Center"
                                   AutomationProperties.Name="Civ de esta partida" />
+                    </StackPanel>
+                    <StackPanel x:Name="GameLanguageBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                ToolTip="En qué idioma está el juego: el log de eventos y la edad se leen con sus frases. Castellano de España y de Latinoamérica difieren en muchos nombres (en el juego: Opciones → Idioma). Se aplica al empezar el coach">
+                        <TextBlock Text="Idioma del juego" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding Language}" Width="170" VerticalContentAlignment="Center"
+                                  AutomationProperties.Name="Idioma del juego" />
                     </StackPanel>
                     <StackPanel x:Name="MaxVillagersBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Hasta cuántos aldeanos producen sin parar los centros urbanos (100 a 130 según la estrategia). La comida nunca baja de lo que necesitan. Se aplica al empezar el coach">
@@ -58,31 +92,8 @@
                               ToolTip="Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con Ctrl+Alt+M desde el juego">
                         <TextBlock Text="Recordatorios en el mouse" Foreground="#C9C1B6" />
                     </CheckBox>
-                    <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
-                            ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
-                    <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
-                    <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
-                            ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
-                    <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
-                    <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
                 </StackPanel>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
-                    <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
-                               Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="#8CD17D" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                                        <Setter Property="Foreground" Value="#F08070" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </DockPanel>
+            </StackPanel>
         </Border>
 
         <!-- Lo que ve el coach: todo lo leído en la última captura, mientras el coach corre -->
