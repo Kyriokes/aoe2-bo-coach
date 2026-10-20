@@ -23,6 +23,24 @@ public class CivBonusesTests
         Assert.Equal(multiplier, Data.Civ(civ).GatherMultiplier(source, Age.Dark), 3);
     }
 
+    // El nombre que muestra la pantalla de carga, por idioma del juego: no siempre coincide con la clave.
+    [Theory]
+    [InlineData("britons", "Britons", "Britanos", "Britanos")]
+    [InlineData("incas", "Inca", "Inca", "Incas")]
+    [InlineData("burgundians", "Burgundians", "Borgoñeses", "Borgoñones")]
+    [InlineData("hindustanis", "Hindustanis", "Indostanos", "Indostaníes")]
+    public void Nombre_de_cada_civ_por_idioma(string civ, string en, string es, string mx)
+    {
+        var names = Data.Civ(civ).Names;
+        Assert.Equal((en, es, mx), (names["en"], names["es"], names["mx"]));
+    }
+
+    [Fact]
+    public void Todas_las_civs_tienen_nombre_en_los_tres_idiomas()
+    {
+        Assert.All(Data.Civs.Values, c => Assert.Equal(["en", "es", "mx"], c.Names.Keys.Order()));
+    }
+
     [Fact]
     public void Arranques_distintos()
     {

@@ -63,6 +63,12 @@ public sealed class CivBonuses
     /// <summary>Nombre interno de la civ en el .dat ("British", "French"...).</summary>
     public string DatName { get; }
 
+    /// <summary>
+    /// Nombre que muestra el juego (en la pantalla de carga), por idioma del juego: "en", "es" (España) y "mx"
+    /// (Latinoamérica). Los incas son "Inca" en inglés y en "es", e "Incas" en "mx".
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Names { get; init; } = new Dictionary<string, string>();
+
     public CivStart Start { get; }
 
     public bool IsNone => ReferenceEquals(this, None);

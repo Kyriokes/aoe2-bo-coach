@@ -173,7 +173,10 @@ public static partial class GameDataLoader
             start,
             carry,
             dto.VillagerSpeed is { } speed ? Ages(speed, "villager_speed") : null,
-            ageResources);
+            ageResources)
+        {
+            Names = dto.Names ?? new Dictionary<string, string>(),
+        };
     }
 
     private static Dictionary<GatherSource, double>? ToCarry(Dictionary<string, double>? carry)
@@ -242,7 +245,8 @@ public static partial class GameDataLoader
         CivStartDto? Start,
         Dictionary<string, double[]>? Carry,
         double[]? VillagerSpeed,
-        Dictionary<string, Dictionary<string, double>>? AgeResources);
+        Dictionary<string, Dictionary<string, double>>? AgeResources,
+        Dictionary<string, string>? Names);
 
     internal sealed record CivStartDto(int Food, int Wood, int Stone, int Gold, int Villagers, bool NoHouses);
 
