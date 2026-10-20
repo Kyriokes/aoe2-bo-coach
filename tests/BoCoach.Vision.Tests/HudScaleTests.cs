@@ -68,6 +68,23 @@ public class HudScaleTests
         Assert.Equal(Describe(expected), Describe(actual));
     }
 
+    // La cola de producción (íconos de 33 px a 1080p) también: agrandada a 1,09 y 1,5 y vuelta a 1080p se lee igual.
+    [Theory]
+    [InlineData(330, 1.09)]
+    [InlineData(1060, 1.09)]
+    [InlineData(1440, 1.09)]
+    [InlineData(1060, 1.5)]
+    [InlineData(1440, 1.5)]
+    public void La_cola_de_produccion_a_otra_escala_se_lee_igual(int frame, double scale)
+    {
+        var library = IconLibrary.Load(Path.Combine(AppContext.BaseDirectory, "icons", "production_queue.json"));
+        var image = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "queue-20261018-021924", $"{frame:D6}_production_queue.png"));
+
+        var back = image.Resample(scale).AtHudScale(scale);
+
+        Assert.Equal(string.Join(" ", library.Read(image)), string.Join(" ", library.Read(back)));
+    }
+
     // Captura real de un amigo (2026-10-20, 1920×1080, HUD a escala 1,09, panel negro de otra civ, comprimida por
     // WhatsApp). Lo que muestra: madera 0 aldeanos y 950, comida 12 y 460, oro 0 y 700, piedra 0 y 800, población 12
     // y 13/15, 0 inactivos, reloj 00:04:15. El "/" de "13/15" sale borroneado por la compresión y se lee "7": el
