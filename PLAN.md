@@ -357,6 +357,8 @@ Cada fase termina con algo que se puede probar. Las fases 1 a 5 no necesitan el 
 
 Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 7 → 8 → 9 → 10. El núcleo lógico y el editor quedan probados antes de pelear con el OCR, y con el editor ya se pueden armar las BO de prueba para todo lo que sigue.
 
+**Estado al 2026-10-19 (v0.9.15):** las fases 0 a 10 están hechas. Criterios de salida sin verificar: Fase 4 (armar una BO de 20 pasos en menos de 5 minutos, prueba del usuario) y Fase 10 (abrir una BO en otra PC con el enlace, con el zip de la release). La Fase 7 se cumplió con el mod del HUD (`BoCoach HUD`) y sus letras, no con los números de color del juego; la Fase 8 midió 0,4 a 2 % de CPU y 50 a 75 MB; la Fase 9 publicó la versión portable como release de GitHub. Lo que falta está ordenado en la sección 11.
+
 ---
 
 ## 8. Estrategia de pruebas
@@ -389,11 +391,39 @@ Orden recomendado: 0 → 1 → 2 → 3, luego 4 y 5 en paralelo, después 6 → 
 
 1. ~~Nombre del repo.~~ Resuelto: `aoe2-bo-coach`.
 2. ~~Bonificaciones por civilización.~~ Resuelto en la Fase 9: el extractor las saca del `.dat` (por edad) y el Planner, la economía y el coach las aplican según la civ de la BO ("any" = valores base).
-3. ¿Importador de formatos de BO de la comunidad? (Propuesta: después de la Fase 10, como extra.)
-6. ¿Leer la cola de producción de los edificios? (Pedido en la Fase 9; pendiente de una captura del usuario.)
-   - Lo más útil de la cola, saber si el centro urbano está parado, ya sale sin leerla: si pasa el tiempo de un aldeano (25 s) más 8 s de margen sin que suba el total del HUD, y el centro urbano no está investigando, el overlay avisa "Centro urbano parado hace N s". Sobre la partida de scouts avisa a las 4:47 y a las 6:38 (los dos huecos reales) y no durante telar y Feudal. Por ahora solo mientras la BO pide aldeanos, para no molestar en las BO que los cortan a propósito.
-   - Leer la cola agregaría: aldeanos o unidades encolados (pagados) antes de que salgan, la barra de progreso de una investigación (cuánto le falta de verdad) y la cola de los cuarteles. Hasta donde sé, la cola solo se ve con el edificio seleccionado, en el panel de abajo: sirve cuando el jugador lo selecciona (la tecla del centro urbano se usa seguido), no todo el tiempo. Hay que confirmarlo con una captura.
-   - Haría falta otra región (el panel de abajo), plantillas de íconos (están en los archivos del juego: `resources/_common/wpfg/resources/uniticons`, con el índice que usa `CivTechTrees`) y los números de la cola (letra nueva). Solo lectura de pantalla, igual que el resto.
-   - Para decidir: una captura a 1920×1080 con el centro urbano seleccionado y 3 o 4 aldeanos en cola, otra investigando telar y otra con el cuartel produciendo.
+3. ~~Importador de formatos de BO de la comunidad.~~ Resuelto en la Fase 9: `RtsOverlayImporter` lee el exportable de buildorderguide.com (formato de RTS Overlay) y agrega lo que esas guías dan por sabido (casas, campamentos, granjas); en la app, "Importar…" y "Pegar BO"; en ReplaySession, `import`. Los tres ejemplos de la app vienen de ahí.
+6. ~~Leer la cola de producción de los edificios.~~ Resuelto en la Fase 9: la cola de arriba a la izquierda se ve siempre, sin seleccionar el edificio. `Vision/Hud/ProductionQueue` la lee con una biblioteca de íconos (`data/icons/production_queue.json`, armada con `ReplaySession icons`/`iconlib`/`teach`) y el coach saca de ahí si el centro urbano está parado (5 s de gracia), las investigaciones en curso aunque no se haya visto la baja del stock, y los edificios iguales que producen a la vez. Queda pendiente la escala a otras resoluciones (sección 11, B4).
 4. ~~Stack de la web.~~ Resuelto: mismo repo (`web/`), Next.js + Supabase + Vercel, y el `Core` de C# compilado a WebAssembly para validar y simular en el navegador (una sola implementación del Planner). Login con Discord y Google.
 5. ~~Licencia del repo.~~ Resuelto: repo público con licencia MIT.
+
+---
+
+## 11. Hoja de ruta (desde el 2026-10-19)
+
+Orden elegido por el usuario: primero la robustez del coach en partidas reales, después la presentación y al final las ideas grandes. Cada ítem tiene su criterio de salida; cada cambio se hace con un test que falle primero y en su propio commit.
+
+### Bloque B: robustez del coach en partidas reales
+
+- **B1. Tiempo relativo.** Los objetivos de la BO se cuentan desde que el jugador empieza a jugar, no desde 00:00. En la partida 20261017-163738 el reloj marcaba 36:26 con 6 aldeanos (36 minutos en idle antes de arrancar) y todos los `at_time` y los objetivos de Feudal quedaban atrasados. El coach fija un inicio de juego (primer snapshot con el reloj andando y los 3 aldeanos iniciales, o el primer aldeano nuevo; si ya hay más aldeanos, una estimación hacia atrás) y el Tracker, el Planner y el desvío contra `targets` usan el tiempo desde ese inicio. Tests con la fixture `lecturas.csv` de scouts corrida +2000 s: mismos pasos y tiempos que sin correr. Criterio: sobre la 20261017-163738 (desde la captura 1000) el desvío se mide desde el 36:26.
+- **B2. Civ de la partida, no de la BO.** Hoy `Coach` usa `BuildOrder.Civ` ("any" en las BO importadas). Primero un desplegable "Civ de esta partida" en la ventana principal (por defecto la de la BO, guardado en `settings.json`) que pase a `PlanStart.For`, al Planner y a la economía; después leerla de la pantalla de carga o del panel de puntajes (región `scores`, ya se graba) con el OCR de Windows, con el desplegable como confirmación. Criterio: en la partida de incas las casas dan 10 de población y los scouts cuestan 68.
+- **B3. Incas: el "Settlement".** El extractor lo saca del `.dat` y `game_data` dice que cuenta como campamento maderero, campamento minero, molino y casa a la vez; "Settlement Built" confirma los pasos de esos cuatro edificios y suma su población. Depende de B2. Criterio: en la 20261017-163738 los pasos de campamentos y molino quedan hechos con el Settlement.
+- **B4. Autocalibración por resolución** (pedido del 2026-10-18; el ítem más grande). (a) Con el mod, buscar las anclas en toda la pantalla: los cuadrados negros con franja de color y el rectángulo negro del reloj (`ModPanel` ya los reconoce dentro de una caja); de ahí salen las 9 regiones y la escala respecto de 1080p; verificar contra la calibración manual sobre las grabaciones de 1080p (±2 px). (b) Escalar las letras `mod_*` por el alto del cuadrado (o normalizar el recorte) y `ProductionQueue.IconSize`; hace falta una grabación corta del usuario a otra resolución (2560×1440 o 1600×900 en ventana) para el golden. (c) La calibración manual queda como respaldo cuando no hay anclas (sin mod). Criterio: sobre la grabación a otra resolución, reloj, stocks y aldeanos al 98 % sin tocar las cajas.
+- **B5. Prueba de usabilidad del editor** (criterio de la Fase 4, tarea del usuario): una BO de 20 pasos desde cero, cronometrada. Si pasa de 5 minutos, anotar qué trabó y arreglarlo.
+- **B6. Mantenimiento:** cada partida nueva se revisa con la skill `revisar-grabacion`; cada parche del juego, extractor y `game_data` nuevo. De la revisión de seguridad del 2026-10-19 quedan las acciones del CI fijadas por SHA (o Dependabot) y el `dotnet-install.sh` de Vercel sin hash (a propósito: Microsoft lo actualiza).
+
+### Bloque C: presentación y portfolio (después de B1 a B3; antes de B4 si B4 se demora)
+
+1. **Probar la release en otra PC** (criterio de la Fase 10, tarea del usuario): bajar el zip de la release, instalar el mod desde la app, calibrar, registrar los enlaces en "Cuenta de la web" y abrir una BO con "Abrir en BO Coach". Lo que no se entienda sin ayuda va al LEEME y a la portada.
+2. **Capturas y video** (tarea del usuario): overlay en partida, editor con vista previa, calibración y web, para el README, la portada (`web/src/app/page.tsx`) y el portfolio.
+3. **README y `docs/LEEME-portable.txt`**: enlace a la release y guía de primeros pasos (mod, calibrar, grabar, empezar el coach), con lo que salió de 1.
+4. **Ejecutable de un solo archivo** (`data/` adentro del `.exe`): el último paso del bloque, no antes.
+
+### Bloque D: ideas grandes (diseño con el usuario antes de escribir código)
+
+Cada una arranca con una charla de diseño y se escribe acá antes de codearla.
+
+1. **"Si no sabe, que se calle" / economía sana como piso.** Cuando el jugador abandona la BO (arquerías y herrería donde la BO pedía establo y molino, partida 20261017-163738), el coach deja de pedir los pasos viejos y se queda con lo que siempre vale: centro urbano produciendo, casas, inactivos y la GD contra lo que hay. Es la base de lo que sigue.
+2. **BO como postura de cierre con prioridades:** 1 economía sana, 2 postura, 3 el excedente a sostener producción y después a la próxima edad, 4 la estrategia queda en la BO. Ejemplo del usuario: "Scouts Feudal (22 pop)" cierra con 1 aldeano y 1 scout siempre en cola y clic en Castillos. Cambia el formato (`schema_version` 3) y el validador; la web lo toma del Core.
+3. **Ramas disparadas por señales:** clic del rival (puntaje que cae de golpe, región `scores`), ataques (aviso del log), aldeanos perdidos. Necesita la letra del panel de puntajes y leer el color del aviso de ataque.
+4. **Elegir la BO por civ, rival y mapa:** pantalla de carga (texto grande, OCR de Windows) y sugerencia desde la biblioteca.
+5. **Informe y estadísticas de después de la partida:** con `lecturas.csv` ya está todo; primero `ReplaySession stats` sobre una grabación, después en la app al terminar el coach.
