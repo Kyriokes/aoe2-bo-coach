@@ -156,11 +156,21 @@ public class BuildOrderValidatorTests
     [InlineData(0, null, "count")]
     [InlineData(1, 0, "at_pop")]
     [InlineData(1, 201, "at_pop")]
+    [InlineData(201, null, "count")]
     public void Numeros_fuera_de_rango(int count, int? atPop, string expected)
     {
         var error = SingleError(Bo(Villagers("s1", count) with { AtPop = atPop }));
 
         Assert.Contains(expected, error.Message);
+    }
+
+    [Fact]
+    public void Builders_tiene_el_mismo_tope_que_count()
+    {
+        // Sin tope, una BO bajada de la web con un número enorme cuelga el simulador (encola una entrada por unidad).
+        var error = SingleError(Bo(Build("s1", "house") with { Builders = 201 }));
+
+        Assert.Contains("builders", error.Message);
     }
 
     [Fact]

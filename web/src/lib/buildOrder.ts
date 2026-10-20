@@ -3,9 +3,16 @@ import { z } from "zod";
 /** Versión más nueva del formato de BO que entiende esta web (la misma que la app: BuildOrder.CurrentSchemaVersion). */
 export const CURRENT_SCHEMA_VERSION = 2;
 
+/** Tope de count y builders (la población máxima, como BuildOrderValidator.MaxCount en el Core). */
+export const MAX_COUNT = 200;
+
+// count y builders con tope: sin él, un número enorme agota la memoria del Planner (encola una entrada por unidad)
+// en el navegador de cualquiera que abra la página de la BO y en la app de quien la importe.
 const step = z.looseObject({
   id: z.string().min(1).max(40),
   do: z.enum(["train", "build", "research", "move"]),
+  count: z.number().int().min(1).max(MAX_COUNT).optional(),
+  builders: z.number().int().min(1).max(MAX_COUNT).nullish(),
 });
 
 /**

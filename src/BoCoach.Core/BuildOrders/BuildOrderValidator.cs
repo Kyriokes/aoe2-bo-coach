@@ -27,6 +27,12 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 {
     public const int MaxPopulation = 200;
 
+    /// <summary>
+    /// Tope de 'count' y de 'builders' (la población máxima: nada se hace de a más). Sin tope, una BO bajada de la web
+    /// con un número enorme agota la memoria del Planner, que encola una entrada por unidad, en la app y en el navegador.
+    /// </summary>
+    public const int MaxCount = MaxPopulation;
+
     /// <summary>Edificio con el que arranca la partida.</summary>
     public const string StartingBuilding = "town_center";
 
@@ -122,16 +128,16 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         Step step, string? id, Age age, HashSet<string> built, HashSet<string> ids,
         Action<string?, string> error, Action<string?, string> warn)
     {
-        if (step.Count < 1)
-            error(id, $"'count' tiene que ser 1 o más (es {step.Count}).");
+        if (step.Count is < 1 or > MaxCount)
+            error(id, $"'count' tiene que estar entre 1 y {MaxCount} (es {step.Count}).");
         if (step.AtPop is < 1 or > MaxPopulation)
             error(id, $"'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {step.AtPop}).");
         if (step.AtTime is < 0)
             error(id, $"'at_time' no puede ser negativo (es {step.AtTime}).");
         if (step.Builders is not null && step.Do != StepAction.Build)
             error(id, "'builders' solo se usa en pasos 'build'.");
-        else if (step.Builders is < 1)
-            error(id, $"'builders' tiene que ser 1 o más (es {step.Builders}).");
+        else if (step.Builders is < 1 or > MaxCount)
+            error(id, $"'builders' tiene que estar entre 1 y {MaxCount} (es {step.Builders}).");
 
         foreach (var dep in step.After)
         {
