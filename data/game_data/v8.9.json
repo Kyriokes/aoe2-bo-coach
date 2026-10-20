@@ -193,6 +193,23 @@
       "time": 35,
       "age": "dark"
     },
+    "settlement": {
+      "kind": "building",
+      "dat_id": 2556,
+      "dat_name": "SETTL1",
+      "cost": {
+        "wood": 125
+      },
+      "time": 40,
+      "age": "dark",
+      "pop_bonus": 5,
+      "counts_as": [
+        "lumber_camp",
+        "mining_camp",
+        "mill",
+        "house"
+      ]
+    },
     "farm": {
       "kind": "building",
       "dat_id": 50,
@@ -2122,6 +2139,12 @@
           10,
           10,
           10
+        ],
+        "settlement": [
+          10,
+          10,
+          10,
+          10
         ]
       }
     },
@@ -2292,6 +2315,20 @@
           },
           {
             "wood": 85
+          }
+        ],
+        "settlement": [
+          {
+            "wood": 106
+          },
+          {
+            "wood": 106
+          },
+          {
+            "wood": 106
+          },
+          {
+            "wood": 106
           }
         ],
         "dock": [
@@ -3602,6 +3639,20 @@
     "muisca": {
       "dat_name": "Muisca",
       "costs": {
+        "settlement": [
+          {
+            "wood": 84
+          },
+          {
+            "wood": 84
+          },
+          {
+            "wood": 84
+          },
+          {
+            "wood": 84
+          }
+        ],
         "castle_age": [
           {
             "food": 800,

@@ -30,6 +30,12 @@ NIVEL_EDAD = {"dark": 0, "feudal": 1, "castle": 2, "imperial": 3}
 ID_CONSTRUCTOR = 118  # "train location" de los edificios: los construye un aldeano
 CIV_BASE = 0  # Gaia: tiene todas las unidades sin bonificaciones de civ
 
+# Edificios que valen por varios a la vez (el Settlement de los incas): para confirmar los pasos de la BO, para los
+# requisitos de edad y para lo que se produce en ellos.
+CUENTA_COMO: dict[str, list[str]] = {
+    "settlement": ["lumber_camp", "mining_camp", "mill", "house"],
+}
+
 # Entidades que se exportan: clave estable -> (tipo, id en el .dat)
 ENTIDADES: dict[str, tuple[str, int]] = {
     # Unidades
@@ -50,6 +56,7 @@ ENTIDADES: dict[str, tuple[str, int]] = {
     "mill": ("building", 68),
     "lumber_camp": ("building", 562),
     "mining_camp": ("building", 584),
+    "settlement": ("building", 2556),  # incas: campamento maderero, minero, molino y casa en uno
     "farm": ("building", 50),
     "dock": ("building", 45),
     "barracks": ("building", 12),
@@ -372,6 +379,8 @@ class Extractor:
             )
             if bono:
                 datos["pop_bonus"] = int(bono)
+            if clave in CUENTA_COMO:
+                datos["counts_as"] = CUENTA_COMO[clave]
         return datos
 
     def tasas(self) -> dict[str, float]:
