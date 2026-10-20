@@ -37,6 +37,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         ToolsBar.DataContext = Tools;
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () => new ScreenFrames(_screen, Tools.Layout), CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
+        GameCivBox.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;
         CursorRemindersBox.DataContext = Coach;
         LivePanel.DataContext = Coach;

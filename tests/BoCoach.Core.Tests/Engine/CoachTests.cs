@@ -102,6 +102,16 @@ public class SnapshotBuilderTests
     }
 
     [Fact]
+    public void Con_incas_una_casa_da_10_de_poblacion_y_la_suba_del_tope_no_cuenta_doble()
+    {
+        // Partida 20261017-163738: el coach tomaba la civ de la BO ("any") y cada casa de incas se contaba como dos.
+        var builder = new SnapshotBuilder(TestData.GameData, TestData.GameData.Civ("incas"));
+        builder.Build(WithCap(10, 15));
+
+        Assert.Equal(1, Houses(builder.Build(WithCap(11, 25))));
+    }
+
+    [Fact]
     public void Una_casa_avisada_por_el_log_no_se_cuenta_otra_vez_cuando_sube_el_tope()
     {
         var builder = new SnapshotBuilder(TestData.GameData);

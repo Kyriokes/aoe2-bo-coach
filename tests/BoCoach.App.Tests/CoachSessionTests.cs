@@ -74,6 +74,28 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
     }
 
+    // Partida 20261017-163738 (incas): el coach tomaba la civ de la BO ("any") y no aplicaba las bonificaciones
+    // de la civ con que se juega. La civ de la partida se elige en la ventana y queda guardada.
+    [Fact]
+    public void La_civ_de_la_partida_se_elige_en_la_ventana_se_guarda_y_el_coach_la_usa_en_vez_de_la_de_la_BO()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal(CoachSessionViewModel.BoCiv, session.GameCiv);
+        Assert.Contains("incas", session.CivOptions);
+
+        session.GameCiv = "incas";
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+
+        Assert.Equal("incas", session.LiveCoach!.BuildOrder.Civ);
+        Assert.Equal("incas", CoachSettings.Load(path).GameCiv);
+        Assert.Equal("incas", new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).GameCiv);
+
+        session.GameCiv = CoachSessionViewModel.BoCiv;
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        Assert.Equal(Scouts.Civ, session.LiveCoach!.BuildOrder.Civ);
+    }
+
     [Fact]
     public void El_overlay_muestra_el_paso_actual_lo_que_esta_en_curso_y_el_objetivo()
     {

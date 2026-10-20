@@ -44,6 +44,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
         MaxVillagers = settings.MaxVillagers;
         CursorReminders = settings.CursorReminders;
+        GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -87,13 +88,33 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void ToggleCursorReminders() => CursorReminders = !CursorReminders;
 
+    /// <summary>Opción del desplegable para jugar con la civ que dice la BO.</summary>
+    public const string BoCiv = "(la de la BO)";
+
+    /// <summary>
+    /// Civ con la que se juega esta partida (clave de game_data) o <see cref="BoCiv"/>. El coach usa sus
+    /// bonificaciones (costos, población de las casas, recursos iniciales) en vez de las de la civ de la BO, que en las
+    /// importadas es "any". Partida 20261017-163738: incas con casas de 10 de población contadas como dos.
+    /// </summary>
+    [ObservableProperty] public partial string GameCiv { get; set; } = BoCiv;
+
+    partial void OnGameCivChanged(string value) => SaveSettings();
+
+    public IReadOnlyList<string> CivOptions => [BoCiv, .. _data.GameData.Civs.Keys.Order()];
+
+    /// <summary>La civ que va a usar el coach con esta BO.</summary>
+    private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
+
+    /// <summary>El coach en vivo mientras corre (para los tests).</summary>
+    public LiveCoach? LiveCoach => _coach;
+
     private void SaveSettings()
     {
         if (_settingsPath is null)
             return;
         try
         {
-            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders }.Save(_settingsPath);
+            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders, GameCiv = GameCiv == BoCiv ? "" : GameCiv }.Save(_settingsPath);
         }
         catch (IOException)
         {
@@ -130,6 +151,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public void Start(BuildOrder bo, IFrameSource frames)
     {
         Stop();
+        // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
+        bo = bo with { Civ = CivFor(bo) };
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.Events, _data.Fonts, OcrReader.TryCreate(), frames,
             new EconomySettings { MaxVillagers = MaxVillagers });
@@ -145,7 +168,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _host.ShowOverlay(Overlay, _placedOver);
         _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\". Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
     }
 
     public void Stop()

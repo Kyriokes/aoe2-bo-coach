@@ -117,7 +117,7 @@ public sealed class LiveCoach : IDisposable
         BuildOrder = bo;
         Frames = frames;
         _coach = new Coach(bo, data, events, economy: economy);
-        _builder = new SnapshotBuilder(data);
+        _builder = new SnapshotBuilder(data, data.Civ(bo.Civ));
         _reader = new ScreenReader(fonts, ocr, events);
     }
 

@@ -42,6 +42,12 @@
                            ToolTip="Versión · commit · cuándo se compiló" />
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <StackPanel x:Name="GameCivBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                ToolTip="Con qué civ jugás esta partida: el coach usa sus bonificaciones (costos, población de las casas, recursos iniciales). Por defecto, la civ que dice la BO. Se aplica al empezar el coach">
+                        <TextBlock Text="Civ" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding CivOptions}" SelectedItem="{Binding GameCiv}" Width="104" VerticalContentAlignment="Center"
+                                  AutomationProperties.Name="Civ de esta partida" />
+                    </StackPanel>
                     <StackPanel x:Name="MaxVillagersBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Hasta cuántos aldeanos producen sin parar los centros urbanos (100 a 130 según la estrategia). La comida nunca baja de lo que necesitan. Se aplica al empezar el coach">
                         <TextBlock Text="Máx. aldeanos" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -61,7 +67,7 @@
                     <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
                 </StackPanel>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Foreground="#C9C1B6" FontSize="12"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
+                    <TextBlock Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
                     <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
                                Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
                         <TextBlock.Style>

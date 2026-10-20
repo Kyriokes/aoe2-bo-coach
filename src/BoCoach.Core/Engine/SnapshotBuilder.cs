@@ -41,12 +41,12 @@ public sealed record ScreenReading(
 /// <see cref="StartOffset"/>).</item>
 /// </list>
 /// </summary>
-/// <param name="start">Cómo arranca la partida (recursos y aldeanos iniciales de la civ); por defecto, el estándar.</param>
-public sealed class SnapshotBuilder(GameData data, PlanStart? start = null)
+/// <param name="civ">La civ con que se juega: su arranque (recursos y aldeanos iniciales) y la población que dan sus casas. null = valores base.</param>
+public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
 {
-    private readonly PlanStart _start = start ?? PlanStart.Standard;
+    private readonly CivBonuses _civ = civ ?? CivBonuses.None;
+    private readonly PlanStart _start = PlanStart.For(civ ?? CivBonuses.None, data);
 
-    private const int StartingCap = 5;
     private const int MaxPopulation = BuildOrders.BuildOrderValidator.MaxPopulation;
     private const string House = "house";
     private const string HouseBuilt = "house_built";
@@ -62,11 +62,11 @@ public sealed class SnapshotBuilder(GameData data, PlanStart? start = null)
     private readonly List<double> _inferredHouses = [];
     private (int Cap, double Time)? _lastReadCap;
     private double _lastClock;
-    private ResourceAmounts _stock = (start ?? PlanStart.Standard).Stock;
+    private ResourceAmounts _stock = PlanStart.For(civ ?? CivBonuses.None, data).Stock;
     private int _military;
-    private int _builtCap = StartingCap;
-    private int _population = (start ?? PlanStart.Standard).Population;
-    private int _cap = (start ?? PlanStart.Standard).PopulationCap;
+    private int _builtCap = PlanStart.For(civ ?? CivBonuses.None, data).PopulationCap;
+    private int _population = PlanStart.For(civ ?? CivBonuses.None, data).Population;
+    private int _cap = PlanStart.For(civ ?? CivBonuses.None, data).PopulationCap;
     private int? _villagers;
 
     /// <summary>
@@ -136,10 +136,10 @@ public sealed class SnapshotBuilder(GameData data, PlanStart? start = null)
             if (EventConventions.Parse(id) is { Action: BuildOrders.StepAction.Build } built)
             {
                 _buildings[built.What] = _buildings.GetValueOrDefault(built.What) + 1;
-                if (data.TryGet(built.What, out var entity) && entity.PopBonus > 0)
+                if (data.TryGet(built.What, out var entity) && _civ.PopBonus(entity, Age.Dark) is > 0 and var pop)
                 {
-                    _builtCap += entity.PopBonus;
-                    _capCredits.Add((now, entity.PopBonus));
+                    _builtCap += pop;
+                    _capCredits.Add((now, pop));
                 }
             }
         }
@@ -362,7 +362,8 @@ public sealed class SnapshotBuilder(GameData data, PlanStart? start = null)
                 else
                     _capCredits[0] = (_capCredits[0].Time, _capCredits[0].Pop - used);
             }
-            var housePop = data.TryGet(House, out var house) && house.PopBonus > 0 ? house.PopBonus : 5;
+            // Con la civ: las casas de los incas dan 10 (sin esto, cada casa se contaba como dos).
+            var housePop = data.TryGet(House, out var house) && _civ.PopBonus(house, Age.Dark) > 0 ? _civ.PopBonus(house, Age.Dark) : 5;
             for (; rise >= housePop; rise -= housePop)
             {
                 _pendingEvents.Add(HouseBuilt);

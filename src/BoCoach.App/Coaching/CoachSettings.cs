@@ -19,6 +19,9 @@ public sealed class CoachSettings
     /// <summary>Recordatorios junto al mouse (casa, centro urbano parado).</summary>
     public bool CursorReminders { get; set; } = true;
 
+    /// <summary>Civ con la que se juega (clave de game_data); vacío = la de la BO.</summary>
+    public string GameCiv { get; set; } = "";
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -31,6 +34,7 @@ public sealed class CoachSettings
                 {
                     MaxVillagers = json["max_villagers"]?.GetValue<int>() is { } max ? Clamp(max) : DefaultMaxVillagers,
                     CursorReminders = json["cursor_reminders"]?.GetValue<bool>() ?? true,
+                    GameCiv = json["civ"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "",
                 };
             }
         }
@@ -44,7 +48,7 @@ public sealed class CoachSettings
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders };
+        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv };
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }
