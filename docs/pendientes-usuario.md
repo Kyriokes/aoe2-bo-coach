@@ -26,3 +26,8 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 11. **Prueba de usabilidad del editor** (B5): una BO de 20 pasos desde cero, cronometrada. Si pasa de 5 minutos, contame qué te trabó.
 12. **Tu biblioteca local:** las copias de scouts y fast castle en `%APPDATA%\BoCoach\build_orders` son las viejas (9 en ovejas). Para tener las nuevas: "Importar…" con `build_orders/scouts_22p.json` y `build_orders/fast_castle_principiante.json` del repo.
 13. **Bloque D de `PLAN.md`** (ideas grandes): charlarlas antes de que yo escriba código.
+
+## Decisiones que necesito
+
+14. **Leer la civ sola (B2, segunda parte).** En tus grabaciones el panel de puntajes muestra la civ con dos letras al lado de cada jugador ("Ja", "Bo"), no el nombre. Necesito que me digas: (a) cómo sé cuál renglón es el tuyo: ¿pongo en la app un campo "Tu nombre en el juego" o siempre sos el jugador 1? (b) si dos civs empiezan igual (burgundios, búlgaros y birmanos), ¿alcanza con que el coach no elija y deje el desplegable "Civ" como está? La pantalla de carga muestra el nombre entero, pero tus grabaciones suelen empezar después.
+15. **Dependabot.** Dejé las acciones del CI fijadas por SHA. Si querés que se actualicen solas, agrego Dependabot, pero va a abrir PRs por su cuenta en el repo público. ¿Lo activo?
