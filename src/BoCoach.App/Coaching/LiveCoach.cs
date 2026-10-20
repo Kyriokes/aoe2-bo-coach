@@ -79,6 +79,7 @@ public sealed class UsageMeter
 /// <param name="Ended">Se terminó la grabación (en modo replay).</param>
 /// <param name="Area">Zona del juego en la pantalla en la última captura.</param>
 /// <param name="StartOffset">Segundos del reloj del juego antes de que el jugador empezara a jugar (ver <see cref="SnapshotBuilder.StartOffset"/>).</param>
+/// <param name="HudScale">Tamaño del HUD respecto de 1080p: las franjas de <see cref="HudState.ModBands"/> están medidas a 1080p.</param>
 public sealed record CoachFrame(
     CoachView View,
     HudState? Hud,
@@ -89,7 +90,8 @@ public sealed record CoachFrame(
     bool Ended,
     string? Error,
     PixelRect Area,
-    double StartOffset = 0);
+    double StartOffset = 0,
+    double HudScale = 1);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -226,6 +228,6 @@ public sealed class LiveCoach : IDisposable
         lock (_gate)
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
-        Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset));
+        Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset, Frames.HudScale));
     }
 }

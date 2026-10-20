@@ -19,6 +19,12 @@ public interface IFrameSource
 
     /// <summary>La próxima captura, o null si no hay más (terminó la grabación).</summary>
     Frame? Next();
+
+    /// <summary>
+    /// Tamaño del HUD respecto de 1080p. Las capturas ya llegan llevadas a 1080p; lo que se mide en ellas (las franjas
+    /// del mod) hay que multiplicarlo por esto para dibujarlo en la pantalla.
+    /// </summary>
+    double HudScale => 1;
 }
 
 /// <summary>La pantalla en vivo: cada región se captura una sola vez por captura, recién cuando se la pide.</summary>
@@ -29,6 +35,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
     public TimeSpan Interval { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public PixelRect Area => screen.CaptureArea;
+
+    public double HudScale => layout.HudScale;
 
     public Frame? Next()
     {
@@ -61,6 +69,8 @@ public sealed class RecordedFrames(RecordedSession session, double speed = 1) : 
     public TimeSpan Interval => TimeSpan.FromMilliseconds(500 / Math.Max(0.1, speed));
 
     public PixelRect Area { get; init; } = GameWindow.PrimaryScreen;
+
+    public double HudScale => session.HudScale;
 
     /// <summary>Número de la última captura entregada.</summary>
     public int Current { get; private set; } = -1;

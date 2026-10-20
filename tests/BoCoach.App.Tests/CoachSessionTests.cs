@@ -132,6 +132,22 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("Terminó la grabación.", overlay.Warning);
     }
 
+    // B4 (b): con el HUD a otra escala las franjas se miden en la captura llevada a 1080p; la GD y el aviso de
+    // inactivos se dibujan en la pantalla, así que vuelven al tamaño real.
+    [Fact]
+    public void Con_el_HUD_a_otra_escala_la_GD_va_en_la_franja_de_tamano_real()
+    {
+        var view = new Coach(Scouts, _data.GameData, _data.Events).View;
+        var overlay = new OverlayViewModel(_data.GameData, Scouts.Name);
+        var bands = new Dictionary<string, PixelRect> { ["food"] = new(2, 2, 36, 12), ["idle_villagers"] = new(1, 2, 36, 12) };
+        var hud = new HudState(10, 1, 200, 200, 100, 200, 3, 1, Age.Dark, [], [], ModBands: bands);
+
+        overlay.Apply(Frame(view, hud: hud) with { HudScale = 1.5 });
+
+        Assert.Equal(new PixelRect(3, 3, 54, 18), overlay.Resources.Single(r => r.Region == "food").Band);
+        Assert.Equal(new PixelRect(2, 3, 54, 18), overlay.IdleAlert.Band);
+    }
+
     [Fact]
     public void Sin_BO_elegida_no_arranca_y_lo_dice()
     {

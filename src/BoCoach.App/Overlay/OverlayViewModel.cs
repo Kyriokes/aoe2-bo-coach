@@ -2,6 +2,7 @@ using BoCoach.App.Coaching;
 using BoCoach.Core;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
+using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -94,11 +95,11 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
             // Con el mod, los que hay salen del HUD; si no, de la estimación de la economía.
             target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: !view.ActualFromHud);
             if (frame.Hud?.ModBands is { } bands && bands.TryGetValue(target.Region, out var band))
-                target.Band = band;
+                target.Band = OnScreen(band, frame.HudScale);
         }
         IdleAlert.Alert = frame.Hud?.IdleVillagers > 0;
         if (frame.Hud?.ModBands is { } modBands && modBands.TryGetValue(IdleAlert.Region, out var idleBand))
-            IdleAlert.Band = idleBand;
+            IdleAlert.Band = OnScreen(idleBand, frame.HudScale);
         // Sin reloj (menú, pantalla de carga) no se recuerda nada: el estado puede ser viejo.
         var playing = frame is { Ended: false, Paused: false, SecondsWithoutClock: < ClockWarningSeconds };
         HouseReminder = playing && view.NeedsHouse;
@@ -115,6 +116,13 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         RegionNames.Stone => Resource.Stone,
         _ => Resource.Gold,
     };
+
+    /// <summary>Una franja medida en la captura llevada a 1080p, en píxeles de la caja en la pantalla.</summary>
+    private static PixelRect OnScreen(PixelRect band, double hudScale) => CapturedImage.NeedsResample(hudScale)
+        ? new PixelRect(Scaled(band.X, hudScale), Scaled(band.Y, hudScale), Scaled(band.Width, hudScale), Scaled(band.Height, hudScale))
+        : band;
+
+    private static int Scaled(int pixels, double scale) => (int)Math.Round(pixels * scale);
 
     private static string? WarningFor(CoachFrame frame) => frame switch
     {
