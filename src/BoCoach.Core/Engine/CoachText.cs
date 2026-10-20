@@ -32,6 +32,13 @@ public static class CoachText
 
     public static CoachLines Lines(CoachView view, GameData data)
     {
+        var lines = BaseLines(view, data);
+        // D3: una señal reciente (el rival hizo clic, perdiste aldeanos) va en el renglón de avisos, antes que el del log.
+        return view.Signals.Count > 0 ? lines with { Alert = view.Signals[^1].Text } : lines;
+    }
+
+    private static CoachLines BaseLines(CoachView view, GameData data)
+    {
         // Las metas en curso del paso mixto se ven en su renglón de meta, no también en "En curso".
         var goalIndexes = view.Goals.Select(g => g.Index).ToHashSet();
         // Producción militar en marcha: un renglón por unidad, sumando las tandas ("12 + 12 arqueros" = 1/24).

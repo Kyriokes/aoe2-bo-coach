@@ -95,6 +95,9 @@ public sealed record CoachView(
 
     /// <summary>Sin paso actual (la BO terminada, salvo granjas o producción) y no abandonada, la postura de cierre (D2); si no, null.</summary>
     public PostureView? Posture { get; init; }
+
+    /// <summary>Señales recientes de la partida (D3: clic de edad del rival, ataque, aldeanos perdidos), la última al final.</summary>
+    public IReadOnlyList<GameSignal> Signals { get; init; } = [];
 }
 
 /// <summary>
@@ -139,6 +142,7 @@ public sealed class Coach
         Tracker.Update(State);
         Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
         _posture = new PostureCoach(Tracker.BuildOrder, data);
+        Signals = new GameSignals(data);
         View = BuildView();
     }
 
@@ -147,6 +151,14 @@ public sealed class Coach
 
     /// <summary>Si el jugador dejó la BO (D1).</summary>
     public BuildOrderAbandonment Abandonment { get; }
+
+    /// <summary>Las señales de la partida (D3).</summary>
+    public GameSignals Signals { get; }
+
+    /// <summary>Cuántos segundos de partida se muestra una señal en el overlay.</summary>
+    public double SignalSeconds { get; init; } = 10;
+
+    private readonly HashSet<int> _ownClicksSeen = [];
 
     /// <summary>Cada cuántos segundos de partida se vuelve a simular el plan (si no hubo eventos).</summary>
     public double ReplanEvery { get; init; } = 5;
@@ -176,6 +188,13 @@ public sealed class Coach
         Tracker.Update(State);
         Abandonment.Update(State, Tracker.Steps);
         var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
+        // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
+        foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
+        {
+            if (_ownClicksSeen.Add(step.Index))
+                Signals.OwnAgeClick(step.StartedAt!.Value);
+        }
+        Signals.Update(snapshot, State);
         TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
@@ -546,8 +565,11 @@ public sealed class Coach
             NeedsHouse = NeedsHouse(),
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
             Posture = PostureView(),
+            Signals = RecentSignals(),
         };
     }
+
+    private IReadOnlyList<GameSignal> RecentSignals() => Signals.All.Where(s => State.Time - s.Time < SignalSeconds).ToList();
 
     /// <summary>
     /// La postura de cierre, cuando no queda paso actual (la cola, si se leyó hace poco). Pueden quedar abiertos lo que
@@ -588,5 +610,6 @@ public sealed class Coach
         FoodFloor = Economy?.FoodFloor ?? 0,
         NeedsHouse = NeedsHouse(),
         TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
+        Signals = RecentSignals(),
     };
 }
