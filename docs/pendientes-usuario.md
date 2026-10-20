@@ -11,7 +11,7 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 ## Versiones y publicación
 
-5. **Pasar la v0.9.17 a los amigos.** El zip lo arma el CI como artefacto de la rama. Instrucciones para ellos: abrir la app, "Instalar mod del HUD", reabrir el juego, elegir "Idioma del juego", empezar el coach (calibra solo). Si algo falla, Ctrl+Alt+X y mandar la carpeta `diagnostico`.
+5. **Pasar la v0.9.17 a los amigos.** El zip lo arma el CI: en GitHub, pestaña Actions, la corrida "CI" del commit `v0.9.17` (rama `fase-9-refinamiento`), abajo en "Artifacts" está `BoCoach-portable-win-x64` (dura 14 días; hay que estar logueado). Instrucciones para ellos, también en el `LEEME.txt` del zip: abrir la app, "Instalar mod del HUD", reabrir el juego, elegir "Idioma del juego" (España o Latinoamérica, según cómo lo tengan en el juego) y la "Civ", empezar el coach (calibra solo). Si algo falla, Ctrl+Alt+X en partida y mandar la carpeta `%LOCALAPPDATA%\BoCoach\diagnostico`.
 6. **Push a `main`.** Lo pedís vos en el chat ("pusheá a main"): la rama `fase-9-refinamiento` va adelante de `main`.
 7. **Release pública** (etiqueta `v*`): cuando quieras. La portada de la web apunta a la última release y hoy no hay ninguna.
 
