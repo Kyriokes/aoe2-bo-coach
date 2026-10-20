@@ -244,8 +244,22 @@
                     <TextBox Margin="0,8,0,0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"
                              AcceptsReturn="True" MinHeight="44" MaxHeight="80" VerticalScrollBarVisibility="Auto" ToolTip="Descripción" />
 
+                    <!-- D3: de qué se ven los pasos (la BO o una rama) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <TextBlock Text="Pasos de" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
+                        <ComboBox Width="230" ItemsSource="{Binding BranchOptions}" SelectedValuePath="Value" SelectedValue="{Binding SelectedBranch}"
+                                  AutomationProperties.Name="Pasos de"
+                                  ToolTip="Ramas: pasos que el coach pone primero cuando ve una señal de la partida (el rival hizo clic en una edad, te atacan, perdiste aldeanos). Una vez por partida." />
+                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsBranch, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="antes de" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
+                            <TextBox Width="54" Text="{Binding BranchBeforeText, UpdateSourceTrigger=PropertyChanged}" ToolTip="mm:ss; vacío = en cualquier momento" />
+                            <TextBlock Text="Nota" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
+                            <TextBox Width="260" Text="{Binding BranchNote, UpdateSourceTrigger=PropertyChanged}" ToolTip="Qué hacer y por qué (sale en el overlay)" />
+                        </StackPanel>
+                    </StackPanel>
+
                     <!-- Barra de pasos -->
-                    <WrapPanel Margin="0,14,0,8">
+                    <WrapPanel Margin="0,8,0,8">
                         <Button Content="+ Aldeanos" Style="{StaticResource AddButton}" Command="{Binding AddVillagersCommand}" ToolTip="Ctrl+1" />
                         <Button Content="+ Construir" Style="{StaticResource AddButton}" Command="{Binding AddBuildCommand}" ToolTip="Ctrl+2" />
                         <Button Content="+ Investigar" Style="{StaticResource AddButton}" Command="{Binding AddResearchCommand}" ToolTip="Ctrl+3" />

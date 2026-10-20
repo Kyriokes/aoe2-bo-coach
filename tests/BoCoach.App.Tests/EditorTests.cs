@@ -31,6 +31,44 @@ public sealed class EditorTests : IDisposable
         Assert.Equal(bo.Targets!.VillagersAtCastle, new BuildOrderEditorViewModel(bo, _data).ToBuildOrder().Targets?.VillagersAtCastle);
     }
 
+    // D3: las ramas se arman en el editor eligiendo de qué se ven los pasos.
+    [Fact]
+    public void Una_rama_se_arma_eligiendo_su_senal_y_se_guarda_aparte_de_la_BO()
+    {
+        var vm = new BuildOrderEditorViewModel(ScoutsBo, _data);
+        var mainCount = vm.Steps.Count;
+
+        vm.SelectedBranch = "rival_feudal_click";
+        Assert.True(vm.IsBranch);
+        Assert.Empty(vm.Steps);
+        vm.AddVillagersCommand.Execute(null);
+        vm.BranchBeforeText = "10:00";
+        vm.BranchNote = "Más aldeanos a la madera";
+
+        var bo = vm.ToBuildOrder();
+        Assert.Equal(mainCount, bo.Steps.Count);
+        var branch = Assert.Single(bo.Branches!);
+        Assert.Equal(("rival_feudal_click", 600, "Más aldeanos a la madera", 1), (branch.On, branch.Before, branch.Note, branch.Steps.Count));
+        Assert.DoesNotContain(branch.Steps[0].Id, bo.Steps.Select(s => s.Id)); // ids distintos de los de la BO
+        Assert.True(vm.IsDirty);
+
+        vm.SelectedBranch = BuildOrderEditorViewModel.MainSteps;
+        Assert.Equal(mainCount, vm.Steps.Count);
+        Assert.Single(vm.ToBuildOrder().Branches!);
+    }
+
+    [Fact]
+    public void Una_BO_con_ramas_las_muestra_al_elegir_su_senal()
+    {
+        var bo = ScoutsBo with { Branches = [new Branch { On = "under_attack", Note = "Torre", Steps = [new Step { Id = "a1", Do = StepAction.Build, What = "watch_tower" }] }] };
+        var vm = new BuildOrderEditorViewModel(bo, _data);
+
+        vm.SelectedBranch = "under_attack";
+        Assert.Single(vm.Steps);
+        Assert.Equal("Torre", vm.BranchNote);
+        Assert.False(vm.IsDirty);
+    }
+
     // D2: la postura de cierre. Sin tocarla, una BO que no la tenía se guarda sin postura (sigue a sus pasos).
     [Fact]
     public void La_postura_deducida_se_muestra_y_sin_tocarla_no_se_guarda()

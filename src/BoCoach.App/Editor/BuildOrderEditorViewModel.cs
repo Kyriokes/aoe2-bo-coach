@@ -21,7 +21,11 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         nameof(FeudalTargetText), nameof(CastleTargetText),
         nameof(FeudalFood), nameof(FeudalWood), nameof(FeudalGold), nameof(FeudalStone),
         nameof(PostureVillagers), nameof(PostureUnit), nameof(PostureNextAge),
+        nameof(BranchBeforeText), nameof(BranchNote),
     ];
+
+    /// <summary>La BO principal en <see cref="SelectedBranch"/>; las ramas van por su señal.</summary>
+    public const string MainSteps = "";
 
     private static readonly string[] ResearchDefaults = ["loom", "feudal_age", "castle_age", "imperial_age"];
 
@@ -32,6 +36,10 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 
     /// <summary>Aldeanos al llegar a Castillos: el editor no los muestra, pero se guardan como venían.</summary>
     private readonly VillagerDistribution? _villagersAtCastle;
+
+    // D3: los pasos de la BO principal y de cada rama; la lista que se ve (Steps) es la de SelectedBranch.
+    private readonly Dictionary<string, List<StepViewModel>> _stepLists = [];
+    private readonly Dictionary<string, (string Before, string Note)> _branchInfo = [];
     private bool _loading = true;
 
     public BuildOrderEditorViewModel(BuildOrder bo, CoachData app)
@@ -67,9 +75,16 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
                 .Select(e => new Option<string?>(e.Key, StepText.Name(e.Key)))
                 .OrderBy(o => o.Label, StringComparer.CurrentCulture))
             .ToList();
-        Steps = new ObservableCollection<StepViewModel>(bo.Steps.Select(NewStep));
-        for (var i = 1; i < Steps.Count; i++)
-            Steps[i].WithPrevious = bo.Steps[i].Group is { } group && group == bo.Steps[i - 1].Group;
+        Steps = new ObservableCollection<StepViewModel>(StepModels(bo.Steps));
+        foreach (var branch in bo.Branches ?? [])
+        {
+            _stepLists[branch.On] = StepModels(branch.Steps);
+            _branchInfo[branch.On] = (branch.Before is { } b ? GameClock.Format(b) : "", branch.Note ?? "");
+        }
+        BranchOptions = [new(MainSteps, "BO principal"), .. Branch.Signals.Select(s => new Option<string>(s.Key, s.Value))];
+        SelectedBranch = MainSteps;
+        BranchBeforeText = "";
+        BranchNote = "";
         Steps.CollectionChanged += (_, _) => Changed();
         _loading = false;
         Refresh();
@@ -113,6 +128,76 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 
     public ObservableCollection<StepViewModel> Steps { get; }
 
+    /// <summary>De qué se ven los pasos: la BO principal o una rama (D3, por su señal).</summary>
+    public IReadOnlyList<Option<string>> BranchOptions { get; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBranch))]
+    public partial string SelectedBranch { get; set; }
+
+    public bool IsBranch => SelectedBranch != MainSteps;
+
+    /// <summary>La rama solo vale si la señal llega antes de este momento (mm:ss; vacío = siempre).</summary>
+    [ObservableProperty] public partial string BranchBeforeText { get; set; }
+
+    /// <summary>Qué hacer y por qué, para el overlay.</summary>
+    [ObservableProperty] public partial string BranchNote { get; set; }
+
+    partial void OnSelectedBranchChanging(string oldValue, string newValue)
+    {
+        if (oldValue is null || _loading)
+            return;
+        _stepLists[oldValue] = [.. Steps];
+        if (oldValue != MainSteps)
+            _branchInfo[oldValue] = (BranchBeforeText, BranchNote);
+    }
+
+    partial void OnSelectedBranchChanged(string value)
+    {
+        if (_loading)
+            return;
+        var loading = _loading;
+        _loading = true;
+        Steps.Clear();
+        foreach (var step in _stepLists.GetValueOrDefault(value) ?? [])
+            Steps.Add(step);
+        (BranchBeforeText, BranchNote) = _branchInfo.GetValueOrDefault(value, ("", ""));
+        SelectedStep = null;
+        _loading = loading;
+        Refresh();
+    }
+
+    private List<StepViewModel> StepModels(IReadOnlyList<Step> steps)
+    {
+        var models = steps.Select(NewStep).ToList();
+        for (var i = 1; i < models.Count; i++)
+            models[i].WithPrevious = steps[i].Group is { } group && group == steps[i - 1].Group;
+        return models;
+    }
+
+    /// <summary>Los pasos de una lista del editor, con los grupos de los pasos mixtos armados.</summary>
+    private static List<Step> ToSteps(IReadOnlyList<StepViewModel> models)
+    {
+        // Pasos mixtos: cada paso "junto con el anterior" toma el grupo del anterior (o le crea uno con su id).
+        var steps = models.Select(s => s.ToStep()).ToList();
+        for (var i = 1; i < steps.Count; i++)
+        {
+            if (!models[i].WithPrevious)
+                continue;
+            steps[i - 1].Group ??= $"g{steps[i - 1].Id}";
+            steps[i].Group = steps[i - 1].Group;
+        }
+        return steps;
+    }
+
+    /// <summary>Los pasos de una lista: la que se ve si es la elegida, si no la guardada.</summary>
+    private IReadOnlyList<StepViewModel> ListOf(string key) =>
+        key == SelectedBranch ? Steps : _stepLists.GetValueOrDefault(key) ?? [];
+
+    /// <summary>Los ids de todos los pasos (principal y ramas), para que uno nuevo no repita ninguno.</summary>
+    private IEnumerable<string> AllStepIds() =>
+        new[] { MainSteps }.Concat(Branch.Signals.Keys).SelectMany(ListOf).Select(s => s.Id);
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(DuplicateStepCommand), nameof(RemoveStepCommand), nameof(MoveUpCommand), nameof(MoveDownCommand))]
     public partial StepViewModel? SelectedStep { get; set; }
@@ -136,15 +221,21 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         int? feudal = GameClock.TryParse(FeudalTargetText, out var f) ? f : null;
         int? castle = GameClock.TryParse(CastleTargetText, out var c) ? c : null;
 
-        // Pasos mixtos: cada paso "junto con el anterior" toma el grupo del anterior (o le crea uno con su id).
-        var steps = Steps.Select(s => s.ToStep()).ToList();
-        for (var i = 1; i < steps.Count; i++)
-        {
-            if (!Steps[i].WithPrevious)
-                continue;
-            steps[i - 1].Group ??= $"g{steps[i - 1].Id}";
-            steps[i].Group = steps[i - 1].Group;
-        }
+        var steps = ToSteps(ListOf(MainSteps));
+        var branches = Branch.Signals.Keys
+            .Where(key => ListOf(key).Count > 0)
+            .Select(key =>
+            {
+                var (before, note) = key == SelectedBranch ? (BranchBeforeText, BranchNote) : _branchInfo.GetValueOrDefault(key, ("", ""));
+                return new Branch
+                {
+                    On = key,
+                    Before = GameClock.TryParse(before, out var b) ? b : null,
+                    Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+                    Steps = ToSteps(ListOf(key)),
+                };
+            })
+            .ToList();
 
         var bo = new BuildOrder
         {
@@ -156,6 +247,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Tags = TagsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             Steps = steps,
+            Branches = branches.Count > 0 ? branches : null,
             Targets = feudal is null && castle is null && atFeudal is null && _villagersAtCastle is null
                 ? null
                 : new Targets { FeudalClickTime = feudal, CastleClickTime = castle, VillagersAtFeudal = atFeudal, VillagersAtCastle = _villagersAtCastle },
@@ -245,7 +337,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 
     private void Insert(Step step)
     {
-        var vm = NewStep(step with { Id = StepIds.Next(Steps.Select(s => s.Id)) });
+        var vm = NewStep(step with { Id = StepIds.Next(AllStepIds()) });
         var index = SelectedStep is { } selected ? Steps.IndexOf(selected) + 1 : Steps.Count;
         Steps.Insert(index, vm);
         SelectedStep = vm;
@@ -295,6 +387,14 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         }
 
         Summary.Clear();
+        // Las ramas no tienen vista previa propia: se hacen cuando llega su señal, en cualquier momento.
+        if (IsBranch)
+        {
+            foreach (var step in Steps)
+                ClearEstimate(step);
+            Summary.Add($"{Branch.Signals[SelectedBranch]}: estos pasos van primero en el overlay cuando el coach ve la señal (una vez por partida).");
+            return;
+        }
         if (!validation.IsValid || Steps.Count == 0)
         {
             LastPlan = null;
