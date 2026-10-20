@@ -91,7 +91,9 @@ public sealed class CaptureToolsTests : IDisposable
         var wood = tools.Layout.PixelsOf(RegionNames.Wood, 1920, 1080);
         Assert.InRange(wood.X, boxes["wood"].X - 3, boxes["wood"].X + 3);
         Assert.InRange(wood.Y, boxes["wood"].Y - 3, boxes["wood"].Y + 3);
-        Assert.Equal(boxes["clock"], tools.Layout.PixelsOf(RegionNames.Clock, 1920, 1080));
+        var clock = tools.Layout.PixelsOf(RegionNames.Clock, 1920, 1080);
+        Assert.InRange(clock.X, boxes["clock"].X - 3, boxes["clock"].X + 3);
+        Assert.InRange(clock.Y, boxes["clock"].Y - 3, boxes["clock"].Y + 3);
     }
 
     [Fact]

@@ -494,9 +494,9 @@ static int AutoCalibrate(string screenshot, string[] args)
     var screen = Png.Read(screenshot);
     if (AutoCalibration.Detect(screen, RegionLayout.Default) is not { } found)
     {
-        Console.WriteLine($"No encontré el HUD del mod en {screenshot} ({screen.Width}×{screen.Height}). Bloques negros de la franja de arriba:");
-        foreach (var (rect, band, black) in AutoCalibration.Candidates(screen))
-            Console.WriteLine($"  x {rect.X,5} y {rect.Y,4} {rect.Width,4}×{rect.Height,-4} franja {(band ? "sí" : "no")} negro {black:0.00}");
+        Console.WriteLine($"No encontré el HUD del mod en {screenshot} ({screen.Width}×{screen.Height}). Rectángulos de color parejo de la franja de arriba:");
+        foreach (var (rect, band, color) in AutoCalibration.Candidates(screen))
+            Console.WriteLine($"  x {rect.X,5} y {rect.Y,4} {rect.Width,4}×{rect.Height,-4} color {color.R},{color.G},{color.B} franja {band ?? "-"}");
         return 1;
     }
     Console.WriteLine($"{screen.Width}×{screen.Height}: {found.Squares.Count} cuadrados y el reloj; HUD a escala {found.Scale:0.00} respecto de 1080p.");

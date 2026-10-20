@@ -1,41 +1,59 @@
 using BoCoach.Vision.Capture;
-using BoCoach.Vision.Hud;
 
 namespace BoCoach.Vision.Regions;
 
 /// <param name="Layout">Las regiones para la pantalla capturada (resolución de referencia = la de la captura).</param>
 /// <param name="Scale">Tamaño del HUD respecto de 1920×1080 (1 = igual; las letras y los íconos están medidos a 1080p).</param>
-/// <param name="Squares">Los cuadrados negros con franja del mod (madera, comida, oro, piedra, población, inactivos), de izquierda a derecha.</param>
-/// <param name="Clock">El rectángulo negro detrás del reloj.</param>
+/// <param name="Squares">Los cuadrados del mod (madera, comida, oro, piedra, población, inactivos), de izquierda a derecha.</param>
+/// <param name="Clock">La caja del reloj.</param>
 public sealed record AutoCalibrationResult(RegionLayout Layout, double Scale, IReadOnlyList<PixelRect> Squares, PixelRect Clock);
 
 /// <summary>
-/// Calibración sola, con el mod BoCoach HUD: los seis cuadrados negros con franja de color y el rectángulo negro del
-/// reloj son anclas que se encuentran en cualquier resolución (el negro del mod es exacto y las texturas del panel
-/// nunca lo son; el cuadro de la edad del juego también es negro, pero no tiene franja y está más a la izquierda que
-/// el reloj). De las anclas salen las cajas de recursos, población, inactivos, reloj y edad como las dibujaría la
-/// calibración manual; la cola de producción se ubica con la escala, y el log y los puntajes quedan donde dice la
-/// calibración de referencia (van pegados a los bordes de la pantalla).
+/// Calibración sola, con el mod BoCoach HUD. Las anclas son las seis franjas de color de los cuadrados (marrón de la
+/// madera, rosa de la comida, amarilla del oro, gris de la piedra, azul de la población y roja de los inactivos): se
+/// ven con cualquier fondo de panel (el de otras civs es negro, igual que los cuadrados) y a cualquier escala. El
+/// cuadrado mide lo que mide su franja de ancho, y el número de aldeanos está en lo que queda debajo. El reloj y la
+/// edad son los dos textos claros que siguen a la derecha de los inactivos (primero la edad, después el reloj). De
+/// ahí salen las cajas como las dibujaría la calibración manual; la cola de producción se ubica con la escala, y el
+/// log y los puntajes quedan donde dice la calibración de referencia (van pegados a los bordes de la pantalla).
 /// </summary>
 public static class AutoCalibration
 {
-    /// <summary>Parte de arriba de la pantalla donde está el panel de recursos (a 1080p, 86 px: los cuadrados van de la fila 7 a la 43).</summary>
-    private const double TopBand = 0.08;
+    /// <summary>Parte de arriba de la pantalla donde está el panel de recursos (a 1080p, 108 px: los cuadrados van de la fila 7 a la 43).</summary>
+    private const double TopBand = 0.10;
 
-    /// <summary>Parte de la pantalla, desde la izquierda, donde entran los cuadrados y el reloj (a 1080p el reloj termina en x = 816).</summary>
-    private const double LeftPart = 0.5;
+    /// <summary>Parte de la pantalla, desde la izquierda, donde entran los cuadrados, la edad y el reloj.</summary>
+    private const double LeftPart = 0.6;
 
-    /// <summary>Ancho de un cuadrado a 1920×1080 (medido en la grabación 20261018-132830): con la franja encima, un cuadrado de 36×36.</summary>
+    /// <summary>Ancho de un cuadrado (y de su franja) a 1920×1080, medido en la grabación 20261018-132830.</summary>
     public const double ReferenceSquareWidth = 36;
 
-    /// <summary>Píxeles negros que tiene que tener una columna de la franja de arriba para ser de un bloque del mod (los números blancos tapan el resto).</summary>
-    private const int ColumnBlack = 3;
+    /// <summary>Ancho de la caja del reloj a 1080p: entra "hh:mm:ss" y nada más.</summary>
+    private const double ReferenceClockWidth = 79;
 
-    /// <summary>Parte en negro de un rectángulo liso con números blancos encima (el reloj, la edad): menos es texto con sombra u otra cosa.</summary>
-    private const double SolidBlack = 0.5;
+    /// <summary>Los colores de las franjas del mod, en el orden en que están en el panel.</summary>
+    private static readonly (string Region, (int R, int G, int B) Color)[] BandColors =
+    [
+        (RegionNames.Wood, (135, 91, 42)),
+        (RegionNames.Food, (225, 104, 106)),
+        (RegionNames.Gold, (240, 192, 25)),
+        (RegionNames.Stone, (158, 158, 167)),
+        (RegionNames.Population, (62, 128, 254)),
+        (RegionNames.IdleVillagers, (230, 0, 0)),
+    ];
 
-    // Márgenes como los de la calibración manual del usuario: 1 a la izquierda, 2 arriba de la franja, 3 debajo del
-    // cuerpo, y 4 entre una caja y el cuadrado siguiente.
+    private const int ColorTolerance = 45;
+
+    /// <summary>Dos píxeles seguidos de una franja difieren menos que esto por canal (la captura es lisa; el WebP de un chat, casi).</summary>
+    private const int Even = 14;
+
+    private const int MinBandWidth = 16;
+
+    /// <summary>Canal más bajo de un píxel blanco (los dígitos del reloj, "Dark Age"); los adornos grises del marco quedan abajo.</summary>
+    private const int White = 215;
+
+    // Márgenes como los de la calibración manual del usuario a 1080p: 1 a la izquierda, 2 arriba de la franja, 3 debajo
+    // del cuadrado y 4 entre una caja y el cuadrado siguiente. Van con la escala.
     private const int LeftMargin = 1;
     private const int TopMargin = 2;
     private const int BottomMargin = 3;
@@ -44,51 +62,34 @@ public static class AutoCalibration
     public static AutoCalibrationResult? Detect(CapturedImage screen, RegionLayout reference)
     {
         var strip = Strip(screen);
-        var squares = new List<Body>();
-        var rects = new List<Body>();
-        foreach (var body in Bodies(strip))
-        {
-            if (body.Height < 8 || body.Width < 10)
-                continue;
-            // La franja del cuadrado es alta (la mitad del cuadrado); una fila pareja del panel encima de un fondo de stock no lo es.
-            if (ModPanel.HasBandAbove(strip, body.Tuple) && body.Width <= body.Height * 3 && body.Top - BandTop(strip, body) >= body.Width / 4.0)
-                squares.Add(body);
-            else if (body.Width >= body.Height * 2.5 && BlackFraction(strip, body) >= SolidBlack)
-                rects.Add(body);
-        }
-        if (squares.Count < 6)
+        var bands = FindBands(strip);
+        if (bands is null)
             return null;
-        squares = [.. squares.OrderBy(s => s.Left).Take(6)];
+        var scale = bands.Average(b => b.Width) / ReferenceSquareWidth;
+        var squares = bands.Select(b => new PixelRect(b.X, b.Y, b.Width, b.Width)).ToList();
         var idle = squares[5];
-        var scale = squares.Average(s => s.Width) / ReferenceSquareWidth;
 
-        // A la derecha de los inactivos hay dos rectángulos negros con texto blanco: la edad del juego y el reloj del
-        // mod. Cada uno es el más cercano a donde la calibración de referencia lo espera, con la escala.
-        var referenceClock = reference.PixelsOf(RegionNames.Clock, 1920, 1080);
-        var referenceAge = reference.PixelsOf(RegionNames.Age, 1920, 1080);
-        var candidates = rects.Where(r => r.Left > idle.Right).ToList();
-        if (candidates.Count == 0)
+        // La edad y el reloj: los dos textos claros a la derecha de los inactivos, a la altura de los cuadrados.
+        var texts = TextClusters(strip, idle.X + idle.Width + Scaled(Gap, scale), idle.Y, idle.Height, scale);
+        // Texto de un renglón: ni el medallón de la edad (ocupa todo el alto) ni una raya. Primero la edad, después el reloj.
+        texts = texts.Where(t => t.Height >= idle.Height * 0.25 && t.Height <= idle.Height * 0.75).ToList();
+        if (texts.Count < 2)
             return null;
-        var clock = candidates.MinBy(r => Math.Abs(r.Left - referenceClock.X * scale))!;
-        var age = candidates.Where(r => r != clock && r.Right < clock.Left).MinBy(r => Math.Abs(r.Left - referenceAge.X * scale));
+        var (age, clockText) = (texts[0], texts[1]);
 
-        // Los márgenes, como en la calibración manual del usuario a 1080p, van con la escala.
         var (leftMargin, topMargin, bottomMargin, gap) = (Scaled(LeftMargin, scale), Scaled(TopMargin, scale), Scaled(BottomMargin, scale), Scaled(Gap, scale));
         var boxes = new Dictionary<string, PixelRect>();
-        string[] names = [RegionNames.Wood, RegionNames.Food, RegionNames.Gold, RegionNames.Stone, RegionNames.Population, RegionNames.IdleVillagers];
         for (var i = 0; i < 6; i++)
         {
             var square = squares[i];
-            var top = BandTop(strip, square) - topMargin;
-            var left = square.Left - leftMargin;
-            var right = i < 5 ? squares[i + 1].Left - gap : square.Right + 1 + leftMargin;
-            var bottom = square.Top + square.Height + bottomMargin;
-            boxes[names[i]] = new PixelRect(left, top, right - left, bottom - top);
+            var top = square.Y - topMargin;
+            var left = square.X - leftMargin;
+            var right = i < 5 ? squares[i + 1].X - gap : square.X + square.Width + leftMargin;
+            var bottom = square.Y + square.Height + bottomMargin;
+            boxes[BandColors[i].Region] = new PixelRect(left, top, right - left, bottom - top);
         }
-        boxes[RegionNames.Clock] = clock.Rect;
-        boxes[RegionNames.Age] = age is { } found
-            ? new PixelRect(found.Left - topMargin, found.Top - topMargin, found.Width + 2 * topMargin, found.Height + 2 * topMargin)
-            : new PixelRect(clock.Left - Scaled(referenceClock.X - referenceAge.X, scale), Scaled(referenceAge.Y, scale), Scaled(referenceAge.Width, scale), Scaled(referenceAge.Height, scale));
+        boxes[RegionNames.Clock] = new PixelRect(clockText.X - topMargin, clockText.Y - topMargin, Scaled((int)ReferenceClockWidth, scale), clockText.Height + 2 * topMargin);
+        boxes[RegionNames.Age] = new PixelRect(age.X - 3 * topMargin, age.Y - 2 * topMargin, age.Width + 6 * topMargin, age.Height + 4 * topMargin);
         var referenceQueue = reference.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
         boxes[RegionNames.ProductionQueue] = new PixelRect(
             Scaled(referenceQueue.X, scale), Scaled(referenceQueue.Y, scale), Scaled(referenceQueue.Width, scale), Scaled(referenceQueue.Height, scale));
@@ -100,78 +101,191 @@ public static class AutoCalibration
                 ? new RegionRect((double)box.X / screen.Width, (double)box.Y / screen.Height, (double)box.Width / screen.Width, (double)box.Height / screen.Height).Clamped()
                 : reference.Regions[name];
         }
-        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions), scale, [.. squares.Select(s => s.Rect)], clock.Rect);
+        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions), scale, squares, boxes[RegionNames.Clock]);
     }
 
-    /// <summary>Para diagnosticar: cada bloque negro de la franja de arriba, con si tiene la franja de color del mod encima y cuánto negro tiene.</summary>
-    public static IReadOnlyList<(PixelRect Rect, bool Band, double Black)> Candidates(CapturedImage screen)
-    {
-        var strip = Strip(screen);
-        return [.. Bodies(strip).Select(body => (body.Rect, ModPanel.HasBandAbove(strip, body.Tuple), BlackFraction(strip, body)))];
-    }
+    /// <summary>Para diagnosticar: cada rectángulo de color parejo de la franja de arriba y a qué franja del mod se parece (o null).</summary>
+    public static IReadOnlyList<(PixelRect Rect, string? Band, (int R, int G, int B) Color)> Candidates(CapturedImage screen) =>
+        [.. EvenRects(Strip(screen)).Select(r => (r.Rect, BandOf(r.Color)?.Region, r.Color))];
 
     private static CapturedImage Strip(CapturedImage screen) =>
         screen.Crop(new PixelRect(0, 0, Math.Max(1, (int)(screen.Width * LeftPart)), Math.Max(1, (int)(screen.Height * TopBand))));
 
-    /// <summary>El cuerpo negro de cada tramo de columnas seguidas con negro del mod (cuadrados, fondos de stock, "N/M", edad, reloj).</summary>
-    private static IEnumerable<Body> Bodies(CapturedImage strip)
+    /// <summary>
+    /// Las seis franjas, de izquierda a derecha, o null si no están. La GD del overlay se dibuja dentro de la franja y
+    /// la parte en varios rectángulos: se juntan los del mismo color y el mismo ancho. Una franja de cada color, con el
+    /// orden del panel y anchos parecidos (la del medio manda).
+    /// </summary>
+    private static List<PixelRect>? FindBands(CapturedImage strip)
     {
-        for (var x = 0; x < strip.Width; x++)
+        var bands = new List<PixelRect>();
+        foreach (var (region, _) in BandColors)
         {
-            if (!IsModColumn(strip, x))
-                continue;
-            var start = x;
-            while (x < strip.Width && IsModColumn(strip, x))
-                x++;
-            var (left, right, top, height) = ModPanel.Body(strip, (start, x - start));
-            yield return new Body(left, right, top, height);
+            var rects = EvenRects(strip).Where(r => BandOf(r.Color)?.Region == region).Select(r => r.Rect).ToList();
+            if (rects.Count == 0)
+                return null;
+            // El rectángulo más ancho es la franja (o su parte libre); se le suman los que tienen el mismo ancho encima o debajo.
+            var widest = rects.MaxBy(r => r.Width);
+            var same = rects.Where(r => Math.Abs(r.X - widest.X) <= 2 && Math.Abs(r.X + r.Width - widest.X - widest.Width) <= 2).ToList();
+            var top = same.Min(r => r.Y);
+            var bottom = same.Max(r => r.Y + r.Height);
+            // La GD del overlay tapa el medio de la franja: por los costados, que quedan libres, se llega al borde real.
+            var color = rects.Count > 0 ? EvenRects(strip).First(r => r.Rect == widest).Color : default;
+            (top, bottom) = Extend(strip, widest.X + 1, widest.X + widest.Width - 2, top, bottom, color);
+            bands.Add(new PixelRect(widest.X, top, widest.Width, bottom - top));
         }
+        var median = bands.OrderBy(b => b.Width).ElementAt(bands.Count / 2).Width;
+        for (var i = 0; i < bands.Count; i++)
+        {
+            if (bands[i].Width < median * 0.7 || bands[i].Width > median * 1.3)
+                return null;
+            if (i > 0 && bands[i].X <= bands[i - 1].X + bands[i - 1].Width)
+                return null;
+        }
+        return bands;
     }
 
-    private static bool IsModColumn(CapturedImage strip, int x)
+    /// <summary>Estira un rectángulo hacia arriba y abajo mientras las dos columnas sigan con el color de la franja.</summary>
+    private static (int Top, int Bottom) Extend(CapturedImage strip, int leftColumn, int rightColumn, int top, int bottom, (int R, int G, int B) color)
     {
-        var black = 0;
-        for (var y = 0; y < strip.Height && black < ColumnBlack; y++)
-        {
-            var (r, g, b) = strip.Pixel(x, y);
-            if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
-                black++;
-        }
-        return black >= ColumnBlack;
+        bool Matches(int y) => Similar(ToInts(strip.Pixel(leftColumn, y)), color) && Similar(ToInts(strip.Pixel(rightColumn, y)), color);
+        while (top > 0 && Matches(top - 1))
+            top--;
+        while (bottom < strip.Height && Matches(bottom))
+            bottom++;
+        return (top, bottom);
     }
 
-    private static double BlackFraction(CapturedImage strip, Body body)
+    private static (int R, int G, int B) ToInts((byte R, byte G, byte B) p) => (p.R, p.G, p.B);
+
+    /// <summary>Rectángulos de color parejo (no oscuro, no blanco) de al menos 3 filas y <see cref="MinBandWidth"/> columnas.</summary>
+    private static List<(PixelRect Rect, (int R, int G, int B) Color)> EvenRects(CapturedImage strip)
     {
-        var black = 0;
-        for (var y = body.Top; y < body.Top + body.Height; y++)
+        var open = new List<(int Left, int Right, int Top, int Bottom, (int R, int G, int B) Color)>();
+        var done = new List<(PixelRect Rect, (int R, int G, int B) Color)>();
+        for (var y = 0; y < strip.Height; y++)
         {
-            for (var x = body.Left; x <= body.Right; x++)
+            var row = new List<(int Left, int Right, (int R, int G, int B) Color)>();
+            for (var x = 0; x < strip.Width;)
             {
-                var (r, g, b) = strip.Pixel(x, y);
-                if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
-                    black++;
+                var color = strip.Pixel(x, y);
+                if (!IsBandLike(color))
+                {
+                    x++;
+                    continue;
+                }
+                var start = x;
+                long r = 0, g = 0, b = 0;
+                while (x < strip.Width && Similar(strip.Pixel(x, y), color))
+                {
+                    var p = strip.Pixel(x, y);
+                    (r, g, b) = (r + p.R, g + p.G, b + p.B);
+                    x++;
+                }
+                var length = x - start;
+                if (length >= MinBandWidth)
+                    row.Add((start, x - 1, ((int)(r / length), (int)(g / length), (int)(b / length))));
+            }
+            // Sigue un rectángulo abierto si el tramo es el mismo en la fila siguiente; si no, se cierra.
+            var continued = new HashSet<int>();
+            foreach (var run in row)
+            {
+                var index = open.FindIndex(o => o.Bottom == y - 1 && Math.Abs(o.Left - run.Left) <= 2 && Math.Abs(o.Right - run.Right) <= 2 && Similar(o.Color, run.Color));
+                if (index >= 0)
+                {
+                    open[index] = open[index] with { Bottom = y };
+                    continued.Add(index);
+                }
+                else
+                {
+                    open.Add((run.Left, run.Right, y, y, run.Color));
+                    continued.Add(open.Count - 1);
+                }
+            }
+            for (var i = open.Count - 1; i >= 0; i--)
+            {
+                if (continued.Contains(i) || open[i].Bottom == y)
+                    continue;
+                Close(open[i]);
+                open.RemoveAt(i);
             }
         }
-        return (double)black / (body.Width * body.Height);
+        foreach (var o in open)
+            Close(o);
+        return done;
+
+        void Close((int Left, int Right, int Top, int Bottom, (int R, int G, int B) Color) o)
+        {
+            if (o.Bottom - o.Top + 1 >= 3)
+                done.Add((new PixelRect(o.Left, o.Top, o.Right - o.Left + 1, o.Bottom - o.Top + 1), o.Color));
+        }
     }
 
-    /// <summary>Dónde empieza la franja de color arriba del cuerpo negro (ver <see cref="ModPanel.Band"/>).</summary>
-    private static int BandTop(CapturedImage image, Body square)
+    /// <summary>
+    /// Los textos claros (blanco del reloj, amarillo de la edad) a la derecha de <paramref name="fromX"/>, en las filas
+    /// de los cuadrados, de izquierda a derecha: columnas con píxeles claros, juntando huecos chicos (entre letras).
+    /// </summary>
+    private static List<PixelRect> TextClusters(CapturedImage strip, int fromX, int top, int height, double scale)
     {
-        var x = square.Left + Math.Max(1, square.Width / 20);
-        var top = Math.Max(0, square.Top - 2);
-        var color = image.Pixel(x, top);
-        while (top > 0 && ModPanel.Similar(image.Pixel(x, top - 1), color))
-            top--;
-        return top;
+        var bottom = Math.Min(strip.Height, top + height);
+        var maxGap = Scaled(24, scale); // entre palabras ("Alta Edad Media") hay menos; hasta el reloj, mucho más
+        var clusters = new List<PixelRect>();
+        var x = Math.Max(0, fromX);
+        while (x < strip.Width)
+        {
+            if (!HasText(x))
+            {
+                x++;
+                continue;
+            }
+            var start = x;
+            var last = x;
+            while (x < strip.Width && x - last <= maxGap)
+            {
+                if (HasText(x))
+                    last = x;
+                x++;
+            }
+            var (textTop, textBottom) = (int.MaxValue, -1);
+            for (var xx = start; xx <= last; xx++)
+                for (var y = top; y < bottom; y++)
+                    if (IsText(strip.Pixel(xx, y)))
+                        (textTop, textBottom) = (Math.Min(textTop, y), Math.Max(textBottom, y));
+            clusters.Add(new PixelRect(start, textTop, last - start + 1, textBottom - textTop + 1));
+        }
+        return clusters;
+
+        bool HasText(int column)
+        {
+            var count = 0;
+            for (var y = top; y < bottom; y++)
+                if (IsText(strip.Pixel(column, y)) && ++count >= 2)
+                    return true;
+            return false;
+        }
     }
+
+    private static (string Region, (int R, int G, int B) Color)? BandOf((int R, int G, int B) color)
+    {
+        foreach (var band in BandColors)
+        {
+            if (Math.Abs(band.Color.R - color.R) <= ColorTolerance && Math.Abs(band.Color.G - color.G) <= ColorTolerance && Math.Abs(band.Color.B - color.B) <= ColorTolerance)
+                return band;
+        }
+        return null;
+    }
+
+    private static bool IsBandLike((byte R, byte G, byte B) p) => Math.Max(p.R, Math.Max(p.G, p.B)) >= 60 && Math.Min(p.R, Math.Min(p.G, p.B)) < 200;
+
+    /// <summary>Blanco (reloj, "Dark Age") o amarillo ("Alta Edad Media" con el juego en castellano).</summary>
+    private static bool IsText((byte R, byte G, byte B) p) =>
+        Math.Min(p.R, Math.Min(p.G, p.B)) >= White || (p.R >= 200 && p.G >= 170 && p.B <= 120);
+
+    private static bool Similar((byte R, byte G, byte B) a, (byte R, byte G, byte B) b) =>
+        Math.Abs(a.R - b.R) <= Even && Math.Abs(a.G - b.G) <= Even && Math.Abs(a.B - b.B) <= Even;
+
+    private static bool Similar((int R, int G, int B) a, (int R, int G, int B) b) =>
+        Math.Abs(a.R - b.R) <= Even && Math.Abs(a.G - b.G) <= Even && Math.Abs(a.B - b.B) <= Even;
 
     private static int Scaled(int pixels, double scale) => (int)Math.Round(pixels * scale);
-
-    private readonly record struct Body(int Left, int Right, int Top, int Height)
-    {
-        public int Width => Right - Left + 1;
-        public PixelRect Rect => new(Left, Top, Width, Height);
-        public (int Left, int Right, int Top, int Height) Tuple => (Left, Right, Top, Height);
-    }
 }

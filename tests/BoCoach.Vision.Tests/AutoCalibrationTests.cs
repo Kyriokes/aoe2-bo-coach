@@ -91,6 +91,32 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         }
     }
 
+    // Captura real de un amigo (2026-10-20, 1920×1080, juego en castellano, HUD un 10 % más grande y panel negro, el
+    // de otra civ): las franjas de color siguen ahí aunque el negro de los cuadrados se confunda con el panel.
+    [Fact]
+    public void Con_el_panel_negro_de_otra_civ_y_el_HUD_mas_grande_encuentra_las_franjas_y_el_reloj()
+    {
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "amigo-20261020-1080p-panel-negro.png"));
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default);
+
+        Assert.NotNull(found);
+        output.WriteLine($"escala {found.Scale:0.000} · cuadrados {string.Join(" ", found.Squares)}");
+        foreach (var name in RegionNames.All)
+            output.WriteLine($"{name,-17} {found.Layout.PixelsOf(name, screen.Width, screen.Height)}");
+        Assert.Equal(6, found.Squares.Count);
+        Assert.All(found.Squares, s => Assert.InRange(s.Width, 37, 42));
+        Assert.InRange(found.Scale, 1.0, 1.2);
+        var wood = found.Layout.PixelsOf(RegionNames.Wood, screen.Width, screen.Height);
+        Assert.InRange(wood.X, 4, 9);
+        Assert.InRange(wood.Y, 4, 8);
+        var clock = found.Layout.PixelsOf(RegionNames.Clock, screen.Width, screen.Height);
+        Assert.InRange(clock.X, 840, 856); // "00:04:15" empieza a los 849 px
+        var age = found.Layout.PixelsOf(RegionNames.Age, screen.Width, screen.Height);
+        Assert.InRange(age.X, 640, 665); // "Alta Edad Media" empieza a los 656 px (el medallón de la edad, antes, no cuenta)
+        Assert.True(age.X + age.Width < clock.X);
+    }
+
     [Fact]
     public void Sin_el_mod_no_calibra()
     {
