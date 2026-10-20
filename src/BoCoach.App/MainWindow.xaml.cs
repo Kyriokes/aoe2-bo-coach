@@ -43,6 +43,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             return new ScreenFrames(_screen, Tools.Layout);
         }, CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
+        PlayerNameBox.DataContext = Coach;
         GameCivBox.DataContext = Coach;
         GameLanguageBox.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;

@@ -42,6 +42,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     /// <summary>"Cola: aldeano, carretilla, arquero" (lo que se lee de la cola de producción del juego).</summary>
     [ObservableProperty] public partial string Queue { get; set; } = "";
 
+    /// <summary>La partida según la pantalla de carga: vos, aliados, rivales y mapa (vacío si no se vio).</summary>
+    [ObservableProperty] public partial string Game { get; set; } = "";
+
     /// <summary>Los últimos eventos que se leyeron del log, el más nuevo arriba.</summary>
     public ObservableCollection<string> Events { get; } = [];
 
@@ -89,6 +92,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
             [] => "Cola de producción: vacía",
             var items => $"Cola de producción: {string.Join(", ", items.Select(i => i.Waiting ? $"{QueueName(i.Key)} (espera)" : QueueName(i.Key)))}",
         };
+        Game = GameText(frame);
         Step = view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }
             ? $"Números cortados en: {string.Join(", ", hud.Clipped.Select(RegionNames.Label))}"
@@ -104,6 +108,20 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     }
 
     public void Clear() => Events.Clear();
+
+    private static string GameText(CoachFrame frame)
+    {
+        if (frame.Loading is not { } loading)
+            return "";
+        static string Player(Vision.Loading.LoadingPlayer p) => $"{p.Name} ({p.Civ ?? "?"})";
+        var map = loading.Map is { } m ? $" · mapa {m}" : "";
+        if (frame.Me is not { } me)
+            return $"Partida (pantalla de carga): {string.Join(", ", loading.Players.Select(Player))}{map}. No sé cuál sos: poné \"Tu nombre\" arriba.";
+        var allies = loading.Allies(me);
+        return $"Partida (pantalla de carga): vos {Player(me)}"
+            + (allies.Count > 0 ? $" · aliados {string.Join(", ", allies.Select(Player))}" : "")
+            + $" · rivales {string.Join(", ", loading.Opponents(me).Select(Player))}{map}";
+    }
 
     private static string QueueName(string key) => key switch
     {

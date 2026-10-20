@@ -70,6 +70,12 @@
                 </DockPanel>
                 <!-- Ajustes de la partida: se aplican al empezar el coach -->
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <StackPanel x:Name="PlayerNameBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                ToolTip="Tu nombre en el juego, como sale en la lista de jugadores de la pantalla de carga. Ahí el coach lee con qué civ jugás (manda sobre la de acá al lado en esa partida), contra quién y en qué mapa, y empieza la partida de cero">
+                        <TextBlock Text="Tu nombre" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=LostFocus}" Width="120" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Tu nombre en el juego" />
+                    </StackPanel>
                     <StackPanel x:Name="GameCivBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Con qué civ jugás esta partida: el coach usa sus bonificaciones (costos, población de las casas, recursos iniciales). Por defecto, la civ que dice la BO. Se aplica al empezar el coach">
                         <TextBlock Text="Civ" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
@@ -129,6 +135,8 @@
                     <TextBlock Text="{Binding FoodFloor}" Foreground="#E8C26A" FontSize="12" Margin="0,4,0,0"
                                Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
                     <TextBlock Text="{Binding Queue}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" />
+                    <TextBlock Text="{Binding Game}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding Game, Converter={StaticResource NotEmptyToVisibility}}" />
                     <DockPanel Margin="0,6,0,0">
                         <!-- Lo mismo que Ctrl+Alt+← / → / ↓ desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">

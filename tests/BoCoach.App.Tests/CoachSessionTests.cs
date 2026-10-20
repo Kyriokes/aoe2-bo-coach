@@ -122,6 +122,21 @@ public sealed class CoachSessionTests : IDisposable
     }
 
     [Fact]
+    public void El_nombre_del_jugador_se_guarda_y_llega_al_coach()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal("", session.PlayerName);
+
+        session.PlayerName = "Lady Halcon ";
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+
+        Assert.Equal("Lady Halcon ", session.LiveCoach!.PlayerName);
+        Assert.Equal("Lady Halcon", CoachSettings.Load(path).PlayerName);
+        Assert.Equal("Lady Halcon", new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).PlayerName);
+    }
+
+    [Fact]
     public void El_overlay_muestra_el_paso_actual_lo_que_esta_en_curso_y_el_objetivo()
     {
         var coach = new Coach(Scouts, _data.GameData, _data.Events);

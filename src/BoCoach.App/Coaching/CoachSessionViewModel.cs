@@ -32,6 +32,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private readonly Func<BuildOrder?> _selected;
     private readonly Func<IFrameSource> _liveFrames;
     private LiveCoach? _coach;
+    private Vision.Loading.LoadingReading? _loading;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
     private readonly string? _settingsPath;
@@ -46,6 +47,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         CursorReminders = settings.CursorReminders;
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
         Language = GameLanguage.FromCode(settings.GameLanguage);
+        PlayerName = settings.PlayerName;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -113,6 +115,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     public IReadOnlyList<GameLanguage> LanguageOptions => GameLanguage.All;
 
+    /// <summary>
+    /// El nombre del jugador en el juego. En la pantalla de carga el coach busca ese renglón: toma su civ (manda sobre
+    /// <see cref="GameCiv"/> en esa partida) y sabe contra quién juega. Vacío, la pantalla de carga solo reinicia la
+    /// partida.
+    /// </summary>
+    [ObservableProperty] public partial string PlayerName { get; set; } = "";
+
+    partial void OnPlayerNameChanged(string value) => SaveSettings();
+
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
@@ -125,7 +136,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         try
         {
-            new CoachSettings { MaxVillagers = MaxVillagers, CursorReminders = CursorReminders, GameCiv = GameCiv == BoCiv ? "" : GameCiv, GameLanguage = Language.Code }.Save(_settingsPath);
+            new CoachSettings
+            {
+                MaxVillagers = MaxVillagers,
+                CursorReminders = CursorReminders,
+                GameCiv = GameCiv == BoCiv ? "" : GameCiv,
+                GameLanguage = Language.Code,
+                PlayerName = PlayerName.Trim(),
+            }.Save(_settingsPath);
         }
         catch (IOException)
         {
@@ -168,7 +186,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
         var ocr = Language.CreateOcr();
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.EventsFor(Language), _data.Fonts, ocr, frames,
-            new EconomySettings { MaxVillagers = MaxVillagers });
+            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code);
+        _loading = null;
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.Updated += frame => _host.RunOnUi(() =>
         {
@@ -182,6 +201,22 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _coach.Start();
         IsRunning = true;
         Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+    }
+
+    /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
+    private string LoadingNote(CoachFrame frame)
+    {
+        if (frame.Loading is not { } loading)
+            return "";
+        if (frame.Me is not { } me)
+        {
+            return PlayerName.Trim().Length == 0
+                ? $"Pantalla de carga: partida nueva. Poné \"Tu nombre\" para que el coach tome tu civ sola (sigue con {frame.Civ})."
+                : $"Pantalla de carga: no encontré a \"{PlayerName.Trim()}\" entre {string.Join(", ", loading.Players.Select(p => p.Name))}. Sigue con {frame.Civ}.";
+        }
+        var rivals = loading.Opponents(me).Select(p => p.Civ ?? "?").ToList();
+        var civ = me.Civ is null ? $"no entendí tu civ (\"{me.CivText}\"), sigue con {frame.Civ}" : $"jugás con {me.Civ}";
+        return $"Pantalla de carga: {civ}{(rivals.Count > 0 ? $" contra {string.Join(", ", rivals)}" : "")}{(loading.Map is { } map ? $" en {map}" : "")}.";
     }
 
     /// <summary>Qué idioma lee, si no es el inglés, y si falta el OCR de ese idioma en este Windows.</summary>
@@ -246,6 +281,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         Overlay.Apply(frame);
         Live.Apply(frame);
+        if (frame.Loading is { } loading && loading != _loading)
+        {
+            _loading = loading;
+            Status = LoadingNote(frame);
+        }
         if (frame.Area is { IsEmpty: false } area && area != _placedOver)
         {
             _placedOver = area;

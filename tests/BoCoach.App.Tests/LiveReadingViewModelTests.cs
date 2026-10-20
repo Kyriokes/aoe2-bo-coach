@@ -4,6 +4,7 @@ using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 
 namespace BoCoach.App.Tests;
 
@@ -40,5 +41,24 @@ public sealed class LiveReadingViewModelTests : IDisposable
 
         panel.Apply(Frame(view, hud));
         Assert.Equal("36:30", panel.Clock);
+    }
+
+    [Fact]
+    public void El_panel_dice_contra_quien_se_juega_segun_la_pantalla_de_carga()
+    {
+        var view = new Coach(Scouts, _data.GameData, _data.Events).View;
+        var hud = new HudState(RealTime: 1, Clock: null, null, null, null, null, null, null, null, [], []);
+        LoadingPlayer Player(int slot, string name, string civ, int team) => new(slot, name, civ, civ, team, (0, 0, 0));
+        var loading = new LoadingReading([Player(1, "Ferrus", "incas", 1), Player(2, "Arturo", "britons", 2), Player(3, "Halcon", "franks", 1)], "Arabia");
+        var panel = new LiveReadingViewModel();
+
+        panel.Apply(Frame(view, hud));
+        Assert.Equal("", panel.Game);
+
+        panel.Apply(Frame(view, hud) with { Loading = loading, Me = loading.Players[0], Civ = "incas" });
+        Assert.Equal("Partida (pantalla de carga): vos Ferrus (incas) · aliados Halcon (franks) · rivales Arturo (britons) · mapa Arabia", panel.Game);
+
+        panel.Apply(Frame(view, hud) with { Loading = loading });
+        Assert.Contains("No sé cuál sos", panel.Game);
     }
 }
