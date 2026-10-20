@@ -151,16 +151,16 @@ public sealed class LiveCoach : IDisposable
     /// <summary>Procesa una captura. Público para poder probar el loop sin temporizador.</summary>
     public async Task<bool> StepAsync()
     {
-        if (Frames.Next() is not { } frame)
-        {
-            _ended = true;
-            Publish();
-            return false;
-        }
-
         var watch = Stopwatch.StartNew();
         try
         {
+            if (Frames.Next() is not { } frame)
+            {
+                _ended = true;
+                Publish();
+                return false;
+            }
+
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
             var snapshot = _builder.Build(hud.ToReading());
             lock (_gate)
@@ -175,9 +175,14 @@ public sealed class LiveCoach : IDisposable
                 _lastClockAt = frame.RealTime;
             _error = null;
         }
-        catch (Exception e) when (e is ArgumentException or InvalidOperationException or IOException or COMException)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            _error = e.Message;
+            // Cualquier error de una captura (de la lectura o del coach) se muestra y se sigue con la próxima. Antes
+            // solo se atrapaban los de lectura: cualquier otro cortaba el loop en silencio y el overlay quedaba
+            // congelado con la última captura. Los inesperados llevan el tipo, para poder buscarlos.
+            _error = e is ArgumentException or InvalidOperationException or IOException or COMException
+                ? e.Message
+                : $"{e.GetType().Name}: {e.Message}";
         }
         _frameMs = watch.Elapsed.TotalMilliseconds;
         Publish();
