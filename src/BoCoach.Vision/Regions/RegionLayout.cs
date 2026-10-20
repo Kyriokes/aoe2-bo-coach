@@ -97,13 +97,13 @@ public sealed class RegionLayout
     public IReadOnlyDictionary<string, RegionRect> Regions { get; }
 
     /// <summary>
-    /// TamaÃ±o del HUD respecto del de 1920Ã—1080 (1 = igual), medido por la calibraciÃ³n sola. Las letras y los Ã­conos
-    /// estÃ¡n medidos a esa escala, asÃ­ que las capturas se reescalan por 1/HudScale antes de leerlas. La calibraciÃ³n
+    /// Tamaño del HUD respecto del de 1920×1080 (1 = igual), medido por la calibración sola. Las letras y los íconos
+    /// están medidos a esa escala, así que las capturas se reescalan por 1/HudScale antes de leerlas. La calibración
     /// manual no lo mide y lo deja en 1.
     /// </summary>
     public double HudScale { get; }
 
-    /// <summary>Si las capturas hay que reescalarlas antes de leerlas (el HUD difiere de 1080p en mÃ¡s de un 2 %).</summary>
+    /// <summary>Si las capturas hay que reescalarlas antes de leerlas (el HUD difiere de 1080p en más de un 2 %).</summary>
     public bool NeedsResample => Math.Abs(HudScale - 1) > 0.02;
 
     public static string DefaultPath => Path.Combine(
@@ -141,7 +141,7 @@ public sealed class RegionLayout
         return new RegionLayout(ReferenceWidth, ReferenceHeight, regions, HudScale);
     }
 
-    /// <summary>La calibraciÃ³n manual: fija la resoluciÃ³n y deja la escala del HUD en 1 (no la mide).</summary>
+    /// <summary>La calibración manual: fija la resolución y deja la escala del HUD en 1 (no la mide).</summary>
     public RegionLayout WithReference(int width, int height) => new(width, height, Regions);
 
     public RegionLayout WithHudScale(double scale) => new(ReferenceWidth, ReferenceHeight, Regions, scale);
