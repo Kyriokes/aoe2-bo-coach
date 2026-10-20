@@ -155,6 +155,26 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.Contains("reloj       4:15", report);
     }
 
+    // B2: la captura de diagnóstico en la pantalla de carga dice qué leyó de cada jugador (para verificar la lectura
+    // con la pantalla real, que todavía no se vio).
+    [Fact]
+    public async Task La_captura_de_diagnostico_en_la_pantalla_de_carga_lista_los_jugadores()
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var data = Core.Data.GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "data", "game_data"));
+        var tools = new CaptureToolsViewModel(new PngScreen("carga-sintetica-en-1080p.png"), new FakeHost(), RegionsPath, RecordingsRoot,
+            () => null, Path.Combine(_dir.FullName, "perfiles"), diagnosticsFolder: DiagnosticsFolder,
+            gameData: () => data, playerName: () => "Bombarda88") { DiagnosticDelay = TimeSpan.Zero };
+
+        await tools.DiagnosticCommand.ExecuteAsync(null);
+
+        var report = File.ReadAllText(Assert.Single(Directory.GetFiles(DiagnosticsFolder, "*.txt")));
+        Assert.Contains("Pantalla de carga (mapa: Arabia)", report);
+        Assert.Contains("→ franks  color 0,190,0  ← vos", report);
+        Assert.Contains("→ malians", report);
+    }
+
     [Fact]
     public void Sin_el_mod_en_pantalla_queda_la_calibracion_que_habia()
     {

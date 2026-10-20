@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using BoCoach.App.Overlay;
 using BoCoach.Core;
+using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Ocr;
@@ -35,12 +36,15 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     private readonly string _gameProfiles;
     private readonly Func<HudFonts> _fonts;
     private readonly Func<GameLanguage> _language;
+    private readonly Func<GameData?> _gameData;
+    private readonly Func<string?> _playerName;
     private readonly string _diagnosticsFolder;
     private SessionRecorder? _recorder;
 
     public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
         Func<string?>? findGame = null, string? gameProfiles = null,
-        Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null)
+        Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null,
+        Func<GameData?>? gameData = null, Func<string?>? playerName = null)
     {
         _screen = screen;
         _host = host;
@@ -50,6 +54,8 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         _gameProfiles = gameProfiles ?? HudMod.DefaultProfilesRoot;
         _fonts = fonts ?? (() => HudFonts.Load(Path.Combine(CoachData.DataDir, "fonts")));
         _language = language ?? (() => GameLanguage.English);
+        _gameData = gameData ?? (() => null);
+        _playerName = playerName ?? (() => null);
         _diagnosticsFolder = diagnosticsFolder ?? DiagnosticCapture.DefaultFolder;
         UpdateCalibrationStatus();
     }
@@ -171,7 +177,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         try
         {
             var files = await DiagnosticCapture.SaveAsync(_screen, Layout, _regionsPath, _fonts(), _language(), _diagnosticsFolder,
-                _findGame, _gameProfiles, DateTime.Now);
+                _findGame, _gameProfiles, DateTime.Now, _gameData(), _playerName());
             DiagnosticStatus = $"Captura de diagnóstico guardada en {Path.GetDirectoryName(files.Image)} ({Path.GetFileNameWithoutExtension(files.Image)}): mandá esa carpeta.";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or InvalidDataException)

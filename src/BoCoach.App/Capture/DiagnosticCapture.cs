@@ -5,6 +5,7 @@ using BoCoach.Core;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
 
@@ -16,7 +17,8 @@ public sealed record DiagnosticFiles(string Image, string Report);
 /// <summary>
 /// Captura de diagnóstico (pedido del 2026-10-20: las capturas de los amigos llegaban comprimidas por WhatsApp y sin
 /// saber qué vio la app): la pantalla entera sin pérdida y, al lado, un .txt con la versión, el juego, el idioma y los
-/// OCR instalados, el mod, la calibración sola y lo que se lee de cada caja. Solo mira la pantalla, como siempre.
+/// OCR instalados, el mod, la calibración sola y lo que se lee de cada caja, y si es la pantalla de carga, cada
+/// jugador con su civ. Solo mira la pantalla, como siempre.
 /// </summary>
 public static class DiagnosticCapture
 {
@@ -25,9 +27,11 @@ public static class DiagnosticCapture
 
     /// <param name="saved">La calibración guardada (si la calibración sola no encuentra el HUD, se lee con esta).</param>
     /// <param name="savedPath">regions.json, para decir de cuándo es.</param>
+    /// <param name="data">Para reconocer las civs de la pantalla de carga (sin esto no se la mira).</param>
+    /// <param name="playerName">El nombre puesto en la app, para marcar su renglón en la pantalla de carga.</param>
     public static async Task<DiagnosticFiles> SaveAsync(
         IScreenSource screen, RegionLayout saved, string savedPath, HudFonts fonts, GameLanguage language,
-        string folder, Func<string?> findGame, string profilesRoot, DateTime now)
+        string folder, Func<string?> findGame, string profilesRoot, DateTime now, GameData? data = null, string? playerName = null)
     {
         var area = screen.CaptureArea;
         var image = screen.Capture(area);
@@ -98,6 +102,23 @@ public static class DiagnosticCapture
             Line($"  edad        \"{age.ReplaceLineEndings(" ")}\" → {AgeText.Parse(age)?.ToString() ?? "-"}");
             var log = await Vision.Events.EventLogReader.ReadLinesAsync(ocr, boxes[RegionNames.EventLog]);
             Line($"  log         {(log.Count == 0 ? "sin texto" : string.Join(" | ", log.Select(l => $"\"{l.Text}\"")))}");
+        }
+        if (ocr is not null && data is not null)
+        {
+            Line();
+            if (await new LoadingScreenReader(ocr, data, language.Code).ReadAsync(image) is { } loading)
+            {
+                var me = loading.Find(playerName);
+                Line($"Pantalla de carga (mapa: {loading.Map ?? "no se lee"}):");
+                foreach (var p in loading.Players)
+                    Line($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  \"{p.Name}\"  civ \"{p.CivText}\" → {p.Civ ?? "?"}  color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
+                Line(playerName is not { Length: > 0 } ? "  Sin \"Tu nombre\" en la app."
+                    : me is null ? $"  No encontré a \"{playerName}\"." : "");
+            }
+            else
+            {
+                Line("Pantalla de carga: no (el título no dice \"Starting Game\" ni \"Iniciando partida\").");
+            }
         }
         File.WriteAllText(files.Report, report.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
         return files;

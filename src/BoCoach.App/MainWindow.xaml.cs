@@ -34,7 +34,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         ViewModel = new MainViewModel(data, this);
         DataContext = ViewModel;
         // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
-        Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English);
+        Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English,
+            gameData: () => data.GameData, playerName: () => Coach?.PlayerName);
         ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual.
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () =>
