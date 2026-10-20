@@ -109,7 +109,7 @@ public static class DiagnosticCapture
             if (await new LoadingScreenReader(ocr, data, language.Code).ReadAsync(image) is { } loading)
             {
                 var me = loading.Find(playerName);
-                Line($"Pantalla de carga (mapa: {loading.Map ?? "no se lee"}):");
+                Line("Pantalla de carga:");
                 foreach (var p in loading.Players)
                     Line($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  \"{p.Name}\"  civ \"{p.CivText}\" → {p.Civ ?? "?"}  color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
                 Line(playerName is not { Length: > 0 } ? "  Sin \"Tu nombre\" en la app."
@@ -117,7 +117,7 @@ public static class DiagnosticCapture
             }
             else
             {
-                Line("Pantalla de carga: no (el título no dice \"Starting Game\" ni \"Iniciando partida\").");
+                Line("Pantalla de carga: no (no encontré la lista de jugadores con sus civs).");
             }
         }
         File.WriteAllText(files.Report, report.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));

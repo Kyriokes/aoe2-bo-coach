@@ -163,16 +163,17 @@ public sealed class CaptureToolsTests : IDisposable
         if (Vision.Ocr.OcrReader.TryCreate() is null)
             return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
         var data = Core.Data.GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "data", "game_data"));
-        var tools = new CaptureToolsViewModel(new PngScreen("carga-sintetica-en-1080p.png"), new FakeHost(), RegionsPath, RecordingsRoot,
+        var tools = new CaptureToolsViewModel(new PngScreen("carga-ia-en-1080p.png"), new FakeHost(), RegionsPath, RecordingsRoot,
             () => null, Path.Combine(_dir.FullName, "perfiles"), diagnosticsFolder: DiagnosticsFolder,
-            gameData: () => data, playerName: () => "Bombarda88") { DiagnosticDelay = TimeSpan.Zero };
+            gameData: () => data, playerName: () => "Kyriokes") { DiagnosticDelay = TimeSpan.Zero };
 
         await tools.DiagnosticCommand.ExecuteAsync(null);
 
         var report = File.ReadAllText(Assert.Single(Directory.GetFiles(DiagnosticsFolder, "*.txt")));
-        Assert.Contains("Pantalla de carga (mapa: Arabia)", report);
-        Assert.Contains("→ franks  color 0,190,0  ← vos", report);
-        Assert.Contains("→ malians", report);
+        Assert.Contains("Pantalla de carga:", report);
+        Assert.Contains("1  equipo 1  \"Kvriokes\"  civ \"JAPANESE\" → japanese", report);
+        Assert.Contains("← vos", report);
+        Assert.Contains("8  equipo 2", report);
     }
 
     [Fact]

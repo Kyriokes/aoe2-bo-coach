@@ -128,12 +128,12 @@ public sealed class CoachSessionTests : IDisposable
         using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
         Assert.Equal("", session.PlayerName);
 
-        session.PlayerName = "Lady Halcon ";
+        session.PlayerName = "Kyriokes ";
         session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
 
-        Assert.Equal("Lady Halcon ", session.LiveCoach!.PlayerName);
-        Assert.Equal("Lady Halcon", CoachSettings.Load(path).PlayerName);
-        Assert.Equal("Lady Halcon", new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).PlayerName);
+        Assert.Equal("Kyriokes ", session.LiveCoach!.PlayerName);
+        Assert.Equal("Kyriokes", CoachSettings.Load(path).PlayerName);
+        Assert.Equal("Kyriokes", new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).PlayerName);
     }
 
     [Fact]

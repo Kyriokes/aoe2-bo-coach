@@ -237,9 +237,9 @@ public sealed class LiveCoach : IDisposable
     }
 
     /// <summary>
-    /// La pantalla de carga, si está: sin reloj en la captura anterior, se mira el título cada
-    /// <see cref="LoadingInterval"/>, y si es el de la pantalla de carga se lee entera. Una vez leída no se vuelve a
-    /// leer hasta que aparezca el reloj (la pantalla dura varios segundos).
+    /// La pantalla de carga, si está: sin reloj en la captura anterior, se lee el panel de jugadores cada
+    /// <see cref="LoadingInterval"/> (una pasada del OCR). Una vez leída no se vuelve a leer hasta que aparezca el
+    /// reloj (la pantalla dura varios segundos).
     /// </summary>
     private async Task<LoadingReading?> LoadingScreenAsync(Frame frame)
     {
@@ -247,10 +247,9 @@ public sealed class LiveCoach : IDisposable
             || _lastLoadingTry is { } last && frame.RealTime - last < LoadingInterval.TotalSeconds)
             return null;
         _lastLoadingTry = frame.RealTime;
-        var (w, h) = (frame.Area.Width, frame.Area.Height);
-        if (screen(LoadingScreen.Title(w, h)) is not { } title || !await _loading.IsTitleAsync(title, h))
-            return null;
-        return screen(new PixelRect(0, 0, w, h)) is { } whole ? await _loading.ReadAsync(whole) : null;
+        return screen(LoadingScreen.Panel(frame.Area.Width, frame.Area.Height)) is { } panel
+            ? await _loading.ReadPanelAsync(panel)
+            : null;
     }
 
     /// <summary>Empieza una partida nueva: todo de cero, con la civ del jugador si se lo encontró en la lista.</summary>

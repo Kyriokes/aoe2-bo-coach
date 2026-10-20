@@ -71,7 +71,7 @@
                 <!-- Ajustes de la partida: se aplican al empezar el coach -->
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                     <StackPanel x:Name="PlayerNameBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="Tu nombre en el juego, como sale en la lista de jugadores de la pantalla de carga. Ahí el coach lee con qué civ jugás (manda sobre la de acá al lado en esa partida), contra quién y en qué mapa, y empieza la partida de cero">
+                                ToolTip="Tu nombre en el juego, como sale en la lista de jugadores de la pantalla de carga. Ahí el coach lee con qué civ jugás (manda sobre la de acá al lado en esa partida), y contra quién, y empieza la partida de cero">
                         <TextBlock Text="Tu nombre" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=LostFocus}" Width="120" VerticalContentAlignment="Center"
                                  AutomationProperties.Name="Tu nombre en el juego" />

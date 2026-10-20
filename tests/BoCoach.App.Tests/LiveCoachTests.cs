@@ -64,16 +64,16 @@ public sealed class LiveCoachTests : IDisposable
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
-        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, new StillScreen("carga-sintetica-en-1080p.png"),
-            playerName: "lady halcon");
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, new StillScreen("carga-ia-en-1080p.png"),
+            playerName: "Kyriokes");
         CoachFrame? last = null;
         live.Updated += frame => last = frame;
 
         await live.StepAsync();
 
-        Assert.Equal("burgundians", live.Civ);
-        Assert.Equal("burgundians", last?.Civ);
-        Assert.Equal(4, last?.Me?.Slot);
+        Assert.Equal("japanese", live.Civ);
+        Assert.Equal("japanese", last?.Civ);
+        Assert.Equal(1, last?.Me?.Slot);
         Assert.Equal(8, last?.Loading?.Players.Count);
         Assert.Equal("any", live.BuildOrder.Civ); // la BO con que se empezó no cambia
     }
@@ -84,7 +84,7 @@ public sealed class LiveCoachTests : IDisposable
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return;
-        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, new StillScreen("carga-sintetica-en-1080p.png"));
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, new StillScreen("carga-ia-en-1080p.png"));
         CoachFrame? last = null;
         live.Updated += frame => last = frame;
 
@@ -96,12 +96,12 @@ public sealed class LiveCoachTests : IDisposable
     }
 
     [Fact]
-    public async Task Sin_reloj_mira_el_titulo_cada_2_segundos_y_la_pantalla_de_carga_se_lee_una_vez()
+    public async Task Sin_reloj_mira_el_panel_de_jugadores_cada_2_segundos_y_la_pantalla_de_carga_se_lee_una_vez()
     {
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return;
-        // Otra pantalla (sin reloj porque no hay regiones): solo la caja del título, a los 0,5 y a los 2,5 s.
+        // Otra pantalla (sin reloj porque no hay regiones): el panel de jugadores, a los 0,5 y a los 2,5 s.
         var other = new StillScreen("amigo-20261020-1080p-panel-negro.png");
         using (var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, other))
         {
@@ -110,14 +110,14 @@ public sealed class LiveCoachTests : IDisposable
         }
         Assert.Equal(2, other.ScreenCaptures);
 
-        // La pantalla de carga: el título y la pantalla entera una sola vez, aunque dure varios segundos.
-        var loading = new StillScreen("carga-sintetica-en-1080p.png");
+        // La pantalla de carga: se lee una sola vez, aunque dure varios segundos.
+        var loading = new StillScreen("carga-ia-en-1080p.png");
         using (var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, loading))
         {
             for (var i = 0; i < 10; i++)
                 await live.StepAsync();
         }
-        Assert.Equal(2, loading.ScreenCaptures);
+        Assert.Equal(1, loading.ScreenCaptures);
     }
 
     // Antes solo se atrapaban cuatro tipos de excepción: cualquier otra (un error de programación en la lectura o en

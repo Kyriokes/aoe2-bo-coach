@@ -42,7 +42,7 @@
 //       (y el cuadrado y el stock del mod) para mirarlos.
 //   loading <pantalla.png> [--nombre "tu nombre"]
 //       Lee la pantalla de carga de una captura de pantalla entera (por ejemplo la de diagnóstico): cada jugador con su
-//       equipo, nombre, civ y color, y el mapa. Con --nombre marca cuál sos y muestra tus aliados y rivales.
+//       equipo, nombre, civ y color. Con --nombre marca cuál sos y muestra tus aliados y rivales.
 //
 // --idioma en|es|mx (replay, coach, bench, ocr, autocalibrate --read, loading): el juego en inglés (por defecto), en castellano
 // de España o de Latinoamérica. Elige el OCR y suma las frases del log de data/events.<idioma>.json.
@@ -507,11 +507,11 @@ static async Task<int> Loading(string screenshot, string[] args)
     var reader = new BoCoach.Vision.Loading.LoadingScreenReader(RequiredOcr(args), data, Language(args).Code);
     if (await reader.ReadAsync(screen) is not { } reading)
     {
-        Console.WriteLine($"{screenshot} ({screen.Width}×{screen.Height}) no es la pantalla de carga: el título no dice \"Starting Game\" ni \"Iniciando partida\".");
+        Console.WriteLine($"{screenshot} ({screen.Width}×{screen.Height}) no es la pantalla de carga: no encontré la lista de jugadores con sus civs.");
         return 1;
     }
     var me = reading.Find(Text(args, "--nombre", ""));
-    Console.WriteLine($"Pantalla de carga, {screen.Width}×{screen.Height}, mapa: {reading.Map ?? "-"}");
+    Console.WriteLine($"Pantalla de carga, {screen.Width}×{screen.Height}:");
     foreach (var p in reading.Players)
         Console.WriteLine($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  {p.Name,-24} {p.CivText,-16} → {p.Civ ?? "?",-12} color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
     if (me is not null)
