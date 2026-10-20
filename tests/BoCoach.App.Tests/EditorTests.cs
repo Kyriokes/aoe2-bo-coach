@@ -21,6 +21,16 @@ public sealed class EditorTests : IDisposable
 
     private static readonly BuildOrder ScoutsBo = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "build_orders", "scouts_feudal.json"));
 
+    // Los aldeanos al llegar a Castillos (scouts_22p los trae) no se muestran en el editor, pero no se pierden al guardar.
+    [Fact]
+    public void Guardar_conserva_los_aldeanos_al_llegar_a_Castillos()
+    {
+        var bo = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "data", "build_orders", "scouts_22p.json"));
+        Assert.NotNull(bo.Targets?.VillagersAtCastle);
+
+        Assert.Equal(bo.Targets!.VillagersAtCastle, new BuildOrderEditorViewModel(bo, _data).ToBuildOrder().Targets?.VillagersAtCastle);
+    }
+
     // D2: la postura de cierre. Sin tocarla, una BO que no la tenía se guarda sin postura (sigue a sus pasos).
     [Fact]
     public void La_postura_deducida_se_muestra_y_sin_tocarla_no_se_guarda()

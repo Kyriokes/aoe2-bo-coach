@@ -29,6 +29,9 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
     private readonly IReadOnlyList<Option<string?>> _confirmOptions;
     private readonly int _schemaVersion;
     private readonly bool _hadPosture;
+
+    /// <summary>Aldeanos al llegar a Castillos: el editor no los muestra, pero se guardan como venían.</summary>
+    private readonly VillagerDistribution? _villagersAtCastle;
     private bool _loading = true;
 
     public BuildOrderEditorViewModel(BuildOrder bo, CoachData app)
@@ -53,6 +56,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         FeudalStone = bo.Targets?.VillagersAtFeudal?.Stone;
         // La postura escrita o, si la BO no tiene, la deducida de sus pasos (se guarda solo si se cambia).
         _hadPosture = bo.Posture is not null;
+        _villagersAtCastle = bo.Targets?.VillagersAtCastle;
         var (posture, _) = Posture.Effective(bo);
         PostureVillagers = posture.Queue.Contains("villager");
         PostureUnit = posture.Queue.FirstOrDefault(u => u != "villager");
@@ -152,9 +156,9 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Tags = TagsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             Steps = steps,
-            Targets = feudal is null && castle is null && atFeudal is null
+            Targets = feudal is null && castle is null && atFeudal is null && _villagersAtCastle is null
                 ? null
-                : new Targets { FeudalClickTime = feudal, CastleClickTime = castle, VillagersAtFeudal = atFeudal },
+                : new Targets { FeudalClickTime = feudal, CastleClickTime = castle, VillagersAtFeudal = atFeudal, VillagersAtCastle = _villagersAtCastle },
         };
         var posture = new ClosingPosture
         {
