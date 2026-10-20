@@ -51,6 +51,36 @@ public sealed class BuildOrderLibraryTests : IDisposable
         Assert.Equal(2, _library.List().Count);
     }
 
+    // Lo que viene de afuera (web, archivo, portapapeles) trae un id cualquiera y el id es el nombre del archivo:
+    // "CON" o "nul.txt" son dispositivos de Windows (el archivo no se crea), ".." o uno larguísimo rompen la ruta.
+    [Theory]
+    [InlineData("CON")]
+    [InlineData("nul.txt")]
+    [InlineData("COM1")]
+    [InlineData("..")]
+    [InlineData("con espacios y ñ")]
+    [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public void Agregar_cambia_el_id_si_no_sirve_como_nombre_de_archivo(string id)
+    {
+        var added = _library.Add(Bo("De la web") with { Id = id });
+
+        Assert.NotEqual(id, added.Id);
+        var entry = Assert.Single(_library.List());
+        Assert.Equal("De la web", entry.Name);
+        Assert.Equal(added.Id, entry.BuildOrder?.Id);
+    }
+
+    [Theory]
+    [InlineData("ejemplo-scouts-22p")]
+    [InlineData("Arqueros_v2.1")]
+    public void Agregar_conserva_un_id_que_sirve_como_nombre_de_archivo(string id)
+    {
+        var added = _library.Add(Bo("De la web") with { Id = id });
+
+        Assert.Equal(id, added.Id);
+        Assert.True(File.Exists(Path.Combine(_dir.FullName, $"{id}.json")));
+    }
+
     [Fact]
     public void Importar_y_exportar()
     {

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace BoCoach.Core.BuildOrders;
 
@@ -13,7 +14,7 @@ public sealed record LibraryEntry(string Path, BuildOrder? BuildOrder, string? E
 /// Biblioteca local de build orders: una carpeta con un archivo .json por BO, nombrado por su id.
 /// Nunca borra: lo que se descarta va a la subcarpeta "papelera".
 /// </summary>
-public sealed class BuildOrderLibrary
+public sealed partial class BuildOrderLibrary
 {
     public const string TrashFolder = "papelera";
 
@@ -62,13 +63,30 @@ public sealed class BuildOrderLibrary
     /// <summary>Copia una BO de afuera a la biblioteca. Si su id ya existe, le da uno nuevo.</summary>
     public BuildOrder Import(string sourcePath) => Add(BuildOrderSerializer.Load(sourcePath));
 
-    /// <summary>Agrega una BO que vino de afuera (archivo o web); si su id falta o ya está en uso, le da uno nuevo.</summary>
+    /// <summary>
+    /// Agrega una BO que vino de afuera (archivo, portapapeles o web); si su id falta, ya está en uso o no sirve como
+    /// nombre de archivo, le da uno nuevo.
+    /// </summary>
     public BuildOrder Add(BuildOrder bo)
     {
-        if (string.IsNullOrWhiteSpace(bo.Id) || File.Exists(PathFor(bo)))
+        if (!IsFileNameId(bo.Id) || File.Exists(PathFor(bo)))
             bo = bo with { Id = NewId() };
         return Save(bo);
     }
+
+    /// <summary>
+    /// El id es el nombre del archivo y lo de afuera trae cualquiera: se acepta solo letras, números, '.', '_' y '-'
+    /// (hasta 40 caracteres), y nunca un dispositivo de Windows ("CON", "nul.txt", "COM1": el archivo no se crea).
+    /// </summary>
+    public static bool IsFileNameId(string? id) =>
+        id is not null && FileNameId().IsMatch(id) && !ReservedNames.Contains(id.Split('.')[0]);
+
+    [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")]
+    private static partial Regex FileNameId();
+
+    private static readonly HashSet<string> ReservedNames = new(
+        ["CON", "PRN", "AUX", "NUL", .. Enumerable.Range(1, 9).SelectMany(n => new[] { $"COM{n}", $"LPT{n}" })],
+        StringComparer.OrdinalIgnoreCase);
 
     public static void Export(BuildOrder bo, string destinationPath) => BuildOrderSerializer.Save(bo, destinationPath);
 
