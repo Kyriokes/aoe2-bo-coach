@@ -68,6 +68,14 @@ public class HudTests
     [InlineData("Feudal Agc", Age.Feudal)]
     [InlineData("Castle Age", Age.Castle)]
     [InlineData("lmperial Age", Age.Imperial)]
+    // Juego en castellano (España y Latinoamérica; captura del amigo del 2026-10-20: "Alta Edad Media").
+    [InlineData("Alta Edad Media", Age.Dark)]
+    [InlineData("Edad Feudal", Age.Feudal)]
+    [InlineData("Edad Fcudal", Age.Feudal)]
+    [InlineData("Edad de los Castillos", Age.Castle)]
+    [InlineData("Ed. Castillos", Age.Castle)]
+    [InlineData("Edad Imperial", Age.Imperial)]
+    [InlineData("Edad lmperial", Age.Imperial)]
     [InlineData("Normal", null)]
     [InlineData("", null)]
     public void Lee_la_edad_del_texto_del_HUD(string text, Age? expected)

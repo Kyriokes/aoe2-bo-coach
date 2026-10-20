@@ -130,7 +130,7 @@ public sealed class HudTracker
     }
 }
 
-/// <summary>Lee la edad del texto del HUD ("Dark Age", "Feudal Age", ...), tolerando errores del OCR.</summary>
+/// <summary>Lee la edad del texto del HUD ("Dark Age", "Feudal Age", ... o en castellano), tolerando errores del OCR.</summary>
 public static class AgeText
 {
     private static readonly (Age Age, string Text)[] Names =
@@ -139,6 +139,12 @@ public static class AgeText
         (Age.Feudal, "feudal age"),
         (Age.Castle, "castle age"),
         (Age.Imperial, "imperial age"),
+        // Juego en castellano (textos 4201 a 4204): España y Latinoamérica solo difieren en Castillos.
+        (Age.Dark, "alta edad media"),
+        (Age.Feudal, "edad feudal"),
+        (Age.Castle, "edad de los castillos"),
+        (Age.Castle, "ed castillos"),
+        (Age.Imperial, "edad imperial"),
     ];
 
     public static Age? Parse(string? text)
