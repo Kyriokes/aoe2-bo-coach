@@ -259,6 +259,8 @@ public sealed class LiveCoach : IDisposable
         var me = reading.Find(PlayerName);
         var bo = me?.Civ is { } civ ? BuildOrder with { Civ = civ } : BuildOrder;
         var (coach, builder, reader) = NewGame(bo);
+        // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
+        coach.Signals.PlayerSlot = me?.Slot;
         lock (_gate)
         {
             (_coach, _builder, _reader) = (coach, builder, reader);
