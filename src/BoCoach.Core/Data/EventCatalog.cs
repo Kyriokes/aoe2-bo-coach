@@ -32,7 +32,40 @@ public sealed class EventCatalog
     /// cuentan como raros: "L"itger createa" se parecía más a "Lancer" que a "Villager".
     /// </summary>
     public bool IsCommon(string eventId, int phraseIndex) =>
-        Common is null || Common.Contains(eventId) && (phraseIndex == 0 || EventConventions.Parse(eventId) is null);
+        Common is null || Common.Contains(eventId) && (IsUsualName(eventId, phraseIndex) || EventConventions.Parse(eventId) is null);
+
+    /// <summary>
+    /// Frases con el nombre de siempre de cada evento, de cada idioma unido con <see cref="Merged"/>; null = solo la
+    /// primera.
+    /// </summary>
+    private IReadOnlySet<string>? _usual;
+
+    private bool IsUsualName(string eventId, int phraseIndex) =>
+        _usual is null ? phraseIndex == 0 : _usual.Contains(UsualKey(eventId, Phrases[eventId][phraseIndex]));
+
+    private static string UsualKey(string eventId, string phrase) => $"{eventId}\n{phrase}";
+
+    private IEnumerable<string> UsualKeys() =>
+        _usual ?? Phrases.Where(e => e.Value.Count > 0).Select(e => UsualKey(e.Key, e.Value[0]));
+
+    /// <summary>
+    /// Este catálogo más las frases de otro idioma del juego (events.es.json) bajo los mismos ids. La primera frase
+    /// de cada idioma sigue siendo el nombre de siempre (ver <see cref="IsCommon"/>).
+    /// </summary>
+    public EventCatalog Merged(EventCatalog other)
+    {
+        var phrases = Phrases.ToDictionary(e => e.Key, e => e.Value.ToList());
+        foreach (var (id, list) in other.Phrases)
+        {
+            var mine = phrases.TryGetValue(id, out var existing) ? existing : phrases[id] = [];
+            mine.AddRange(list.Where(p => !mine.Contains(p)));
+        }
+        return new EventCatalog(phrases.ToDictionary(e => e.Key, e => (IReadOnlyList<string>)e.Value))
+        {
+            Common = Common,
+            _usual = UsualKeys().Concat(other.UsualKeys()).ToHashSet(),
+        };
+    }
 
     /// <summary>
     /// El mismo catálogo, prefiriendo los eventos de las entidades de game_data (las que pueden usar las BO) y los
@@ -50,7 +83,7 @@ public sealed class EventCatalog
             .Where(id => EventConventions.Parse(id) is not { } action
                          || data.TryGet(action.What, out var entity) && entity.Kind == KindOf(action.Action))
             .ToHashSet();
-        return new EventCatalog(Phrases) { Common = common };
+        return new EventCatalog(Phrases) { Common = common, _usual = _usual };
     }
 
     public static EventCatalog Load(string path) => Parse(File.ReadAllText(path));

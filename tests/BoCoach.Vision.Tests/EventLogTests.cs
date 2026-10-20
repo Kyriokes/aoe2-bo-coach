@@ -30,6 +30,28 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(expected, Matcher.Match(line));
     }
 
+    // Juego en castellano (amigos del usuario, 2026-10-20): las frases de events.es.json, unidas a las inglesas como en
+    // la app. El OCR en inglés lee sin acentos y el de castellano con ellos: las dos tienen que dar el evento.
+    private static readonly EventMatcher SpanishMatcher = new(EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json"))
+        .Merged(EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.es.json")))
+        .PreferringEntitiesOf(GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "game_data"))));
+
+    [Theory]
+    [InlineData("--Aldeano: creación finalizada--", "villager_created")]
+    [InlineData("--Aldeano: creacion finalizada--", "villager_created")]
+    [InlineData("-AIdeano: creaci6n finalizada-", "villager_created")]
+    [InlineData("--Casa: construcción finalizada--", "house_built")]
+    [InlineData("--Campamento maderero: construccion finalizada--", "lumber_camp_built")]
+    [InlineData("--Edad Feudal: desarrollo finalizado--", "feudal_age_researched")]
+    [InlineData("--Telar: desarrollo finalizado--", "loom_researched")]
+    [InlineData("-Granja agotada--", "farm_exhausted")]
+    [InlineData("--Lancero: creación finalizada--", "spearman_created")]
+    [InlineData("-Villager Created--", "villager_created")] // el inglés sigue andando con el catálogo unido
+    public void Reconoce_renglones_en_castellano(string line, string expected)
+    {
+        Assert.Equal(expected, SpanishMatcher.Match(line));
+    }
+
     [Theory]
     [InlineData("Player 2 Timur Qutlugh!!!-")]
     [InlineData("Age of Empires II: Definitive Editior")]
