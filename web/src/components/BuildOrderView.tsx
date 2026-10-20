@@ -127,6 +127,16 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
           </li>
         ))}
       </ol>
+
+      {analysis.posture?.text || analysis.posture?.next_age ? (
+        <p className="rounded-md border border-line bg-panel p-3 text-sm">
+          <span className="text-faint">Al terminar: </span>
+          {[analysis.posture.text, analysis.posture.next_age ? `y después, ${analysis.posture.next_age}` : null]
+            .filter(Boolean)
+            .join(", ")}
+          {analysis.posture.derived ? <span className="text-xs text-faint"> (deducido de los pasos)</span> : null}
+        </p>
+      ) : null}
     </div>
   );
 }

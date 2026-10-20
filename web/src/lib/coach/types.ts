@@ -56,6 +56,8 @@ export interface Analysis {
   schema_version: number;
   tags: string[];
   targets: { feudal_click_time?: number; castle_click_time?: number };
+  /** Postura de cierre (al terminar los pasos): qué va siempre en cola y a qué edad se apunta; deducida si la BO no la trae. */
+  posture?: { text: string | null; next_age: string | null; derived: boolean };
   /** La BO normalizada (migrada a la versión actual del formato), lista para guardar. */
   build_order: Record<string, unknown>;
   issues: Issue[];
