@@ -14,7 +14,7 @@
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
-//   coach <grabación | lecturas.csv> <bo.json> [--fonts ...] [--events ...] [--game-data data/game_data]
+//   coach <grabación | lecturas.csv> <bo.json> [--civ clave] [--fonts ...] [--events ...] [--game-data data/game_data]
 //         [--economy] [--guide] [--allocator exact|greedy] [--until m:ss]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
@@ -490,8 +490,10 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
 {
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
     var catalog = Catalog(args, data);
+    // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
     var bo = BuildOrderSerializer.Load(boPath);
-    var builder = new SnapshotBuilder(data);
+    bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
+    var builder = new SnapshotBuilder(data, data.Civ(bo.Civ));
     var allocator = Enum.Parse<BoCoach.Core.Economy.AllocatorKind>(Text(args, "--allocator", "exact"), ignoreCase: true);
     var coach = new Coach(bo, data, catalog, economy: new BoCoach.Core.Economy.EconomySettings { Allocator = allocator });
 
