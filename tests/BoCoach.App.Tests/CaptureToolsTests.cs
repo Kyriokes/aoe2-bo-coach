@@ -35,8 +35,11 @@ public sealed class CaptureToolsTests : IDisposable
         public void ShowMessage(string title, string text, bool warning) => Message = (text, warning);
     }
 
+    private string DiagnosticsFolder => Path.Combine(_dir.FullName, "diagnostico");
+
     private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null, IScreenSource? screen = null) =>
-        new(screen ?? new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"));
+        new(screen ?? new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"),
+            diagnosticsFolder: DiagnosticsFolder) { DiagnosticDelay = TimeSpan.Zero };
 
     private static readonly string HudFixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "hud-20261018-132830");
 
@@ -118,6 +121,38 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.InRange(tools.Layout.HudScale, 1.05, 1.15);
         Assert.Contains("escala 1", tools.CalibrationStatus);
         Assert.DoesNotContain("leer mal", tools.CalibrationStatus);
+    }
+
+    // 4.3 del traspaso del 2026-10-20: las capturas de los amigos llegaban comprimidas y sin saber qué vio la app.
+    [Fact]
+    public async Task La_captura_de_diagnostico_guarda_la_pantalla_sin_perdida_y_lo_que_encontro()
+    {
+        var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+        await tools.DiagnosticCommand.ExecuteAsync(null);
+
+        var png = Assert.Single(Directory.GetFiles(DiagnosticsFolder, "*.png"));
+        Assert.Equal((1920, 1080), (Png.Read(png).Width, Png.Read(png).Height));
+        var report = File.ReadAllText(Path.ChangeExtension(png, ".txt"));
+        Assert.Contains("6 cuadrados", report);
+        Assert.Contains("Versión: v", report);
+        Assert.Contains("OCR instalados:", report);
+        Assert.Contains("BoCoach HUD", report);
+        Assert.Contains(DiagnosticsFolder, tools.DiagnosticStatus);
+        Assert.Contains("mandá esa carpeta", tools.DiagnosticStatus);
+    }
+
+    [Fact]
+    public async Task La_captura_de_diagnostico_del_amigo_dice_lo_que_lee_con_el_HUD_mas_grande()
+    {
+        var tools = Tools(new FakeHost(), screen: new PngScreen("amigo-20261020-1080p-panel-negro.png"));
+
+        await tools.DiagnosticCommand.ExecuteAsync(null);
+
+        var report = File.ReadAllText(Assert.Single(Directory.GetFiles(DiagnosticsFolder, "*.txt")));
+        Assert.Contains("escala 1", report);
+        Assert.Contains("stock 460 · aldeanos 12", report);
+        Assert.Contains("reloj       4:15", report);
     }
 
     [Fact]

@@ -254,6 +254,35 @@ public static class HudMod
         return panel;
     }
 
+    /// <summary>Cómo está el mod en cada perfil del juego (para la captura de diagnóstico), un renglón por perfil.</summary>
+    public static IReadOnlyList<string> Describe(string? profilesRoot = null)
+    {
+        profilesRoot ??= DefaultProfilesRoot;
+        if (!Directory.Exists(profilesRoot))
+            return [$"No hay perfiles del juego en {profilesRoot}."];
+        var lines = new List<string>();
+        foreach (var profile in Directory.EnumerateDirectories(profilesRoot).Order())
+        {
+            var mods = Path.Combine(profile, "mods");
+            if (!Directory.Exists(mods))
+                continue;
+            var name = Path.GetFileName(profile);
+            if (!File.Exists(Path.Combine(mods, "local", Name, "widgetui", ResourcePanelFile)))
+            {
+                lines.Add($"Perfil {name}: sin instalar.");
+                continue;
+            }
+            var status = ReadStatus(mods);
+            var ours = status.FirstOrDefault(IsOurs);
+            var ahead = status.Where(m => m.Enabled && !IsOurs(m) && (ours is null || m.Priority < ours.Priority) && TouchesPanels(mods, m))
+                .Select(m => m.Title).ToList();
+            lines.Add($"Perfil {name}: instalado, "
+                + (ours is null ? "el juego todavía no lo listó" : ours.Enabled ? $"activo (prioridad {ours.Priority})" : "APAGADO")
+                + (ahead.Count > 0 ? $"; le ganan: {string.Join(", ", ahead)}" : "") + ".");
+        }
+        return lines.Count > 0 ? lines : ["Ningún perfil del juego tiene carpeta de mods."];
+    }
+
     private sealed record ModEntry(string Path, string Title, bool Enabled, int Priority);
 
     private static bool IsOurs(ModEntry mod) => mod.Path.Contains(Name, StringComparison.OrdinalIgnoreCase);

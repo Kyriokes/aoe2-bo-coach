@@ -3,6 +3,8 @@ using System.Text.Json;
 using BoCoach.App.Overlay;
 using BoCoach.Core;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
+using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
 using BoCoach.Vision.Regions;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -31,10 +33,14 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     private readonly string _recordingsRoot;
     private readonly Func<string?> _findGame;
     private readonly string _gameProfiles;
+    private readonly Func<HudFonts> _fonts;
+    private readonly Func<GameLanguage> _language;
+    private readonly string _diagnosticsFolder;
     private SessionRecorder? _recorder;
 
     public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
-        Func<string?>? findGame = null, string? gameProfiles = null)
+        Func<string?>? findGame = null, string? gameProfiles = null,
+        Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null)
     {
         _screen = screen;
         _host = host;
@@ -42,6 +48,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         _recordingsRoot = recordingsRoot ?? SessionRecorder.DefaultOutputRoot;
         _findGame = findGame ?? GameIcons.FindGame;
         _gameProfiles = gameProfiles ?? HudMod.DefaultProfilesRoot;
+        _fonts = fonts ?? (() => HudFonts.Load(Path.Combine(CoachData.DataDir, "fonts")));
+        _language = language ?? (() => GameLanguage.English);
+        _diagnosticsFolder = diagnosticsFolder ?? DiagnosticCapture.DefaultFolder;
         UpdateCalibrationStatus();
     }
 
@@ -142,6 +151,33 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
             lines.AddRange(result.Warnings.Select(w => $"• {w}"));
         }
         return string.Join("\n", lines);
+    }
+
+    /// <summary>Dónde quedó la última captura de diagnóstico (o qué falló).</summary>
+    [ObservableProperty] public partial string DiagnosticStatus { get; set; } = "";
+
+    /// <summary>Cuánto espera antes de capturar: desde la app hay tiempo de volver al juego.</summary>
+    public TimeSpan DiagnosticDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Captura de diagnóstico (botón y Ctrl+Alt+X): la pantalla entera sin pérdida y un .txt con lo que encontró la
+    /// app, en %LOCALAPPDATA%\BoCoach\diagnostico, para mandar cuando algo no anda.
+    /// </summary>
+    [RelayCommand]
+    private async Task Diagnostic()
+    {
+        DiagnosticStatus = $"Captura de diagnóstico en {DiagnosticDelay.TotalSeconds:0} s: volvé al juego…";
+        await Task.Delay(DiagnosticDelay);
+        try
+        {
+            var files = await DiagnosticCapture.SaveAsync(_screen, Layout, _regionsPath, _fonts(), _language(), _diagnosticsFolder,
+                _findGame, _gameProfiles, DateTime.Now);
+            DiagnosticStatus = $"Captura de diagnóstico guardada en {Path.GetDirectoryName(files.Image)} ({Path.GetFileNameWithoutExtension(files.Image)}): mandá esa carpeta.";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or InvalidDataException)
+        {
+            DiagnosticStatus = $"No se pudo guardar la captura de diagnóstico: {e.Message}";
+        }
     }
 
     /// <summary>Copia de la calibración manual que la calibración sola reemplaza (por si hay que volver a ella).</summary>
