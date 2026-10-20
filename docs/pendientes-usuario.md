@@ -28,7 +28,7 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 11. **Prueba de usabilidad del editor** (B5): una BO de 20 pasos desde cero, cronometrada. Si pasa de 5 minutos, contame qué te trabó.
 12. **Tu biblioteca local:** las copias de scouts y fast castle en `%APPDATA%\BoCoach\build_orders` son las viejas (9 en ovejas). Para tener las nuevas: "Importar…" con `build_orders/scouts_22p.json` y `build_orders/fast_castle_principiante.json` del repo.
-13. **Bloque D de `PLAN.md`** (ideas grandes): charlarlas antes de que yo escriba código. D1 está hecho (v0.9.20): probalo en una partida en la que cambies de build (por ejemplo, BO de arqueros y hacé 6 hombres de armas o lanceros sin sacar arqueros): a los 60 s del último arquero el overlay tiene que decir "BO abandonada" y por qué, y Ctrl+Alt+← (o "◀ Atrás") la retoma. Siguen D2 a D5.
+13. **Bloque D de `PLAN.md`** (ideas grandes): charlarlas antes de que yo escriba código. D1 está hecho (v0.9.20): probalo en una partida en la que cambies de build (por ejemplo, BO de arqueros y hacé 6 hombres de armas o lanceros sin sacar arqueros): a los 60 s del último arquero el overlay tiene que decir "BO abandonada" y por qué, y Ctrl+Alt+← (o "◀ Atrás") la retoma. D2 (postura de cierre) está hecho (v0.9.21): terminá una BO entera (por ejemplo, la de scouts) y fijate que el overlay pase a "Postura: aldeanos y exploradores siempre en cola", que avise "Establo parado" si lo dejás sin nada en cola, y que diga cuánto falta para la próxima edad o "Hacé clic en ...". En el editor, la sección "POSTURA DE CIERRE". Siguen D3 a D5.
 
 ## Decisiones que necesito
 
