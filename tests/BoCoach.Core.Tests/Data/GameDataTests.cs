@@ -18,12 +18,25 @@ public class GameDataTests
     [InlineData("loom", 0, 0, 0, 50, 25)]
     [InlineData("feudal_age", 500, 0, 0, 0, 130)]
     [InlineData("castle_age", 800, 0, 0, 200, 160)]
+    [InlineData("settlement", 0, 125, 0, 0, 40)]
     public void Valores_clave_coinciden_con_el_juego(string key, double food, double wood, double stone, double gold, int time)
     {
         var entity = V89.Get(key);
 
         Assert.Equal(new ResourceAmounts(food, wood, stone, gold), entity.Cost);
         Assert.Equal(time, entity.Time);
+    }
+
+    [Fact]
+    public void El_Settlement_de_los_incas_cuenta_como_cuatro_edificios()
+    {
+        var settlement = V89.Get("settlement");
+
+        Assert.Equal(EntityKind.Building, settlement.Kind);
+        Assert.Equal(Age.Dark, settlement.Age);
+        Assert.Equal(["lumber_camp", "mining_camp", "mill", "house"], settlement.CountsAs);
+        Assert.Empty(V89.Get("house").CountsAs);
+        Assert.True(V89.Civ("incas").PopBonus(settlement, Age.Dark) >= 5);
     }
 
     [Fact]

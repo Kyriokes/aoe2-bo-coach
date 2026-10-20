@@ -182,6 +182,14 @@ public class BuildOrderValidatorTests
     }
 
     [Fact]
+    public void El_Settlement_cubre_los_edificios_que_pide_Feudal()
+    {
+        var result = Validator.Validate(Bo(Build("s1", "settlement"), Research("s2", "feudal_age")) with { Civ = "incas" });
+
+        Assert.DoesNotContain(result.Issues, i => i.Message.Contains("hacen falta 2 edificios"));
+    }
+
+    [Fact]
     public void Aviso_si_falta_un_edificio_de_la_edad_para_subir()
     {
         var result = Validator.Validate(Bo(Build("s1", "mill"), Research("s2", "feudal_age")));

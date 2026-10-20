@@ -80,7 +80,11 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             ValidateStep(step, id, age, built, ids, Error, Warn);
 
             if (step.Do == StepAction.Build && step.What is not null)
+            {
                 built.Add(step.What);
+                if (gameData.TryGet(step.What, out var building))
+                    built.UnionWith(building.CountsAs); // el Settlement de los incas vale por campamentos, molino y casa
+            }
             if (step.Do == StepAction.Research && step.What is not null && AgeTechs.TryGetValue(step.What, out var next))
                 age = next;
         }

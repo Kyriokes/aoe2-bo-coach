@@ -23,6 +23,7 @@ public static class StepText
         ["mill"] = ("molino", "molinos"),
         ["lumber_camp"] = ("campamento maderero", "campamentos madereros"),
         ["mining_camp"] = ("campamento minero", "campamentos mineros"),
+        ["settlement"] = ("asentamiento", "asentamientos"), // el Settlement de los incas
         ["farm"] = ("granja", "granjas"),
         ["dock"] = ("muelle", "muelles"),
         ["barracks"] = ("cuartel", "cuarteles"),

@@ -450,6 +450,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 _running.Add((_time + buildTime, item, () =>
                 {
                     _buildings[entity.Key] = _buildings.GetValueOrDefault(entity.Key) + 1;
+                    foreach (var counted in entity.CountsAs)
+                        _buildings[counted] = _buildings.GetValueOrDefault(counted) + 1;
                     _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + _civ.PopBonus(entity, _age));
                     if (parallel || last)
                     {

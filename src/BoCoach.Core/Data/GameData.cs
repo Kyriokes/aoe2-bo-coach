@@ -19,6 +19,12 @@ public sealed record Entity(
 {
     /// <summary>Lo que hace (si es una tecnología) con la recolección de cada fuente: hachas, carretilla, minería.</summary>
     public IReadOnlyDictionary<GatherSource, GatherEffect> Gather { get; init; } = new Dictionary<GatherSource, GatherEffect>();
+
+    /// <summary>
+    /// Edificios por los que vale este a la vez (el Settlement de los incas: campamento maderero, campamento minero,
+    /// molino y casa): confirma sus pasos, cubre los requisitos de edad y produce lo que ellos producen.
+    /// </summary>
+    public IReadOnlyList<string> CountsAs { get; init; } = [];
 }
 
 /// <summary>

@@ -56,6 +56,11 @@ public static partial class GameDataLoader
         {
             if (entity.MadeIn is not null && !entities.ContainsKey(entity.MadeIn))
                 throw new GameDataException($"'{entity.Key}': made_in '{entity.MadeIn}' no es una entidad conocida.");
+            foreach (var counted in entity.CountsAs)
+            {
+                if (!entities.TryGetValue(counted, out var other) || other.Kind != EntityKind.Building)
+                    throw new GameDataException($"'{entity.Key}': counts_as '{counted}' no es un edificio conocido.");
+            }
         }
 
         var civs = (dto.Civs ?? []).ToDictionary(c => c.Key, c => ToCiv(c.Key, c.Value, entities));
@@ -103,6 +108,7 @@ public static partial class GameDataLoader
             dto.PopBonus)
         {
             Gather = gather,
+            CountsAs = dto.CountsAs ?? [],
         };
     }
 
@@ -250,7 +256,8 @@ public static partial class GameDataLoader
         string? MadeIn,
         int Pop,
         int PopBonus,
-        Dictionary<string, GatherEffectDto>? Gather);
+        Dictionary<string, GatherEffectDto>? Gather,
+        string[]? CountsAs);
 
     internal sealed record GatherEffectDto(double? Work, double[]? Carry, double? Speed);
 }

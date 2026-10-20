@@ -141,6 +141,13 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
                     _builtCap += pop;
                     _capCredits.Add((now, pop));
                 }
+                // El Settlement de los incas vale por campamento maderero, minero, molino y casa: cada uno avisa como
+                // construido (confirma su paso de la BO y cuenta como productor). La población ya la dio el propio edificio.
+                foreach (var counted in entity?.CountsAs ?? [])
+                {
+                    _buildings[counted] = _buildings.GetValueOrDefault(counted) + 1;
+                    _pendingEvents.Add(EventConventions.EventFor(BuildOrders.StepAction.Build, counted)!);
+                }
             }
         }
         if (reading.PopulationCap is { } readCap)
