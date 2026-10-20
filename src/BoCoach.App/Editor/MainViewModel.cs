@@ -243,8 +243,11 @@ public sealed partial class MainViewModel : ObservableObject
             await ImportFromLinkAsync(text);
     }
 
-    /// <summary>Baja una BO de la web y la agrega a la biblioteca (también para los enlaces bocoach://import/...).</summary>
-    public async Task<bool> ImportFromLinkAsync(string text)
+    /// <summary>
+    /// Baja una BO de la web y la agrega a la biblioteca. Con <paramref name="confirm"/> pregunta antes de agregarla,
+    /// mostrando nombre y autor: es para los enlaces bocoach://import/..., que los dispara cualquier página web.
+    /// </summary>
+    public async Task<bool> ImportFromLinkAsync(string text, bool confirm = false)
     {
         if (WebCode.Parse(text) is not { } code)
         {
@@ -255,6 +258,12 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var downloaded = await _web.Client.DownloadAsync(code);
+            if (confirm && !_dialogs.Confirm(
+                    $"Una página web o un programa pidió abrir una build order en BO Coach.\n\n¿Agregar \"{downloaded.BuildOrder.Name}\" de {downloaded.Author} (código {code}) a tu biblioteca?"))
+            {
+                Status = "";
+                return false;
+            }
             LeaveCurrent();
             var imported = _app.Library.Add(downloaded.BuildOrder);
             RefreshList();

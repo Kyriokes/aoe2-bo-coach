@@ -44,12 +44,19 @@ public sealed class WebTests : IDisposable
         public WebSettings? Account { get; set; }
         public List<string> Errors { get; } = [];
         public List<string> Opened { get; } = [];
+        public List<string> Confirmations { get; } = [];
+        public bool Accept { get; set; } = true;
         public int AccountDialogs { get; private set; }
 
         public string? PickFileToOpen() => null;
         public string? PickFileToSave(string suggestedName) => null;
         public bool AskSaveChanges(string name) => true;
-        public bool Confirm(string message) => true;
+        public bool Confirm(string message)
+        {
+            Confirmations.Add(message);
+            return Accept;
+        }
+
         public void ShowError(string message) => Errors.Add(message);
         public string? AskText(string title, string message, string initial = "") => Text;
         public WebSettings? EditWebAccount(WebSettings current) { AccountDialogs++; return Account; }
@@ -110,6 +117,50 @@ public sealed class WebTests : IDisposable
         Assert.Contains(vm.Entries, e => e.Name == "Scouts de Ana");
         Assert.Contains("de Ana", vm.Status);
         Assert.Empty(dialogs.Errors);
+        Assert.Empty(dialogs.Confirmations); // el código lo pegó el usuario: no hace falta preguntar
+    }
+
+    private static string ScoutsDeAna()
+    {
+        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
+        return new JsonObject
+        {
+            ["code"] = "k7m2xq",
+            ["author"] = "Ana",
+            ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(scouts with { Name = "Scouts de Ana" })),
+        }.ToJsonString();
+    }
+
+    // Un enlace bocoach://import/... lo dispara cualquier página web: antes de agregar la BO hay que preguntar.
+    [Fact]
+    public async Task Un_enlace_bocoach_pregunta_antes_de_agregar_y_no_agrega_si_se_dice_que_no()
+    {
+        var (vm, web, dialogs, _) = Editor();
+        web.Respond = _ => (HttpStatusCode.OK, ScoutsDeAna());
+        dialogs.Accept = false;
+        var before = vm.Entries.Count;
+
+        Assert.False(await vm.ImportFromLinkAsync("bocoach://import/k7m2xq", confirm: true));
+
+        var question = Assert.Single(dialogs.Confirmations);
+        Assert.Contains("Scouts de Ana", question);
+        Assert.Contains("Ana", question);
+        Assert.Equal(before, vm.Entries.Count);
+        Assert.DoesNotContain(vm.Entries, e => e.Name == "Scouts de Ana");
+        Assert.Empty(dialogs.Errors);
+    }
+
+    [Fact]
+    public async Task Un_enlace_bocoach_agrega_la_BO_si_se_confirma()
+    {
+        var (vm, web, dialogs, _) = Editor();
+        web.Respond = _ => (HttpStatusCode.OK, ScoutsDeAna());
+
+        Assert.True(await vm.ImportFromLinkAsync("bocoach://import/k7m2xq", confirm: true));
+
+        Assert.Single(dialogs.Confirmations);
+        Assert.Contains(vm.Entries, e => e.Name == "Scouts de Ana");
+        Assert.Equal("Scouts de Ana", vm.Editor?.Name);
     }
 
     [Fact]

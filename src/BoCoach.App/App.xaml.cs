@@ -66,14 +66,14 @@ public partial class App : Application
             if (Argument(args, "--replay") is { } replay)
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             if (importLink is not null)
-                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.ViewModel.ImportFromLinkAsync(importLink));
+                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.ViewModel.ImportFromLinkAsync(importLink, confirm: true));
             _instance!.Listen(message => Dispatcher.BeginInvoke(async () =>
             {
                 if (window.WindowState == WindowState.Minimized)
                     window.WindowState = WindowState.Normal;
                 window.Activate();
                 if (message != ActivateMessage)
-                    await window.ViewModel.ImportFromLinkAsync(message);
+                    await window.ViewModel.ImportFromLinkAsync(message, confirm: true);
             }));
             return;
         }
