@@ -93,23 +93,57 @@ public sealed class GameSignals(GameData data)
 
     private void Scores(double time, IReadOnlyList<PlayerScore> scores)
     {
-        var free = _players.ToList();
-        foreach (var row in scores)
+        var assigned = Assign(scores, time);
+        for (var i = 0; i < scores.Count; i++)
         {
-            var player = free.Select(p => (Player: p, Cost: Math.Abs(row.Score - p.Last) + (p.Slot != 0 && p.Slot != row.Slot ? ColorMismatch : 0)))
-                .Where(c => c.Cost <= NewPlayerDistance + (time - c.Player.Time) * ScorePerSecond).OrderBy(c => c.Cost).Select(c => c.Player).FirstOrDefault();
+            var player = assigned[i];
             if (player is null)
             {
-                player = new Player { Last = row.Score, Time = time };
+                player = new Player { Last = scores[i].Score, Time = time };
                 _players.Add(player);
             }
-            else
-            {
-                free.Remove(player);
-            }
-            player.Votes[row.Slot]++;
-            Track(player, row, time);
+            player.Votes[scores[i].Slot]++;
+            Track(player, scores[i], time);
         }
+    }
+
+    /// <summary>
+    /// Qué jugador es cada renglón: la asignación de menor costo total (diferencia de puntaje más lo que cuesta un
+    /// color distinto), no renglón por renglón. En la 20261018-132830 el rival hizo clic (942 → 892) en la misma
+    /// lectura en que el usuario llegó a Feudal (801 → 907): de a uno, el 907 quedaba con el rival y se cruzaban.
+    /// null = un jugador nuevo.
+    /// </summary>
+    private Player?[] Assign(IReadOnlyList<PlayerScore> rows, double time)
+    {
+        double Cost(PlayerScore row, Player p) => Math.Abs(row.Score - p.Last) + (p.Slot != 0 && p.Slot != row.Slot ? ColorMismatch : 0);
+        bool Fits(PlayerScore row, Player p) => Cost(row, p) <= NewPlayerDistance + (time - p.Time) * ScorePerSecond;
+        const double NewPlayerCost = 1000;
+
+        var best = new Player?[rows.Count];
+        var current = new Player?[rows.Count];
+        var bestCost = double.MaxValue;
+        var used = new HashSet<Player>();
+        void Search(int i, double cost)
+        {
+            if (cost >= bestCost)
+                return;
+            if (i == rows.Count)
+            {
+                (bestCost, best) = (cost, current.ToArray());
+                return;
+            }
+            foreach (var p in _players.Where(p => !used.Contains(p) && Fits(rows[i], p)))
+            {
+                used.Add(p);
+                current[i] = p;
+                Search(i + 1, cost + Cost(rows[i], p));
+                used.Remove(p);
+            }
+            current[i] = null;
+            Search(i + 1, cost + NewPlayerCost);
+        }
+        Search(0, 0);
+        return best;
     }
 
     private void Track(Player player, PlayerScore row, double time)

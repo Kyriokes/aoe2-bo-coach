@@ -62,6 +62,20 @@ public class GameSignalsTests
             At(196, null, new PlayerScore(2, 302, true))));
     }
 
+    // 20261018-132830, captura 854: el rival hace clic (942 → 892) justo cuando el usuario llega a Feudal (801 → 907).
+    [Fact]
+    public void Un_clic_del_rival_a_la_vez_que_el_jugador_sube_de_puntaje_no_cruza_las_series()
+    {
+        var (signals, state) = New();
+        var found = Feed(signals, state,
+            At(846, null, new PlayerScore(2, 931, true), new PlayerScore(1, 800, true)),
+            At(850, null, new PlayerScore(2, 941, true), new PlayerScore(1, 801, true)),
+            At(854, null, new PlayerScore(1, 907, false), new PlayerScore(2, 892, true)),
+            At(858, null, new PlayerScore(1, 908, false), new PlayerScore(2, 893, true)));
+
+        Assert.Equal("rival_feudal_click", Assert.Single(found).Kind);
+    }
+
     [Fact]
     public void Gastar_poco_no_es_un_clic()
     {
