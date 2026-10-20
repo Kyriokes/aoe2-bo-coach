@@ -49,7 +49,12 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     {
         var hud = frame.Hud;
         var view = frame.View;
-        Clock = hud?.Clock is { } clock ? GameClock.Format(clock) : "no se lee";
+        // Si el jugador se quedó quieto al principio, el coach cuenta desde que empezó a jugar y el reloj del juego no.
+        Clock = hud?.Clock is { } clock
+            ? frame.StartOffset > 0
+                ? $"{GameClock.Format(clock)} · la partida empezó a las {GameClock.Format(frame.StartOffset)} (juego {GameClock.Format(view.Time)})"
+                : GameClock.Format(clock)
+            : "no se lee";
 
         static string Stock(double? value) => value is { } v ? $"{v:0}" : "no se lee";
         Food.Stock = Stock(hud?.Food);

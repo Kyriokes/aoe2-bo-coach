@@ -499,10 +499,16 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     BoCoach.Core.Economy.Suggestion? shown = null;
     var suggestions = 0;
     double? until = args.Contains("--until") && BoCoach.Core.GameClock.TryParse(Text(args, "--until", ""), out var stop) ? stop : (double?)null;
+    var startShown = false;
     await foreach (var (index, reading) in Readings(recording, args))
     {
         if (builder.Build(reading) is not { } snapshot)
             continue;
+        if (builder.StartOffset > 0 && !startShown)
+        {
+            Console.WriteLine($"{index,5}        la partida empezó a las {BoCoach.Core.GameClock.Format(builder.StartOffset)} del reloj: los tiempos cuentan desde ahí");
+            startShown = true;
+        }
         if (snapshot.Time > until)
             break;
         var view = coach.Update(snapshot);
