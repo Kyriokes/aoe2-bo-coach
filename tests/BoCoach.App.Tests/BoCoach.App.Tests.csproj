@@ -27,6 +27,7 @@
     <None Include="..\fixtures\rec-20261015-214512\**\*" Link="fixtures\rec-20261015-214512\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\rts-overlay\*.json" Link="fixtures\rts-overlay\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\hud-20261018-132830\*" Link="fixtures\hud-20261018-132830\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\screens\*.png" Link="fixtures\screens\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\build_orders\*.json" Link="fixtures\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

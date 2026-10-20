@@ -96,6 +96,30 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.InRange(clock.Y, boxes["clock"].Y - 3, boxes["clock"].Y + 3);
     }
 
+    /// <summary>Una captura de pantalla entera guardada (las de los amigos, en tests/fixtures/screens).</summary>
+    private sealed class PngScreen(string name) : IScreenSource
+    {
+        private readonly CapturedImage _screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", name));
+
+        public PixelRect CaptureArea => new(0, 0, _screen.Width, _screen.Height);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => _screen.Crop(rect);
+    }
+
+    // B4 (b): con el HUD más grande (captura del amigo, escala 1,09) las capturas se reescalan al leerlas, así que la
+    // escala queda guardada y el estado ya no avisa que puede leer mal.
+    [Fact]
+    public void Con_el_HUD_mas_grande_guarda_la_escala_y_no_avisa_que_lee_mal()
+    {
+        var tools = Tools(new FakeHost(), screen: new PngScreen("amigo-20261020-1080p-panel-negro.png"));
+
+        Assert.True(tools.TryAutoCalibrate());
+
+        Assert.InRange(tools.Layout.HudScale, 1.05, 1.15);
+        Assert.Contains("escala 1", tools.CalibrationStatus);
+        Assert.DoesNotContain("leer mal", tools.CalibrationStatus);
+    }
+
     [Fact]
     public void Sin_el_mod_en_pantalla_queda_la_calibracion_que_habia()
     {

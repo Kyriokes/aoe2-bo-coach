@@ -175,9 +175,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         if (IsCalibrated)
             File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
         found.Layout.Save(_regionsPath);
-        var offScale = Math.Abs(found.Scale - 1) > 0.05;
+        // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = $"Calibrada sola para {area.Width}×{area.Height}: {found.Squares.Count} cuadrados y el reloj"
-            + (offScale ? $" (HUD a escala {found.Scale:0.00}: las letras están medidas a 1080p y puede leer mal)" : "") + ".";
+            + (CapturedImage.NeedsResample(found.Scale) ? $", HUD a escala {found.Scale:0.00}" : "") + ".";
         return true;
     }
 
