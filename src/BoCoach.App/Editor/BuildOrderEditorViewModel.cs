@@ -20,6 +20,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         nameof(Name), nameof(Civ), nameof(Author), nameof(Description), nameof(TagsText),
         nameof(FeudalTargetText), nameof(CastleTargetText),
         nameof(FeudalFood), nameof(FeudalWood), nameof(FeudalGold), nameof(FeudalStone),
+        nameof(PostureVillagers), nameof(PostureUnit), nameof(PostureNextAge),
     ];
 
     private static readonly string[] ResearchDefaults = ["loom", "feudal_age", "castle_age", "imperial_age"];
@@ -27,6 +28,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
     private readonly CoachData _app;
     private readonly IReadOnlyList<Option<string?>> _confirmOptions;
     private readonly int _schemaVersion;
+    private readonly bool _hadPosture;
     private bool _loading = true;
 
     public BuildOrderEditorViewModel(BuildOrder bo, CoachData app)
@@ -49,6 +51,18 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         FeudalWood = bo.Targets?.VillagersAtFeudal?.Wood;
         FeudalGold = bo.Targets?.VillagersAtFeudal?.Gold;
         FeudalStone = bo.Targets?.VillagersAtFeudal?.Stone;
+        // La postura escrita o, si la BO no tiene, la deducida de sus pasos (se guarda solo si se cambia).
+        _hadPosture = bo.Posture is not null;
+        var (posture, _) = Posture.Effective(bo);
+        PostureVillagers = posture.Queue.Contains("villager");
+        PostureUnit = posture.Queue.FirstOrDefault(u => u != "villager");
+        PostureNextAge = posture.NextAge;
+        PostureUnitOptions = new[] { new Option<string?>(null, "(ninguna)") }
+            .Concat(app.GameData.Entities.Values
+                .Where(e => e.Kind == EntityKind.Unit && e.MadeIn is not null && e.Key != "villager")
+                .Select(e => new Option<string?>(e.Key, StepText.Name(e.Key)))
+                .OrderBy(o => o.Label, StringComparer.CurrentCulture))
+            .ToList();
         Steps = new ObservableCollection<StepViewModel>(bo.Steps.Select(NewStep));
         for (var i = 1; i < Steps.Count; i++)
             Steps[i].WithPrevious = bo.Steps[i].Group is { } group && group == bo.Steps[i - 1].Group;
@@ -73,6 +87,25 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
     [ObservableProperty] public partial int? FeudalWood { get; set; }
     [ObservableProperty] public partial int? FeudalGold { get; set; }
     [ObservableProperty] public partial int? FeudalStone { get; set; }
+
+    /// <summary>Postura de cierre (D2): aldeanos siempre en cola.</summary>
+    [ObservableProperty] public partial bool PostureVillagers { get; set; }
+
+    /// <summary>Postura de cierre: la unidad militar siempre en cola (en cada edificio que la produce), o null.</summary>
+    [ObservableProperty] public partial string? PostureUnit { get; set; }
+
+    /// <summary>Postura de cierre: la edad a la que se apunta con lo que sobra, o null.</summary>
+    [ObservableProperty] public partial string? PostureNextAge { get; set; }
+
+    public IReadOnlyList<Option<string?>> PostureUnitOptions { get; }
+
+    public IReadOnlyList<Option<string?>> PostureAgeOptions { get; } =
+    [
+        new(null, "(ninguna)"),
+        new("feudal_age", "Feudal"),
+        new("castle_age", "Castillos"),
+        new("imperial_age", "Imperial"),
+    ];
 
     public ObservableCollection<StepViewModel> Steps { get; }
 
@@ -109,7 +142,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
             steps[i].Group = steps[i - 1].Group;
         }
 
-        return new BuildOrder
+        var bo = new BuildOrder
         {
             SchemaVersion = _schemaVersion,
             Id = Id,
@@ -123,6 +156,15 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
                 ? null
                 : new Targets { FeudalClickTime = feudal, CastleClickTime = castle, VillagersAtFeudal = atFeudal },
         };
+        var posture = new ClosingPosture
+        {
+            Queue = [.. PostureVillagers ? ["villager"] : Array.Empty<string>(), .. PostureUnit is { } unit ? [unit] : Array.Empty<string>()],
+            NextAge = PostureNextAge,
+        };
+        // Si la BO no traía postura y queda igual a la deducida, no se escribe: así sigue a los pasos si cambian.
+        var derived = Posture.Effective(bo).Posture;
+        var same = posture.Queue.SequenceEqual(derived.Queue) && posture.NextAge == derived.NextAge;
+        return bo with { Posture = !_hadPosture && same ? null : posture };
     }
 
     public void MarkSaved(BuildOrder saved)

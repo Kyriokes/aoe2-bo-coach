@@ -94,7 +94,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         };
         Game = GameText(frame);
         Step = view.Abandoned is { } reason ? $"BO abandonada: {reason} (\"◀ Atrás\" la retoma)"
-            : view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})" : "BO terminada";
+            : view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})"
+            : view.Posture is { } posture ? $"BO terminada. {Core.Engine.CoachText.PostureTitle(posture)}{(posture.Derived ? " (deducida de la BO)" : "")}"
+            : "BO terminada";
         Problems = hud is { Clipped.Count: > 0 }
             ? $"Números cortados en: {string.Join(", ", hud.Clipped.Select(RegionNames.Label))}"
             : frame.Error is { } error ? $"Error: {error}" : "";

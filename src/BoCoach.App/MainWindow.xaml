@@ -446,6 +446,22 @@
                             <TextBox Width="36" Text="{Binding FeudalStone, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
+                        <!-- Postura de cierre (D2) -->
+                        <TextBlock Text="POSTURA DE CIERRE" Style="{StaticResource SectionTitle}"
+                                   ToolTip="Qué hace el coach cuando terminan los pasos: pide tener siempre en cola estas unidades (en cada edificio que las produce) y junta lo que sobra para la próxima edad. Si la BO no la tiene, se deduce de sus pasos." />
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox Content="Aldeanos" IsChecked="{Binding PostureVillagers}" VerticalAlignment="Center" Margin="0,0,14,0"
+                                      ToolTip="Aldeanos siempre en cola en el centro urbano" />
+                            <TextBlock Text="y siempre en cola" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
+                            <ComboBox Width="150" ItemsSource="{Binding PostureUnitOptions}" SelectedValuePath="Value" SelectedValue="{Binding PostureUnit}"
+                                      AutomationProperties.Name="Unidad siempre en cola" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Después, apuntar a" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
+                            <ComboBox Width="110" ItemsSource="{Binding PostureAgeOptions}" SelectedValuePath="Value" SelectedValue="{Binding PostureNextAge}"
+                                      AutomationProperties.Name="Próxima edad" />
+                        </StackPanel>
+
                         <!-- Vista previa -->
                         <TextBlock Text="VISTA PREVIA" Style="{StaticResource SectionTitle}" />
                         <ItemsControl ItemsSource="{Binding Summary}">

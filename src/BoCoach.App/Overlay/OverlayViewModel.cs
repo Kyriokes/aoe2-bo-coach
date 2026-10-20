@@ -78,7 +78,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
             : view.Current is { } current ? $"{current.Index + 1}/{view.TotalSteps}" : $"{view.TotalSteps}/{view.TotalSteps}";
         Current = lines.Current;
         Status = lines.Status;
-        StatusReady = view.Current?.State == StepState.Ready;
+        StatusReady = view.Current?.State == StepState.Ready || view.Posture?.NextAgeReady == true;
         Running = lines.Running;
         Goals = lines.Goals;
         Next = lines.Next;

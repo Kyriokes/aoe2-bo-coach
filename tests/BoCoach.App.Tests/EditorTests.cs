@@ -19,6 +19,33 @@ public sealed class EditorTests : IDisposable
 
     private BuildOrderEditorViewModel NewEditor() => new(new BuildOrder { Id = "x", Name = "Nueva" }, _data);
 
+    private static readonly BuildOrder ScoutsBo = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "build_orders", "scouts_feudal.json"));
+
+    // D2: la postura de cierre. Sin tocarla, una BO que no la tenía se guarda sin postura (sigue a sus pasos).
+    [Fact]
+    public void La_postura_deducida_se_muestra_y_sin_tocarla_no_se_guarda()
+    {
+        var vm = new BuildOrderEditorViewModel(ScoutsBo, _data);
+
+        Assert.True(vm.PostureVillagers);
+        Assert.Equal("scout_cavalry", vm.PostureUnit);
+        Assert.Equal("castle_age", vm.PostureNextAge);
+        Assert.Null(vm.ToBuildOrder().Posture);
+    }
+
+    [Fact]
+    public void Cambiar_la_postura_la_guarda()
+    {
+        var vm = new BuildOrderEditorViewModel(ScoutsBo, _data);
+        vm.PostureUnit = "knight";
+
+        var posture = vm.ToBuildOrder().Posture;
+        Assert.True(vm.IsDirty);
+        Assert.Equal(["villager", "knight"], posture!.Queue);
+        Assert.Equal("castle_age", posture.NextAge);
+        Assert.Contains(vm.PostureUnitOptions, o => o.Value == "knight" && o.Label == "caballero");
+    }
+
     private sealed class FakeDialogs : IDialogs
     {
         public bool SaveOnLeave { get; set; }
