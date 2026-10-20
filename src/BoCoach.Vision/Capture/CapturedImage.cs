@@ -91,6 +91,81 @@ public sealed class CapturedImage
         return new CapturedImage(w, h, output);
     }
 
+    /// <summary>
+    /// Escala por cualquier factor: al achicar, cada píxel es el promedio del área que cubre (sin perder los trazos
+    /// finos de las letras); al agrandar, bilineal. Sirve para llevar un HUD a otra escala a los píxeles de 1080p con
+    /// que están medidas las letras y los íconos.
+    /// </summary>
+    public CapturedImage Resample(double factor)
+    {
+        if (Math.Abs(factor - 1) < 1e-9)
+            return this;
+        var w = Math.Max(1, (int)Math.Round(Width * factor));
+        var h = Math.Max(1, (int)Math.Round(Height * factor));
+        // Dos pasadas (columnas y después filas) con los pesos de cada píxel de salida.
+        var columns = Weights(Width, w);
+        var rows = Weights(Height, h);
+        var horizontal = new double[Height * w * 3];
+        for (var y = 0; y < Height; y++)
+            for (var x = 0; x < w; x++)
+                foreach (var (source, weight) in columns[x])
+                    for (var c = 0; c < 3; c++)
+                        horizontal[(y * w + x) * 3 + c] += Bgra[(y * Width + source) * 4 + c] * weight;
+        var output = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+        {
+            for (var x = 0; x < w; x++)
+            {
+                var o = (y * w + x) * 4;
+                for (var c = 0; c < 3; c++)
+                {
+                    var v = 0.0;
+                    foreach (var (source, weight) in rows[y])
+                        v += horizontal[(source * w + x) * 3 + c] * weight;
+                    output[o + c] = (byte)Math.Clamp(Math.Round(v), 0, 255);
+                }
+                output[o + 3] = 255;
+            }
+        }
+        return new CapturedImage(w, h, output);
+    }
+
+    /// <summary>Qué píxeles de origen (y con qué peso) forman cada uno de los <paramref name="to"/> de salida.</summary>
+    private static List<(int Source, double Weight)>[] Weights(int from, int to)
+    {
+        var ratio = (double)from / to;
+        var weights = new List<(int, double)>[to];
+        for (var i = 0; i < to; i++)
+        {
+            var list = new List<(int, double)>();
+            if (ratio > 1)
+            {
+                // Achicar: el área [i·ratio, (i+1)·ratio) del origen, con la parte que cubre de cada píxel.
+                var start = i * ratio;
+                var end = Math.Min(from, (i + 1) * ratio);
+                for (var s = (int)start; s < end; s++)
+                {
+                    var cover = Math.Min(end, s + 1) - Math.Max(start, s);
+                    if (cover > 1e-9)
+                        list.Add((s, cover / (end - start)));
+                }
+            }
+            else
+            {
+                // Agrandar: bilineal entre los dos píxeles más cercanos al centro.
+                var center = Math.Clamp((i + 0.5) * ratio - 0.5, 0, from - 1);
+                var s0 = (int)center;
+                var s1 = Math.Min(s0 + 1, from - 1);
+                var f = center - s0;
+                list.Add((s0, 1 - f));
+                if (s1 != s0 && f > 1e-9)
+                    list.Add((s1, f));
+            }
+            weights[i] = list;
+        }
+        return weights;
+    }
+
     /// <summary>Agrega un margen de <paramref name="margin"/> píxeles grises de valor <paramref name="value"/> alrededor.</summary>
     public CapturedImage Padded(int margin, byte value = 255)
     {
