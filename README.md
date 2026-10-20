@@ -45,13 +45,14 @@ En la barra de arriba de la app:
 
 1. En la segunda fila de arriba, los ajustes de la partida: **Tu nombre** (como sale en la lista de jugadores de la pantalla de carga: ahí el coach lee tu civ y contra quién jugás, y empieza la partida de cero), **Civ** (la que jugás si no se vio la pantalla de carga; el coach usa sus bonificaciones), **Idioma del juego** (inglés, castellano de España o de Latinoamérica: el log y la edad se leen con sus frases y su OCR), **Máx. aldeanos** y **Recordatorios en el mouse**. En la biblioteca de la izquierda, elegí la build order.
 2. **▶ Empezar coach** (o **Ctrl+Alt+S** desde el juego). Arriba a la derecha del juego aparece el overlay: el paso actual en grande, qué falta para hacerlo, lo que está en curso (por ejemplo la Feudal, desde que se paga), el paso siguiente, los atrasados, el objetivo de la BO ("Feudal estimada en 9:12, objetivo 9:00") y la sugerencia de aldeanos ("Pasá 2 de madera a comida").
+   Si dejás la BO (más de 5 unidades militares que la BO no tiene mientras la de la BO no sale hace un minuto, o 3 minutos sin avanzar ningún paso), el overlay dice "BO abandonada" y por qué, deja de pedir los pasos y se queda con lo básico: centro urbano produciendo, casas, inactivos y la guía de aldeanos contra lo que tenés.
 3. El overlay no recibe el mouse ni el teclado. Los atajos (todos con Ctrl+Alt, que el juego no usa) lo corrigen sin salir del juego:
 
 | Atajo | Qué hace |
 |---|---|
 | Ctrl+Alt+S | Empieza o detiene el coach |
 | Ctrl+Alt+→ | Da por hecho el paso actual |
-| Ctrl+Alt+← | Deshace lo último (un paso hecho, salteado o un clic mal detectado) |
+| Ctrl+Alt+← | Deshace lo último (un paso hecho, salteado o un clic mal detectado); con la BO abandonada, la retoma |
 | Ctrl+Alt+↓ | Saltea el paso actual |
 | Ctrl+Alt+P | Pausa o sigue la lectura |
 | Ctrl+Alt+H | Oculta o muestra el overlay |
