@@ -4,6 +4,10 @@ on:
   push:
   workflow_dispatch:
 
+# El token del workflow solo lee el repo (subir el artefacto no necesita más).
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
