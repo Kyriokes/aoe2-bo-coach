@@ -98,6 +98,9 @@ public sealed record CoachView(
 
     /// <summary>Señales recientes de la partida (D3: clic de edad del rival, ataque, aldeanos perdidos), la última al final.</summary>
     public IReadOnlyList<GameSignal> Signals { get; init; } = [];
+
+    /// <summary>La rama de la BO en curso (D3), o null.</summary>
+    public BranchView? Branch { get; init; }
 }
 
 /// <summary>
@@ -143,6 +146,7 @@ public sealed class Coach
         Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
         _posture = new PostureCoach(Tracker.BuildOrder, data);
         Signals = new GameSignals(data);
+        _branches = new Branches(Tracker.BuildOrder, data, events);
         View = BuildView();
     }
 
@@ -159,6 +163,7 @@ public sealed class Coach
     public double SignalSeconds { get; init; } = 10;
 
     private readonly HashSet<int> _ownClicksSeen = [];
+    private readonly Branches _branches;
 
     /// <summary>Cada cuántos segundos de partida se vuelve a simular el plan (si no hubo eventos).</summary>
     public double ReplanEvery { get; init; } = 5;
@@ -194,7 +199,8 @@ public sealed class Coach
             if (_ownClicksSeen.Add(step.Index))
                 Signals.OwnAgeClick(step.StartedAt!.Value);
         }
-        Signals.Update(snapshot, State);
+        _branches.Trigger(Signals.Update(snapshot, State), State);
+        _branches.Update(snapshot);
         TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
@@ -284,8 +290,8 @@ public sealed class Coach
         return count >= 1 ? new Suggestion(from, to, count) : null;
     }
 
-    /// <summary>Atajo "avanzar": da por hecho el paso actual.</summary>
-    public CoachView Advance() => Correct(Tracker.Advance);
+    /// <summary>Atajo "avanzar": da por hecho el paso actual (con una rama en curso, la cierra).</summary>
+    public CoachView Advance() => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(Tracker.Advance);
 
     /// <summary>
     /// Atajo "retroceder": deshace lo último que se completó o salteó. Con la BO abandonada, la retoma (lo ajeno y el
@@ -295,8 +301,8 @@ public sealed class Coach
         ? Correct(() => Abandonment.Resume(State))
         : Correct(Tracker.Back);
 
-    /// <summary>Atajo "saltear": marca el paso actual como salteado.</summary>
-    public CoachView Skip() => Correct(Tracker.Skip);
+    /// <summary>Atajo "saltear": marca el paso actual como salteado (con una rama en curso, la cierra).</summary>
+    public CoachView Skip() => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(Tracker.Skip);
 
     private CoachView Correct(Action action)
     {
@@ -566,6 +572,7 @@ public sealed class Coach
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
             Posture = PostureView(),
             Signals = RecentSignals(),
+            Branch = _branches.View(),
         };
     }
 
@@ -611,5 +618,6 @@ public sealed class Coach
         NeedsHouse = NeedsHouse(),
         TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
         Signals = RecentSignals(),
+        Branch = _branches.View(),
     };
 }

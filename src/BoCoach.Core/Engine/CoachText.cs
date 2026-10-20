@@ -34,7 +34,21 @@ public static class CoachText
     {
         var lines = BaseLines(view, data);
         // D3: una señal reciente (el rival hizo clic, perdiste aldeanos) va en el renglón de avisos, antes que el del log.
-        return view.Signals.Count > 0 ? lines with { Alert = view.Signals[^1].Text } : lines;
+        if (view.Signals.Count > 0)
+            lines = lines with { Alert = view.Signals[^1].Text };
+        // Una rama de la BO en curso va primero; lo que pedía la BO queda como "después".
+        if (view.Branch is { Current: { } step } branch)
+        {
+            var progress = step.Required > 1 && step.Completed > 0 ? $" ({step.Completed}/{step.Required})" : "";
+            lines = lines with
+            {
+                Current = $"{branch.Title}: {StepText.Describe(step.Step)}{progress}",
+                Status = branch.Note,
+                Next = $"Después, la BO: {lines.Current}",
+                Goals = [],
+            };
+        }
+        return lines;
     }
 
     private static CoachLines BaseLines(CoachView view, GameData data)

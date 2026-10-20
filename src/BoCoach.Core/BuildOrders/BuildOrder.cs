@@ -43,6 +43,12 @@ public sealed record BuildOrder
     /// (<see cref="Engine.Posture.Effective"/>).
     /// </summary>
     public ClosingPosture? Posture { get; set; }
+
+    /// <summary>
+    /// Ramas (D3): pasos que se agregan cuando aparece una señal de la partida (el rival hizo clic en una edad, te
+    /// atacan, perdiste aldeanos). Opcional y sin subir <see cref="SchemaVersion"/>, como la postura.
+    /// </summary>
+    public IReadOnlyList<Branch>? Branches { get; set; }
 }
 
 public sealed record Step
@@ -90,6 +96,31 @@ public sealed record Step
     public string? Group { get; set; }
 
     public string? Note { get; set; }
+}
+
+/// <summary>Una rama de la BO: si aparece la señal <see cref="On"/> (antes de <see cref="Before"/>), estos pasos.</summary>
+public sealed record Branch
+{
+    /// <summary>Las señales que pueden disparar una rama, con su texto para el editor y el overlay.</summary>
+    public static readonly IReadOnlyDictionary<string, string> Signals = new Dictionary<string, string>
+    {
+        ["rival_feudal_click"] = "Si el rival hace clic en Feudal",
+        ["rival_castle_click"] = "Si el rival hace clic en Castillos",
+        ["rival_imperial_click"] = "Si el rival hace clic en Imperial",
+        ["under_attack"] = "Si te atacan",
+        ["villagers_lost"] = "Si perdés aldeanos",
+    };
+
+    /// <summary>La señal (<see cref="Signals"/>).</summary>
+    public string On { get; set; } = "";
+
+    /// <summary>Solo si la señal llega antes de este segundo de partida (null = en cualquier momento).</summary>
+    public int? Before { get; set; }
+
+    /// <summary>Qué hacer y por qué, para el overlay ("Lanceros contra los exploradores").</summary>
+    public string? Note { get; set; }
+
+    public IReadOnlyList<Step> Steps { get; set; } = [];
 }
 
 /// <summary>La postura de cierre de una BO.</summary>

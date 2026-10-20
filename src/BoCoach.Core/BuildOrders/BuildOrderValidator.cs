@@ -133,7 +133,32 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
         ValidateTargets(bo.Targets, Error);
         ValidatePosture(bo.Posture, age, Warn);
+        ValidateBranches(bo.Branches, Error, Warn);
         return new ValidationResult(issues);
+    }
+
+    /// <summary>
+    /// Las ramas: una señal conocida y pasos que existan. Sus pasos se hacen en cualquier momento de la partida, así
+    /// que no se revisan la edad ni los edificios que piden.
+    /// </summary>
+    private void ValidateBranches(IReadOnlyList<Branch>? branches, Action<string?, string> error, Action<string?, string> warn)
+    {
+        foreach (var branch in branches ?? [])
+        {
+            if (!Branch.Signals.TryGetValue(branch.On, out var name))
+            {
+                error(null, $"Rama con la señal '{branch.On}', que no existe (son: {string.Join(", ", Branch.Signals.Keys)}).");
+                continue;
+            }
+            if (branch.Steps.Count == 0)
+                warn(null, $"La rama \"{name}\" no tiene pasos.");
+            if (branch.Before is < 0)
+                error(null, $"Rama \"{name}\": 'before' no puede ser negativo.");
+            var ids = branch.Steps.Select(s => s.Id).ToHashSet();
+            var everything = gameData.Entities.Values.Where(e => e.Kind == EntityKind.Building).Select(e => e.Key).ToHashSet();
+            foreach (var step in branch.Steps)
+                ValidateStep(step, string.IsNullOrWhiteSpace(step.Id) ? null : step.Id, Age.Imperial, everything, ids, error, warn);
+        }
     }
 
     /// <summary>La postura de cierre: unidades que se entrenan en algún edificio y una edad posterior a la de la BO.</summary>

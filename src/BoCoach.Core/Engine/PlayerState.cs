@@ -24,10 +24,12 @@ public sealed class PlayerState
     private int _lastPopulation;
     private int? _lastVillagers;
 
-    public PlayerState(int startingPopulation = 4, int startingPopulationCap = 5)
+    /// <param name="villagers">Aldeanos que ya hay (para un estado que empieza a mitad de partida, como el de una rama).</param>
+    public PlayerState(int startingPopulation = 4, int startingPopulationCap = 5, int? villagers = null)
     {
         Population = _lastPopulation = startingPopulation;
         PopulationCap = startingPopulationCap;
+        _lastVillagers = villagers;
     }
 
     public double Time { get; private set; }
