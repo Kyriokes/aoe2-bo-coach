@@ -533,13 +533,19 @@ static int AutoCalibrate(string screenshot, string[] args)
                     Png.Write(stock, Path.Combine(dump, $"{name}-stock.png"));
             }
         }
-        var reading = new HudReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts")))).Read(boxes.GetValueOrDefault);
+        var fonts = HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts")));
+        var reading = new HudReader(fonts).Read(boxes.GetValueOrDefault);
         Console.WriteLine($"Lectura (reescalada por 1/{found.Scale:0.00}):");
         Console.WriteLine($"  reloj      {(reading.Clock is { } c ? BoCoach.Core.GameClock.Format(c) : "-")}");
         foreach (var resource in new[] { Resource.Wood, Resource.Food, Resource.Gold, Resource.Stone })
             Console.WriteLine($"  {resource,-10} stock {reading.Stock(resource)?.ToString() ?? "-",5} · aldeanos {(reading.VillagersOn?.TryGetValue(resource, out var v) == true ? v.ToString() : "-")}");
         Console.WriteLine($"  población  aldeanos {reading.Villagers?.ToString() ?? "-"} · {reading.Population?.ToString() ?? "-"}/{reading.PopulationCap?.ToString() ?? "-"}");
         Console.WriteLine($"  inactivos  {reading.IdleVillagers?.ToString() ?? "-"}");
+        if (fonts.QueueIcons is { } icons)
+        {
+            var queue = icons.Read(boxes[RegionNames.ProductionQueue]);
+            Console.WriteLine($"  cola       {(queue.Count == 0 ? "vacía" : string.Join(" ", queue.Select(q => q.Waiting ? $"{q.Key} (espera)" : q.Key)))}");
+        }
         if (reading.Clipped.Count > 0)
             Console.WriteLine($"  cortados   {string.Join(", ", reading.Clipped)}");
         if (BoCoach.Vision.Ocr.OcrReader.TryCreate() is { } ocr)
