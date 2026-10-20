@@ -13,8 +13,10 @@ así que se conserva aunque reemplaces la carpeta por una versión nueva.
 Para usar el coach:
   1. Tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en "Full screen" o "Windowed".
      En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo.
-  2. En la segunda fila de arriba elegí el "Idioma del juego" (inglés, castellano de España o de
-     Latinoamérica: en el juego está en Opciones) y la "Civ" con la que jugás.
+  2. En la segunda fila de arriba escribí "Tu nombre" como sale en el juego y elegí el "Idioma del
+     juego" (inglés, castellano de España o de Latinoamérica: en el juego está en Opciones). Con el
+     coach andando antes de la partida, en la pantalla de carga toma tu civ solo; si no, elegí la
+     "Civ" con la que jugás.
   3. Elegí la build order en la biblioteca y tocá "Empezar coach" (o Ctrl+Alt+S desde el juego).
      Con el mod la pantalla se calibra sola, a cualquier resolución. Sin el mod, Ctrl+Alt+C para
      ubicar las cajas a mano sobre el HUD.

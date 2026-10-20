@@ -43,7 +43,7 @@ En la barra de arriba de la app:
 
 ## Usar el coach durante una partida
 
-1. En la segunda fila de arriba, los ajustes de la partida: **Civ** (la que jugás; el coach usa sus bonificaciones), **Idioma del juego** (inglés, castellano de España o de Latinoamérica: el log y la edad se leen con sus frases y su OCR), **Máx. aldeanos** y **Recordatorios en el mouse**. En la biblioteca de la izquierda, elegí la build order.
+1. En la segunda fila de arriba, los ajustes de la partida: **Tu nombre** (como sale en la lista de jugadores de la pantalla de carga: ahí el coach lee tu civ, contra quién jugás y el mapa, y empieza la partida de cero), **Civ** (la que jugás si no se vio la pantalla de carga; el coach usa sus bonificaciones), **Idioma del juego** (inglés, castellano de España o de Latinoamérica: el log y la edad se leen con sus frases y su OCR), **Máx. aldeanos** y **Recordatorios en el mouse**. En la biblioteca de la izquierda, elegí la build order.
 2. **▶ Empezar coach** (o **Ctrl+Alt+S** desde el juego). Arriba a la derecha del juego aparece el overlay: el paso actual en grande, qué falta para hacerlo, lo que está en curso (por ejemplo la Feudal, desde que se paga), el paso siguiente, los atrasados, el objetivo de la BO ("Feudal estimada en 9:12, objetivo 9:00") y la sugerencia de aldeanos ("Pasá 2 de madera a comida").
 3. El overlay no recibe el mouse ni el teclado. Los atajos (todos con Ctrl+Alt, que el juego no usa) lo corrigen sin salir del juego:
 
