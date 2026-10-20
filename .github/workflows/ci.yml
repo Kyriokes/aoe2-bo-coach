@@ -25,7 +25,23 @@ jobs:
 
       - run: dotnet restore BoCoach.slnx
       - run: dotnet build BoCoach.slnx -c Release --no-restore
-      - run: dotnet test BoCoach.slnx -c Release --no-build
+      - run: dotnet test BoCoach.slnx -c Release --no-build --logger trx --results-directory test-results
+
+      # Sin iniciar sesión en GitHub no se ven los logs, pero las anotaciones sí (también por la API pública:
+      # check-runs/<job>/annotations): cada test que falla queda como una, con su mensaje.
+      - name: Tests fallidos como anotaciones
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-ChildItem test-results -Filter *.trx -Recurse | ForEach-Object {
+            [xml]$trx = Get-Content $_.FullName -Raw
+            $trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object {
+              $text = "$($_.testName): $($_.Output.ErrorInfo.Message) $($_.Output.ErrorInfo.StackTrace)"
+              if ($text.Length -gt 1500) { $text = $text.Substring(0, 1500) }
+              $text = $text.Replace('%', '%25').Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$text"
+            }
+          }
 
       # La versión portable (BoCoach.exe con .NET adentro + data), para bajarla y probarla en otra PC.
       - run: dotnet publish src/BoCoach.App -c Release -r win-x64 -o publish/BoCoach
