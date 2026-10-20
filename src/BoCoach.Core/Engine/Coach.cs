@@ -86,6 +86,12 @@ public sealed record CoachView(
 
     /// <summary>Recordatorio: el centro urbano está parado y todavía no se llegó al máximo de aldeanos elegido.</summary>
     public bool TownCenterReminder { get; init; }
+
+    /// <summary>
+    /// Por qué se dio la BO por abandonada (<see cref="BuildOrderAbandonment"/>), o null si se sigue. Abandonada, la
+    /// vista no tiene paso actual, siguiente ni atrasados: quedan los avisos y la GD contra lo que hay.
+    /// </summary>
+    public string? Abandoned { get; init; }
 }
 
 /// <summary>
@@ -126,11 +132,15 @@ public sealed class Coach
         _economy = new EconomyAdvisor(data, planner, _economySettings);
         Tracker = new Tracker(bo, data, events);
         Tracker.Update(State);
+        Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
         View = BuildView();
     }
 
     public PlayerState State { get; } = new();
     public Tracker Tracker { get; }
+
+    /// <summary>Si el jugador dejó la BO (D1).</summary>
+    public BuildOrderAbandonment Abandonment { get; }
 
     /// <summary>Cada cuántos segundos de partida se vuelve a simular el plan (si no hubo eventos).</summary>
     public double ReplanEvery { get; init; } = 5;
@@ -158,6 +168,7 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
+        Abandonment.Update(State, Tracker.Steps);
         var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
         TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
@@ -180,6 +191,11 @@ public sealed class Coach
     private void UpdateGuide(double now)
     {
         var foodFloor = Economy?.FoodFloor ?? 0;
+        if (Abandonment.Abandoned)
+        {
+            (_guide, _guideCandidate) = (AbandonedGuide(foodFloor), null);
+            return;
+        }
         if (Distribution(foodFloor) is not { } bo)
         {
             _guide = null;
@@ -210,6 +226,25 @@ public sealed class Coach
     private static double Total(ResourceAmounts r) => r.Food + r.Wood + r.Gold + r.Stone;
 
     /// <summary>
+    /// Con la BO abandonada, la GD es lo que hay (del HUD o estimado) con la comida que mantiene a los centros urbanos
+    /// produciendo: lo que falta sale del recurso que más tiene.
+    /// </summary>
+    private ResourceAmounts? AbandonedGuide(int foodFloor)
+    {
+        if ((State.VillagersOn ?? (_villagers is null ? null : Actual())) is not { } actual)
+            return null;
+        var whole = Enum.GetValues<Resource>().ToDictionary(r => r, r => (int)Math.Round(actual[r]));
+        var total = whole.Values.Sum();
+        while (whole[Resource.Food] < Math.Min(foodFloor, total))
+        {
+            var donor = whole.Where(w => w.Key != Resource.Food).MaxBy(w => w.Value).Key;
+            whole[donor]--;
+            whole[Resource.Food]++;
+        }
+        return new ResourceAmounts(whole[Resource.Food], whole[Resource.Wood], whole[Resource.Stone], whole[Resource.Gold]);
+    }
+
+    /// <summary>
     /// Con los aldeanos por recurso del HUD, la sugerencia sale de comparar con la GD: del que más sobra al que más
     /// falta. Sin el HUD, la de la economía.
     /// </summary>
@@ -227,8 +262,13 @@ public sealed class Coach
     /// <summary>Atajo "avanzar": da por hecho el paso actual.</summary>
     public CoachView Advance() => Correct(Tracker.Advance);
 
-    /// <summary>Atajo "retroceder": deshace lo último que se completó o salteó.</summary>
-    public CoachView Back() => Correct(Tracker.Back);
+    /// <summary>
+    /// Atajo "retroceder": deshace lo último que se completó o salteó. Con la BO abandonada, la retoma (lo ajeno y el
+    /// atraso se cuentan desde ahora).
+    /// </summary>
+    public CoachView Back() => Abandonment.Abandoned
+        ? Correct(() => Abandonment.Resume(State))
+        : Correct(Tracker.Back);
 
     /// <summary>Atajo "saltear": marca el paso actual como salteado.</summary>
     public CoachView Skip() => Correct(Tracker.Skip);
@@ -454,6 +494,8 @@ public sealed class Coach
 
     private CoachView BuildView()
     {
+        if (Abandonment.Abandoned)
+            return AbandonedView();
         var current = Tracker.Current;
         var missing = ResourceAmounts.Zero;
         if (current?.Step.What is { } what && current.Step.Do != StepAction.Move && _data.TryGet(what, out var entity))
@@ -471,7 +513,8 @@ public sealed class Coach
             State.PopulationCap,
             current,
             Tracker.Next,
-            Tracker.Late.ToList(),
+            // En el gris (unidades ajenas a la par de las de la BO) lo militar no queda atrasado.
+            Tracker.Late.Where(s => !(Abandonment.Gray && s.Step is { Do: StepAction.Train } train && train.What != "villager")).ToList(),
             Tracker.InProgress.Select(s => new RunningStep(s, _plan?.For(s.Step.Id)?.End))
                 .Concat(Tracker.Producing.Select(s => new RunningStep(s, null)))
                 .Concat(Tracker.Silent.Select(s => new RunningStep(s, null))).ToList(),
@@ -493,8 +536,40 @@ public sealed class Coach
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
             Goals = Tracker.CurrentGoals,
-            NeedsHouse = State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin,
+            NeedsHouse = NeedsHouse(),
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
         };
     }
+
+    private bool NeedsHouse() => State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin;
+
+    /// <summary>
+    /// La BO abandonada: sin pasos (ni actual, ni siguiente, ni atrasados, ni producción), solo lo que siempre vale:
+    /// lo que se está investigando, los avisos, la casa, el centro urbano parado y la GD contra lo que hay.
+    /// </summary>
+    private CoachView AbandonedView() => new(
+        State.Time,
+        State.Population,
+        State.PopulationCap,
+        null,
+        null,
+        [],
+        Tracker.InProgress.Select(s => new RunningStep(s, _plan?.For(s.Step.Id)?.End)).ToList(),
+        ResourceAmounts.Zero,
+        null,
+        [],
+        GuideSuggestion(),
+        Tracker.Steps.Count(s => s.State is StepState.Done or StepState.Skipped),
+        Tracker.Steps.Count)
+    {
+        Abandoned = Abandonment.Reason,
+        Alert = _alert is { } alert && State.Time - alert.Time < AlertSeconds ? alert.EventId : null,
+        TownCenterIdle = TownCenterIdle(),
+        Distribution = _guide,
+        Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
+        ActualFromHud = State.VillagersOn is not null,
+        FoodFloor = Economy?.FoodFloor ?? 0,
+        NeedsHouse = NeedsHouse(),
+        TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
+    };
 }

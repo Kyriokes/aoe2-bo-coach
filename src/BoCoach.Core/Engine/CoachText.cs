@@ -40,6 +40,22 @@ public static class CoachText
             .Concat(view.Running.Where(Producing).GroupBy(r => r.Progress.Step.What!)
                 .Select(g => $"Seguí produciendo {StepText.Name(g.Key, 2)}: {g.Sum(r => r.Progress.Completed)}/{g.Sum(r => r.Progress.Required)}"))
             .ToList();
+        if (view.Abandoned is { } reason)
+        {
+            // D1: sin los pasos viejos; queda lo que siempre vale. "Atrás" la retoma.
+            return new CoachLines(
+                "BO abandonada: seguí con lo básico",
+                $"Porque {reason}. Centro urbano produciendo, casas y nadie inactivo. Ctrl+Alt+← vuelve a la BO.",
+                null,
+                running,
+                [],
+                null,
+                false,
+                view.Suggestion?.ToString(),
+                AlertText(view.Alert),
+                IdleText(view.TownCenterIdle),
+                DistributionText(view.Distribution));
+        }
         if (view.Current is not { } current)
         {
             return new CoachLines(
