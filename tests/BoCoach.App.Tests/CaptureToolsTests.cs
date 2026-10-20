@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BoCoach.App.Capture;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
@@ -34,8 +35,77 @@ public sealed class CaptureToolsTests : IDisposable
         public void ShowMessage(string title, string text, bool warning) => Message = (text, warning);
     }
 
-    private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null) =>
-        new(new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"));
+    private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null, IScreenSource? screen = null) =>
+        new(screen ?? new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"));
+
+    private static readonly string HudFixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "hud-20261018-132830");
+
+    /// <summary>Las cajas en píxeles con que se grabó el fixture del HUD (session.json).</summary>
+    private static Dictionary<string, PixelRect> RecordedBoxes()
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(HudFixture, "session.json")));
+        return doc.RootElement.GetProperty("regions").EnumerateObject().ToDictionary(
+            r => r.Name,
+            r => { var p = r.Value.GetProperty("pixels").EnumerateArray().Select(v => v.GetInt32()).ToArray(); return new PixelRect(p[0], p[1], p[2], p[3]); });
+    }
+
+    /// <summary>Una pantalla de 1920×1080 con el mod: fondo liso y las cajas grabadas (frame 100) donde la calibración manual las tenía.</summary>
+    private sealed class HudScreen : IScreenSource
+    {
+        private readonly CapturedImage _screen;
+
+        public HudScreen()
+        {
+            const int w = 1920, h = 1080;
+            var bgra = new byte[w * h * 4];
+            for (var i = 0; i < bgra.Length; i += 4)
+                (bgra[i], bgra[i + 1], bgra[i + 2], bgra[i + 3]) = (52, 58, 70, 255);
+            foreach (var (name, box) in RecordedBoxes())
+            {
+                var path = Path.Combine(HudFixture, $"000100_{name}.png");
+                if (!File.Exists(path))
+                    continue;
+                var image = Png.Read(path);
+                for (var y = 0; y < image.Height; y++)
+                    Buffer.BlockCopy(image.Bgra, y * image.Width * 4, bgra, ((box.Y + y) * w + box.X) * 4, image.Width * 4);
+            }
+            _screen = new CapturedImage(w, h, bgra);
+        }
+
+        public PixelRect CaptureArea => new(0, 0, 1920, 1080);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => _screen.Crop(rect);
+    }
+
+    // Hoja de ruta B4: con el mod, la calibración se hace sola al empezar el coach; sin el mod queda la que había.
+    [Fact]
+    public void Con_el_mod_en_pantalla_se_calibra_sola_y_lo_guarda()
+    {
+        var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+        Assert.True(tools.TryAutoCalibrate());
+
+        Assert.True(tools.IsCalibrated);
+        Assert.Contains("sola", tools.CalibrationStatus);
+        var boxes = RecordedBoxes();
+        var wood = tools.Layout.PixelsOf(RegionNames.Wood, 1920, 1080);
+        Assert.InRange(wood.X, boxes["wood"].X - 3, boxes["wood"].X + 3);
+        Assert.InRange(wood.Y, boxes["wood"].Y - 3, boxes["wood"].Y + 3);
+        Assert.Equal(boxes["clock"], tools.Layout.PixelsOf(RegionNames.Clock, 1920, 1080));
+    }
+
+    [Fact]
+    public void Sin_el_mod_en_pantalla_queda_la_calibracion_que_habia()
+    {
+        var manual = RegionLayout.Default.With(RegionNames.Clock, new RegionRect(0.5, 0.5, 0.05, 0.02));
+        manual.Save(RegionsPath);
+        var tools = Tools(new FakeHost());
+
+        Assert.False(tools.TryAutoCalibrate());
+
+        Assert.Equal(manual.Regions[RegionNames.Clock], tools.Layout.Regions[RegionNames.Clock]);
+        Assert.Contains("No encontré", tools.CalibrationStatus);
+    }
 
     [Fact]
     public void Instalar_el_mod_sin_el_juego_avisa()

@@ -144,6 +144,43 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         return string.Join("\n", lines);
     }
 
+    /// <summary>Copia de la calibración manual que la calibración sola reemplaza (por si hay que volver a ella).</summary>
+    public string PreviousRegionsPath => Path.ChangeExtension(_regionsPath, ".anterior.json");
+
+    /// <summary>
+    /// Calibración sola (hoja de ruta B4): busca el HUD del mod en la pantalla (los seis cuadrados negros con franja y el
+    /// rectángulo negro del reloj) y, si lo encuentra, arma y guarda las regiones para esta resolución. Si no lo
+    /// encuentra (sin el mod, juego cerrado), queda la calibración que había. La app la llama al empezar el coach.
+    /// </summary>
+    public bool TryAutoCalibrate()
+    {
+        var area = _screen.CaptureArea;
+        CapturedImage screen;
+        try
+        {
+            screen = _screen.Capture(area);
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            CalibrationStatus = $"No se pudo capturar la pantalla para calibrar sola: {e.Message}";
+            return false;
+        }
+        if (AutoCalibration.Detect(screen, Layout) is not { } found)
+        {
+            CalibrationStatus = IsCalibrated
+                ? $"No encontré el HUD del mod en la pantalla: sigue la calibración manual ({File.GetLastWriteTime(_regionsPath):d/M HH:mm})."
+                : "No encontré el HUD del mod en la pantalla: se usan posiciones aproximadas (instalá el mod o calibrá a mano).";
+            return false;
+        }
+        if (IsCalibrated)
+            File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
+        found.Layout.Save(_regionsPath);
+        var offScale = Math.Abs(found.Scale - 1) > 0.05;
+        CalibrationStatus = $"Calibrada sola para {area.Width}×{area.Height}: {found.Squares.Count} cuadrados y el reloj"
+            + (offScale ? $" (HUD a escala {found.Scale:0.00}: las letras están medidas a 1080p y puede leer mal)" : "") + ".";
+        return true;
+    }
+
     /// <summary>La vista lo llama cada segundo para actualizar el estado de la grabación.</summary>
     public void Tick()
     {
