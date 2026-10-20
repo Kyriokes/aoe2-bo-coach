@@ -81,7 +81,7 @@ Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y
 
 ## Regenerar los datos del juego (una vez por parche)
 
-`data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida.
+`data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida. El mismo script arma las frases del log de eventos con los textos del juego: `data/events.json` (inglés), `data/events.es.json` (castellano de España) y `data/events.mx.json` (de Latinoamérica), con los mismos ids.
 
 ```bash
 py -3.12 -m venv tools/extractor/.venv
