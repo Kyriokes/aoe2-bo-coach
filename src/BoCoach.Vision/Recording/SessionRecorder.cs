@@ -64,6 +64,8 @@ public sealed class SessionRecorder : IDisposable
             area = new[] { _area.X, _area.Y, _area.Width, _area.Height },
             game_found = _source.GameFound,
             interval_ms = (int)_interval.TotalMilliseconds,
+            // Tamaño del HUD respecto de 1080p (calibración sola): las capturas se graban tal cual y se reescalan al leerlas.
+            hud_scale = _layout.HudScale,
             regions = _layout.Regions.ToDictionary(
                 r => r.Key,
                 r =>

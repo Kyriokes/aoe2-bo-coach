@@ -103,8 +103,6 @@ public sealed class RegionLayout
     /// </summary>
     public double HudScale { get; }
 
-    /// <summary>Si las capturas hay que reescalarlas antes de leerlas (el HUD difiere de 1080p en más de un 2 %).</summary>
-    public bool NeedsResample => Math.Abs(HudScale - 1) > 0.02;
 
     public static string DefaultPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BoCoach", "regions.json");

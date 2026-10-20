@@ -166,6 +166,15 @@ public sealed class CapturedImage
         return weights;
     }
 
+    /// <summary>
+    /// Lleva una captura de un HUD a escala <paramref name="hudScale"/> (respecto de 1920×1080) a los píxeles de 1080p
+    /// con que están medidas las letras y los íconos. Igual si difiere en un 2 % o menos.
+    /// </summary>
+    public CapturedImage AtHudScale(double hudScale) => NeedsResample(hudScale) ? Resample(1 / hudScale) : this;
+
+    /// <summary>Si un HUD a esa escala hay que reescalarlo para leerlo (difiere de 1080p en más de un 2 %).</summary>
+    public static bool NeedsResample(double hudScale) => Math.Abs(hudScale - 1) > 0.02;
+
     /// <summary>Agrega un margen de <paramref name="margin"/> píxeles grises de valor <paramref name="value"/> alrededor.</summary>
     public CapturedImage Padded(int margin, byte value = 255)
     {

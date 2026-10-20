@@ -52,6 +52,37 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Equal((food.Width, food.Height), (image.Width, image.Height));
     }
 
+    // B4 (b): los PNG se graban tal cual (sirven para armar letras) y se llevan a 1080p recién al leerlos.
+    [Fact]
+    public void Con_el_HUD_a_otra_escala_graba_la_captura_tal_cual_y_la_reescala_al_leerla()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default.WithHudScale(1.5), _root.FullName);
+        recorder.Open();
+        recorder.CaptureFrame();
+        recorder.Stop();
+
+        var food = RegionLayout.Default.PixelsOf(RegionNames.Food, 1920, 1080);
+        var raw = Png.Read(Path.Combine(recorder.Folder!, SessionRecorder.FileName(0, RegionNames.Food)));
+        Assert.Equal((food.Width, food.Height), (raw.Width, raw.Height));
+
+        var session = RecordedSession.Load(recorder.Folder!);
+        var read = session.Image(0, RegionNames.Food);
+        Assert.Equal(1.5, session.HudScale);
+        Assert.Equal(((int)Math.Round(food.Width / 1.5), (int)Math.Round(food.Height / 1.5)), (read.Width, read.Height));
+    }
+
+    [Fact]
+    public void Una_grabacion_vieja_sin_escala_se_lee_a_escala_1()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
+        recorder.Open();
+        recorder.Stop();
+        var path = Path.Combine(recorder.Folder!, "session.json");
+        File.WriteAllText(path, File.ReadAllText(path).Replace("\"hud_scale\"", "\"otra_cosa\""));
+
+        Assert.Equal(1, RecordedSession.Load(recorder.Folder!).HudScale);
+    }
+
     [Fact]
     public void Session_json_guarda_pantalla_y_regiones_en_pixeles()
     {

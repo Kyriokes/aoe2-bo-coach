@@ -45,7 +45,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
         if (!layout.Regions.ContainsKey(region))
             return null;
         var rect = layout.PixelsOf(region, area);
-        return rect.IsEmpty ? null : screen.Capture(rect);
+        // Con el HUD a otra escala, la captura se lleva a los píxeles de 1080p de las letras y los íconos.
+        return rect.IsEmpty ? null : screen.Capture(rect).AtHudScale(layout.HudScale);
     }
 }
 
