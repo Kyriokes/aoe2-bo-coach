@@ -131,6 +131,7 @@ public sealed class Coach
     // GD: la que se muestra y la que espera sostenerse para reemplazarla.
     private ResourceAmounts? _guide;
     private readonly PostureCoach _posture;
+    private PostureView? _postureView;
     private IReadOnlyList<QueueItem>? _queue;
     private ResourceAmounts? _guideCandidate;
     private double _guideCandidateSince;
@@ -209,7 +210,8 @@ public sealed class Coach
         TrackTownCenter(snapshot);
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
-        Economy = _economy.Update(Tracker, _plan);
+        _postureView = Abandonment.Abandoned ? null : PostureView();
+        Economy = _economy.Update(Tracker, _plan, PostureDemand());
         _suggestion = Economy.Suggestion;
         UpdateGuide(snapshot.Time);
         View = BuildView();
@@ -577,7 +579,7 @@ public sealed class Coach
             Goals = Tracker.CurrentGoals,
             NeedsHouse = NeedsHouse(),
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
-            Posture = PostureView(),
+            Posture = _postureView,
             Signals = RecentSignals(),
             Branch = _branches.View(),
         };
@@ -592,6 +594,15 @@ public sealed class Coach
     private PostureView? PostureView() => Tracker.Current is null
         ? _posture.View(State, State.Time - _queueSeenAt <= QueueStaleSeconds ? _queue : null, LivePlan.Start(Tracker).Age,
             _data.Civ(Tracker.BuildOrder.Civ))
+        : null;
+
+    /// <summary>
+    /// D2: con la postura en pantalla, la economía (y con ella la GD) junta para producir sin parar sus unidades y
+    /// para la próxima edad, en el mismo tiempo que usa para el próximo hito de la BO (2 horizontes).
+    /// </summary>
+    private ResourceAmounts? PostureDemand() => _postureView is { } view
+        ? _posture.Demand(view, State, LivePlan.Start(Tracker).Age, _data.Civ(Tracker.BuildOrder.Civ), _economySettings.Horizon * 2,
+            villagers: (State.Villagers ?? _villagers ?? 0) < _economySettings.MaxVillagers)
         : null;
 
     private bool NeedsHouse() => State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin;

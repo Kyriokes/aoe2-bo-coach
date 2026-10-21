@@ -135,7 +135,8 @@ public sealed class EconomyAdvisor
         _gatherModel = new GatherModel(data, _planner.Efficiency);
     }
 
-    public EconomyReport Update(Tracker tracker, PlanResult? plan = null)
+    /// <param name="extraDemand">Demanda que no sale de los pasos (la postura de cierre con la BO terminada), por segundo.</param>
+    public EconomyReport Update(Tracker tracker, PlanResult? plan = null, ResourceAmounts? extraDemand = null)
     {
         var state = tracker.State;
         _observer.Add(state);
@@ -149,7 +150,7 @@ public sealed class EconomyAdvisor
         var effective = Scale(perVillager, villagers.Efficiency);
         var projectedRates = Multiply(villagers.PerResource, effective);
 
-        var demand = Demand(tracker, plan, state.Time);
+        var demand = Demand(tracker, plan, state.Time) + (extraDemand ?? ResourceAmounts.Zero);
         var foodFloor = 0;
         if (villagers.Total < _settings.MaxVillagers)
         {

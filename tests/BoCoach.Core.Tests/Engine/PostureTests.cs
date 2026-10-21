@@ -150,4 +150,73 @@ public class PostureTests
         Assert.Equal("Postura: aldeanos y exploradores siempre en cola", lines.Current);
         Assert.Contains("Sin establo: los exploradores no tienen dónde salir", lines.Running);
     }
+
+    // La GD y la economía usan la demanda de la postura (lo que faltaba de D2): producir sin parar cada unidad de la
+    // postura en cada edificio que la hace, y juntar lo que falta para la próxima edad.
+    [Fact]
+    public void La_demanda_de_la_postura_es_la_produccion_sin_parar_y_lo_que_falta_para_la_edad()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var state = State(700, new ResourceAmounts(500, 100, 0, 100), "stable_built", "stable_built", "archery_range_built");
+        var view = coach.View(state, [], Age.Feudal, Data.Civ("any"));
+        var villager = Data.Get("villager");
+        var scout = Data.Get("scout_cavalry");
+
+        var demand = coach.Demand(view, state, Age.Feudal, Data.Civ("any"), savingSeconds: 120, villagers: true);
+
+        // Un centro urbano con aldeanos, dos establos con exploradores, y lo que falta de Castillos en 120 s.
+        var expected = villager.Cost * (1.0 / villager.Time) + scout.Cost * (2.0 / scout.Time) + view.NextAgeNeed * (1 / 120.0);
+        Assert.Equal(expected.Food, demand.Food, 6);
+        Assert.Equal(expected.Gold, demand.Gold, 6);
+        // Castillos más un aldeano y un explorador por establo, sin restar el stock (la economía lo resta).
+        Assert.Equal(Data.Get("castle_age").Cost + villager.Cost + scout.Cost * 2, view.NextAgeNeed);
+
+        // Con el tope de aldeanos, solo los exploradores y la edad.
+        var capped = coach.Demand(view, state, Age.Feudal, Data.Civ("any"), savingSeconds: 120, villagers: false);
+        Assert.Equal(expected.Food - villager.Cost.Food / (double)villager.Time, capped.Food, 6);
+    }
+
+    [Fact]
+    public void Con_la_edad_en_curso_no_se_junta_para_ella()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var state = State(700, Poor, "stable_built", "archery_range_built");
+        var view = coach.View(state, [new QueueItem("castle_age")], Age.Feudal, Data.Civ("any"));
+        var scout = Data.Get("scout_cavalry");
+
+        var demand = coach.Demand(view, state, Age.Feudal, Data.Civ("any"), savingSeconds: 120, villagers: false);
+
+        Assert.Equal(scout.Cost.Food / (double)scout.Time, demand.Food, 6);
+    }
+
+    [Fact]
+    public void No_junta_para_una_edad_que_no_es_la_siguiente()
+    {
+        // Arqueros que clican Castillos: la postura apunta a Imperial, pero mientras no se llegue a Castillos solo produce.
+        var archers = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json"))
+            with { Posture = new ClosingPosture { Queue = ["archer"], NextAge = "imperial_age" } };
+        var coach = new PostureCoach(archers, Data);
+        var state = State(700, Poor, "archery_range_built");
+        var archer = Data.Get("archer");
+
+        var feudal = coach.Demand(coach.View(state, [], Age.Feudal, Data.Civ("any")), state, Age.Feudal, Data.Civ("any"), 120, villagers: false);
+        var castle = coach.Demand(coach.View(state, [], Age.Castle, Data.Civ("any")), state, Age.Castle, Data.Civ("any"), 120, villagers: false);
+
+        Assert.Equal(archer.Cost * (1.0 / archer.Time), feudal);
+        Assert.True(castle.Food > 0); // en Castillos ya junta para Imperial
+    }
+
+    [Fact]
+    public void Con_la_BO_terminada_la_economia_pide_la_comida_de_la_postura()
+    {
+        var coach = new Coach(Scouts, Data, TestData.Events);
+        for (var i = 0; i < Scouts.Steps.Count && coach.Tracker.Current is not null; i++)
+            coach.Advance(); // hechos: la edad sale de los pasos hechos (Feudal)
+        coach.Update(new GameSnapshot(900, Poor, 25, 30, [new GameEvent("stable_built", 900)]));
+
+        var villager = Data.Get("villager");
+        var scout = Data.Get("scout_cavalry");
+        Assert.True(coach.Economy!.Demand.Food >= villager.Cost.Food / (double)villager.Time + scout.Cost.Food / (double)scout.Time - 1e-9);
+        Assert.True(coach.Economy.Demand.Gold > 0); // Castillos pide oro
+    }
 }

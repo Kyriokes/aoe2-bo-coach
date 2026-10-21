@@ -29,6 +29,9 @@ public sealed record PostureView(
     int NextAgeBuildingsMissing,
     bool NextAgeInProgress)
 {
+    /// <summary>Lo que cuesta la próxima edad más un lote de cada unidad de la postura por edificio (sin restar el stock).</summary>
+    public ResourceAmounts NextAgeNeed { get; init; }
+
     /// <summary>Se puede hacer clic en la edad ya.</summary>
     public bool NextAgeReady => NextAge is not null && !NextAgeInProgress && NextAgeBuildingsMissing == 0
         && NextAgeMissing == ResourceAmounts.Zero;
@@ -104,17 +107,44 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
         if (next is not null && (state.Count($"{next}_researched") > 0 || BuildOrderValidator.AgeOf(next) is { } target && target <= age))
             next = null;
         var missing = ResourceAmounts.Zero;
+        var needed = ResourceAmounts.Zero;
         var buildingsMissing = 0;
         if (next is not null && data.TryGet(next, out var ageTech))
         {
-            var need = civ.Cost(ageTech, age) + reserve;
+            var need = needed = civ.Cost(ageTech, age) + reserve;
             foreach (var r in Enum.GetValues<Resource>())
                 missing = missing.With(r, Math.Max(0, need[r] - state.Stock[r]));
             if (BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
                 buildingsMissing = Math.Max(0, 2 - requirement.Buildings.Sum(b => Built(state, b)));
         }
         return new PostureView(posture.Queue, _posture.Derived, gaps, next, missing, buildingsMissing,
-            next is not null && queue?.Any(i => i.Key == next) == true);
+            next is not null && queue?.Any(i => i.Key == next) == true) { NextAgeNeed = needed };
+    }
+
+    /// <summary>
+    /// Lo que pide la postura por segundo, para la economía y la GD: cada unidad de la postura producida sin parar en
+    /// cada edificio que la hace (con la velocidad de producción de la civ), más juntar en
+    /// <paramref name="savingSeconds"/> la próxima edad con un lote de cada unidad (<see cref="PostureView.NextAgeNeed"/>).
+    /// Va sin restar el stock, como los pasos de la BO: la economía lo resta al medir el déficit (con lo que falta, el
+    /// stock se restaba dos veces y la GD de la partida de scouts del 2026-10-15 nunca mandaba aldeanos al oro para
+    /// Castillos). Con la edad en curso no se junta para ella, ni para una que no sea la siguiente a la actual: en la
+    /// 20261018-132830, con Castillos investigándose, juntar para Imperial pedía pasar 5 de madera a comida.
+    /// </summary>
+    /// <param name="villagers">False con el tope de aldeanos alcanzado: el centro urbano deja de sacarlos.</param>
+    public ResourceAmounts Demand(PostureView view, PlayerState state, Age age, CivBonuses civ, double savingSeconds, bool villagers)
+    {
+        var demand = ResourceAmounts.Zero;
+        foreach (var unit in _posture.Posture.Queue)
+        {
+            if (unit == "villager" && !villagers || !data.TryGet(unit, out var entity) || entity.MadeIn is not { } building)
+                continue;
+            var train = civ.Time(entity, age) / civ.WorkRate(building, age);
+            if (train > 0)
+                demand += civ.Cost(entity, age) * (Built(state, building) / train);
+        }
+        if (view.NextAge is { } next && !view.NextAgeInProgress && savingSeconds > 0 && BuildOrderValidator.AgeOf(next) == age + 1)
+            demand += view.NextAgeNeed * (1 / savingSeconds);
+        return demand;
     }
 
     /// <summary>Cuántos de ese edificio hay según el log (el centro urbano, uno más: el inicial).</summary>
