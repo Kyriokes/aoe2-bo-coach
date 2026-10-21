@@ -28,6 +28,9 @@ public sealed class CoachSettings
     /// <summary>El nombre del jugador en el juego, para encontrarlo en la pantalla de carga; vacío = no se busca.</summary>
     public string PlayerName { get; set; } = "";
 
+    /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso: la app no lo vuelve a abrir sola.</summary>
+    public bool FirstRunDone { get; set; }
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -43,6 +46,7 @@ public sealed class CoachSettings
                     GameCiv = json["civ"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "",
                     GameLanguage = Vision.Ocr.GameLanguage.FromCode(json["game_language"]?.GetValue<string>()).Code,
                     PlayerName = json["player_name"]?.GetValue<string>()?.Trim() ?? "",
+                    FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
                 };
             }
         }
@@ -56,7 +60,8 @@ public sealed class CoachSettings
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName };
+        var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
+            ["first_run_done"] = FirstRunDone };
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

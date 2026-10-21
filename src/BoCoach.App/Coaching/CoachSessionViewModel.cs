@@ -57,6 +57,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
         Language = GameLanguage.FromCode(settings.GameLanguage);
         PlayerName = settings.PlayerName;
+        FirstRunDone = settings.FirstRunDone;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -133,6 +134,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnPlayerNameChanged(string value) => SaveSettings();
 
+    /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso (hoja de ruta C4).</summary>
+    [ObservableProperty] public partial bool FirstRunDone { get; set; }
+
+    partial void OnFirstRunDoneChanged(bool value) => SaveSettings();
+
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
@@ -152,6 +158,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 GameCiv = GameCiv == BoCiv ? "" : GameCiv,
                 GameLanguage = Language.Code,
                 PlayerName = PlayerName.Trim(),
+                FirstRunDone = FirstRunDone,
             }.Save(_settingsPath);
         }
         catch (IOException)
