@@ -34,6 +34,8 @@ Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--
 
 ## Mod del HUD, calibración y grabar partidas
 
+La primera vez se abre **Primeros pasos** (se vuelve a abrir con el botón de la barra): idioma del juego, instalar el mod, una partida rápida contra 7 IA (mientras tanto la app mira la pantalla: en la pantalla de carga lee la lista de jugadores y, ya en la partida, se calibra sola con el HUD) y elegir tu nombre de esa lista.
+
 En la barra de arriba de la app:
 
 - **Instalar mod del HUD** agrega al juego el mod local "BoCoach HUD": los aldeanos de cada recurso en cuadrados negros con una franja de color y el reloj más grande, que el coach lee mucho mejor. Se arma en la PC del jugador a partir de los paneles del juego (no se redistribuye nada) y se puede volver a tocar sin problema. Después hay que reabrir el juego y verlo activo en Mods.

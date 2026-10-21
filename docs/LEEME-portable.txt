@@ -10,6 +10,9 @@ tocá "Más información" y después "Ejecutar de todas formas".
 Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
 así que se conserva aunque reemplaces la carpeta por una versión nueva.
 
+La primera vez se abre "Primeros pasos", que te lleva por lo mismo que sigue (idioma, mod y una
+partida rápida contra 7 IA para leer tu nombre y calibrar). Se vuelve a abrir con su botón.
+
 Para usar el coach:
   1. Tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en "Full screen" o "Windowed".
      En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo.
