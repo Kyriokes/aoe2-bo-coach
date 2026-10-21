@@ -137,6 +137,21 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
           {analysis.posture.derived ? <span className="text-xs text-faint"> (deducido de los pasos)</span> : null}
         </p>
       ) : null}
+
+      {(analysis.branches ?? []).map((branch, i) => (
+        <div key={i} className="rounded-md border border-line bg-panel p-3 text-sm">
+          <p>
+            <span className="font-semibold">{branch.on}</span>
+            {branch.before ? <span className="text-faint"> (antes de {branch.before})</span> : null}
+            {branch.note ? <span className="text-muted">: {branch.note}</span> : null}
+          </p>
+          <ol className="mt-1 list-decimal pl-5 text-muted">
+            {branch.steps.map((text, j) => (
+              <li key={j}>{text}</li>
+            ))}
+          </ol>
+        </div>
+      ))}
     </div>
   );
 }
