@@ -80,4 +80,93 @@ public class BuildOrderSuggesterTests
     {
         Assert.Null(BuildOrderSuggester.Suggest([Archers with { Civ = "franks" }], "britons", [], null, Styles));
     }
+
+    // Segunda parte de D4 (diseño del 2026-10-21): el rival de enfrente pesa más, la posición suma y hay un consejo.
+
+    private static readonly CivStyles Small = new(
+        new Dictionary<string, List<string>>
+        {
+            ["yo"] = ["scouts", "archers"],
+            ["arqueros"] = ["archers"],
+            ["exploradores"] = ["scouts"],
+        },
+        advice: new Dictionary<string, string> { ["archers"] = "hostigadores" },
+        civAdvice: new Dictionary<string, string> { ["exploradores"] = "lanceros temprano" },
+        positions: new Dictionary<string, List<string>> { ["flank"] = ["archers"], ["pocket"] = ["scouts"] });
+
+    private static readonly BuildOrder[] Two = [Archers, Scouts];
+
+    [Fact]
+    public void El_rival_de_enfrente_pesa_mas_que_los_demas()
+    {
+        // Exploradores le ganan a arqueros y arqueros a exploradores: decide el de enfrente.
+        var vsArchers = BuildOrderSuggester.Suggest(Two, new MatchSetup("yo", "arqueros", ["exploradores"]), Small)!;
+        Assert.Same(Scouts, vsArchers.BuildOrder);
+        Assert.Contains("contra arqueros", vsArchers.Reason);
+
+        var vsScouts = BuildOrderSuggester.Suggest(Two, new MatchSetup("yo", "exploradores", ["arqueros"]), Small)!;
+        Assert.Same(Archers, vsScouts.BuildOrder);
+        Assert.Contains("contra exploradores", vsScouts.Reason);
+    }
+
+    [Fact]
+    public void Los_demas_rivales_suman_menos()
+    {
+        var suggestion = BuildOrderSuggester.Suggest(Two, new MatchSetup("yo", null, ["arqueros", "arqueros"]), Small)!;
+
+        Assert.Same(Scouts, suggestion.BuildOrder);
+        Assert.Contains("le gana a 2 rivales más", suggestion.Reason);
+    }
+
+    [Fact]
+    public void En_el_flanco_arqueros_y_en_el_bolsillo_exploradores()
+    {
+        // Sin civ conocida, solo decide la posición.
+        var flank = BuildOrderSuggester.Suggest(Two, new MatchSetup("nadie", Position: TeamPosition.Flank), Small)!;
+        var pocket = BuildOrderSuggester.Suggest(Two, new MatchSetup("nadie", Position: TeamPosition.Pocket), Small)!;
+
+        Assert.Same(Archers, flank.BuildOrder);
+        Assert.Contains("para el flanco", flank.Reason);
+        Assert.Same(Scouts, pocket.BuildOrder);
+        Assert.Contains("para el bolsillo", pocket.Reason);
+        Assert.Null(BuildOrderSuggester.Suggest(Two, new MatchSetup("nadie"), Small));
+    }
+
+    [Fact]
+    public void El_consejo_de_la_civ_manda_sobre_el_de_su_estilo()
+    {
+        Assert.Equal("lanceros temprano", BuildOrderSuggester.Advice(new MatchSetup("yo", "exploradores"), Small));
+        Assert.Equal("hostigadores", BuildOrderSuggester.Advice(new MatchSetup("yo", "arqueros"), Small));
+        Assert.Null(BuildOrderSuggester.Advice(new MatchSetup("yo", "nadie"), Small));
+        Assert.Null(BuildOrderSuggester.Advice(new MatchSetup("yo"), Small));
+    }
+
+    [Fact]
+    public void El_archivo_viejo_con_solo_las_civs_se_sigue_leyendo()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"civ_styles-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, "// viejo\n{ \"britons\": [\"archers\"] }\n");
+        try
+        {
+            var old = CivStyles.Load(path);
+            Assert.Equal(["archers"], old.Of("britons"));
+            Assert.True(old.Beats("scouts", "archers")); // los counters de siempre
+            Assert.Null(old.AdviceAgainst("britons"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void La_tabla_solo_nombra_civs_y_estilos_que_existen()
+    {
+        string[] known = ["archers", "scouts", "maa", "fast_castle"];
+        Assert.All(Styles.ForPosition(TeamPosition.Flank).Concat(Styles.ForPosition(TeamPosition.Pocket)), s => Assert.Contains(s, known));
+        Assert.NotEmpty(Styles.ForPosition(TeamPosition.Pocket));
+        // Cada civ tiene un consejo (el de su civ o el de su estilo típico).
+        Assert.All(TestData.GameData.Civs.Keys, civ => Assert.NotNull(Styles.AdviceAgainst(civ)));
+        Assert.Contains("lanceros", Styles.AdviceAgainst("mongols"));
+    }
 }
