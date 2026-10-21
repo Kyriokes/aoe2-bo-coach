@@ -1,5 +1,6 @@
 using BoCoach.Core.Data;
 using BoCoach.Vision.Ocr;
+using BoCoach.Vision.Capture;
 
 namespace BoCoach.Vision.Tests;
 
@@ -33,6 +34,28 @@ public class GameLanguageTests
         Assert.Contains("Knight Created", mx.Phrases["knight_created"]);
         Assert.DoesNotContain("Jinete: creación finalizada", en.Phrases["knight_created"]);
         Assert.True(mx.IsCommon("villager_created", mx.Phrases["villager_created"].ToList().IndexOf("Aldeano: creación finalizada")));
+    }
+
+    // Grabación 20261020-205150: el juego en castellano y la app en "Inglés". El inglés entiende también el castellano
+    // de España, así que el log confirma los pasos igual.
+    [Fact]
+    public async Task Con_el_ingles_elegido_el_log_en_castellano_se_reconoce()
+    {
+        var ocr = OcrReader.TryCreate();
+        if (ocr is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var catalog = GameLanguage.English.LoadEvents(AppContext.BaseDirectory, Data);
+        CapturedImage Log(string frame) => Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "log-es-20261020-205150", $"{frame}.png"));
+
+        // Cada captura dos veces: el lector da un mensaje por nuevo cuando lo ve en dos capturas seguidas.
+        var reader = new Vision.Events.EventLogReader(ocr, catalog);
+        var events = new List<string>();
+        foreach (var frame in new[] { "000870", "000870", "000900", "000900" })
+            events.AddRange(await reader.ReadAsync(Log(frame)));
+
+        Assert.Contains("feudal_age_researched", events);
+        Assert.Contains("barracks_built", events);
+        Assert.Contains("loom_researched", events);
     }
 
     [Fact]

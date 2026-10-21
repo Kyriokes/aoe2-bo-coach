@@ -9,10 +9,15 @@ namespace BoCoach.Vision.Ocr;
 /// <param name="Code">Lo que se guarda en settings.json.</param>
 /// <param name="Label">Lo que muestra el desplegable.</param>
 /// <param name="OcrLanguages">Idiomas del OCR de Windows a probar, en orden; si no hay ninguno, el inglés.</param>
-/// <param name="EventsFile">Archivo de frases del log además de events.json, o null (inglés).</param>
+/// <param name="EventsFile">Archivo de frases del log además de events.json, o null.</param>
 public sealed record GameLanguage(string Code, string Label, IReadOnlyList<string> OcrLanguages, string? EventsFile)
 {
-    public static GameLanguage English { get; } = new("en", "Inglés", ["en-US"], null);
+    /// <summary>
+    /// Inglés, que además entiende el log en castellano de España: en la grabación 20261020-205150 el juego estaba en
+    /// castellano y la app quedó en "Inglés", y sin esto el log casi no confirmaba pasos (telar, Feudal, cuartel,
+    /// arqueros). Las frases en castellano no se parecen a las inglesas, así que no cambia nada con el juego en inglés.
+    /// </summary>
+    public static GameLanguage English { get; } = new("en", "Inglés", ["en-US"], "events.es.json");
 
     // Castellano de España (resources/es) y de Latinoamérica (resources/mx): las plantillas del log son iguales pero
     // muchos nombres cambian ("Caballero" es el caballero en uno y el caballero de choque en el otro).
