@@ -192,4 +192,17 @@ public class BuildOrderSuggesterTests
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void Los_puntos_de_una_BO_son_los_de_la_sugerencia_y_otra_civ_vale_cero()
+    {
+        // D6: con el coach arrancado solo, se cambia a la sugerida solo si puntúa más que la que corre.
+        var match = new MatchSetup("yo", "exploradores", Position: TeamPosition.Flank);
+        var suggestion = BuildOrderSuggester.Suggest(Two, match, Small)!;
+
+        Assert.Same(Archers, suggestion.BuildOrder);
+        Assert.Equal(suggestion.Score, BuildOrderSuggester.Score(Archers, match, Small));
+        Assert.True(suggestion.Score > BuildOrderSuggester.Score(Scouts, match, Small));
+        Assert.Equal(0, BuildOrderSuggester.Score(Archers with { Civ = "otra" }, match, Small));
+    }
 }

@@ -108,8 +108,8 @@ public enum TeamPosition
 /// <param name="Map">El mapa, si se leyó.</param>
 public sealed record MatchSetup(string? Civ, string? Facing = null, IReadOnlyList<string?>? OtherRivals = null, TeamPosition? Position = null, string? Map = null);
 
-/// <summary>Una BO sugerida y por qué (para el overlay).</summary>
-public sealed record BuildOrderSuggestion(BuildOrder BuildOrder, string Reason);
+/// <summary>Una BO sugerida, por qué (para el overlay) y sus puntos.</summary>
+public sealed record BuildOrderSuggestion(BuildOrder BuildOrder, string Reason, double Score = 0);
 
 /// <summary>
 /// D4 (diseño acordado con el usuario el 2026-10-20): qué BO de la biblioteca encaja con la partida de la pantalla de
@@ -158,61 +158,75 @@ public static class BuildOrderSuggester
     /// </summary>
     public static BuildOrderSuggestion? Suggest(IEnumerable<BuildOrder> library, MatchSetup match, CivStyles styles)
     {
-        var civ = match.Civ;
-        var mine = styles.Of(civ);
-        var facingStyle = styles.Of(match.Facing).FirstOrDefault();
-        var otherStyles = (match.OtherRivals ?? []).Select(c => styles.Of(c).FirstOrDefault()).OfType<string>().ToList();
-        var positionStyles = match.Position is { } position ? styles.ForPosition(position) : [];
-        var mapKey = Normalize(match.Map);
-
+        var context = Context.For(match, styles);
         (BuildOrder Bo, double Score, List<string> Why)? best = null;
         foreach (var bo in library)
         {
-            var why = new List<string>();
-            var score = 0.0;
-            if (civ is not null && string.Equals(bo.Civ, civ, StringComparison.OrdinalIgnoreCase))
-            {
-                score += 4;
-                why.Add("de tu civ");
-            }
-            else if (!string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase))
-            {
+            if (Evaluate(bo, context, styles) is not { } result)
                 continue;
-            }
-            if (mapKey.Length > 0 && bo.Tags.Any(t => Normalize(t) == mapKey))
-            {
-                score += 2;
-                why.Add($"para {match.Map}");
-            }
-            var style = StyleOf(bo);
-            if (style is not null && mine.Count > 0 && mine.Contains(style))
-            {
-                score += mine[0] == style ? 3 : 2;
-                why.Add($"{Name(style)}, típico de tu civ");
-            }
-            if (style is not null && facingStyle is not null && styles.Beats(style, facingStyle))
-            {
-                score += 2;
-                why.Add($"contra {Name(facingStyle)}");
-            }
-            if (style is not null)
-            {
-                var others = otherStyles.Count(o => styles.Beats(style, o));
-                score += 0.5 * others;
-                if (others > 0)
-                    why.Add(others == 1 ? "le gana a otro rival" : $"le gana a {others} rivales más");
-            }
-            if (style is not null && positionStyles.Contains(style))
-            {
-                score += 1;
-                why.Add(match.Position == TeamPosition.Flank ? "para el flanco" : "para el bolsillo");
-            }
-            if (best is null || score > best.Value.Score)
-                best = (bo, score, why);
+            if (best is null || result.Score > best.Value.Score)
+                best = (bo, result.Score, result.Why);
         }
         return best is { Score: > 0 } b
-            ? new BuildOrderSuggestion(b.Bo, string.Join(", ", b.Why))
+            ? new BuildOrderSuggestion(b.Bo, string.Join(", ", b.Why), b.Score)
             : null;
+    }
+
+    /// <summary>Los puntos de una BO para esa partida (0 si es de otra civ: no se puede sugerir). D6 compara con ellos la que corre.</summary>
+    public static double Score(BuildOrder bo, MatchSetup match, CivStyles styles) => Evaluate(bo, Context.For(match, styles), styles)?.Score ?? 0;
+
+    /// <summary>Lo que se deduce de la partida una sola vez, para puntuar cada BO.</summary>
+    private sealed record Context(string? Civ, IReadOnlyList<string> Mine, string? FacingStyle, IReadOnlyList<string> OtherStyles,
+        IReadOnlyList<string> PositionStyles, string MapKey, MatchSetup Match)
+    {
+        public static Context For(MatchSetup match, CivStyles styles) => new(match.Civ, styles.Of(match.Civ), styles.Of(match.Facing).FirstOrDefault(),
+            (match.OtherRivals ?? []).Select(c => styles.Of(c).FirstOrDefault()).OfType<string>().ToList(),
+            match.Position is { } position ? styles.ForPosition(position) : [], Normalize(match.Map), match);
+    }
+
+    /// <summary>Los puntos de una BO y por qué, o null si es de otra civ.</summary>
+    private static (double Score, List<string> Why)? Evaluate(BuildOrder bo, Context c, CivStyles styles)
+    {
+        var why = new List<string>();
+        var score = 0.0;
+        if (c.Civ is not null && string.Equals(bo.Civ, c.Civ, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 4;
+            why.Add("de tu civ");
+        }
+        else if (!string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+        if (c.MapKey.Length > 0 && bo.Tags.Any(t => Normalize(t) == c.MapKey))
+        {
+            score += 2;
+            why.Add($"para {c.Match.Map}");
+        }
+        var style = StyleOf(bo);
+        if (style is not null && c.Mine.Count > 0 && c.Mine.Contains(style))
+        {
+            score += c.Mine[0] == style ? 3 : 2;
+            why.Add($"{Name(style)}, típico de tu civ");
+        }
+        if (style is not null && c.FacingStyle is not null && styles.Beats(style, c.FacingStyle))
+        {
+            score += 2;
+            why.Add($"contra {Name(c.FacingStyle)}");
+        }
+        if (style is not null)
+        {
+            var others = c.OtherStyles.Count(o => styles.Beats(style, o));
+            score += 0.5 * others;
+            if (others > 0)
+                why.Add(others == 1 ? "le gana a otro rival" : $"le gana a {others} rivales más");
+        }
+        if (style is not null && c.PositionStyles.Contains(style))
+        {
+            score += 1;
+            why.Add(c.Match.Position == TeamPosition.Flank ? "para el flanco" : "para el bolsillo");
+        }
+        return (score, why);
     }
 
     /// <summary>El consejo contra el rival de enfrente (la excepción de su civ, o el de su estilo típico), o null.</summary>
