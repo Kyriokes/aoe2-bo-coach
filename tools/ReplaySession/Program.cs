@@ -519,6 +519,16 @@ static async Task<int> Loading(string screenshot, string[] args)
     {
         Console.WriteLine($"Aliados: {string.Join(", ", reading.Allies(me).Select(p => $"{p.Name} ({p.Civ ?? "?"})"))}");
         Console.WriteLine($"Rivales: {string.Join(", ", reading.Opponents(me).Select(p => $"{p.Name} ({p.Civ ?? "?"})"))}");
+        // D4: enfrente, posición, BO sugerida de build_orders/ y el consejo.
+        var facing = reading.Facing(me);
+        var position = reading.PositionOf(me);
+        Console.WriteLine($"Enfrente: {(facing is null ? "-" : $"{facing.Name} ({facing.Civ ?? "?"})")} · posición: {position switch { TeamPosition.Flank => "flanco", TeamPosition.Pocket => "bolsillo", _ => "-" }}");
+        var match = new MatchSetup(me.Civ, facing?.Civ, reading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(), position, reading.Map);
+        var styles = CivStyles.Load(Path.Combine("data", "civ_styles.json"));
+        var library = Directory.Exists("build_orders") ? Directory.GetFiles("build_orders", "*.json").Select(BuildOrderSerializer.Load).ToList() : [];
+        var suggestion = BuildOrderSuggester.Suggest(library, match, styles);
+        Console.WriteLine($"Sugerida: {(suggestion is null ? "-" : $"{suggestion.BuildOrder.Name} ({suggestion.Reason})")}");
+        Console.WriteLine($"Consejo: {BuildOrderSuggester.Advice(match, styles) ?? "-"}");
     }
     return 0;
 }
