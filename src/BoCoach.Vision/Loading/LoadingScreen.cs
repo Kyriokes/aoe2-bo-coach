@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Events;
@@ -50,6 +51,48 @@ public sealed record LoadingReading(IReadOnlyList<LoadingPlayer> Players, string
     public IReadOnlyList<LoadingPlayer> Opponents(LoadingPlayer me) => Players.Any(p => p.Team is not null)
         ? Players.Where(p => p != me && (p.Team is null || p.Team != me.Team)).ToList()
         : Players.Where(p => p.Slot % 2 != me.Slot % 2).ToList();
+
+    /// <summary>
+    /// El equipo de <paramref name="me"/> (incluido) en el orden de sus posiciones: con encabezados, el de la lista;
+    /// sin encabezados, por número (1, 3, 5, 7). Sin verificar que ese orden sea el de las posiciones en el mapa.
+    /// </summary>
+    public IReadOnlyList<LoadingPlayer> TeamOf(LoadingPlayer me)
+    {
+        var team = Players.Where(p => p == me || Allies(me).Contains(p));
+        return HasTeams ? team.ToList() : team.OrderBy(p => p.Slot).ToList();
+    }
+
+    private bool HasTeams => Players.Any(p => p.Team is not null);
+
+    /// <summary>
+    /// El rival de enfrente (D4): con encabezados, el del mismo lugar en la lista del primer equipo rival (contra la
+    /// IA la lista agrupa 1-4 contra 5-8); sin encabezados, el número de al lado (1 con 2, 3 con 4: en multijugador,
+    /// según el usuario, el 1 queda enfrente del 2). Si no está, el primer rival.
+    /// </summary>
+    public LoadingPlayer? Facing(LoadingPlayer me)
+    {
+        var opponents = Opponents(me);
+        if (opponents.Count == 0)
+            return null;
+        if (HasTeams)
+        {
+            var other = opponents.Where(p => p.Team == opponents[0].Team).ToList();
+            var index = TeamOf(me).ToList().IndexOf(me);
+            return index >= 0 && index < other.Count ? other[index] : other[0];
+        }
+        var pair = me.Slot % 2 == 1 ? me.Slot + 1 : me.Slot - 1;
+        return opponents.FirstOrDefault(p => p.Slot == pair) ?? opponents[0];
+    }
+
+    /// <summary>Flanco (una punta del equipo) o bolsillo (el medio), con 3 o más por equipo; si no, null.</summary>
+    public TeamPosition? PositionOf(LoadingPlayer me)
+    {
+        var team = TeamOf(me);
+        if (team.Count < 3)
+            return null;
+        var index = team.ToList().IndexOf(me);
+        return index == 0 || index == team.Count - 1 ? TeamPosition.Flank : TeamPosition.Pocket;
+    }
 
     /// <summary>Los aliados de <paramref name="me"/> (sin contarlo), con la misma regla que <see cref="Opponents"/>.</summary>
     public IReadOnlyList<LoadingPlayer> Allies(LoadingPlayer me)

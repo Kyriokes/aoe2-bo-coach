@@ -1,3 +1,4 @@
+using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Loading;
@@ -129,6 +130,39 @@ public class LoadingScreenTests
         var none = Reading((1, "a", null), (2, "b", null), (3, "c", null), (4, "d", null));
         Assert.Equal([2, 4], none.Opponents(none.Players[0]).Select(p => p.Slot));
         Assert.Equal([3], none.Allies(none.Players[0]).Select(p => p.Slot));
+    }
+
+    // D4 (diseño del 2026-10-21): el rival de enfrente y la posición en el equipo.
+    [Fact]
+    public void Con_equipos_enfrente_es_el_del_mismo_lugar_en_el_otro_equipo()
+    {
+        var ai = Reading((1, "a", 1), (2, "b", 1), (3, "c", 1), (4, "d", 1), (5, "e", 2), (6, "f", 2), (7, "g", 2), (8, "h", 2));
+
+        Assert.Equal(5, ai.Facing(ai.Players[0])?.Slot);
+        Assert.Equal(7, ai.Facing(ai.Players[2])?.Slot);
+        Assert.Equal(4, ai.Facing(ai.Players[7])?.Slot);
+        Assert.Equal(TeamPosition.Flank, ai.PositionOf(ai.Players[0]));
+        Assert.Equal(TeamPosition.Pocket, ai.PositionOf(ai.Players[1]));
+        Assert.Equal(TeamPosition.Pocket, ai.PositionOf(ai.Players[2]));
+        Assert.Equal(TeamPosition.Flank, ai.PositionOf(ai.Players[3]));
+    }
+
+    [Fact]
+    public void Sin_equipos_enfrente_es_el_numero_de_al_lado_y_las_puntas_son_el_1_y_el_7()
+    {
+        // Multijugador según el usuario: 1, 3, 5 y 7 contra 2, 4, 6 y 8, el 1 enfrente del 2 y el 7 y el 8 en la otra punta.
+        var none = Reading((1, "a", null), (2, "b", null), (3, "c", null), (4, "d", null), (5, "e", null), (6, "f", null), (7, "g", null), (8, "h", null));
+
+        Assert.Equal(2, none.Facing(none.Players[0])?.Slot);
+        Assert.Equal(3, none.Facing(none.Players[3])?.Slot);
+        Assert.Equal(TeamPosition.Flank, none.PositionOf(none.Players[6]));
+        Assert.Equal(TeamPosition.Pocket, none.PositionOf(none.Players[4]));
+
+        // 1 contra 1 y 2 contra 2: sin posición.
+        var duel = Reading((1, "a", null), (2, "b", null));
+        Assert.Equal(2, duel.Facing(duel.Players[0])?.Slot);
+        Assert.Null(duel.PositionOf(duel.Players[0]));
+        Assert.Null(Reading((1, "a", null), (2, "b", null), (3, "c", null), (4, "d", null)).PositionOf(duel.Players[0]));
     }
 
     private static readonly string[] AiCivs = ["japanese", "turks", "britons", "khmer", "cumans", "romans", "tatars", "malians"];
