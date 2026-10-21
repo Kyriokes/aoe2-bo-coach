@@ -2,6 +2,7 @@ using BoCoach.App.Coaching;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
+using BoCoach.Vision.Recording;
 
 namespace BoCoach.App.Tests;
 
@@ -54,6 +55,147 @@ public sealed class LiveCoachTests : IDisposable
                 return _screen.Crop(rect);
             });
         }
+    }
+
+    private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
+
+    /// <summary>
+    /// La grabación de scouts con un hueco en el medio: las primeras <paramref name="before"/> capturas tal cual, después
+    /// <paramref name="gap"/> capturas sin regiones (sin reloj) cada 0,5 s, al frente o no, y el resto de la grabación
+    /// (o, con <paramref name="restart"/>, otra vez desde el principio: el reloj vuelve a 0:03), corrido en el tiempo.
+    /// </summary>
+    private sealed class GapFrames(RecordedSession session, int before, int gap, bool gapInFront, bool restart = false) : IFrameSource
+    {
+        private int _served;
+        private double _offset;
+        private double _last;
+
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => GameWindow.PrimaryScreen;
+
+        public Frame? Next()
+        {
+            var i = _served++;
+            if (i < before)
+                return Recorded(i, 0);
+            if (i < before + gap)
+            {
+                _last += 0.5;
+                return new Frame(_ => null, _last, Area, InFront: gapInFront);
+            }
+            var index = restart ? i - before - gap : i - gap;
+            if (index >= session.Frames.Count)
+                return null;
+            if (_offset == 0)
+                _offset = _last + 0.5 - session.Frames[index].TimeMs / 1000.0;
+            return Recorded(index, _offset);
+        }
+
+        private Frame Recorded(int index, double offset)
+        {
+            var frame = session.Frames[index];
+            _last = frame.TimeMs / 1000.0 + offset;
+            return new Frame(region => session.Has(frame.Index, region) ? session.Image(frame.Index, region) : null, _last, Area);
+        }
+    }
+
+    private LiveCoach Live(IFrameSource frames) =>
+        new(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1 };
+
+    // D6 (2026-10-21): alt-tab. Con el juego atrás no se lee nada y el tiempo sin reloj no corre: la partida no
+    // termina y el overlay se esconde; al volver, sigue donde estaba.
+    [Fact]
+    public async Task Con_el_juego_atras_no_cuenta_el_tiempo_sin_reloj_ni_termina_la_partida()
+    {
+        var session = RecordedSession.Load(Fixture);
+        using var live = Live(new GapFrames(session, before: 10, gap: 80, gapInFront: false));
+        var reports = 0;
+        live.GameFinished += _ => reports++;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 10; i++)
+            await live.StepAsync();
+        Assert.False(last!.Waiting);
+        var time = last.View.Time;
+
+        for (var i = 0; i < 80; i++)
+            await live.StepAsync();
+        Assert.False(last!.InFront);
+        Assert.False(last.Waiting);
+        Assert.True(last.SecondsWithoutClock < 1, $"sin reloj {last.SecondsWithoutClock} s");
+        Assert.Equal(0, reports);
+
+        await live.StepAsync();
+        Assert.True(last!.InFront);
+        Assert.True(last.View.Time > time);
+        Assert.NotNull(live.TakePendingReport()); // hubo lecturas nuevas: el informe queda pendiente
+    }
+
+    // D6: fin de partida. 30 s sin reloj con el juego a la vista: el informe (una sola vez) y a esperar otra; si el
+    // reloj vuelve y sigue (el árbol de tecnologías tapa el HUD), el coach sigue donde estaba.
+    [Fact]
+    public async Task Treinta_segundos_sin_reloj_terminan_la_partida_y_el_estado_queda_por_si_el_reloj_vuelve()
+    {
+        var session = RecordedSession.Load(Fixture);
+        using var live = Live(new GapFrames(session, before: 10, gap: 70, gapInFront: true));
+        var reports = 0;
+        live.GameFinished += _ => reports++;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 10; i++)
+            await live.StepAsync();
+        var time = last!.View.Time;
+        for (var i = 0; i < 70; i++)
+            await live.StepAsync();
+
+        Assert.True(last!.Waiting);
+        Assert.Equal(1, reports);
+        Assert.Equal("Esperando una partida…", WarningOf(last));
+        Assert.Null(live.TakePendingReport()); // ya se informó
+
+        for (var i = 0; i < 5; i++)
+            await live.StepAsync();
+        Assert.False(last!.Waiting);
+        Assert.True(last.View.Time > time); // la misma partida, que siguió
+        Assert.Equal(1, reports);
+        Assert.NotNull(live.TakePendingReport()); // lecturas nuevas desde el informe
+    }
+
+    // D6: partida nueva sin pantalla de carga leída: el reloj vuelve a empezar (3 lecturas seguidas para atrás).
+    [Fact]
+    public async Task Un_reloj_que_vuelve_a_empezar_es_otra_partida()
+    {
+        var session = RecordedSession.Load(Fixture);
+        // Las primeras 13 capturas llegan al 3:20; después la grabación arranca de nuevo (0:03, 0:06, 0:12...).
+        using var live = Live(new GapFrames(session, before: 13, gap: 0, gapInFront: true, restart: true));
+        var reports = 0;
+        live.GameFinished += _ => reports++;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        var time = last!.View.Time;
+        Assert.True(time > 60, $"tiempo {time}");
+        for (var i = 0; i < 2; i++)
+            await live.StepAsync();
+        Assert.Equal(0, reports); // dos lecturas para atrás pueden ser un error: todavía no
+        for (var i = 0; i < 2; i++)
+            await live.StepAsync();
+
+        Assert.Equal(1, reports);
+        Assert.True(last!.View.Time < time, $"tiempo {last.View.Time}");
+        Assert.False(last.Waiting);
+        Assert.Equal("any", live.Civ);
+    }
+
+    private string? WarningOf(CoachFrame frame)
+    {
+        var overlay = new Overlay.OverlayViewModel(_data.GameData, "x");
+        overlay.Apply(frame);
+        return overlay.Warning;
     }
 
     // B2 (2026-10-20): en la pantalla de carga el coach busca el nombre del jugador y toma su civ; la partida empieza

@@ -10,7 +10,9 @@ namespace BoCoach.App.Coaching;
 /// Un rectángulo cualquiera de la pantalla del juego (relativo a <paramref name="Area"/>), para la pantalla de carga;
 /// null si la fuente no lo tiene (las grabaciones solo guardan las regiones).
 /// </param>
-public sealed record Frame(Func<string, CapturedImage?> Region, double RealTime, PixelRect Area, Func<PixelRect, CapturedImage?>? Screen = null);
+/// <param name="InFront">False si el juego está abierto pero no al frente (alt-tab): no hay nada que leer.</param>
+public sealed record Frame(Func<string, CapturedImage?> Region, double RealTime, PixelRect Area, Func<PixelRect, CapturedImage?>? Screen = null,
+    bool InFront = true);
 
 /// <summary>De dónde salen las capturas: la pantalla en vivo o una grabación.</summary>
 public interface IFrameSource
@@ -42,9 +44,15 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
 
     public double HudScale => layout.HudScale;
 
+    private PixelRect? _lastArea;
+
     public Frame? Next()
     {
+        // Juego abierto pero atrás (alt-tab): una captura vacía, sin tocar la pantalla.
+        if (!screen.GameInFront)
+            return new Frame(_ => null, _clock.Elapsed.TotalSeconds, _lastArea ?? screen.CaptureArea, InFront: false);
         var area = screen.CaptureArea;
+        _lastArea = area;
         var captured = new Dictionary<string, CapturedImage?>();
         return new Frame(
             region => captured.TryGetValue(region, out var image) ? image : captured[region] = Capture(region, area),

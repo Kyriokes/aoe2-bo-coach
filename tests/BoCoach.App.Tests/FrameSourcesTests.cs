@@ -10,9 +10,29 @@ public class FrameSourcesTests
     {
         public PixelRect CaptureArea => new(0, 0, 1920, 1080);
         public bool GameFound => true;
+        public bool GameInFront { get; set; } = true;
+        public int Captures { get; private set; }
 
-        public CapturedImage Capture(PixelRect rect) =>
-            new(rect.Width, rect.Height, new byte[rect.Width * rect.Height * 4]);
+        public CapturedImage Capture(PixelRect rect)
+        {
+            Captures++;
+            return new(rect.Width, rect.Height, new byte[rect.Width * rect.Height * 4]);
+        }
+    }
+
+    // D6: con el juego abierto pero atrás (alt-tab) no se captura nada: antes se capturaba la pantalla principal entera.
+    [Fact]
+    public void Con_el_juego_atras_la_captura_llega_vacia_y_no_toca_la_pantalla()
+    {
+        var screen = new FakeScreen { GameInFront = false };
+
+        var frame = new ScreenFrames(screen, RegionLayout.Default).Next()!;
+
+        Assert.False(frame.InFront);
+        Assert.Null(frame.Region(RegionNames.Food));
+        Assert.Null(frame.Screen);
+        Assert.Equal(0, screen.Captures);
+        Assert.Equal(new PixelRect(0, 0, 1920, 1080), frame.Area);
     }
 
     // B4 (b): con el HUD a otra escala, cada región llega a los lectores en los píxeles de 1080p de las letras.

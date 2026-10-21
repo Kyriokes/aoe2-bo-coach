@@ -38,6 +38,56 @@ public static class GameWindow
         return null;
     }
 
+    /// <summary>
+    /// Si la ventana del juego está al frente: no minimizada, y la ventana activa es la del juego o una de esta app
+    /// (tocar "Atrás" o "Ya está" en la ventana no tiene que esconder el coach). null si el juego no está abierto.
+    /// </summary>
+    public static bool? IsInFront()
+    {
+        var found = false;
+        var foreground = GetForegroundWindow();
+        foreach (var name in ProcessNames)
+        {
+            foreach (var process in Process.GetProcessesByName(name))
+            {
+                using (process)
+                {
+                    var handle = process.MainWindowHandle;
+                    if (handle == IntPtr.Zero)
+                        continue;
+                    found = true;
+                    if (!IsIconic(handle) && (handle == foreground || GetAncestor(foreground, GaRootOwner) == handle || IsOurs(foreground)))
+                        return true;
+                }
+            }
+        }
+        return found ? false : null;
+    }
+
+    /// <summary>Si el proceso del juego está corriendo (solo mira la lista de procesos, nunca su memoria).</summary>
+    public static bool IsRunning()
+    {
+        foreach (var name in ProcessNames)
+        {
+            var processes = Process.GetProcessesByName(name);
+            foreach (var process in processes)
+                process.Dispose();
+            if (processes.Length > 0)
+                return true;
+        }
+        return false;
+    }
+
+    private static bool IsOurs(IntPtr window)
+    {
+        if (window == IntPtr.Zero)
+            return false;
+        GetWindowThreadProcessId(window, out var pid);
+        return pid == Environment.ProcessId;
+    }
+
+    private const uint GaRootOwner = 3;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect
     {
@@ -61,4 +111,13 @@ public static class GameWindow
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hWnd, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 }

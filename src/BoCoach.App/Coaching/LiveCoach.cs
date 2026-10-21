@@ -84,6 +84,8 @@ public sealed class UsageMeter
 /// <param name="Loading">Lo leído en la última pantalla de carga (la de esta partida), o null.</param>
 /// <param name="Me">El jugador de la pantalla de carga con el nombre puesto en la app, o null.</param>
 /// <param name="Civ">La civ con que corre el coach (clave de game_data, o "any").</param>
+/// <param name="InFront">False mientras el juego está abierto pero no al frente (alt-tab): no se lee nada y el overlay se esconde.</param>
+/// <param name="Waiting">Esperando una partida: antes de la primera pantalla de carga o del primer reloj, y después de un fin de partida.</param>
 public sealed record CoachFrame(
     CoachView View,
     HudState? Hud,
@@ -98,7 +100,9 @@ public sealed record CoachFrame(
     double HudScale = 1,
     LoadingReading? Loading = null,
     LoadingPlayer? Me = null,
-    string Civ = "any");
+    string Civ = "any",
+    bool InFront = true,
+    bool Waiting = false);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -113,7 +117,18 @@ public sealed class LiveCoach : IDisposable
     public static readonly TimeSpan LoadingInterval = TimeSpan.FromSeconds(2);
 
     /// <summary>Segundos de partida a partir de los que vale la pena el informe (D5).</summary>
-    public const double MinReportSeconds = 60;
+    public const double DefaultMinReportSeconds = 60;
+
+    /// <summary>
+    /// D6: segundos sin reloj, con el juego al frente y sin pausa, para dar la partida por terminada (el HUD
+    /// desaparece en la pantalla de resultados). El estado queda por si el reloj vuelve (árbol de tecnologías).
+    /// </summary>
+    public const double GameEndSeconds = 30;
+
+    /// <summary>D6: un reloj que vuelve para atrás más que esto, en <see cref="NewGameBackReads"/> lecturas seguidas, es otra partida.</summary>
+    public const double NewGameBackSeconds = 5;
+
+    public const int NewGameBackReads = 3;
 
     /// <summary>Cuánto se espera sin reloj antes de mirar la pantalla de carga (lo que tarda el overlay en bajar).</summary>
     public static readonly TimeSpan LoadingDelay = TimeSpan.FromSeconds(1);
@@ -141,6 +156,12 @@ public sealed class LiveCoach : IDisposable
     private bool _loadingDone;
     private LoadingReading? _loadingReading;
     private LoadingPlayer? _me;
+    private bool _inFront = true;
+    private bool _waiting = true;
+    private bool _clockSeenInGame;
+    private bool _reportPending;
+    private double? _lastClock;
+    private int _backwards;
 
     /// <param name="playerName">El nombre del jugador en el juego, para encontrar su renglón en la pantalla de carga.</param>
     /// <param name="language">Idioma del juego (<see cref="GameLanguage.Code"/>), para los nombres de las civs.</param>
@@ -175,11 +196,17 @@ public sealed class LiveCoach : IDisposable
     /// <summary>En pausa no se captura nada (por ejemplo, entre partidas).</summary>
     public bool Paused { get; set; }
 
+    /// <summary>Segundos de partida a partir de los que vale la pena el informe (D5); los tests lo bajan.</summary>
+    public double MinReportSeconds { get; init; } = DefaultMinReportSeconds;
+
+    /// <summary>D6: esperando una partida (ver <see cref="CoachFrame.Waiting"/>).</summary>
+    public bool Waiting => _waiting;
+
     public bool Running => _cancel is { IsCancellationRequested: false };
 
     public event Action<CoachFrame>? Updated;
 
-    /// <summary>Terminó una partida porque empezó otra (pantalla de carga): su informe (D5).</summary>
+    /// <summary>Terminó una partida (30 s sin reloj, o empezó otra): su informe (D5).</summary>
     public event Action<GameReport>? GameFinished;
 
     /// <summary>El informe de la partida en curso (D5).</summary>
@@ -187,6 +214,19 @@ public sealed class LiveCoach : IDisposable
     {
         lock (_gate)
             return _coach.Report();
+    }
+
+    /// <summary>
+    /// El informe de la partida si hubo lecturas con reloj desde el último informe y duró lo suficiente, o null. Así
+    /// un fin de partida seguido de una pantalla de carga (o de detener el coach) no informa dos veces.
+    /// </summary>
+    public GameReport? TakePendingReport()
+    {
+        if (!_reportPending)
+            return null;
+        _reportPending = false;
+        var report = Report();
+        return report.Length >= MinReportSeconds ? report : null;
     }
 
     public void Start()
@@ -221,22 +261,57 @@ public sealed class LiveCoach : IDisposable
                 return false;
             }
 
+            if (!frame.InFront)
+            {
+                // Alt-tab (D6): el juego está abierto pero no al frente. No se lee nada y el tiempo sin reloj no
+                // corre: lo que había sigue igual cuando el jugador vuelve.
+                var elapsed = frame.RealTime - _now;
+                if (_lastClockAt is { } clockAt)
+                    _lastClockAt = clockAt + elapsed;
+                if (_noClockSince is { } since)
+                    _noClockSince = since + elapsed;
+                if (_lastLoadingTry is { } tried)
+                    _lastLoadingTry = tried + elapsed;
+                (_now, _inFront, _error) = (frame.RealTime, false, null);
+                _frameMs = watch.Elapsed.TotalMilliseconds;
+                Publish();
+                return true;
+            }
+            _inFront = true;
             if (await LoadingScreenAsync(frame) is { } reading)
                 StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
             if (hud.ClockRead)
+            {
                 _loadingDone = false;
+                // Un reloj que vuelve a empezar sin pantalla de carga leída: otra partida con la misma BO. Se mira
+                // la lectura cruda: el suavizado nunca deja que el reloj vuelva para atrás.
+                if (IsNewGame(hud.ClockReading))
+                    StartGame(null);
+            }
             var snapshot = _builder.Build(hud.ToReading());
             lock (_gate)
             {
                 if (snapshot is not null)
+                {
                     _coach.Update(snapshot);
+                    // Sin reloj el snapshot repite el último (no es una lectura nueva para el informe).
+                    if (hud.ClockRead)
+                        _reportPending = true;
+                }
             }
             _hud = hud;
             _now = frame.RealTime;
             _area = frame.Area;
             if (hud.ClockRead)
+            {
                 _lastClockAt = frame.RealTime;
+                (_clockSeenInGame, _waiting) = (true, false);
+            }
+            else if (!_waiting && _clockSeenInGame && !Paused && _lastClockAt is { } at && frame.RealTime - at >= GameEndSeconds)
+            {
+                EndGame();
+            }
             _error = null;
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -278,25 +353,58 @@ public sealed class LiveCoach : IDisposable
             : reading;
     }
 
-    /// <summary>Empieza una partida nueva: todo de cero, con la civ del jugador si se lo encontró en la lista.</summary>
-    private void StartGame(LoadingReading reading)
+    /// <summary>
+    /// Empieza una partida nueva: todo de cero. Con la pantalla de carga (<paramref name="reading"/>), con la civ del
+    /// jugador si se lo encontró en la lista; sin ella (el reloj volvió a empezar), con la misma BO y civ de antes.
+    /// </summary>
+    private void StartGame(LoadingReading? reading)
     {
-        _loadingDone = true;
-        var me = reading.Find(PlayerName);
-        var bo = me?.Civ is { } civ ? BuildOrder with { Civ = civ } : BuildOrder;
-        var finished = Report();
-        if (finished.Length >= MinReportSeconds)
+        var me = reading is null ? _me : reading.Find(PlayerName);
+        var bo = BuildOrder with { Civ = reading is null ? Civ : me?.Civ ?? BuildOrder.Civ };
+        if (TakePendingReport() is { } finished)
             GameFinished?.Invoke(finished);
         var (coach, builder, reader) = NewGame(bo);
+        var loading = reading ?? _loadingReading;
         // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
         coach.Signals.PlayerSlot = me?.Slot;
-        coach.Signals.AllySlots = me is null ? new HashSet<int>() : reading.Allies(me).Select(p => p.Slot).ToHashSet();
+        coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
         lock (_gate)
         {
             (_coach, _builder, _reader) = (coach, builder, reader);
-            (_loadingReading, _me, Civ) = (reading, me, bo.Civ);
+            (_loadingReading, _me, Civ) = (loading, me, bo.Civ);
             _hud = null;
         }
+        _loadingDone = reading is not null;
+        (_waiting, _clockSeenInGame) = (false, false);
+        if (reading is not null)
+            (_lastClock, _backwards) = (null, 0);
+    }
+
+    /// <summary>D6: el reloj volvió para atrás más de <see cref="NewGameBackSeconds"/> en <see cref="NewGameBackReads"/> lecturas seguidas (una sola puede ser un error de lectura).</summary>
+    private bool IsNewGame(double? clock)
+    {
+        if (clock is not { } now)
+            return false;
+        if (_lastClock is { } last && now < last - NewGameBackSeconds)
+        {
+            if (++_backwards < NewGameBackReads)
+                return false;
+            (_backwards, _lastClock) = (0, now);
+            return true;
+        }
+        (_backwards, _lastClock) = (0, now);
+        return false;
+    }
+
+    /// <summary>
+    /// D6: la partida terminó (30 s sin reloj con el juego a la vista): el informe, y a esperar otra. El estado no se
+    /// destruye: si el reloj vuelve y sigue (el árbol de tecnologías tapa el HUD), el coach sigue donde estaba.
+    /// </summary>
+    private void EndGame()
+    {
+        (_waiting, _clockSeenInGame) = (true, false);
+        if (TakePendingReport() is { } report)
+            GameFinished?.Invoke(report);
     }
 
     private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (
@@ -340,6 +448,6 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting));
     }
 }

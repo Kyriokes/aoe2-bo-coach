@@ -108,7 +108,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         if (frame.Hud?.ModBands is { } modBands && modBands.TryGetValue(IdleAlert.Region, out var idleBand))
             IdleAlert.Band = OnScreen(idleBand, frame.HudScale);
         // Sin reloj (menú, pantalla de carga) no se recuerda nada: el estado puede ser viejo.
-        var playing = frame is { Ended: false, Paused: false, SecondsWithoutClock: < ClockWarningSeconds };
+        var playing = frame is { Ended: false, Paused: false, InFront: true, Waiting: false, SecondsWithoutClock: < ClockWarningSeconds };
         HouseReminder = playing && view.NeedsHouse;
         TownCenterReminder = playing && view.TownCenterReminder;
         IdleReminder = playing && IdleAlert.Alert;
@@ -136,6 +136,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         { Ended: true } => "Terminó la grabación.",
         { Paused: true } => "En pausa: Ctrl+Alt+P para seguir.",
         { Error: { } error } => $"No se pudo leer la pantalla: {error}",
+        { InFront: false } => "El juego no está al frente.",
+        { Waiting: true } => "Esperando una partida…",
         { SecondsWithoutClock: >= ClockWarningSeconds } => "No veo el reloj del juego: ¿menú, pantalla de carga o hay que calibrar?",
         { Hud.Clipped.Count: > 0 } => $"No entra el número de {string.Join(", ", frame.Hud!.Clipped.Select(RegionNames.Label).Select(l => l.ToLowerInvariant()))}: agrandá la caja al calibrar.",
         _ => null,

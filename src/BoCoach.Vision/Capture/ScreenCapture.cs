@@ -9,6 +9,12 @@ public interface IScreenSource
     /// <summary>True si <see cref="CaptureArea"/> es la ventana del juego (y no la pantalla principal por descarte).</summary>
     bool GameFound { get; }
 
+    /// <summary>
+    /// False si el juego está abierto pero minimizado o detrás de otra ventana (alt-tab): no vale la pena capturar.
+    /// True si está al frente, o si no está abierto (se captura la pantalla principal, como siempre).
+    /// </summary>
+    bool GameInFront => true;
+
     CapturedImage Capture(PixelRect rect);
 }
 
@@ -24,6 +30,8 @@ public sealed class ScreenCapture : IScreenSource
     public PixelRect CaptureArea => GameWindow.FindClientArea() ?? GameWindow.PrimaryScreen;
 
     public bool GameFound => GameWindow.FindClientArea() is not null;
+
+    public bool GameInFront => GameWindow.IsInFront() ?? true;
 
     public CapturedImage Capture(PixelRect rect)
     {
