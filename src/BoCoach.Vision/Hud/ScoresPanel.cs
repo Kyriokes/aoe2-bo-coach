@@ -43,13 +43,17 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
         return rows;
     }
 
-    /// <summary>"UKyriokes: 779/779" → 779. Solo si los dos números coinciden (así se descartan lecturas dudosas).</summary>
+    /// <summary>
+    /// "UKyriokes: 779/779" → 779. El segundo número es el puntaje más alto del equipo (en 1 contra 1, el mismo; en la
+    /// 20261020-205150, 4 contra 4: "Otakar I: 1330/1343"): el primero no puede pasarlo, así se descartan lecturas dudosas.
+    /// </summary>
     public static int? Parse(string text)
     {
         var match = ScoreText().Match(text);
-        return match.Success && match.Groups["a"].Value == match.Groups["b"].Value
-            ? int.Parse(match.Groups["a"].Value, CultureInfo.InvariantCulture)
-            : null;
+        if (!match.Success)
+            return null;
+        var score = int.Parse(match.Groups["a"].Value, CultureInfo.InvariantCulture);
+        return score <= int.Parse(match.Groups["b"].Value, CultureInfo.InvariantCulture) ? score : null;
     }
 
     [GeneratedRegex(@"[:.]\s*(?<a>\d{1,6})\s*/\s*(?<b>\d{1,6})")]

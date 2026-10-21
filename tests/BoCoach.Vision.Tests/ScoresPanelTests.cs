@@ -18,7 +18,8 @@ public class ScoresPanelTests
     [InlineData("UOtt0kar 1: 1100/1100 B%ll", 1100)]
     [InlineData("u Ottokar I.  455/455 Bo", 455)]
     [InlineData("914/914", null)] // sin nombre: el renglón cortado
-    [InlineData("UKyriokes: 779/719", null)] // los dos números no coinciden: lectura dudosa
+    [InlineData("UKyriokes: 779/719", null)] // el primero pasa al más alto del equipo: lectura dudosa
+    [InlineData("Otakar I: 1330/1343", 1330)] // 4 contra 4: el segundo es el más alto del equipo
     public void Lee_el_puntaje_del_renglon(string text, int? score) => Assert.Equal(score, ScoresPanelReader.Parse(text));
 
     [Theory]
