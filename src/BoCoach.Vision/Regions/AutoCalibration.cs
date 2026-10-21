@@ -94,6 +94,14 @@ public static class AutoCalibration
         boxes[RegionNames.ProductionQueue] = new PixelRect(
             Scaled(referenceQueue.X, scale), Scaled(referenceQueue.Y, scale), Scaled(referenceQueue.Width, scale), Scaled(referenceQueue.Height, scale));
 
+        // El panel de puntajes, anclado abajo a la derecha de la pantalla y escalado como el HUD (la caja guardada podía
+        // ser la vieja, de 2 renglones).
+        var scores = RegionLayout.Default.PixelsOf(RegionNames.Scores, 1920, 1080);
+        var scoresWidth = Scaled(scores.Width, scale);
+        var scoresHeight = Scaled(scores.Height, scale);
+        boxes[RegionNames.Scores] = new PixelRect(
+            screen.Width - Scaled(1920 - scores.X, scale), screen.Height - Scaled(1080 - scores.Y, scale), scoresWidth, scoresHeight);
+
         var regions = new Dictionary<string, RegionRect>();
         foreach (var name in RegionNames.All)
         {

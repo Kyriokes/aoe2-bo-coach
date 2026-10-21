@@ -124,7 +124,9 @@ public sealed class RegionLayout
         [RegionNames.EventLog] = new(0.0047, 0.1361, 0.2510, 0.0907),
         // Sin medir todavía: lugares aproximados para que se vean al calibrar.
         [RegionNames.ProductionQueue] = new(0.0031, 0.0480, 0.2500, 0.0500),
-        [RegionNames.Scores] = new(0.8200, 0.7000, 0.1700, 0.0600),
+        // El panel de puntajes crece hacia arriba con los jugadores: 8 renglones (en la 20261020-205150, 4 contra 4, la
+        // caja de 2 renglones los cortaba).
+        [RegionNames.Scores] = new(0.8000, 0.6400, 0.2000, 0.2150),
     });
 
     public PixelRect PixelsOf(string region, int screenWidth, int screenHeight) =>
