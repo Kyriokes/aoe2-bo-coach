@@ -247,17 +247,38 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
     public const double SuggestionSeconds = 60;
 
-    /// <summary>D4: la BO de la biblioteca que mejor encaja con la civ, el mapa y el rival.</summary>
+    /// <summary>
+    /// D4: la BO de la biblioteca que mejor encaja con la civ, el mapa, los rivales (el de enfrente pesa más) y la
+    /// posición en el equipo, y un consejo contra el rival de enfrente.
+    /// </summary>
     private void Suggest(CoachFrame frame)
     {
-        if (Overlay is null || frame.Loading is not { } loading || frame.Me is not { Civ: { } civ } me || _coach is null)
+        if (Overlay is null || frame.Loading is not { } loading || frame.Me is not { } me || _coach is null)
+            return;
+        var facing = loading.Facing(me);
+        var match = new MatchSetup(me.Civ, facing?.Civ, loading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(),
+            loading.PositionOf(me), loading.Map);
+        Overlay.MatchAdvice = BuildOrderSuggester.Advice(match, _data.CivStyles) is { } advice && facing?.Civ is { } rival
+            ? $"Contra {CivName(rival)} (enfrente): {advice}"
+            : null;
+        if (me.Civ is null)
             return;
         var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>();
-        var suggestion = BuildOrderSuggester.Suggest(library, civ, loading.Opponents(me).Select(p => p.Civ), loading.Map, _data.CivStyles);
+        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles);
         if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
             return;
         _suggestion = suggestion;
         Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
+    }
+
+    /// <summary>El nombre de una civ en castellano (el de Latinoamérica, o el de España si el juego está así).</summary>
+    private string CivName(string civ)
+    {
+        var names = _data.GameData.Civ(civ).Names;
+        return (Language == GameLanguage.SpanishSpain && names.TryGetValue("es", out var es) ? es
+            : names.TryGetValue("mx", out var mx) ? mx
+            : names.TryGetValue("es", out var other) ? other
+            : civ).ToLowerInvariant();
     }
 
     /// <summary>Ctrl+Alt+B: empieza el coach con la BO sugerida en la pantalla de carga.</summary>
@@ -359,8 +380,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Suggest(frame);
         }
         // La sugerencia vale durante la carga y el primer minuto de partida.
-        if (_suggestion is not null && frame.View.Time > SuggestionSeconds)
-            (_suggestion, Overlay.BoSuggestion) = (null, null);
+        if ((_suggestion is not null || Overlay.MatchAdvice is not null) && frame.View.Time > SuggestionSeconds)
+            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice) = (null, null, null);
         // Sin reloj (menú, pantalla de carga) el overlay baja, así no tapa el mapa de la pantalla de carga.
         var lowered = frame.SecondsWithoutClock >= LoweredAfterSeconds;
         if (frame.Area is { IsEmpty: false } area && (area != _placedOver || lowered != _lowered))

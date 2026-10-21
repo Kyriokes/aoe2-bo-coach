@@ -72,6 +72,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     /// <summary>D4: la BO que encaja con la partida de la pantalla de carga ("Sugerida: ... Ctrl+Alt+B para usarla"), o null.</summary>
     [ObservableProperty] public partial string? BoSuggestion { get; set; }
 
+    /// <summary>D4: el consejo contra el rival de enfrente, en la pantalla de carga y el primer minuto.</summary>
+    [ObservableProperty] public partial string? MatchAdvice { get; set; }
+
     public void Apply(CoachFrame frame)
     {
         var view = frame.View;

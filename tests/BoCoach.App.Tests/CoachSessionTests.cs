@@ -158,6 +158,9 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(host.Lowered); // sin reloj, el overlay baja
         Assert.StartsWith("Sugerida: Arqueros Feudal (23 pop)", session.Overlay!.BoSuggestion);
         Assert.Contains("Ctrl+Alt+B", session.Overlay.BoSuggestion);
+        // Segunda parte de D4: el jugador 1 es una punta de su equipo y enfrente tiene al primero del otro (cumanos).
+        Assert.Contains("para el flanco", session.Overlay.BoSuggestion);
+        Assert.StartsWith("Contra cumanos (enfrente): ", session.Overlay.MatchAdvice);
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.Equal("Arqueros Feudal (23 pop)", session.LiveCoach!.BuildOrder.Name);

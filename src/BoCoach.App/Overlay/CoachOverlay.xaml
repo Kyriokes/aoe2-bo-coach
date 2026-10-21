@@ -29,8 +29,10 @@
             </DockPanel>
 
             <!-- D4: BO sugerida en la pantalla de carga -->
-            <TextBlock Text="{Binding BoSuggestion}" Foreground="#8CD17D" FontSize="14" Margin="0,0,0,6"
+            <TextBlock Text="{Binding BoSuggestion}" Foreground="#8CD17D" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
                        Visibility="{Binding BoSuggestion, Converter={StaticResource NotEmptyToVisibility}}" />
+            <TextBlock Text="{Binding MatchAdvice}" Foreground="#E8C26A" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
+                       Visibility="{Binding MatchAdvice, Converter={StaticResource NotEmptyToVisibility}}" />
 
             <!-- Paso actual (y, si es un paso mixto, sus otras metas) -->
             <TextBlock Text="{Binding Current}" FontSize="19" FontWeight="SemiBold" />
