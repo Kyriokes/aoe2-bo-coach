@@ -15,7 +15,7 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 ## Versiones y publicación
 
 5. **Pasar la v0.9.17 a los amigos.** El zip lo arma el CI: en GitHub, pestaña Actions, la última corrida "CI" en verde de la rama `fase-9-refinamiento` (un push nuevo cancela la anterior), abajo en "Artifacts" está `BoCoach-portable-win-x64` (dura 14 días; hay que estar logueado). Instrucciones para ellos, también en el `LEEME.txt` del zip: abrir la app, "Instalar mod del HUD", reabrir el juego, elegir "Idioma del juego" (España o Latinoamérica, según cómo lo tengan en el juego) y la "Civ", empezar el coach (calibra solo). Si algo falla, Ctrl+Alt+X en partida y mandar la carpeta `%LOCALAPPDATA%\BoCoach\diagnostico`.
-6. ~~**Push a `main`.**~~ Hecho el 2026-10-20 (v0.9.20). Para los próximos, pedilo en el chat ("pusheá a main").
+6. ~~**Push a `main`.**~~ Hecho el 2026-10-20 (v0.9.21). Para los próximos, pedilo en el chat ("pusheá a main").
 7. **Release pública** (etiqueta `v*`): cuando quieras. La portada de la web apunta a la última release y hoy no hay ninguna.
 
 ## Web y portfolio
@@ -28,7 +28,7 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 11. **Prueba de usabilidad del editor** (B5): una BO de 20 pasos desde cero, cronometrada. Si pasa de 5 minutos, contame qué te trabó.
 12. **Tu biblioteca local:** las copias de scouts y fast castle en `%APPDATA%\BoCoach\build_orders` son las viejas (9 en ovejas). Para tener las nuevas: "Importar…" con `build_orders/scouts_22p.json` y `build_orders/fast_castle_principiante.json` del repo.
-13. **Bloque D de `PLAN.md`** (ideas grandes): charlarlas antes de que yo escriba código. D1 está hecho (v0.9.20): probalo en una partida en la que cambies de build (por ejemplo, BO de arqueros y hacé 6 hombres de armas o lanceros sin sacar arqueros): a los 60 s del último arquero el overlay tiene que decir "BO abandonada" y por qué, y Ctrl+Alt+← (o "◀ Atrás") la retoma. D2 (postura de cierre) está hecho (v0.9.21): terminá una BO entera (por ejemplo, la de scouts) y fijate que el overlay pase a "Postura: aldeanos y exploradores siempre en cola", que avise "Establo parado" si lo dejás sin nada en cola, y que diga cuánto falta para la próxima edad o "Hacé clic en ...". En el editor, la sección "POSTURA DE CIERRE". Siguen D3 a D5.
+13. **Bloque D de `PLAN.md`** (ideas grandes): charlarlas antes de que yo escriba código. D1 está hecho (v0.9.20): probalo en una partida en la que cambies de build (por ejemplo, BO de arqueros y hacé 6 hombres de armas o lanceros sin sacar arqueros): a los 60 s del último arquero el overlay tiene que decir "BO abandonada" y por qué, y Ctrl+Alt+← (o "◀ Atrás") la retoma. D2 (postura de cierre) está hecho (v0.9.21): terminá una BO entera (por ejemplo, la de scouts) y fijate que el overlay pase a "Postura: aldeanos y exploradores siempre en cola", que avise "Establo parado" si lo dejás sin nada en cola, y que diga cuánto falta para la próxima edad o "Hacé clic en ...". En el editor, la sección "POSTURA DE CIERRE". D3 (señales y ramas) está hecho (v0.9.22): jugá contra la IA y fijate que cuando la IA hace clic en Feudal el overlay diga "El rival hizo clic en Feudal (m:ss): llega a las ...". Para probar una rama: en el editor, "Pasos de: Si el rival hace clic en Feudal", agregá por ejemplo 3 lanceros y guardá. Para leer bien "te atacan" necesito una grabación (Ctrl+Alt+R) en la que te ataquen: el aviso sale del color del atacante y hoy solo se lee el texto blanco. Siguen D4 y D5.
 
 ## Decisiones que necesito
 
