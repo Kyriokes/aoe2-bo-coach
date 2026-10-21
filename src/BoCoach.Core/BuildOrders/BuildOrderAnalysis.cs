@@ -75,6 +75,22 @@ public static class BuildOrderAnalysis
         w.WriteString("next_age", posture.NextAge is { } next ? StepText.Name(next) : null);
         w.WriteBoolean("derived", derived);
         w.WriteEndObject();
+        // Las ramas (D3): la señal, el límite, la nota y sus pasos descritos.
+        w.WriteStartArray("branches");
+        foreach (var branch in bo.Branches ?? [])
+        {
+            w.WriteStartObject();
+            w.WriteString("on", Branch.Signals.GetValueOrDefault(branch.On, branch.On));
+            if (branch.Before is { } before)
+                w.WriteString("before", GameClock.Format(before));
+            w.WriteString("note", branch.Note);
+            w.WriteStartArray("steps");
+            foreach (var step in branch.Steps)
+                w.WriteStringValue(StepText.Describe(step));
+            w.WriteEndArray();
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
         // La BO normalizada (migrada a la versión actual), para guardarla tal cual.
         w.WritePropertyName("build_order");
         using var doc = JsonDocument.Parse(BuildOrderSerializer.Serialize(bo));

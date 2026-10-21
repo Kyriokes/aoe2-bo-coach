@@ -30,6 +30,7 @@ public class BuildOrderAnalysisTests
         Assert.Equal("aldeanos y exploradores siempre en cola", posture.GetProperty("text").GetString());
         Assert.Equal("Edad de los Castillos", posture.GetProperty("next_age").GetString());
         Assert.True(posture.GetProperty("derived").GetBoolean());
+        Assert.Empty(r.GetProperty("branches").EnumerateArray());
     }
 
     [Fact]
