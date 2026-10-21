@@ -416,7 +416,7 @@ Orden elegido por el usuario: primero la robustez del coach en partidas reales, 
 1. **Probar la release en otra PC** (criterio de la Fase 10, tarea del usuario): bajar el zip de la release, instalar el mod desde la app, calibrar, registrar los enlaces en "Cuenta de la web" y abrir una BO con "Abrir en BO Coach". Lo que no se entienda sin ayuda va al LEEME y a la portada.
 2. **Capturas y video** (tarea del usuario): overlay en partida, editor con vista previa, calibración y web, para el README, la portada (`web/src/app/page.tsx`) y el portfolio.
 3. **README y `docs/LEEME-portable.txt`**: enlace a la release y guía de primeros pasos (mod, calibrar, grabar, empezar el coach), con lo que salió de 1.
-4. **Tutorial de primer uso** (idea del usuario, 2026-10-20): instalar el mod, calibrar y una partida rápida contra 7 IA, en cuya pantalla de carga se lee el nombre del jugador (ver B2).
+4. **Tutorial de primer uso** (idea del usuario, 2026-10-20): instalar el mod, calibrar y una partida rápida contra 7 IA, en cuya pantalla de carga se lee el nombre del jugador (ver B2). Hecho el 2026-10-20 (v0.9.25): ventana "Primeros pasos" (`FirstRun/`) con idioma, mod, "Mirar la pantalla" (cada 2 s: la pantalla de carga da la lista de jugadores, con el 1 propuesto, y el HUD de la partida la calibración sola) y el nombre elegido de la lista y corregible. Se abre sola sin `first_run_done` ni "Tu nombre" en `settings.json`, y con el botón de la barra. Falta que el usuario lo pruebe de punta a punta.
 5. **Ejecutable de un solo archivo** (`data/` adentro del `.exe`): el último paso del bloque, no antes.
 
 ### Bloque D: ideas grandes (diseño con el usuario antes de escribir código)
