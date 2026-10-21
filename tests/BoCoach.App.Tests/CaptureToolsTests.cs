@@ -170,7 +170,7 @@ public sealed class CaptureToolsTests : IDisposable
         await tools.DiagnosticCommand.ExecuteAsync(null);
 
         var report = File.ReadAllText(Assert.Single(Directory.GetFiles(DiagnosticsFolder, "*.txt")));
-        Assert.Contains("Pantalla de carga:", report);
+        Assert.Contains("Pantalla de carga (mapa: no se lee):", report); // el fixture tiene en negro todo menos los jugadores
         Assert.Contains("1  equipo 1  \"Kvriokes\"  civ \"JAPANESE\" → japanese", report);
         Assert.Contains("← vos", report);
         Assert.Contains("8  equipo 2", report);
