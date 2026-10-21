@@ -38,7 +38,8 @@ public interface IDialogs
 /// <summary>Biblioteca local a la izquierda y el editor de la BO elegida.</summary>
 public sealed partial class MainViewModel : ObservableObject
 {
-    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20) };
+    // Una BO de la web pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
 
     private readonly CoachData _app;
     private readonly IDialogs _dialogs;

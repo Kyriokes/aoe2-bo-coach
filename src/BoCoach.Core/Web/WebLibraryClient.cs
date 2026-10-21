@@ -127,6 +127,11 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         {
             throw new WebLibraryException("La web respondió algo que no es JSON (¿la dirección es la de la biblioteca?).", inner: e);
         }
+        catch (HttpRequestException e)
+        {
+            // Más grande que MaxResponseContentBufferSize del HttpClient.
+            throw new WebLibraryException("La web respondió algo demasiado grande para ser una BO.", inner: e);
+        }
     }
 
     /// <summary>El mensaje que manda la web ({ "error": "..." }) o uno según el código HTTP.</summary>
