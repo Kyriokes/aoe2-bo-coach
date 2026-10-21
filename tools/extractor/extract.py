@@ -13,6 +13,7 @@ desfasados: el tech 101 "Middle Age" es el paso a Feudal).
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import re
 import sys
@@ -51,6 +52,18 @@ ENTIDADES: dict[str, tuple[str, int]] = {
     "fishing_ship": ("unit", 13),
     "trade_cart": ("unit", 128),
     "mangonel": ("unit", 280),
+    "eagle_scout": ("unit", 751),
+    "cavalry_archer": ("unit", 39),
+    "hand_cannoneer": ("unit", 5),
+    "camel_rider": ("unit", 329),
+    "battle_elephant": ("unit", 1132),
+    "steppe_lancer": ("unit", 1370),
+    "galley": ("unit", 539),
+    "fire_galley": ("unit", 1103),
+    "demolition_raft": ("unit", 1104),
+    "transport_ship": ("unit", 545),
+    "battering_ram": ("unit", 1258),  # el 35 es el ariete viejo; los árboles de las civs usan el 1258
+    "scorpion": ("unit", 279),
     # Edificios
     "town_center": ("building", 621),
     "house": ("building", 70),
@@ -261,6 +274,23 @@ def cargar_disponibles(carpeta: Path) -> dict[str, set[int]]:
     return ids
 
 
+def cargar_edades_de_unidades(carpeta: Path) -> dict[int, str]:
+    """Edad en que se entrena cada unidad según los árboles ("Age ID": 1 Oscura a 4 Imperial): la más común entre
+    las civs que la tienen. Las habilitaciones del .dat no alcanzan: el camello lo habilita un efecto de cada civ sin
+    requisito de edad y salía de la Edad Oscura (es de Castillos)."""
+    edades: dict[int, Counter] = {}
+    for archivo in sorted(carpeta.glob("*.json")):
+        for nodos in json.loads(archivo.read_text(encoding="utf-8")).values():
+            if not isinstance(nodos, list):
+                continue
+            for nodo in nodos:
+                if nodo.get("Use Type") != "Unit" or nodo.get("Node Status") == "NotAvailable" or nodo.get("Age ID", 0) not in (1, 2, 3, 4):
+                    continue
+                edades.setdefault(nodo["Node ID"], Counter())[nodo["Age ID"]] += 1
+    # La más común; ante un empate, la más temprana.
+    return {uid: _edad_por_nivel(min(c, key=lambda a: (-c[a], a)) - 1) for uid, c in edades.items()}
+
+
 def clave_de_nombre(nombre: str) -> str:
     """'Man-at-Arms' -> 'man_at_arms' (sin tildes)."""
     ascii_ = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode()
@@ -282,12 +312,13 @@ def costo(resource_costs) -> dict[str, int]:
 
 
 class Extractor:
-    def __init__(self, dat: DatFile):
+    def __init__(self, dat: DatFile, edades_de_unidades: dict[int, str] | None = None):
         self.dat = dat
         self.unidades = dat.civs[CIV_BASE].units
         self.clave_por_unidad = self._indexar_claves()
         self._edad_tech: dict[int, int] = {}
         self._habilitadores = self._indexar_habilitadores()
+        self._edades_de_unidades = edades_de_unidades or {}
 
     def _indexar_claves(self) -> dict[int, str]:
         """id de unidad -> clave, incluyendo las variantes de un mismo edificio.
@@ -338,6 +369,8 @@ class Extractor:
         return nivel
 
     def edad_de_unidad(self, uid: int) -> str:
+        if uid in self._edades_de_unidades:
+            return self._edades_de_unidades[uid]
         habilitadores = self._habilitadores.get(uid)
         if not habilitadores:
             return "dark"  # disponible desde el inicio
@@ -832,7 +865,7 @@ def main() -> int:
 
     print(f"Leyendo {args.dat} (tarda ~30 s)...")
     dat = DatFile.parse(str(args.dat))
-    extractor = Extractor(dat)
+    extractor = Extractor(dat, cargar_edades_de_unidades(args.dat.parent / "CivTechTrees"))
     datos = extractor.exportar()
     recursos = args.dat.parents[2]
     textos_por_idioma = {"en": textos} | {c: cargar_textos(recursos / c / "strings" / "key-value") for c in IDIOMAS_DE_NOMBRES

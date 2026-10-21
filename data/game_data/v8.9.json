@@ -140,6 +140,161 @@
       "made_in": "siege_workshop",
       "pop": 1
     },
+    "eagle_scout": {
+      "kind": "unit",
+      "dat_id": 751,
+      "dat_name": "EAGLE",
+      "cost": {
+        "food": 20,
+        "gold": 50
+      },
+      "time": 46,
+      "age": "feudal",
+      "made_in": "barracks",
+      "pop": 1
+    },
+    "cavalry_archer": {
+      "kind": "unit",
+      "dat_id": 39,
+      "dat_name": "CVRCH",
+      "cost": {
+        "wood": 40,
+        "gold": 60
+      },
+      "time": 37,
+      "age": "castle",
+      "made_in": "archery_range",
+      "pop": 1
+    },
+    "hand_cannoneer": {
+      "kind": "unit",
+      "dat_id": 5,
+      "dat_name": "HCANR",
+      "cost": {
+        "food": 45,
+        "gold": 50
+      },
+      "time": 34,
+      "age": "imperial",
+      "made_in": "archery_range",
+      "pop": 1
+    },
+    "camel_rider": {
+      "kind": "unit",
+      "dat_id": 329,
+      "dat_name": "CVLRY",
+      "cost": {
+        "food": 55,
+        "gold": 60
+      },
+      "time": 22,
+      "age": "castle",
+      "made_in": "stable",
+      "pop": 1
+    },
+    "battle_elephant": {
+      "kind": "unit",
+      "dat_id": 1132,
+      "dat_name": "BATELE",
+      "cost": {
+        "food": 100,
+        "gold": 70
+      },
+      "time": 24,
+      "age": "castle",
+      "made_in": "stable",
+      "pop": 1
+    },
+    "steppe_lancer": {
+      "kind": "unit",
+      "dat_id": 1370,
+      "dat_name": "SLANCER",
+      "cost": {
+        "food": 70,
+        "gold": 40
+      },
+      "time": 24,
+      "age": "castle",
+      "made_in": "stable",
+      "pop": 1
+    },
+    "galley": {
+      "kind": "unit",
+      "dat_id": 539,
+      "dat_name": "SGALY",
+      "cost": {
+        "wood": 90,
+        "gold": 30
+      },
+      "time": 45,
+      "age": "feudal",
+      "made_in": "dock",
+      "pop": 1
+    },
+    "fire_galley": {
+      "kind": "unit",
+      "dat_id": 1103,
+      "dat_name": "SFRGAL",
+      "cost": {
+        "wood": 75,
+        "gold": 45
+      },
+      "time": 49,
+      "age": "feudal",
+      "made_in": "dock",
+      "pop": 1
+    },
+    "demolition_raft": {
+      "kind": "unit",
+      "dat_id": 1104,
+      "dat_name": "SDGAL",
+      "cost": {
+        "wood": 45,
+        "gold": 80
+      },
+      "time": 45,
+      "age": "feudal",
+      "made_in": "dock",
+      "pop": 1
+    },
+    "transport_ship": {
+      "kind": "unit",
+      "dat_id": 545,
+      "dat_name": "XPORT",
+      "cost": {
+        "wood": 125
+      },
+      "time": 46,
+      "age": "dark",
+      "made_in": "dock",
+      "pop": 1
+    },
+    "battering_ram": {
+      "kind": "unit",
+      "dat_id": 1258,
+      "dat_name": "BTRAM",
+      "cost": {
+        "wood": 160,
+        "gold": 75
+      },
+      "time": 36,
+      "age": "castle",
+      "made_in": "siege_workshop",
+      "pop": 1
+    },
+    "scorpion": {
+      "kind": "unit",
+      "dat_id": 279,
+      "dat_name": "SCBAL",
+      "cost": {
+        "wood": 75,
+        "gold": 75
+      },
+      "time": 30,
+      "age": "castle",
+      "made_in": "siege_workshop",
+      "pop": 1
+    },
     "town_center": {
       "kind": "building",
       "dat_id": 621,
@@ -991,6 +1146,24 @@
             "food": 25,
             "wood": 18
           }
+        ],
+        "eagle_scout": [
+          {
+            "food": 17,
+            "gold": 43
+          },
+          {
+            "food": 16,
+            "gold": 40
+          },
+          {
+            "food": 15,
+            "gold": 38
+          },
+          {
+            "food": 14,
+            "gold": 35
+          }
         ]
       },
       "times": {
@@ -1589,6 +1762,24 @@
             "wood": 26
           }
         ],
+        "camel_rider": [
+          {
+            "food": 41,
+            "gold": 45
+          },
+          {
+            "food": 41,
+            "gold": 45
+          },
+          {
+            "food": 41,
+            "gold": 45
+          },
+          {
+            "food": 41,
+            "gold": 45
+          }
+        ],
         "town_watch": [
           {},
           {},
@@ -1697,6 +1888,12 @@
         ]
       },
       "times": {
+        "hand_cannoneer": [
+          27.2,
+          27.2,
+          27.2,
+          27.2
+        ],
         "light_cavalry": [
           0.0,
           0.0,
@@ -1713,6 +1910,60 @@
     "vikings": {
       "dat_name": "Vikings",
       "costs": {
+        "galley": [
+          {
+            "wood": 90,
+            "gold": 30
+          },
+          {
+            "wood": 81,
+            "gold": 27
+          },
+          {
+            "wood": 76,
+            "gold": 25
+          },
+          {
+            "wood": 72,
+            "gold": 24
+          }
+        ],
+        "fire_galley": [
+          {
+            "wood": 75,
+            "gold": 45
+          },
+          {
+            "wood": 67,
+            "gold": 40
+          },
+          {
+            "wood": 64,
+            "gold": 38
+          },
+          {
+            "wood": 60,
+            "gold": 36
+          }
+        ],
+        "demolition_raft": [
+          {
+            "wood": 45,
+            "gold": 80
+          },
+          {
+            "wood": 40,
+            "gold": 72
+          },
+          {
+            "wood": 38,
+            "gold": 68
+          },
+          {
+            "wood": 36,
+            "gold": 64
+          }
+        ],
         "dock": [
           {
             "wood": 128
@@ -1918,6 +2169,66 @@
           40.0,
           40.0,
           40.0
+        ],
+        "eagle_scout": [
+          40.0,
+          40.0,
+          40.0,
+          40.0
+        ],
+        "cavalry_archer": [
+          32.17,
+          32.17,
+          32.17,
+          32.17
+        ],
+        "camel_rider": [
+          19.13,
+          19.13,
+          19.13,
+          19.13
+        ],
+        "battle_elephant": [
+          20.87,
+          20.87,
+          20.87,
+          20.87
+        ],
+        "steppe_lancer": [
+          20.87,
+          20.87,
+          20.87,
+          20.87
+        ],
+        "galley": [
+          39.13,
+          39.13,
+          39.13,
+          39.13
+        ],
+        "fire_galley": [
+          42.61,
+          42.61,
+          42.61,
+          42.61
+        ],
+        "demolition_raft": [
+          39.13,
+          39.13,
+          39.13,
+          39.13
+        ],
+        "battering_ram": [
+          31.3,
+          31.3,
+          31.3,
+          31.3
+        ],
+        "scorpion": [
+          26.09,
+          26.09,
+          26.09,
+          26.09
         ]
       },
       "start": {
@@ -1991,6 +2302,26 @@
     },
     "huns": {
       "dat_name": "Huns",
+      "costs": {
+        "cavalry_archer": [
+          {
+            "wood": 40,
+            "gold": 60
+          },
+          {
+            "wood": 40,
+            "gold": 60
+          },
+          {
+            "wood": 36,
+            "gold": 54
+          },
+          {
+            "wood": 32,
+            "gold": 48
+          }
+        ]
+      },
       "work_rate": {
         "stable": [
           1.2,
@@ -2074,6 +2405,78 @@
             "wood": 18
           }
         ],
+        "cavalry_archer": [
+          {
+            "wood": 20,
+            "gold": 60
+          },
+          {
+            "wood": 20,
+            "gold": 60
+          },
+          {
+            "wood": 20,
+            "gold": 60
+          },
+          {
+            "wood": 20,
+            "gold": 60
+          }
+        ],
+        "galley": [
+          {
+            "wood": 72,
+            "gold": 30
+          },
+          {
+            "wood": 72,
+            "gold": 30
+          },
+          {
+            "wood": 72,
+            "gold": 30
+          },
+          {
+            "wood": 72,
+            "gold": 30
+          }
+        ],
+        "fire_galley": [
+          {
+            "wood": 60,
+            "gold": 45
+          },
+          {
+            "wood": 60,
+            "gold": 45
+          },
+          {
+            "wood": 60,
+            "gold": 45
+          },
+          {
+            "wood": 60,
+            "gold": 45
+          }
+        ],
+        "demolition_raft": [
+          {
+            "wood": 36,
+            "gold": 80
+          },
+          {
+            "wood": 36,
+            "gold": 80
+          },
+          {
+            "wood": 36,
+            "gold": 80
+          },
+          {
+            "wood": 36,
+            "gold": 80
+          }
+        ],
         "padded_archer_armor": [
           {},
           {},
@@ -2110,6 +2513,24 @@
           },
           {
             "wood": 64
+          }
+        ],
+        "hand_cannoneer": [
+          {
+            "food": 45,
+            "gold": 50
+          },
+          {
+            "food": 45,
+            "gold": 50
+          },
+          {
+            "food": 45,
+            "gold": 50
+          },
+          {
+            "food": 36,
+            "gold": 40
           }
         ]
       },
@@ -2231,6 +2652,96 @@
             "food": 42,
             "gold": 75
           }
+        ],
+        "eagle_scout": [
+          {
+            "food": 17,
+            "gold": 50
+          },
+          {
+            "food": 16,
+            "gold": 50
+          },
+          {
+            "food": 15,
+            "gold": 50
+          },
+          {
+            "food": 14,
+            "gold": 50
+          }
+        ],
+        "hand_cannoneer": [
+          {
+            "food": 38,
+            "gold": 50
+          },
+          {
+            "food": 36,
+            "gold": 50
+          },
+          {
+            "food": 34,
+            "gold": 50
+          },
+          {
+            "food": 31,
+            "gold": 50
+          }
+        ],
+        "camel_rider": [
+          {
+            "food": 47,
+            "gold": 60
+          },
+          {
+            "food": 44,
+            "gold": 60
+          },
+          {
+            "food": 41,
+            "gold": 60
+          },
+          {
+            "food": 38,
+            "gold": 60
+          }
+        ],
+        "battle_elephant": [
+          {
+            "food": 85,
+            "gold": 70
+          },
+          {
+            "food": 80,
+            "gold": 70
+          },
+          {
+            "food": 75,
+            "gold": 70
+          },
+          {
+            "food": 70,
+            "gold": 70
+          }
+        ],
+        "steppe_lancer": [
+          {
+            "food": 60,
+            "gold": 40
+          },
+          {
+            "food": 56,
+            "gold": 40
+          },
+          {
+            "food": 52,
+            "gold": 40
+          },
+          {
+            "food": 49,
+            "gold": 40
+          }
         ]
       },
       "pop_bonus": {
@@ -2278,6 +2789,12 @@
         ]
       },
       "times": {
+        "cavalry_archer": [
+          29.6,
+          29.6,
+          29.6,
+          29.6
+        ],
         "forging": [
           0.0,
           0.0,
@@ -2318,6 +2835,42 @@
           {
             "wood": 136,
             "gold": 115
+          }
+        ],
+        "battering_ram": [
+          {
+            "wood": 136,
+            "gold": 64
+          },
+          {
+            "wood": 136,
+            "gold": 64
+          },
+          {
+            "wood": 136,
+            "gold": 64
+          },
+          {
+            "wood": 136,
+            "gold": 64
+          }
+        ],
+        "scorpion": [
+          {
+            "wood": 64,
+            "gold": 64
+          },
+          {
+            "wood": 64,
+            "gold": 64
+          },
+          {
+            "wood": 64,
+            "gold": 64
+          },
+          {
+            "wood": 64,
+            "gold": 64
           }
         ]
       },
@@ -2673,6 +3226,60 @@
             "food": 48,
             "gold": 60
           }
+        ],
+        "camel_rider": [
+          {
+            "food": 55,
+            "gold": 60
+          },
+          {
+            "food": 55,
+            "gold": 60
+          },
+          {
+            "food": 47,
+            "gold": 51
+          },
+          {
+            "food": 44,
+            "gold": 48
+          }
+        ],
+        "battle_elephant": [
+          {
+            "food": 100,
+            "gold": 70
+          },
+          {
+            "food": 100,
+            "gold": 70
+          },
+          {
+            "food": 85,
+            "gold": 60
+          },
+          {
+            "food": 80,
+            "gold": 56
+          }
+        ],
+        "steppe_lancer": [
+          {
+            "food": 70,
+            "gold": 40
+          },
+          {
+            "food": 70,
+            "gold": 40
+          },
+          {
+            "food": 60,
+            "gold": 34
+          },
+          {
+            "food": 56,
+            "gold": 32
+          }
         ]
       },
       "names": {
@@ -2691,6 +3298,26 @@
     },
     "malay": {
       "dat_name": "Malay",
+      "costs": {
+        "battle_elephant": [
+          {
+            "food": 100,
+            "gold": 70
+          },
+          {
+            "food": 100,
+            "gold": 70
+          },
+          {
+            "food": 75,
+            "gold": 52
+          },
+          {
+            "food": 65,
+            "gold": 46
+          }
+        ]
+      },
       "times": {
         "feudal_age": [
           78.31,
@@ -3384,6 +4011,22 @@
     },
     "sicilians": {
       "dat_name": "Sicilians",
+      "costs": {
+        "transport_ship": [
+          {
+            "wood": 62
+          },
+          {
+            "wood": 62
+          },
+          {
+            "wood": 62
+          },
+          {
+            "wood": 62
+          }
+        ]
+      },
       "times": {
         "town_center": [
           75.0,
@@ -3607,6 +4250,42 @@
             "gold": 135
           }
         ],
+        "battering_ram": [
+          {
+            "wood": 107,
+            "gold": 75
+          },
+          {
+            "wood": 107,
+            "gold": 75
+          },
+          {
+            "wood": 107,
+            "gold": 75
+          },
+          {
+            "wood": 107,
+            "gold": 75
+          }
+        ],
+        "scorpion": [
+          {
+            "wood": 50,
+            "gold": 75
+          },
+          {
+            "wood": 50,
+            "gold": 75
+          },
+          {
+            "wood": 50,
+            "gold": 75
+          },
+          {
+            "wood": 50,
+            "gold": 75
+          }
+        ],
         "man_at_arms": [
           {
             "food": 50,
@@ -3642,6 +4321,20 @@
     },
     "gurjaras": {
       "dat_name": "Gurjaras",
+      "times": {
+        "camel_rider": [
+          17.6,
+          17.6,
+          17.6,
+          17.6
+        ],
+        "battle_elephant": [
+          19.2,
+          19.2,
+          19.2,
+          19.2
+        ]
+      },
       "names": {
         "en": "Gurjaras",
         "es": "Gurjara",

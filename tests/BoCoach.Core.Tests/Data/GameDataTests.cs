@@ -19,6 +19,9 @@ public class GameDataTests
     [InlineData("feudal_age", 500, 0, 0, 0, 130)]
     [InlineData("castle_age", 800, 0, 0, 200, 160)]
     [InlineData("settlement", 0, 125, 0, 0, 40)]
+    [InlineData("camel_rider", 55, 0, 0, 60, 22)]
+    [InlineData("eagle_scout", 20, 0, 0, 50, 46)]
+    [InlineData("battering_ram", 0, 160, 0, 75, 36)]
     public void Valores_clave_coinciden_con_el_juego(string key, double food, double wood, double stone, double gold, int time)
     {
         var entity = V89.Get(key);
@@ -64,6 +67,10 @@ public class GameDataTests
     [InlineData("feudal_age", "town_center")]
     [InlineData("archer", "archery_range")]
     [InlineData("double_bit_axe", "lumber_camp")]
+    [InlineData("eagle_scout", "barracks")]
+    [InlineData("hand_cannoneer", "archery_range")]
+    [InlineData("galley", "dock")]
+    [InlineData("scorpion", "siege_workshop")]
     public void Lugar_de_produccion(string key, string madeIn)
     {
         Assert.Equal(madeIn, V89.Get(key).MadeIn);
@@ -76,6 +83,11 @@ public class GameDataTests
     [InlineData("wheelbarrow", Age.Feudal)]
     [InlineData("knight", Age.Castle)]
     [InlineData("imperial_age", Age.Castle)]
+    // La edad de las unidades sale de los árboles de las civs: el camello lo habilita un efecto sin edad.
+    [InlineData("camel_rider", Age.Castle)]
+    [InlineData("scout_cavalry", Age.Feudal)]
+    [InlineData("hand_cannoneer", Age.Imperial)]
+    [InlineData("transport_ship", Age.Dark)]
     public void Edad_requerida(string key, Age age)
     {
         Assert.Equal(age, V89.Get(key).Age);
