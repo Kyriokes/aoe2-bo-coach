@@ -91,6 +91,18 @@ public class LoadingScreenTests
         Assert.Equal([(1, (int?)null), (2, null)], players.Select(p => (p.Slot, p.Team)));
     }
 
+    [Fact]
+    public void Un_color_raro_toma_el_primer_numero_libre_sin_repetir_uno_ya_tomado()
+    {
+        // Antes tomaba "cuántos van + 1": con el verde (3) primero, el tercero de la lista volvía a ser el 3.
+        (string, double)[] lines = [("Ana", 10), ("FRANKS", 40), ("Beto", 80), ("MAYANS", 110), ("Cata", 150), ("HUNS", 180)];
+        var colors = new Dictionary<double, (byte, byte, byte)> { [40] = (0, 200, 0), [110] = Black, [180] = Black };
+
+        var players = LoadingScreen.Parse(lines, y => colors[y], Data, "en");
+
+        Assert.Equal([3, 1, 2], players.Select(p => p.Slot));
+    }
+
     [Theory]
     [InlineData(new[] { "GAME MODE: RANDOM MAP", "ARABIA" }, "Arabia")]
     [InlineData(new[] { "MODO DE JUEGO: MAPA ALEATORIO", "ARENA" }, "Arena")]

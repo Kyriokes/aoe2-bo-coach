@@ -9,7 +9,7 @@ using BoCoach.Vision.Events;
 namespace BoCoach.Vision.Loading;
 
 /// <summary>Un jugador leído en la pantalla de carga.</summary>
-/// <param name="Slot">Número de jugador (1 a 8), por el color de su cuadrado; si el color no se entiende, el orden en la lista.</param>
+/// <param name="Slot">Número de jugador (1 a 8), por el color de su cuadrado; si el color no se entiende, el primer número libre.</param>
 /// <param name="Name">El nombre como lo leyó el OCR.</param>
 /// <param name="CivText">La civ como la leyó el OCR.</param>
 /// <param name="Civ">Clave de game_data de la civ ("incas"), o null si el texto no se parece a ninguna.</param>
@@ -191,7 +191,7 @@ public static partial class LoadingScreen
             if (name is not null && MatchCiv(civText, data, language) is { } civ)
             {
                 var color = squareAt(middle);
-                var slot = SlotOf(color) is { } s && players.All(p => p.Slot != s) ? s : players.Count + 1;
+                var slot = SlotOf(color) is { } s && players.All(p => p.Slot != s) ? s : FreeSlot(players);
                 players.Add(new LoadingPlayer(slot, name, civText, civ, team, color));
                 name = null;
                 if (players.Count == MaxPlayers)
@@ -202,6 +202,13 @@ public static partial class LoadingScreen
         }
         return players;
     }
+
+    /// <summary>
+    /// El primer número de jugador que nadie tiene, para un cuadrado cuyo color no se entiende. Antes era "cuántos
+    /// van + 1", que repetía un número ya tomado por el color (verde = 3 primero, y el tercero de la lista otra vez 3).
+    /// </summary>
+    private static int FreeSlot(List<LoadingPlayer> players) =>
+        Enumerable.Range(1, MaxPlayers + 1).First(n => players.All(p => p.Slot != n));
 
     /// <summary>"TEAM 2" (o "EQUIPO 2") → 2; el OCR a veces lee el 1 como "l" o "I".</summary>
     public static int? TeamOf(string text)
