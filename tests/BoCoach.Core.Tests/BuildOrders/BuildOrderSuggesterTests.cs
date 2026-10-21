@@ -169,4 +169,27 @@ public class BuildOrderSuggesterTests
         Assert.All(TestData.GameData.Civs.Keys, civ => Assert.NotNull(Styles.AdviceAgainst(civ)));
         Assert.Contains("lanceros", Styles.AdviceAgainst("mongols"));
     }
+
+    [Fact]
+    public void Un_valor_de_otro_tipo_se_ignora_y_un_error_de_sintaxis_dice_el_archivo()
+    {
+        // El usuario revisa civ_styles.json a mano: un número donde va un texto no tiene que tirar abajo al coach,
+        // y un error de sintaxis tiene que decir en qué archivo está.
+        var path = Path.Combine(Path.GetTempPath(), $"civ_styles-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{ \"civs\": { \"britons\": [\"archers\", 7] }, \"advice\": { \"archers\": 3, \"scouts\": \"lanceros\" } }");
+            var styles = CivStyles.Load(path);
+            Assert.Equal(["archers"], styles.Of("britons"));
+            Assert.Null(styles.AdviceAgainst("britons"));
+
+            File.WriteAllText(path, "{ \"civs\": [ }");
+            var error = Assert.Throws<InvalidDataException>(() => CivStyles.Load(path));
+            Assert.Contains(Path.GetFileName(path), error.Message);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

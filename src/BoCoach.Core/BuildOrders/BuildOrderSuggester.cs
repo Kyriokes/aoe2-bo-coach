@@ -46,7 +46,17 @@ public sealed class CivStyles
         if (!File.Exists(path))
             return Empty;
         var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
-        if (JsonNode.Parse(File.ReadAllText(path), documentOptions: options) is not JsonObject root)
+        JsonNode? parsed;
+        try
+        {
+            parsed = JsonNode.Parse(File.ReadAllText(path), documentOptions: options);
+        }
+        catch (JsonException e)
+        {
+            // El usuario edita el archivo a mano: el error tiene que decir qué archivo es y dónde está el problema.
+            throw new InvalidDataException($"{Path.GetFileName(path)}: {e.Message}", e);
+        }
+        if (parsed is not JsonObject root)
             return Empty;
         if (root["civs"] is not JsonObject civs)
             return new(Lists(root)); // formato viejo: solo las civs
@@ -56,11 +66,15 @@ public sealed class CivStyles
 
     private static Dictionary<string, List<string>> Lists(JsonObject json) => json
         .Where(kv => kv.Value is JsonArray)
-        .ToDictionary(kv => kv.Key, kv => kv.Value!.AsArray().Select(v => v?.GetValue<string>()).OfType<string>().ToList());
+        .ToDictionary(kv => kv.Key, kv => kv.Value!.AsArray().Select(Text).OfType<string>().ToList());
 
     private static Dictionary<string, string>? Texts(JsonNode? json) => json is JsonObject o
-        ? o.Where(kv => kv.Value is JsonValue).ToDictionary(kv => kv.Key, kv => kv.Value!.GetValue<string>())
+        ? o.Select(kv => (kv.Key, Value: Text(kv.Value))).Where(kv => kv.Value is not null).ToDictionary(kv => kv.Key, kv => kv.Value!)
         : null;
+
+    /// <summary>El texto de un nodo, o null si no lo es (un número o un objeto puesto por error se ignora en vez de tirar abajo la carga).</summary>
+    private static string? Text(JsonNode? node) =>
+        node is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null;
 
     /// <summary>Los estilos de una civ ("archers", "scouts", "maa", "fast_castle"), o ninguno si no está.</summary>
     public IReadOnlyList<string> Of(string? civ) => civ is not null && _civs.TryGetValue(civ, out var list) ? list : [];
