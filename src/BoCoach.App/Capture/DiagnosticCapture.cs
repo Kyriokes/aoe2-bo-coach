@@ -109,7 +109,7 @@ public static class DiagnosticCapture
             if (await new LoadingScreenReader(ocr, data, language.Code).ReadAsync(image) is { } loading)
             {
                 var me = loading.Find(playerName);
-                Line("Pantalla de carga:");
+                Line($"Pantalla de carga (mapa: {loading.Map ?? "no se lee"}):");
                 foreach (var p in loading.Players)
                     Line($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  \"{p.Name}\"  civ \"{p.CivText}\" → {p.Civ ?? "?"}  color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
                 Line(playerName is not { Length: > 0 } ? "  Sin \"Tu nombre\" en la app."

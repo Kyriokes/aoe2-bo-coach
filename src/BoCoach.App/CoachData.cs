@@ -28,6 +28,11 @@ public sealed class CoachData
     /// <summary>Letras del HUD (data/fonts); se cargan recién cuando se usa el coach.</summary>
     public HudFonts Fonts => _fonts ??= HudFonts.Load(Path.Combine(DataDir, "fonts"));
 
+    /// <summary>Las aperturas típicas de cada civ (data/civ_styles.json), para sugerir la BO (D4).</summary>
+    public CivStyles CivStyles => _civStyles ??= CivStyles.Load(Path.Combine(DataDir, "civ_styles.json"));
+
+    private CivStyles? _civStyles;
+
     private HudFonts? _fonts;
 
     /// <summary>Carpeta "data" junto al ejecutable (game_data, events.json y BO de ejemplo).</summary>

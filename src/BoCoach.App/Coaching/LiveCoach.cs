@@ -112,6 +112,9 @@ public sealed class LiveCoach : IDisposable
     /// <summary>Cada cuánto se mira el título de la pantalla de carga mientras no se ve el reloj.</summary>
     public static readonly TimeSpan LoadingInterval = TimeSpan.FromSeconds(2);
 
+    /// <summary>Cuánto se espera sin reloj antes de mirar la pantalla de carga (lo que tarda el overlay en bajar).</summary>
+    public static readonly TimeSpan LoadingDelay = TimeSpan.FromSeconds(1);
+
     private readonly object _gate = new();
     private readonly GameData _data;
     private readonly HudFonts _fonts;
@@ -131,6 +134,7 @@ public sealed class LiveCoach : IDisposable
     private string? _error;
     private PixelRect _area;
     private double? _lastLoadingTry;
+    private double? _noClockSince;
     private bool _loadingDone;
     private LoadingReading? _loadingReading;
     private LoadingPlayer? _me;
@@ -243,13 +247,22 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     private async Task<LoadingReading?> LoadingScreenAsync(Frame frame)
     {
-        if (_loading is null || frame.Screen is not { } screen || _loadingDone || _hud?.ClockRead == true
+        if (_hud?.ClockRead == true)
+            _noClockSince = null;
+        else
+            _noClockSince ??= frame.RealTime;
+        // Se espera un poco sin reloj: el overlay baja para no tapar el mapa de la pantalla de carga.
+        if (_loading is null || frame.Screen is not { } screen || _loadingDone || _noClockSince is not { } since
+            || frame.RealTime - since < LoadingDelay.TotalSeconds
             || _lastLoadingTry is { } last && frame.RealTime - last < LoadingInterval.TotalSeconds)
             return null;
         _lastLoadingTry = frame.RealTime;
-        return screen(LoadingScreen.Panel(frame.Area.Width, frame.Area.Height)) is { } panel
-            ? await _loading.ReadPanelAsync(panel)
-            : null;
+        if (screen(LoadingScreen.Panel(frame.Area.Width, frame.Area.Height)) is not { } panel || await _loading.ReadPanelAsync(panel) is not { } reading)
+            return null;
+        // El mapa: con el overlay abajo (sin reloj), el panel de la derecha queda a la vista.
+        return screen(LoadingScreen.Map(frame.Area.Width, frame.Area.Height)) is { } map
+            ? reading with { Map = await _loading.ReadMapAsync(map) }
+            : reading;
     }
 
     /// <summary>Empieza una partida nueva: todo de cero, con la civ del jugador si se lo encontró en la lista.</summary>

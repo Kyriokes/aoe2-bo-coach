@@ -1,6 +1,7 @@
 using System.IO;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Engine;
 using BoCoach.Core.Economy;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
@@ -14,8 +15,11 @@ public interface ICoachHost
 {
     void ShowOverlay(OverlayViewModel overlay, PixelRect area);
 
-    /// <summary>Vuelve a ubicar el overlay (la ventana del juego se movió o cambió de tamaño).</summary>
-    void PlaceOverlay(PixelRect area);
+    /// <summary>
+    /// Vuelve a ubicar el overlay (la ventana del juego se movió o cambió de tamaño). <paramref name="lowered"/>: sin
+    /// reloj, abajo a la derecha.
+    /// </summary>
+    void PlaceOverlay(PixelRect area, bool lowered = false);
 
     void SetOverlayVisible(bool visible);
 
@@ -33,6 +37,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private readonly Func<IFrameSource> _liveFrames;
     private LiveCoach? _coach;
     private Vision.Loading.LoadingReading? _loading;
+    private bool _lowered;
+    private BuildOrderSuggestion? _suggestion;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
     private readonly string? _settingsPath;
@@ -203,6 +209,36 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
     }
 
+    /// <summary>Segundos sin reloj para bajar el overlay (la pantalla de carga se lee después: ver LiveCoach).</summary>
+    public const double LoweredAfterSeconds = 0.5;
+
+    /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
+    public const double SuggestionSeconds = 60;
+
+    /// <summary>D4: la BO de la biblioteca que mejor encaja con la civ, el mapa y el rival.</summary>
+    private void Suggest(CoachFrame frame)
+    {
+        if (Overlay is null || frame.Loading is not { } loading || frame.Me is not { Civ: { } civ } me || _coach is null)
+            return;
+        var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>();
+        var suggestion = BuildOrderSuggester.Suggest(library, civ, loading.Opponents(me).Select(p => p.Civ), loading.Map, _data.CivStyles);
+        if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
+            return;
+        _suggestion = suggestion;
+        Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
+    }
+
+    /// <summary>Ctrl+Alt+B: empieza el coach con la BO sugerida en la pantalla de carga.</summary>
+    [RelayCommand]
+    private void AcceptSuggestion()
+    {
+        if (_suggestion is not { } suggestion)
+            return;
+        _suggestion = null;
+        Start(suggestion.BuildOrder, _liveFrames());
+        Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida.";
+    }
+
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
     private string LoadingNote(CoachFrame frame)
     {
@@ -285,11 +321,17 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             _loading = loading;
             Status = LoadingNote(frame);
+            Suggest(frame);
         }
-        if (frame.Area is { IsEmpty: false } area && area != _placedOver)
+        // La sugerencia vale durante la carga y el primer minuto de partida.
+        if (_suggestion is not null && frame.View.Time > SuggestionSeconds)
+            (_suggestion, Overlay.BoSuggestion) = (null, null);
+        // Sin reloj (menú, pantalla de carga) el overlay baja, así no tapa el mapa de la pantalla de carga.
+        var lowered = frame.SecondsWithoutClock >= LoweredAfterSeconds;
+        if (frame.Area is { IsEmpty: false } area && (area != _placedOver || lowered != _lowered))
         {
-            _placedOver = area;
-            _host.PlaceOverlay(area);
+            (_placedOver, _lowered) = (area, lowered);
+            _host.PlaceOverlay(area, lowered);
         }
         FrameApplied?.Invoke(frame);
     }

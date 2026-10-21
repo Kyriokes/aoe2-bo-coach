@@ -69,6 +69,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     public bool ShowCursorReminder => CursorReminders && (HouseReminder || TownCenterReminder || IdleReminder);
 
+    /// <summary>D4: la BO que encaja con la partida de la pantalla de carga ("Sugerida: ... Ctrl+Alt+B para usarla"), o null.</summary>
+    [ObservableProperty] public partial string? BoSuggestion { get; set; }
+
     public void Apply(CoachFrame frame)
     {
         var view = frame.View;

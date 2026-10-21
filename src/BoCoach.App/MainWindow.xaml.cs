@@ -108,6 +108,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             (Key.D, "D", () => Coach.ToggleDebugCommand.Execute(null)),
             (Key.M, "M", () => Coach.ToggleCursorRemindersCommand.Execute(null)),
             (Key.X, "X", () => Tools.DiagnosticCommand.Execute(null)),
+            (Key.B, "B", () => Coach.AcceptSuggestionCommand.Execute(null)),
         };
         var missing = keys.Where(k => !_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, k.Key, k.Action)).Select(k => $"Ctrl+Alt+{k.Name}").ToList();
         ViewModel.Status = missing.Count > 0
@@ -129,9 +130,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _cursor = new CursorReminder(overlay);
     }
 
-    public void PlaceOverlay(PixelRect area)
+    public void PlaceOverlay(PixelRect area, bool lowered = false)
     {
-        _overlay?.PlaceOver(area);
+        _overlay?.PlaceOver(area, lowered);
         _resources?.PlaceOver(area);
     }
 

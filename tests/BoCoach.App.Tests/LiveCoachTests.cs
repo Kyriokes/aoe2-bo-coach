@@ -69,7 +69,9 @@ public sealed class LiveCoachTests : IDisposable
         CoachFrame? last = null;
         live.Updated += frame => last = frame;
 
-        await live.StepAsync();
+        // Se mira después de 1 s sin reloj (lo que tarda el overlay en bajar): a la tercera captura.
+        for (var i = 0; i < 3; i++)
+            await live.StepAsync();
 
         Assert.Equal("japanese", live.Civ);
         Assert.Equal("japanese", last?.Civ);
@@ -88,7 +90,9 @@ public sealed class LiveCoachTests : IDisposable
         CoachFrame? last = null;
         live.Updated += frame => last = frame;
 
-        await live.StepAsync();
+        // Se mira después de 1 s sin reloj (lo que tarda el overlay en bajar): a la tercera captura.
+        for (var i = 0; i < 3; i++)
+            await live.StepAsync();
 
         Assert.NotNull(last?.Loading);
         Assert.Null(last?.Me);
@@ -101,23 +105,24 @@ public sealed class LiveCoachTests : IDisposable
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return;
-        // Otra pantalla (sin reloj porque no hay regiones): el panel de jugadores, a los 0,5 y a los 2,5 s.
+        // Otra pantalla (sin reloj porque no hay regiones): el panel de jugadores después de 1 s sin reloj y cada 2 s
+        // (a los 1,5 y a los 3,5 s).
         var other = new StillScreen("amigo-20261020-1080p-panel-negro.png");
         using (var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, other))
         {
-            for (var i = 0; i < 6; i++)
+            for (var i = 0; i < 8; i++)
                 await live.StepAsync();
         }
         Assert.Equal(2, other.ScreenCaptures);
 
-        // La pantalla de carga: se lee una sola vez, aunque dure varios segundos.
+        // La pantalla de carga: se lee una sola vez (el panel y el mapa), aunque dure varios segundos.
         var loading = new StillScreen("carga-ia-en-1080p.png");
         using (var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, loading))
         {
             for (var i = 0; i < 10; i++)
                 await live.StepAsync();
         }
-        Assert.Equal(1, loading.ScreenCaptures);
+        Assert.Equal(2, loading.ScreenCaptures);
     }
 
     // Antes solo se atrapaban cuatro tipos de excepción: cualquier otra (un error de programación en la lectura o en

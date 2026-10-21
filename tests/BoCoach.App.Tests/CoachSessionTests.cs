@@ -34,7 +34,9 @@ public sealed class CoachSessionTests : IDisposable
         public bool Closed { get; private set; }
 
         public void ShowOverlay(OverlayViewModel overlay, PixelRect area) => (Shown, Visible, Closed) = (overlay, true, false);
-        public void PlaceOverlay(PixelRect area) { }
+        public void PlaceOverlay(PixelRect area, bool lowered = false) => Lowered = lowered;
+
+        public bool Lowered { get; private set; }
         public void SetOverlayVisible(bool visible) => Visible = visible;
         public void CloseOverlay() => Closed = true;
         public void RunOnUi(Action action) => action();
@@ -119,6 +121,42 @@ public sealed class CoachSessionTests : IDisposable
         session.Language = GameLanguage.English;
         session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
         Assert.DoesNotContain("Jinete: creación finalizada", session.LiveCoach!.Events.Phrases["knight_created"]);
+    }
+
+    /// <summary>Una pantalla entera guardada, sin el HUD (sin reloj), como la captura en vivo.</summary>
+    private sealed class StillScreen(string name) : IFrameSource
+    {
+        private readonly CapturedImage _screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", name));
+        private int _served;
+
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, _screen.Width, _screen.Height);
+
+        public Frame? Next() => new(_ => null, ++_served * 0.5, Area, rect => _screen.Crop(rect));
+    }
+
+    // D4: en la pantalla de carga se sugiere la BO de la biblioteca que encaja (japoneses: hombres de armas o arqueros,
+    // así que la de arqueros) y Ctrl+Alt+B la usa.
+    [Fact]
+    public async Task En_la_pantalla_de_carga_sugiere_una_BO_y_Ctrl_Alt_B_la_usa()
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
+        {
+            PlayerName = "Kyriokes",
+        };
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        for (var i = 0; i < 3; i++)
+            await session.LiveCoach!.StepAsync();
+
+        Assert.True(host.Lowered); // sin reloj, el overlay baja
+        Assert.StartsWith("Sugerida: Arqueros Feudal (23 pop)", session.Overlay!.BoSuggestion);
+        Assert.Contains("Ctrl+Alt+B", session.Overlay.BoSuggestion);
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal("Arqueros Feudal (23 pop)", session.LiveCoach!.BuildOrder.Name);
     }
 
     [Fact]
