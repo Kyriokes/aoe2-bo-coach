@@ -31,3 +31,16 @@ describe("tope de count y builders", () => {
     expect(errorOf(bo({}))).toBeNull();
   });
 });
+
+// Sin tope, los pasos admiten notas de cualquier largo: una BO de varios megas la bajaría cada visita a su página.
+describe("tamaño de la BO", () => {
+  it("rechaza una BO de más de 512 KB, como texto o como objeto", () => {
+    const heavy = bo({ notes: "x".repeat(600_000) });
+    expect(errorOf(heavy)).toContain("pesa");
+    expect(errorOf(JSON.stringify(heavy))).toContain("pesa");
+  });
+
+  it("acepta una BO con notas largas pero razonables", () => {
+    expect(errorOf(bo({ notes: "x".repeat(4000) }))).toBeNull();
+  });
+});
