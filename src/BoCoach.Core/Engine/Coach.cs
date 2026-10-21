@@ -147,6 +147,7 @@ public sealed class Coach
         _posture = new PostureCoach(Tracker.BuildOrder, data);
         Signals = new GameSignals(data);
         _branches = new Branches(Tracker.BuildOrder, data, events);
+        _report = new GameReportBuilder(Tracker.BuildOrder, _planner);
         View = BuildView();
     }
 
@@ -164,6 +165,10 @@ public sealed class Coach
 
     private readonly HashSet<int> _ownClicksSeen = [];
     private readonly Branches _branches;
+    private readonly GameReportBuilder _report;
+
+    /// <summary>El informe de la partida hasta ahora (D5).</summary>
+    public GameReport Report() => _report.Build();
 
     /// <summary>Cada cuántos segundos de partida se vuelve a simular el plan (si no hubo eventos).</summary>
     public double ReplanEvery { get; init; } = 5;
@@ -207,7 +212,9 @@ public sealed class Coach
         Economy = _economy.Update(Tracker, _plan);
         _suggestion = Economy.Suggestion;
         UpdateGuide(snapshot.Time);
-        return View = BuildView();
+        View = BuildView();
+        _report.Observe(snapshot, View, State, Tracker.Steps);
+        return View;
     }
 
     /// <summary>
