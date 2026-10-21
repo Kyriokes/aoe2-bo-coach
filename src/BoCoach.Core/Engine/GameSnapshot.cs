@@ -41,6 +41,9 @@ public sealed record GameSnapshot(
 
     /// <summary>El panel de puntajes, si se leyó en esta captura (se lee cada 2 s), o null.</summary>
     public IReadOnlyList<PlayerScore>? Scores { get; init; }
+
+    /// <summary>Aldeanos inactivos según el HUD, o null si no se leyó.</summary>
+    public int? IdleVillagers { get; init; }
 }
 
 /// <summary>Un renglón del panel de puntajes: el jugador (por su color), su puntaje y si sigue en la Edad Oscura.</summary>

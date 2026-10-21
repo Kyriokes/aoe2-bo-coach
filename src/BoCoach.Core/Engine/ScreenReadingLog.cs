@@ -34,7 +34,8 @@ public static class ScreenReadingLog
             var reading = new ScreenReading(
                 clock, Value(p[3]), Value(p[4]), Value(p[5]), Value(p[6]), (int?)Value(p[7]),
                 Population: null, PopulationCap: null,
-                p[10].Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                p[10].Split(' ', StringSplitOptions.RemoveEmptyEntries),
+                IdleVillagers: (int?)Value(p[8]));
             return new LoggedReading(int.Parse(p[0], CultureInfo.InvariantCulture), long.Parse(p[1], CultureInfo.InvariantCulture), reading);
         })
         .ToList();

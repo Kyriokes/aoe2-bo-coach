@@ -84,5 +84,6 @@ public static class HudStateExtensions
             ? new ResourceAmounts(on[Resource.Food], on[Resource.Wood], on[Resource.Stone], on[Resource.Gold])
             : null,
         state.Queue,
-        state.Scores);
+        state.Scores,
+        state.IdleVillagers);
 }
