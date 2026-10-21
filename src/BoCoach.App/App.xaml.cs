@@ -67,6 +67,8 @@ public partial class App : Application
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             if (importLink is not null)
                 Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.ViewModel.ImportFromLinkAsync(importLink, confirm: true));
+            else if (Argument(args, "--replay") is null)
+                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, window.ShowFirstRunIfNeeded);
             _instance!.Listen(message => Dispatcher.BeginInvoke(async () =>
             {
                 if (window.WindowState == WindowState.Minimized)
@@ -78,6 +80,11 @@ public partial class App : Application
             return;
         }
 
+        if (args.Contains("--first-run"))
+        {
+            CaptureFirstRunAndExit(window, data, screenshot, Argument(args, "--loading"));
+            return;
+        }
         if (args.Contains("--calibration"))
         {
             CaptureCalibrationAndExit(screenshot, Argument(args, "--background"));
@@ -116,6 +123,39 @@ public partial class App : Application
             window.Close();
             Shutdown(0);
         });
+    }
+
+    /// <summary>
+    /// Dibuja el tutorial de primer uso (C4) y cierra. Con <c>--loading pantalla.png</c> lo muestra después de leer
+    /// esa pantalla de carga, como si se la hubiera visto en el juego.
+    /// Uso: BoCoach.exe --screenshot salida.png --first-run [--loading pantalla.png].
+    /// </summary>
+    private void CaptureFirstRunAndExit(MainWindow owner, CoachData data, string path, string? loading)
+    {
+        IScreenSource screen = loading is null ? new ScreenCapture() : new StillScreen(Png.Read(Path.GetFullPath(loading)));
+        var tutorial = new FirstRun.FirstRunViewModel(screen, data.GameData, () => owner.Coach.Language, () => false, _ => { });
+        var window = new FirstRun.FirstRunWindow(tutorial, owner.Coach, owner.Tools.InstallModCommand) { ShowActivated = false, Left = -30000 };
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, async () =>
+        {
+            if (loading is not null)
+            {
+                tutorial.ToggleWatchingCommand.Execute(null);
+                await tutorial.TickAsync();
+            }
+            window.Show();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Render(window, path);
+            window.Close();
+            Shutdown(0);
+        });
+    }
+
+    /// <summary>Una pantalla guardada en lugar de la del juego (para las capturas de prueba).</summary>
+    private sealed class StillScreen(CapturedImage image) : IScreenSource
+    {
+        public PixelRect CaptureArea => new(0, 0, image.Width, image.Height);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => image.Crop(rect);
     }
 
     /// <summary>

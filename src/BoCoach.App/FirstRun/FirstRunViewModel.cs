@@ -57,6 +57,8 @@ public sealed partial class FirstRunViewModel : ObservableObject
     /// <summary>Los jugadores leídos en la pantalla de carga.</summary>
     public ObservableCollection<LoadingPlayer> Players { get; } = [];
 
+    public bool HasPlayers => Players.Count > 0;
+
     [ObservableProperty] public partial LoadingPlayer? SelectedPlayer { get; set; }
 
     /// <summary>Al elegir un jugador de la lista, su nombre pasa a la caja (se puede corregir: el OCR a veces erra una letra).</summary>
@@ -135,6 +137,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
             return;
         foreach (var player in reading.Players)
             Players.Add(player);
+        OnPropertyChanged(nameof(HasPlayers));
         SelectedPlayer = Guess(reading, PlayerName);
         WatchStatus = $"Leí la pantalla de carga: {reading.Players.Count} jugadores. Elegí tu nombre en la lista."
             + (Calibrated ? "" : " Cuando empiece la partida, me calibro solo con el HUD.");

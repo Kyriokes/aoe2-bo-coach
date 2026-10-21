@@ -8,6 +8,7 @@ using BoCoach.App.Calibration;
 using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
 using BoCoach.App.Editor;
+using BoCoach.App.FirstRun;
 using BoCoach.App.Overlay;
 using BoCoach.App.Web;
 using BoCoach.Vision.Capture;
@@ -27,10 +28,12 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private ResourceOverlay? _resources;
     private CursorReminder? _cursor;
     private bool _calibrating;
+    private readonly CoachData _data;
 
     public MainWindow(CoachData data)
     {
         InitializeComponent();
+        _data = data;
         ViewModel = new MainViewModel(data, this);
         DataContext = ViewModel;
         // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
@@ -87,6 +90,38 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     public MainViewModel ViewModel { get; }
     public CaptureToolsViewModel Tools { get; }
     public CoachSessionViewModel Coach { get; }
+
+    // ---- Tutorial de primer uso (C4) ----
+
+    private FirstRunWindow? _firstRun;
+
+    /// <summary>La primera vez (sin el tutorial hecho ni "Tu nombre"), la app lo abre sola.</summary>
+    public void ShowFirstRunIfNeeded()
+    {
+        if (!Coach.FirstRunDone && Coach.PlayerName.Trim().Length == 0)
+            ShowFirstRun();
+    }
+
+    /// <summary>Abre el tutorial (o lo trae al frente). Al cerrarlo queda hecho: se vuelve a abrir con "Primeros pasos".</summary>
+    public void ShowFirstRun()
+    {
+        if (_firstRun is not null)
+        {
+            _firstRun.Activate();
+            return;
+        }
+        var tutorial = new FirstRunViewModel(_screen, _data.GameData, () => Coach.Language, Tools.TryAutoCalibrate,
+            name => Coach.PlayerName = name, Coach.PlayerName);
+        _firstRun = new FirstRunWindow(tutorial, Coach, Tools.InstallModCommand) { Owner = this };
+        _firstRun.Closed += (_, _) =>
+        {
+            _firstRun = null;
+            Coach.FirstRunDone = true;
+        };
+        _firstRun.Show();
+    }
+
+    private void FirstRun_Click(object sender, RoutedEventArgs e) => ShowFirstRun();
 
     /// <summary>
     /// Atajos que andan con el foco en el juego (todos con Ctrl+Alt, que el juego no usa): calibrar, grabar y

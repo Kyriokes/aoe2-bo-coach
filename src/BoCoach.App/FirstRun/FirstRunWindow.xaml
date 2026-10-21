@@ -1,0 +1,66 @@
+<Window x:Class="BoCoach.App.FirstRun.FirstRunWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:firstRun="clr-namespace:BoCoach.App.FirstRun"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance firstRun:FirstRunViewModel}"
+        Title="Primeros pasos" Width="600" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource Background}"
+        FontFamily="Segoe UI" FontSize="13">
+    <StackPanel Margin="18">
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,14">
+            Cuatro pasos para que el coach te lea bien. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
+        </TextBlock>
+
+        <!-- 1. Idioma -->
+        <TextBlock Text="1. Idioma del juego" Style="{StaticResource SectionTitle}" />
+        <StackPanel x:Name="LanguageBox" Orientation="Horizontal" Margin="0,4,0,14">
+            <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding Language}" Width="220"
+                      AutomationProperties.Name="Idioma del juego" />
+            <TextBlock Text="En el juego: Opciones → Idioma." Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+        </StackPanel>
+
+        <!-- 2. Mod -->
+        <TextBlock Text="2. Mod del HUD" Style="{StaticResource SectionTitle}" />
+        <TextBlock TextWrapping="Wrap" Margin="0,4,0,6">
+            Pone los aldeanos de cada recurso en cuadrados negros y agranda el reloj, que es lo que mejor lee el coach. Con el mod, la app también se calibra sola. Después de instalarlo, cerrá el juego y volvé a abrirlo.
+        </TextBlock>
+        <Button x:Name="InstallModButton" Content="Instalar mod del HUD" HorizontalAlignment="Left" Margin="0,0,0,14" />
+
+        <!-- 3. Partida contra la IA -->
+        <TextBlock Text="3. Una partida rápida contra 7 IA" Style="{StaticResource SectionTitle}" />
+        <TextBlock TextWrapping="Wrap" Margin="0,4,0,6">
+            Tocá «Mirar la pantalla» y armá en el juego una partida rápida contra 7 IA. En la pantalla de carga leo la lista de jugadores (para saber cómo te llamás), y cuando arranca la partida me calibro con el HUD: quedate unos segundos en ella sin tapar la parte de arriba. Después podés salir.
+        </TextBlock>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+            <Button Content="{Binding WatchButtonText}" Command="{Binding ToggleWatchingCommand}" />
+            <TextBlock Text="{Binding CalibrationStatus}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+        </StackPanel>
+        <TextBlock Text="{Binding WatchStatus}" TextWrapping="Wrap" Margin="0,0,0,14"
+                   Visibility="{Binding WatchStatus, Converter={StaticResource NotEmptyToVisibility}}" />
+
+        <!-- 4. Nombre -->
+        <TextBlock Text="4. Tu nombre en el juego" Style="{StaticResource SectionTitle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,6">
+            Elegilo de la lista (sale de la pantalla de carga) y corregilo si el OCR erró una letra. Con tu nombre, en cada pantalla de carga el coach sabe tu civ y contra quién jugás.
+        </TextBlock>
+        <ListBox ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" MaxHeight="190" Margin="0,0,0,6"
+                 Visibility="{Binding HasPlayers, Converter={StaticResource BoolToVisibility}}"
+                 AutomationProperties.Name="Jugadores de la pantalla de carga">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock><Run Text="{Binding Slot, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="   " /><Run Text="{Binding Name, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding CivText, Mode=OneWay}" Foreground="{StaticResource Muted}" /></TextBlock>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left" Margin="0,0,0,16"
+                 AutomationProperties.Name="Tu nombre en el juego" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Guardar mi nombre" IsDefault="True" Style="{StaticResource PrimaryButton}" Command="{Binding FinishCommand}" />
+            <Button Content="Cerrar" IsCancel="True" Margin="0" />
+        </StackPanel>
+    </StackPanel>
+</Window>
