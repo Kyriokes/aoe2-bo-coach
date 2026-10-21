@@ -52,6 +52,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         GameLanguageBox.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;
         CursorRemindersBox.DataContext = Coach;
+        AutoStartBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
         Coach.PropertyChanged += (_, e) =>
         {
@@ -62,6 +63,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _tick.Tick += (_, _) =>
         {
             Tools.Tick();
+            // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
+            Coach.Tick(GameWindow.IsRunning() && _firstRun is null);
             if (Tools.IsRecording)
                 _indicator.SetText($"● {Tools.RecordingStatus}");
         };

@@ -31,6 +31,12 @@ public sealed class CoachSettings
     /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso: la app no lo vuelve a abrir sola.</summary>
     public bool FirstRunDone { get; set; }
 
+    /// <summary>D6: el coach arranca solo cuando se abre el juego y se detiene cuando se cierra.</summary>
+    public bool AutoStart { get; set; } = true;
+
+    /// <summary>D6: id de la última BO con que corrió el coach, para arrancar solo con ella.</summary>
+    public string LastBuildOrder { get; set; } = "";
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -47,6 +53,8 @@ public sealed class CoachSettings
                     GameLanguage = Vision.Ocr.GameLanguage.FromCode(json["game_language"]?.GetValue<string>()).Code,
                     PlayerName = json["player_name"]?.GetValue<string>()?.Trim() ?? "",
                     FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
+                    AutoStart = json["auto_start"]?.GetValue<bool>() ?? true,
+                    LastBuildOrder = json["last_build_order"]?.GetValue<string>()?.Trim() ?? "",
                 };
             }
         }
@@ -61,7 +69,7 @@ public sealed class CoachSettings
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
-            ["first_run_done"] = FirstRunDone };
+            ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder };
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

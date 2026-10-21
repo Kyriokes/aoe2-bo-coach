@@ -44,7 +44,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private BuildOrderSuggestion? _suggestion;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
+    private bool _frameAllowsOverlay;
+    private bool _overlayShown;
     private readonly string? _settingsPath;
+    private bool _startedAutomatically;
+    private bool _autoBlocked;
+    private bool _autoNoBoWarned;
+    private BuildOrder? _previousBuildOrder;
+    private string? _declinedSuggestion;
 
     /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
@@ -58,6 +65,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Language = GameLanguage.FromCode(settings.GameLanguage);
         PlayerName = settings.PlayerName;
         FirstRunDone = settings.FirstRunDone;
+        AutoStart = settings.AutoStart;
+        LastBuildOrderId = settings.LastBuildOrder;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -139,6 +148,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnFirstRunDoneChanged(bool value) => SaveSettings();
 
+    /// <summary>D6: el coach arranca solo cuando se abre el juego (con la última BO usada) y se detiene cuando se cierra.</summary>
+    [ObservableProperty] public partial bool AutoStart { get; set; }
+
+    partial void OnAutoStartChanged(bool value) => SaveSettings();
+
+    /// <summary>D6: id de la última BO con que corrió el coach (se guarda al empezar).</summary>
+    public string LastBuildOrderId { get; private set; } = "";
+
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
@@ -159,6 +176,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 GameLanguage = Language.Code,
                 PlayerName = PlayerName.Trim(),
                 FirstRunDone = FirstRunDone,
+                AutoStart = AutoStart,
+                LastBuildOrder = LastBuildOrderId,
             }.Save(_settingsPath);
         }
         catch (IOException)
@@ -182,6 +201,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         if (IsRunning)
         {
+            // Detenido a mano con el juego abierto: no vuelve a arrancar solo hasta que el juego se cierre y se abra.
+            _autoBlocked = true;
             Stop();
             return;
         }
@@ -190,12 +211,55 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Status = "Elegí una build order en la biblioteca para empezar el coach.";
             return;
         }
+        (_previousBuildOrder, _declinedSuggestion) = (null, null);
         Start(bo, _liveFrames());
     }
 
-    public void Start(BuildOrder bo, IFrameSource frames)
+    /// <summary>
+    /// D6: la ventana lo llama cada segundo con si corre el proceso del juego (y no está abierto el tutorial). Con
+    /// "Coach automático", arranca solo con la última BO usada y se detiene (con el informe) cuando el juego se cierra.
+    /// </summary>
+    public void Tick(bool gameRunning)
+    {
+        if (!gameRunning)
+        {
+            _autoBlocked = false;
+            if (IsRunning && _startedAutomatically)
+            {
+                Stop();
+                Status = "El juego se cerró: coach detenido.";
+            }
+            return;
+        }
+        if (!AutoStart || IsRunning || _autoBlocked)
+            return;
+        if (AutoBuildOrder() is not { } bo)
+        {
+            if (!_autoNoBoWarned)
+            {
+                _autoNoBoWarned = true;
+                Status = "Coach automático: elegí una build order en la biblioteca para que arranque solo con el juego.";
+            }
+            return;
+        }
+        _autoNoBoWarned = false;
+        (_previousBuildOrder, _declinedSuggestion) = (null, null);
+        Start(bo, _liveFrames(), automatic: true);
+        // La BO tiene errores: no se insiste cada segundo.
+        if (!IsRunning)
+            _autoBlocked = true;
+    }
+
+    /// <summary>La última BO usada (si sigue en la biblioteca), o la elegida.</summary>
+    private BuildOrder? AutoBuildOrder() =>
+        (LastBuildOrderId.Length > 0 ? _data.Library.List().Select(e => e.BuildOrder).FirstOrDefault(b => b?.Id == LastBuildOrderId) : null)
+        ?? _selected();
+
+    /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
+    public void Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
     {
         Stop();
+        _startedAutomatically = automatic;
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
         bo = bo with { Civ = CivFor(bo) };
         // Una BO con errores no se simula: el editor y la web validan antes, pero un .json importado a mano no pasa
@@ -222,9 +286,17 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _placedOver = frames.Area;
         _overlayVisible = true;
         _host.ShowOverlay(Overlay, _placedOver);
+        // D6: el overlay se muestra recién en la pantalla de carga o con el reloj (y con el juego al frente).
+        (_frameAllowsOverlay, _overlayShown) = (false, false);
+        _host.SetOverlayVisible(false);
+        if (bo.Id.Length > 0 && bo.Id != LastBuildOrderId)
+        {
+            LastBuildOrderId = bo.Id;
+            SaveSettings();
+        }
         _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}, esperando la partida. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
     }
 
     /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
@@ -270,10 +342,23 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             : null;
         if (me.Civ is null)
             return;
-        var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>();
+        var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>().ToList();
         var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles);
         if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
             return;
+        // D6: si arrancó solo, cambia a la sugerida cuando puntúa más que la que corre (la copia de la biblioteca, sin
+        // la civ de la partida). Ctrl+Alt+B vuelve a la anterior.
+        var running = library.FirstOrDefault(b => b.Id == _coach.BuildOrder.Id) ?? _coach.BuildOrder;
+        if (_startedAutomatically && suggestion.BuildOrder.Id != _declinedSuggestion
+            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles))
+        {
+            _previousBuildOrder = running;
+            Start(suggestion.BuildOrder, _liveFrames(), automatic: true);
+            if (Overlay is not null)
+                Overlay.BoSuggestion = $"Cambié a {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B vuelve a {running.Name}";
+            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida (Ctrl+Alt+B vuelve a \"{running.Name}\").";
+            return;
+        }
         _suggestion = suggestion;
         Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
     }
@@ -288,15 +373,26 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             : civ).ToLowerInvariant();
     }
 
-    /// <summary>Ctrl+Alt+B: empieza el coach con la BO sugerida en la pantalla de carga.</summary>
+    /// <summary>
+    /// Ctrl+Alt+B: empieza el coach con la BO sugerida en la pantalla de carga; si el coach ya cambió solo a la
+    /// sugerida (D6), vuelve a la anterior y no vuelve a cambiar en esta partida.
+    /// </summary>
     [RelayCommand]
     private void AcceptSuggestion()
     {
-        if (_suggestion is not { } suggestion)
+        if (_suggestion is { } suggestion)
+        {
+            _suggestion = null;
+            Start(suggestion.BuildOrder, _liveFrames(), _startedAutomatically);
+            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida.";
             return;
-        _suggestion = null;
-        Start(suggestion.BuildOrder, _liveFrames());
-        Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida.";
+        }
+        if (_previousBuildOrder is not { } previous || _coach is null)
+            return;
+        _declinedSuggestion = _coach.BuildOrder.Id;
+        _previousBuildOrder = null;
+        Start(previous, _liveFrames(), automatic: true);
+        Status = $"Volví a \"{previous.Name}\".";
     }
 
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
@@ -330,8 +426,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         if (_coach is null)
             return;
-        var report = _coach.Report();
-        if (report.Length >= LiveCoach.MinReportSeconds)
+        if (_coach.TakePendingReport() is { } report)
             Finished(report);
         _coach.Stop();
         _coach = null;
@@ -362,7 +457,17 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_coach is null)
             return;
         _overlayVisible = !_overlayVisible;
-        _host.SetOverlayVisible(_overlayVisible);
+        UpdateOverlayShown();
+    }
+
+    /// <summary>El overlay se ve si el jugador no lo ocultó (Ctrl+Alt+H), el juego está al frente y hay partida (o pantalla de carga).</summary>
+    private void UpdateOverlayShown()
+    {
+        var shown = _overlayVisible && _frameAllowsOverlay;
+        if (shown == _overlayShown)
+            return;
+        _overlayShown = shown;
+        _host.SetOverlayVisible(shown);
     }
 
     [RelayCommand]
@@ -380,6 +485,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         Overlay.Apply(frame);
         Live.Apply(frame);
+        _frameAllowsOverlay = frame is { InFront: true, Waiting: false };
+        UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)
         {
             _loading = loading;

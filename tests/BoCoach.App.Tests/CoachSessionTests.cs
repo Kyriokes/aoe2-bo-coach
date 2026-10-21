@@ -325,4 +325,91 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Contains("tiene errores", session.Status);
         Assert.Contains("count", session.Status);
     }
+
+    // D6 (2026-10-21): el coach arranca solo cuando corre el juego, con la última BO usada, y se detiene cuando se cierra.
+    [Fact]
+    public void Arranca_solo_con_el_juego_y_se_detiene_cuando_se_cierra()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => Scouts, () => new RecordedFrames(RecordedSession.Load(Fixture), speed: 50), path)
+        {
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        Assert.True(session.AutoStart);
+
+        session.Tick(gameRunning: false);
+        Assert.False(session.IsRunning);
+        session.Tick(gameRunning: true);
+        Assert.True(session.IsRunning);
+        Assert.Equal(Scouts.Id, session.LastBuildOrderId);
+        Assert.Equal(Scouts.Id, CoachSettings.Load(path).LastBuildOrder);
+
+        session.Tick(gameRunning: false);
+        Assert.False(session.IsRunning);
+        Assert.Contains("se cerró", session.Status);
+    }
+
+    [Fact]
+    public void Detenido_a_mano_no_vuelve_a_arrancar_hasta_que_el_juego_se_abra_de_nuevo()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new RecordedFrames(RecordedSession.Load(Fixture), speed: 50))
+        {
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        session.Tick(gameRunning: true);
+        Assert.True(session.IsRunning);
+
+        session.StartStopCommand.Execute(null);
+        session.Tick(gameRunning: true);
+        Assert.False(session.IsRunning);
+
+        session.Tick(gameRunning: false);
+        session.Tick(gameRunning: true);
+        Assert.True(session.IsRunning);
+
+        session.AutoStart = false;
+        session.StartStopCommand.Execute(null);
+        session.Tick(gameRunning: false);
+        session.Tick(gameRunning: true);
+        Assert.False(session.IsRunning);
+    }
+
+    [Fact]
+    public void Arrancado_a_mano_no_se_detiene_con_el_juego_y_el_coach_automatico_queda_en_los_ajustes()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new RecordedFrames(RecordedSession.Load(Fixture), speed: 50), path)
+        {
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        session.StartStopCommand.Execute(null);
+        session.Tick(gameRunning: false);
+        Assert.True(session.IsRunning); // un replay no tiene juego
+
+        session.AutoStart = false;
+        Assert.False(CoachSettings.Load(path).AutoStart);
+    }
+
+    /// <summary>Capturas con el juego abierto pero atrás (alt-tab).</summary>
+    private sealed class HiddenFrames : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+        public Frame? Next() => new(_ => null, ++_served * 0.5, Area, InFront: false);
+    }
+
+    [Fact]
+    public async Task Con_el_juego_atras_el_overlay_se_esconde()
+    {
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException());
+        session.Start(Scouts, new HiddenFrames());
+
+        await session.LiveCoach!.StepAsync();
+
+        Assert.False(host.Visible);
+        Assert.Equal("El juego no está al frente.", session.Overlay!.Warning);
+    }
 }
