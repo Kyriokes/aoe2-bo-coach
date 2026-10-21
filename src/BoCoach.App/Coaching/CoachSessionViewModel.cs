@@ -26,6 +26,9 @@ public interface ICoachHost
     void CloseOverlay();
 
     void RunOnUi(Action action);
+
+    /// <summary>D5: el resumen de la partida terminada, con el informe completo guardado en <paramref name="path"/>.</summary>
+    void ShowReport(IReadOnlyList<string> summary, string path);
 }
 
 /// <summary>Empezar y detener el coach con la BO elegida, y los atajos que lo corrigen durante la partida.</summary>
@@ -195,6 +198,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code);
         _loading = null;
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
+        coach.GameFinished += report => _host.RunOnUi(() => Finished(report));
         coach.Updated += frame => _host.RunOnUi(() =>
         {
             if (_coach == coach)
@@ -207,6 +211,27 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _coach.Start();
         IsRunning = true;
         Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+    }
+
+    /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
+    public string ReportsFolder { get; init; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "informes");
+
+    /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
+    private void Finished(GameReport report)
+    {
+        try
+        {
+            Directory.CreateDirectory(ReportsFolder);
+            var now = DateTime.Now;
+            var path = Path.Combine(ReportsFolder, $"{now:yyyyMMdd-HHmmss}.html");
+            File.WriteAllText(path, GameReportText.Html(report, now));
+            _host.ShowReport(GameReportText.Summary(report), path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            Status = $"No se pudo guardar el informe de la partida: {e.Message}";
+        }
     }
 
     /// <summary>Segundos sin reloj para bajar el overlay (la pantalla de carga se lee después: ver LiveCoach).</summary>
@@ -270,6 +295,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         if (_coach is null)
             return;
+        var report = _coach.Report();
+        if (report.Length >= LiveCoach.MinReportSeconds)
+            Finished(report);
         _coach.Stop();
         _coach = null;
         _host.CloseOverlay();

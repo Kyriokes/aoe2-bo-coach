@@ -112,6 +112,9 @@ public sealed class LiveCoach : IDisposable
     /// <summary>Cada cuánto se mira el título de la pantalla de carga mientras no se ve el reloj.</summary>
     public static readonly TimeSpan LoadingInterval = TimeSpan.FromSeconds(2);
 
+    /// <summary>Segundos de partida a partir de los que vale la pena el informe (D5).</summary>
+    public const double MinReportSeconds = 60;
+
     /// <summary>Cuánto se espera sin reloj antes de mirar la pantalla de carga (lo que tarda el overlay en bajar).</summary>
     public static readonly TimeSpan LoadingDelay = TimeSpan.FromSeconds(1);
 
@@ -175,6 +178,16 @@ public sealed class LiveCoach : IDisposable
     public bool Running => _cancel is { IsCancellationRequested: false };
 
     public event Action<CoachFrame>? Updated;
+
+    /// <summary>Terminó una partida porque empezó otra (pantalla de carga): su informe (D5).</summary>
+    public event Action<GameReport>? GameFinished;
+
+    /// <summary>El informe de la partida en curso (D5).</summary>
+    public GameReport Report()
+    {
+        lock (_gate)
+            return _coach.Report();
+    }
 
     public void Start()
     {
@@ -271,6 +284,9 @@ public sealed class LiveCoach : IDisposable
         _loadingDone = true;
         var me = reading.Find(PlayerName);
         var bo = me?.Civ is { } civ ? BuildOrder with { Civ = civ } : BuildOrder;
+        var finished = Report();
+        if (finished.Length >= MinReportSeconds)
+            GameFinished?.Invoke(finished);
         var (coach, builder, reader) = NewGame(bo);
         // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
         coach.Signals.PlayerSlot = me?.Slot;

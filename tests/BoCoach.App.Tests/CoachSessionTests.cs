@@ -37,6 +37,10 @@ public sealed class CoachSessionTests : IDisposable
         public void PlaceOverlay(PixelRect area, bool lowered = false) => Lowered = lowered;
 
         public bool Lowered { get; private set; }
+
+        public (IReadOnlyList<string> Summary, string Path)? Report { get; private set; }
+
+        public void ShowReport(IReadOnlyList<string> summary, string path) => Report = (summary, path);
         public void SetOverlayVisible(bool visible) => Visible = visible;
         public void CloseOverlay() => Closed = true;
         public void RunOnUi(Action action) => action();
@@ -157,6 +161,41 @@ public sealed class CoachSessionTests : IDisposable
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.Equal("Arqueros Feudal (23 pop)", session.LiveCoach!.BuildOrder.Name);
+    }
+
+    // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.
+    [Fact]
+    public async Task Al_detener_el_coach_guarda_el_informe_y_muestra_el_resumen()
+    {
+        var host = new FakeHost();
+        var folder = Path.Combine(_library.FullName, "informes");
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException()) { ReportsFolder = folder };
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        while (session.LiveCoach!.Report().Length < 70 && await session.LiveCoach.StepAsync())
+        {
+        }
+
+        session.Stop();
+
+        var (summary, path) = host.Report!.Value;
+        Assert.StartsWith(Scouts.Name, summary[0]);
+        Assert.True(File.Exists(path));
+        Assert.Equal(folder, Path.GetDirectoryName(path));
+        Assert.Contains("<h2>Pasos contra la BO</h2>", File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void Sin_un_minuto_de_partida_no_hay_informe()
+    {
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException())
+        {
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        session.Stop();
+
+        Assert.Null(host.Report);
     }
 
     [Fact]

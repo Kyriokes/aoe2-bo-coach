@@ -165,6 +165,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
 
     public void RunOnUi(Action action) => Dispatcher.BeginInvoke(action);
 
+    public void ShowReport(IReadOnlyList<string> summary, string path) =>
+        new Coaching.ReportWindow(summary, () => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })) { Owner = this }.Show();
+
     // ---- Calibración y carpetas ----
 
     public RegionLayout? Calibrate(RegionLayout current)
