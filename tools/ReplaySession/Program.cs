@@ -19,6 +19,7 @@
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
 //       --until corta en ese minuto de partida (el estado de cada paso queda el de ese momento).
+//       Al final, el informe de la partida (D5); --informe salida.html guarda la página completa.
 //   bench <grabación> [--frames 300]
 //       Mide cuánto tarda cada parte de la lectura (HUD, log, edad) para estimar la CPU en vivo.
 //   icons <grabación[;grabación...]> <salida> [--every 4] [--offset-y 0]
@@ -641,6 +642,13 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
         Console.WriteLine($"  {step.Step.Id,-4} {step.State,-8} {step.Completed}/{step.Required} {(step.DoneAt is { } t ? BoCoach.Core.GameClock.Format(t) : ""),6}  {StepText.Describe(step.Step)}");
     Console.WriteLine($"  extras: {string.Join(", ", coach.Tracker.Extras.GroupBy(e => e.Event.EventId).Select(g => $"{g.Key}×{g.Count()}"))}");
     Console.WriteLine($"  sugerencias ({allocator}): {suggestions}");
+    // D5: el informe de la partida (--informe salida.html guarda la página completa).
+    var report = coach.Report();
+    Console.WriteLine("Informe:");
+    foreach (var line in GameReportText.Summary(report))
+        Console.WriteLine($"  {line}");
+    if (args.Contains("--informe"))
+        File.WriteAllText(Text(args, "--informe", "informe.html"), GameReportText.Html(report, DateTime.Now));
     return 0;
 }
 
