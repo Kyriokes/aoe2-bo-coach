@@ -311,4 +311,18 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(session.IsRunning);
         Assert.True(host.Closed);
     }
+
+    [Fact]
+    public void No_arranca_con_una_BO_con_errores()
+    {
+        // Un .json importado a mano no pasa por el editor ni por la web: con un count enorme el Planner agotaba la memoria.
+        var broken = Scouts with { Steps = Scouts.Steps.Select(s => s.What == "villager" ? s with { Count = 2_000_000_000 } : s).ToList() };
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+
+        session.Start(broken, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+
+        Assert.False(session.IsRunning);
+        Assert.Contains("tiene errores", session.Status);
+        Assert.Contains("count", session.Status);
+    }
 }
