@@ -77,6 +77,23 @@ public class GameSignalsTests
     }
 
     [Fact]
+    public void En_equipos_el_clic_de_un_aliado_no_se_avisa_y_el_del_rival_dice_su_color()
+    {
+        var (signals, state) = New();
+        signals.PlayerSlot = 1;
+        signals.AllySlots = new HashSet<int> { 3 };
+        PlayerScore[] At500(int ally, int rival) => [new(1, 900, true), new(3, ally, true), new(8, rival, true)];
+        var found = Feed(signals, state,
+            At(498, null, At500(831, 1000)),
+            At(500, null, At500(831, 1001)),
+            At(502, null, At500(797, 960)),
+            At(504, null, At500(799, 961)));
+
+        var signal = Assert.Single(found);
+        Assert.StartsWith("El rival naranja hizo clic en Feudal", signal.Text);
+    }
+
+    [Fact]
     public void Gastar_poco_no_es_un_clic()
     {
         var (signals, state) = New();

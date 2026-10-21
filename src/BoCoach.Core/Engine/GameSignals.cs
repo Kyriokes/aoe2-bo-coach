@@ -74,6 +74,11 @@ public sealed class GameSignals(GameData data)
     /// <summary>El número del jugador (por su color), si se sabe (pantalla de carga o aprendido de su clic).</summary>
     public int? PlayerSlot { get; set; }
 
+    /// <summary>Los números de los aliados (de la pantalla de carga): sus clics no son del rival.</summary>
+    public IReadOnlySet<int> AllySlots { get; set; } = new HashSet<int>();
+
+    private static readonly string[] ColorNames = ["", "azul", "rojo", "verde", "amarillo", "celeste", "violeta", "gris", "naranja"];
+
     /// <summary>Todas las señales vistas en la partida, en orden.</summary>
     public IReadOnlyList<GameSignal> All => _signals;
 
@@ -180,9 +185,13 @@ public sealed class GameSignals(GameData data)
             PlayerSlot ??= player.Slot;
             return;
         }
+        if (AllySlots.Contains(player.Slot))
+            return;
         var (tech, kind, name) = Ages[age];
+        // Con más de un rival posible, el color dice cuál (en 1 contra 1 no hace falta).
+        var who = _players.Count > 2 && player.Slot is > 0 and <= 8 ? $"El rival {ColorNames[player.Slot]}" : "El rival";
         var arrives = data.TryGet(tech, out var entity) ? $": llega a las {GameClock.Format(time + entity.Time)}" : "";
-        _signals.Add(new GameSignal(kind, time, $"El rival hizo clic en {name} ({GameClock.Format(time)}){arrives}"));
+        _signals.Add(new GameSignal(kind, time, $"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}"));
     }
 
     /// <summary>Lo que cae el puntaje al pagar esa edad: la décima parte de su costo (sin bonificaciones de civ).</summary>
