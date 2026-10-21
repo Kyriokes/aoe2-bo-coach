@@ -23,6 +23,15 @@ public class BuildOrderSuggesterTests
     }
 
     [Fact]
+    public void Los_exploradores_aguila_son_el_estilo_de_exploradores()
+    {
+        // Las civs mesoamericanas no tienen establo: abren con águilas desde el cuartel.
+        var eagles = BuildOrderSerializer.Parse(BuildOrderSerializer.Serialize(Scouts).Replace("\"scout_cavalry\"", "\"eagle_scout\""));
+
+        Assert.Equal("scouts", BuildOrderSuggester.StyleOf(eagles));
+    }
+
+    [Fact]
     public void La_tabla_tiene_todas_las_civs_con_estilos_conocidos()
     {
         Assert.All(TestData.GameData.Civs.Keys, civ =>

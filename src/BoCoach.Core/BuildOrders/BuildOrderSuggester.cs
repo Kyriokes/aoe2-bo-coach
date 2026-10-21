@@ -36,7 +36,7 @@ public static class BuildOrderSuggester
         return military switch
         {
             "archer" or "skirmisher" => "archers",
-            "scout_cavalry" => "scouts",
+            "scout_cavalry" or "eagle_scout" => "scouts", // las águilas son los exploradores de las civs mesoamericanas
             "militia" or "spearman" => "maa",
             null when bo.Steps.Any(s => s is { Do: StepAction.Research, What: "castle_age" }) => "fast_castle",
             _ => null,
