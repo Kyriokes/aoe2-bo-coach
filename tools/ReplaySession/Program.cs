@@ -511,7 +511,7 @@ static async Task<int> Loading(string screenshot, string[] args)
         return 1;
     }
     var me = reading.Find(Text(args, "--nombre", ""));
-    Console.WriteLine($"Pantalla de carga, {screen.Width}×{screen.Height}:");
+    Console.WriteLine($"Pantalla de carga, {screen.Width}×{screen.Height}, mapa: {reading.Map ?? "-"}");
     foreach (var p in reading.Players)
         Console.WriteLine($"  {p.Slot}  equipo {p.Team?.ToString(CultureInfo.InvariantCulture) ?? "-"}  {p.Name,-24} {p.CivText,-16} → {p.Civ ?? "?",-12} color {p.Color.R},{p.Color.G},{p.Color.B}{(p == me ? "  ← vos" : "")}");
     if (me is not null)
