@@ -138,4 +138,19 @@ public sealed class FirstRunTests : IDisposable
 
         Assert.True(CoachSettings.Load(path).FirstRunDone);
     }
+
+    [Fact]
+    public async Task Un_error_al_mirar_se_muestra_en_el_estado_y_se_sigue_mirando()
+    {
+        // Con el juego minimizado la captura tira ArgumentException ("El rectángulo está vacío"): antes no se
+        // atrapaba y la ventana mostraba un error cada 2 s.
+        var tutorial = new FirstRunViewModel(new StillScreen(null), _data.GameData, () => GameLanguage.English,
+            () => throw new ArgumentException("El rectángulo está vacío."), _ => { }, createOcr: _ => null);
+        tutorial.ToggleWatchingCommand.Execute(null);
+
+        await tutorial.TickAsync();
+
+        Assert.Contains("El rectángulo está vacío", tutorial.WatchStatus);
+        Assert.True(tutorial.Watching);
+    }
 }

@@ -110,9 +110,12 @@ public sealed partial class FirstRunViewModel : ObservableObject
                 WatchStatus = "Listo: ya leí la pantalla de carga y calibré la pantalla. Podés salir de la partida.";
             }
         }
-        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
-            WatchStatus = $"No pude capturar la pantalla: {e.Message}";
+            // Como en LiveCoach: cualquier error de una mirada (el juego minimizado da un rectángulo vacío, el OCR)
+            // se muestra y se sigue con la próxima. Antes solo se atrapaban dos tipos y el resto llegaba a la
+            // ventana como excepción sin atrapar cada 2 s.
+            WatchStatus = $"No pude mirar la pantalla: {e.Message}";
         }
         finally
         {
