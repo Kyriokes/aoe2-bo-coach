@@ -90,6 +90,14 @@ public class LoadingScreenTests
         Assert.Equal([(1, (int?)null), (2, null)], players.Select(p => (p.Slot, p.Team)));
     }
 
+    [Theory]
+    [InlineData(new[] { "GAME MODE: RANDOM MAP", "ARABIA" }, "Arabia")]
+    [InlineData(new[] { "MODO DE JUEGO: MAPA ALEATORIO", "ARENA" }, "Arena")]
+    [InlineData(new[] { "GAME MODE: RANDOM MAP" }, null)]
+    [InlineData(new string[0], null)]
+    public void El_mapa_es_el_renglon_grande_debajo_del_modo_de_juego(string[] lines, string? map) =>
+        Assert.Equal(map, LoadingScreen.MapFrom(lines));
+
     private static LoadingReading Reading(params (int Slot, string Name, int? Team)[] players) =>
         new(players.Select(p => new LoadingPlayer(p.Slot, p.Name, "", null, p.Team, Black)).ToList());
 

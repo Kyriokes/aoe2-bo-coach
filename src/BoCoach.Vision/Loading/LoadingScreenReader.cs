@@ -17,9 +17,20 @@ public sealed class LoadingScreenReader(OcrReader ocr, GameData data, string lan
     /// <summary>Jugadores con civ que tiene que haber para que sea la pantalla de carga.</summary>
     public const int MinPlayers = 2;
 
-    /// <summary>Los jugadores, o null si la captura de la pantalla entera (el área del juego) no es la pantalla de carga.</summary>
-    public Task<LoadingReading?> ReadAsync(CapturedImage screen) =>
-        ReadPanelAsync(screen.Crop(LoadingScreen.Panel(screen.Width, screen.Height)));
+    /// <summary>Los jugadores y el mapa, o null si la captura de la pantalla entera (el área del juego) no es la pantalla de carga.</summary>
+    public async Task<LoadingReading?> ReadAsync(CapturedImage screen) =>
+        await ReadPanelAsync(screen.Crop(LoadingScreen.Panel(screen.Width, screen.Height))) is { } reading
+            ? reading with { Map = await ReadMapAsync(screen.Crop(LoadingScreen.Map(screen.Width, screen.Height))) }
+            : null;
+
+    /// <summary>El mapa de su caja (<see cref="LoadingScreen.Map"/>), o null.</summary>
+    public async Task<string?> ReadMapAsync(CapturedImage box)
+    {
+        if (box.Width == 0 || box.Height == 0)
+            return null;
+        var prepared = DarkOnLight(box.Resample(LoadingScreen.MapHeight / box.Height)).Padded(Margin);
+        return LoadingScreen.MapFrom((await ocr.ReadPreparedLinesAsync(prepared, 1, Margin)).Select(l => l.Text));
+    }
 
     /// <summary>
     /// Lo mismo con solo el panel de jugadores (<see cref="LoadingScreen.Panel"/>): en vivo se captura eso, que es

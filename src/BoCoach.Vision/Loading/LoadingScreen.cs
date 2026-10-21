@@ -17,7 +17,7 @@ namespace BoCoach.Vision.Loading;
 public sealed record LoadingPlayer(int Slot, string Name, string CivText, string? Civ, int? Team, (byte R, byte G, byte B) Color);
 
 /// <summary>Lo leído en la pantalla de carga: los jugadores en el orden de la lista.</summary>
-/// <param name="Map">El mapa. Todavía no se lee: en la pantalla real lo tapa el overlay del coach (arriba a la derecha).</param>
+/// <param name="Map">El mapa ("Arabia"), o null si no se leyó. El overlay del coach baja mientras no se ve el reloj para no taparlo.</param>
 public sealed record LoadingReading(IReadOnlyList<LoadingPlayer> Players, string? Map = null)
 {
     /// <summary>
@@ -86,6 +86,22 @@ public static partial class LoadingScreen
 
     /// <summary>Alto del panel de jugadores a 1080p: el panel se lleva a este alto antes de leerlo.</summary>
     public static double PanelHeight => PanelBox.H;
+
+    /// <summary>
+    /// El mapa a 1920×1080: en el panel de la derecha, "GAME MODE: RANDOM MAP" y debajo el nombre del mapa en letras
+    /// grandes ("ARABIA"). Medido en la captura del usuario, donde lo tapaba el overlay: sin verificar la lectura.
+    /// </summary>
+    private static readonly (double X, double Y, double W, double H) MapBox = (1385, 140, 505, 80);
+
+    public static double MapHeight => MapBox.H;
+
+    public static PixelRect Map(int width, int height) => Place(MapBox, width, height);
+
+    /// <summary>El mapa entre los renglones de su caja: el último sin ":" (el de arriba es "GAME MODE: RANDOM MAP"), en "Arabia".</summary>
+    public static string? MapFrom(IEnumerable<string> lines) =>
+        lines.Select(l => l.Trim()).LastOrDefault(l => !l.Contains(':') && l.Count(char.IsLetter) >= 3) is { } map
+            ? CultureInfo.InvariantCulture.TextInfo.ToTitleCase(map.ToLowerInvariant())
+            : null;
 
     /// <summary>Columnas del cuadrado de color dentro del panel, a los costados del número (a 1080p, x 469 a 491).</summary>
     private static readonly (double From, double To)[] SquareColumns = [(300, 304), (316, 320)];
