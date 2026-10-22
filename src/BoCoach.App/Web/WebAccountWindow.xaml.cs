@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using BoCoach.Core.Web;
 
 namespace BoCoach.App.Web;
 
@@ -45,7 +46,8 @@ public partial class WebAccountWindow : Window
     private void Save(object sender, RoutedEventArgs e)
     {
         var url = UrlBox.Text.Trim();
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http"))
+        // http solo para la web corriendo en esta PC (desarrollo): por la red, el token viajaría sin cifrar.
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !WebLibraryClient.SendsTokenSafely(uri))
         {
             MessageBox.Show(this, "La dirección de la web tiene que empezar con https://", "Cuenta de la web",
                 MessageBoxButton.OK, MessageBoxImage.Warning);

@@ -117,6 +117,36 @@ public class WebLibraryClientTests
         Assert.Equal(status, error.Status);
     }
 
+    [Theory]
+    [InlineData("http://bo.example/", false)]
+    [InlineData("http://localhost:3000/", true)]
+    [InlineData("http://127.0.0.1:3000/", true)]
+    [InlineData("https://bo.example/", true)]
+    public void El_token_solo_viaja_por_https_o_a_esta_PC(string url, bool safe) =>
+        Assert.Equal(safe, WebLibraryClient.SendsTokenSafely(new Uri(url)));
+
+    [Fact]
+    public async Task Por_http_no_manda_el_token()
+    {
+        var web = new FakeWeb(HttpStatusCode.Created, """{ "code": "k7m2xq", "url": "http://bo.example/bo/k7m2xq" }""");
+        var client = new WebLibraryClient(new HttpClient(web), new Uri("http://bo.example/"));
+
+        var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.PublishAsync(Scouts, "bocoach_x", null, null));
+
+        Assert.Contains("https", error.Message);
+        Assert.Empty(web.Requests);
+    }
+
+    [Fact]
+    public async Task Un_codigo_mal_formado_no_arma_otra_direccion()
+    {
+        var (client, web) = Client(HttpStatusCode.OK, "{}");
+
+        await Assert.ThrowsAsync<WebLibraryException>(() => client.PublishAsync(Scouts, "bocoach_x", null, null, code: "../cuenta"));
+
+        Assert.Empty(web.Requests);
+    }
+
     [Fact]
     public async Task Un_codigo_invalido_no_llega_a_la_web()
     {

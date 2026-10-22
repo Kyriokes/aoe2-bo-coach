@@ -51,6 +51,12 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
 {
     public Uri BaseUrl { get; } = baseUrl;
 
+    /// <summary>
+    /// El token solo viaja por https, o a esta misma PC (la web en desarrollo): por http cualquiera en la red (un wifi
+    /// público) lo puede leer y publicar en nombre del usuario.
+    /// </summary>
+    public static bool SendsTokenSafely(Uri url) => url.Scheme == Uri.UriSchemeHttps || (url.Scheme == Uri.UriSchemeHttp && url.IsLoopback);
+
     public async Task<WebBuildOrder> DownloadAsync(string code, CancellationToken cancel = default)
     {
         if (!WebCode.IsValid(code))
@@ -73,6 +79,11 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     public async Task<PublishedBuildOrder> PublishAsync(BuildOrder bo, string token, double? feudalClick, double? castleClick,
         string? code = null, CancellationToken cancel = default)
     {
+        if (!SendsTokenSafely(BaseUrl))
+            throw new WebLibraryException(
+                $"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".");
+        if (code is not null && !WebCode.IsValid(code))
+            throw new WebLibraryException($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).");
         var body = new JsonObject
         {
             ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(bo)),
