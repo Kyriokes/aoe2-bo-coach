@@ -2,6 +2,7 @@ import "server-only";
 import { revalidateTag } from "next/cache";
 import { parseBuildOrder } from "@/lib/buildOrder";
 import { buildOrderTag, LIBRARY_TAG } from "@/lib/data";
+import { dbErrorMessage, dbErrorStatus } from "@/lib/dbErrors";
 import { publicClient } from "@/lib/supabase/server";
 
 /**
@@ -43,10 +44,7 @@ export async function publishFromApp(request: Request, code: string | null) {
     p_castle_click: seconds(payload.castle_click),
     p_code: code,
   });
-  if (dbError) {
-    const status = dbError.code === "28000" ? 401 : dbError.code === "42501" ? 403 : dbError.code === "23514" ? 400 : 500;
-    return error(status, dbError.message);
-  }
+  if (dbError) return error(dbErrorStatus(dbError), dbErrorMessage(dbError));
 
   const published = data as string;
   revalidateTag(LIBRARY_TAG, "max");
