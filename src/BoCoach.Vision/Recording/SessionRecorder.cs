@@ -47,6 +47,21 @@ public sealed class SessionRecorder : IDisposable
     /// <summary>Último error al capturar o escribir (la grabación sigue).</summary>
     public string? LastError { get; private set; }
 
+    /// <summary>
+    /// Con menos de esto libre en el disco, la grabación deja de escribir capturas (una hora de partida ocupa cientos de
+    /// MB, y una grabación olvidada llenaba el disco). Sigue sola si se libera espacio.
+    /// </summary>
+    public const long MinFreeBytes = 1L << 30;
+
+    /// <summary>Cada cuántas capturas se mira el espacio libre (a 2 por segundo, cada 30 s).</summary>
+    public const int FreeSpaceCheckEvery = 60;
+
+    /// <summary>Bytes libres en el disco de una carpeta, o null si no se puede saber. Los tests lo reemplazan.</summary>
+    public Func<string, long?> FreeSpace { get; init; } = DiskFreeSpace;
+
+    /// <summary>True mientras no se graba por falta de espacio.</summary>
+    public bool PausedForSpace { get; private set; }
+
     /// <summary>Crea la carpeta y escribe session.json, sin arrancar el temporizador (útil para tests).</summary>
     public void Open()
     {
@@ -113,6 +128,15 @@ public sealed class SessionRecorder : IDisposable
                 throw new InvalidOperationException("Primero hay que abrir la grabación.");
             var frame = Frames;
             var time = (long)_clock.Elapsed.TotalMilliseconds;
+            if (frame % FreeSpaceCheckEvery == 0 || PausedForSpace)
+            {
+                PausedForSpace = FreeSpace(Folder) is { } free && free < MinFreeBytes;
+                if (PausedForSpace)
+                {
+                    LastError = $"queda menos de {MinFreeBytes >> 30} GB libre en el disco: la grabación está en pausa";
+                    return;
+                }
+            }
             try
             {
                 foreach (var (name, rect) in _layout.Regions)
@@ -157,4 +181,16 @@ public sealed class SessionRecorder : IDisposable
     public void Dispose() => Stop();
 
     public static string FileName(int frame, string region) => $"{frame:D6}_{region}.png";
+
+    private static long? DiskFreeSpace(string folder)
+    {
+        try
+        {
+            return Path.GetPathRoot(Path.GetFullPath(folder)) is { Length: > 0 } root ? new DriveInfo(root).AvailableFreeSpace : null;
+        }
+        catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            return null; // una carpeta de red o un disco que no responde: se graba igual
+        }
+    }
 }

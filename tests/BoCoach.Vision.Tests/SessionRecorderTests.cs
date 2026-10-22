@@ -72,6 +72,28 @@ public sealed class SessionRecorderTests : IDisposable
     }
 
     [Fact]
+    public void Sin_espacio_en_el_disco_no_escribe_y_sigue_cuando_se_libera()
+    {
+        long free = SessionRecorder.MinFreeBytes - 1;
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName) { FreeSpace = _ => free };
+        recorder.Open();
+
+        recorder.CaptureFrame();
+        recorder.CaptureFrame();
+
+        Assert.Equal(0, recorder.Frames);
+        Assert.True(recorder.PausedForSpace);
+        Assert.Contains("disco", recorder.LastError);
+        Assert.Empty(Directory.GetFiles(recorder.Folder!, "*.png"));
+
+        free = SessionRecorder.MinFreeBytes * 10;
+        recorder.CaptureFrame();
+
+        Assert.Equal(1, recorder.Frames);
+        Assert.False(recorder.PausedForSpace);
+    }
+
+    [Fact]
     public void Una_grabacion_vieja_sin_escala_se_lee_a_escala_1()
     {
         using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
