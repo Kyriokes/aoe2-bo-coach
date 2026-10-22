@@ -27,6 +27,23 @@ public class BuildOrderSuggesterTests
         Assert.Contains("de tu civ", suggestion!.Reason);
     }
 
+    // D8: el campo map de la BO manda; sin él, vale la etiqueta como antes.
+    [Fact]
+    public void El_mapa_de_la_BO_suma_si_es_el_de_la_partida_y_resta_si_es_otro()
+    {
+        var forArabia = Scouts with { Id = "arabia", Map = "arabia", Tags = [] };
+        var forArena = Scouts with { Id = "arena", Map = "arena", Tags = ["arabia"] };
+        var tagged = Scouts with { Id = "tag", Map = null, Tags = ["arabia"] };
+        var plain = Scouts with { Id = "plain", Map = null, Tags = [] };
+
+        double Score(BuildOrder bo) => BuildOrderSuggester.Score(bo, new MatchSetup("franks", Map: "Arabia"), Styles);
+
+        Assert.Equal(Score(plain) + 2, Score(forArabia));
+        Assert.Equal(Score(plain) + 2, Score(tagged));
+        Assert.Equal(Score(plain) - 2, Score(forArena));
+        Assert.Contains("para Arabia", BuildOrderSuggester.Suggest([forArabia, forArena], new MatchSetup("franks", Map: "Arabia"), Styles)!.Reason);
+    }
+
     [Fact]
     public void El_estilo_de_una_BO_sale_de_sus_pasos()
     {

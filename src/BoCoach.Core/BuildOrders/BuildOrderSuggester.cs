@@ -198,10 +198,26 @@ public static class BuildOrderSuggester
         {
             return null;
         }
-        if (c.MapKey.Length > 0 && bo.Tags.Any(t => Normalize(t) == c.MapKey))
+        // D8: el mapa de la BO manda (+2 si es el de la partida, -2 si es otro); sin mapa, vale la etiqueta como antes.
+        if (c.MapKey.Length > 0)
         {
-            score += 2;
-            why.Add($"para {c.Match.Map}");
+            if (!Maps.IsAny(bo.Map))
+            {
+                if (Normalize(bo.Map) == c.MapKey)
+                {
+                    score += 2;
+                    why.Add($"para {c.Match.Map}");
+                }
+                else
+                {
+                    score -= 2;
+                }
+            }
+            else if (bo.Tags.Any(t => Normalize(t) == c.MapKey))
+            {
+                score += 2;
+                why.Add($"para {c.Match.Map}");
+            }
         }
         var style = StyleOf(bo);
         if (style is not null && c.Mine.Count > 0 && c.Mine.Contains(style))
