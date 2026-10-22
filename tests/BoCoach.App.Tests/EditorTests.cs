@@ -366,6 +366,14 @@ public sealed class EditorTests : IDisposable
     }
 
     [Fact]
+    public void Apoyar_abre_la_seccion_de_la_web()
+    {
+        var main = new MainViewModel(_data, new FakeDialogs());
+
+        Assert.Equal("https://aoe2-bo-coach.vercel.app/#apoyar", main.SupportUrl);
+    }
+
+    [Fact]
     public void Filtrar_la_biblioteca_por_civ_deja_las_de_esa_civ_y_las_de_cualquiera()
     {
         // D7: una BO importada y una mejorada por civ, más los 3 ejemplos para cualquier civ.

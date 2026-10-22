@@ -322,6 +322,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         return window.ShowDialog() == true ? window.Result : null;
     }
 
+    private void Support_Click(object sender, RoutedEventArgs e) => OpenUrl(ViewModel.SupportUrl);
+
     /// <summary>Solo direcciones http(s): las arma la web, pero no se abre cualquier cosa.</summary>
     public void OpenUrl(string url)
     {

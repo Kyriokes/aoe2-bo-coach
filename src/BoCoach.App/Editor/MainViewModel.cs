@@ -47,6 +47,9 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _suppressOpen;
 
     /// <param name="web">La cuenta de la biblioteca web (por defecto, la de %APPDATA%\BoCoach\web.json).</param>
+    /// <summary>La sección "Apoyar el proyecto" de la web (Cafecito, PayPal, Ko-fi, Mercado Pago y las metas).</summary>
+    public string SupportUrl => new Uri(_web.Settings.BaseUri, "#apoyar").ToString();
+
     public MainViewModel(CoachData app, IDialogs dialogs, WebAccount? web = null)
     {
         _app = app;

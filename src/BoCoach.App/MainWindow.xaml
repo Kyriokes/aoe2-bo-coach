@@ -51,7 +51,9 @@
                         <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
                                 ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
                         <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
-                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Margin="0" />
+                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" />
+                        <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"
+                                ToolTip="Invitame un café (Cafecito, PayPal, Ko-fi o Mercado Pago) y mirá las metas del proyecto en la web" />
                     </StackPanel>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
