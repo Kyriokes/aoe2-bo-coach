@@ -54,8 +54,11 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         CursorRemindersBox.DataContext = Coach;
         AutoStartBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
+        ViewModel.GameCiv = () => Coach.GameCiv == CoachSessionViewModel.BoCiv ? null : Coach.GameCiv;
         Coach.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName == nameof(CoachSessionViewModel.GameCiv))
+                ViewModel.GameCivChanged();
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))
                 ViewModel.Status = Coach.Status;
         };

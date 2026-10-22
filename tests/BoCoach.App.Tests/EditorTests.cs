@@ -343,6 +343,29 @@ public sealed class EditorTests : IDisposable
     }
 
     [Fact]
+    public void Filtrar_la_biblioteca_por_civ_deja_las_de_esa_civ_y_las_de_cualquiera()
+    {
+        // D7: una BO importada y una mejorada por civ, más los 3 ejemplos para cualquier civ.
+        var main = new MainViewModel(_data, new FakeDialogs());
+
+        main.CivFilter = "huns";
+        Assert.Equal(5, main.Entries.Count);
+        Assert.All(main.Entries, e => Assert.Contains(e.BuildOrder!.Civ, new[] { "huns", "any" }));
+
+        main.CivFilter = MainViewModel.GameCivFilter;
+        var civ = "franks";
+        main.GameCiv = () => civ;
+        main.GameCivChanged();
+        Assert.Contains(main.Entries, e => e.BuildOrder!.Civ == "franks");
+        Assert.DoesNotContain(main.Entries, e => e.BuildOrder!.Civ == "huns");
+
+        main.GameCiv = () => null; // "la de la BO": no hay civ de la partida, se ven todas
+        main.GameCivChanged();
+        main.CivFilter = MainViewModel.AllCivs;
+        Assert.True(main.Entries.Count > 100);
+    }
+
+    [Fact]
     public void Importar_un_archivo_roto_muestra_el_error()
     {
         var broken = Path.Combine(Path.GetTempPath(), $"rota-{Guid.NewGuid():N}.json");

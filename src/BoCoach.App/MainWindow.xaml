@@ -175,6 +175,12 @@
                     <TextBlock DockPanel.Dock="Top" Text="BIBLIOTECA" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
                     <TextBox DockPanel.Dock="Top" x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="Buscar por nombre, civ, tags o descripción" Margin="0,0,0,8" />
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8"
+                               ToolTip="Mostrar las BO de una civ (y las que sirven para cualquiera). &quot;La de la partida&quot; es la civ elegida arriba">
+                        <TextBlock Text="Civ" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding CivFilterOptions}" SelectedItem="{Binding CivFilter}"
+                                  AutomationProperties.Name="Filtrar la biblioteca por civ" />
+                    </DockPanel>
                     <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                         <Button Content="Nueva" Command="{Binding NewCommand}" ToolTip="Ctrl+N" Margin="0,0,6,6" />
                         <Button Content="Importar…" Command="{Binding ImportCommand}" Margin="0,0,6,6"

@@ -74,6 +74,36 @@ public sealed partial class MainViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string value) => RefreshList();
 
+    public const string AllCivs = "(todas)";
+    public const string GameCivFilter = "(la de la partida)";
+
+    /// <summary>
+    /// D7: con una BO por civ la lista es larga. Filtra por civ: todas, la de la partida (la de la barra de arriba) o
+    /// una civ. Las BO para cualquier civ ("any") se ven siempre.
+    /// </summary>
+    [ObservableProperty] public partial string CivFilter { get; set; } = AllCivs;
+
+    partial void OnCivFilterChanged(string value) => RefreshList();
+
+    public IReadOnlyList<string> CivFilterOptions => [AllCivs, GameCivFilter, .. _app.GameData.Civs.Keys.Order()];
+
+    /// <summary>La civ de la partida (null = la de la BO): la da la ventana con lo elegido en la barra de arriba.</summary>
+    public Func<string?> GameCiv { get; set; } = () => null;
+
+    /// <summary>La civ de la partida cambió: si el filtro la usa, la lista se rehace.</summary>
+    public void GameCivChanged()
+    {
+        if (CivFilter == GameCivFilter)
+            RefreshList();
+    }
+
+    private bool PassesCivFilter(LibraryEntry entry)
+    {
+        var civ = CivFilter == GameCivFilter ? GameCiv() : CivFilter == AllCivs ? null : CivFilter;
+        return civ is null || entry.BuildOrder is not { } bo
+            || string.Equals(bo.Civ, civ, StringComparison.OrdinalIgnoreCase) || string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase);
+    }
+
     partial void OnSelectedEntryChanged(LibraryEntry? value)
     {
         if (_suppressOpen || value is null)
@@ -341,7 +371,7 @@ public sealed partial class MainViewModel : ObservableObject
         var selectedPath = SelectedEntry?.Path;
         _suppressOpen = true;
         Entries.Clear();
-        foreach (var entry in _app.Library.Search(SearchText))
+        foreach (var entry in _app.Library.Search(SearchText).Where(PassesCivFilter))
             Entries.Add(entry);
         SelectedEntry = Entries.FirstOrDefault(e => e.Path == selectedPath);
         _suppressOpen = false;
