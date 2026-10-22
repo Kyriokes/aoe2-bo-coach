@@ -172,6 +172,63 @@ describe("biblioteca", () => {
 
     it("las funciones internas no se pueden llamar desde afuera", async () => {
       await expect(as(db, null, "select public.app_token_owner('x')")).rejects.toThrow(/permission/);
+      await expect(as(db, null, "select public.hash_token('x')")).rejects.toThrow(/permission/);
+    });
+
+    it("con el token tampoco se saltean los topes de la BO", async () => {
+      const t = await token(ana);
+      const huge = { ...scouts, steps: [{ id: "s1", do: "train", what: "villager", count: 1_000_000 }] };
+      await expect(as(db, null, publish, [t, huge, null])).rejects.toThrow(/build_orders_body_ok/);
+    });
+
+    it("hasta 20 tokens por cuenta", async () => {
+      for (let i = 0; i < 20; i++) await token(ana);
+      await expect(token(ana)).rejects.toThrow(/20 tokens/);
+    });
+  });
+
+  describe("topes aunque se le hable directo a la base", () => {
+    const bad = (body: unknown) => expect(as(db, ana, insertBo, ["Mala", body])).rejects.toThrow(/check/);
+    const step = (extra: Record<string, unknown>) => ({ ...scouts, steps: [{ id: "s1", do: "train", what: "villager", ...extra }] });
+
+    it("count y builders de 1 a 200, enteros", async () => {
+      await as(db, ana, insertBo, ["Bien", step({ count: 200 })]);
+      await as(db, ana, insertBo, ["Sin count", step({})]);
+      await as(db, ana, insertBo, ["Builders null", step({ do: "build", what: "house", builders: null })]);
+      await bad(step({ count: 201 }));
+      await bad(step({ count: 0 }));
+      await bad(step({ count: 2.5 }));
+      await bad(step({ count: "mucho" }));
+      await bad(step({ do: "build", what: "house", builders: 100000 }));
+    });
+
+    it("los pasos de las ramas también", async () => {
+      const branch = (count: number) => ({ ...scouts, branches: [{ on: "enemy_feudal_click", steps: [{ id: "r1", do: "train", what: "archer", count }] }] });
+      await as(db, ana, insertBo, ["Rama", branch(6)]);
+      await bad(branch(999999));
+      await bad({ ...scouts, branches: "no" });
+    });
+
+    it("hasta 300 pasos y 512 KB", async () => {
+      const many = (n: number) => ({ ...scouts, steps: Array.from({ length: n }, (_, i) => ({ id: `s${i}`, do: "train", what: "villager" })) });
+      await as(db, ana, insertBo, ["300 pasos", many(300)]);
+      await bad(many(301));
+      await bad({ ...scouts, description: "x".repeat(600_000) });
+      await bad({ ...scouts, steps: ["no es un paso"] });
+    });
+
+    it("etiquetas cortas, versión del formato y clics de edad razonables", async () => {
+      await expect(as(db, ana, "insert into public.build_orders (name, tags, schema_version, body) values ('x', $1, 1, $2)", [["x".repeat(31)], scouts])).rejects.toThrow(/check/);
+      await expect(as(db, ana, "insert into public.build_orders (name, schema_version, body) values ('x', 1000, $1)", [scouts])).rejects.toThrow(/check/);
+      await expect(as(db, ana, "insert into public.build_orders (name, schema_version, body, feudal_click) values ('x', 1, $1, -5)", [scouts])).rejects.toThrow(/check/);
+    });
+
+    it("hasta 150 BO nuevas por cuenta en 24 horas", async () => {
+      await db.query(
+        `insert into public.build_orders (owner_id, name, schema_version, body)
+         select $1, 'BO ' || i, 1, $2 from generate_series(1, 150) as i`, [ana, scouts]);
+      await expect(as(db, ana, insertBo, ["La 151", scouts])).rejects.toThrow(/24 horas/);
+      await as(db, beto, insertBo, ["La de Beto", scouts]);
     });
   });
 });
