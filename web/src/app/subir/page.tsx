@@ -5,7 +5,11 @@ import { Uploader } from "@/components/Uploader";
 import { getBuildOrder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Subir una BO" };
+export const metadata: Metadata = {
+  title: "Subir una build order",
+  description: "Publicá tu build order de Age of Empires II: se revisa y se simula con el motor de BO Coach antes de subirla.",
+  alternates: { canonical: "/subir" },
+};
 
 export default function UploadPage({ searchParams }: PageProps<"/subir">) {
   return (

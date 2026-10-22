@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
@@ -19,13 +19,19 @@ const geistMono = Geist_Mono({
 const description =
   "Overlay para Age of Empires II: Definitive Edition que lee la pantalla, sigue tu build order paso a paso y te dice dónde poner cada aldeano. Con una biblioteca para compartir build orders.";
 
+const title = `${SITE_NAME}: overlay de build orders para Age of Empires II`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  title: { default: title, template: `%s · ${SITE_NAME}` },
   description,
-  openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title: SITE_NAME, description },
-  twitter: { card: "summary_large_image" },
+  applicationName: SITE_NAME,
+  openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title, description },
+  twitter: { card: "summary_large_image", title, description },
+  category: "games",
 };
+
+export const viewport: Viewport = { themeColor: "#1e1a16", colorScheme: "dark" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

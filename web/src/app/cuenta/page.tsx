@@ -6,7 +6,7 @@ import { formatClock } from "@/lib/buildOrder";
 import { getCurrentUser } from "@/lib/session";
 import { sessionClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Mi cuenta" };
+export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false, follow: false } };
 
 export default function AccountPage() {
   return (

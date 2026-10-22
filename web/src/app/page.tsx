@@ -1,7 +1,56 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ExampleDemo } from "@/components/ExampleDemo";
-import { DOWNLOAD_URL, REPO_URL } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { GAME } from "@/lib/jsonLd";
+import { SITE_NAME } from "@/lib/share";
+import { DOWNLOAD_URL, REPO_URL, siteUrl } from "@/lib/site";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+/** La app y la web para los buscadores: una aplicación gratis para Windows y un sitio con buscador de BO. */
+function structuredData() {
+  const base = siteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${base}/#app`,
+        name: SITE_NAME,
+        description:
+          "Overlay para Age of Empires II: Definitive Edition que lee la pantalla, sigue tu build order paso a paso y te dice dónde poner cada aldeano.",
+        applicationCategory: "GameApplication",
+        operatingSystem: "Windows 10, Windows 11",
+        url: base,
+        downloadUrl: DOWNLOAD_URL,
+        image: `${base}/opengraph-image`,
+        screenshot: `${base}/capturas/overlay.png`,
+        inLanguage: "es",
+        isAccessibleForFree: true,
+        license: "https://opensource.org/licenses/MIT",
+        codeRepository: REPO_URL,
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        about: GAME,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${base}/#web`,
+        name: SITE_NAME,
+        url: base,
+        inLanguage: "es",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: `${base}/biblioteca?q={search_term_string}` },
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+}
 
 const steps = [
   {
@@ -36,6 +85,7 @@ const stack = [
 export default function HomePage() {
   return (
     <div className="flex flex-col gap-16 py-4">
+      <JsonLd data={structuredData()} />
       <section className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col gap-4">
           <p className="text-sm font-medium uppercase tracking-wide text-amber">Age of Empires II: Definitive Edition</p>
@@ -60,7 +110,7 @@ export default function HomePage() {
             alt="El overlay durante una partida: el paso actual (mover 3 aldeanos de ovejas a madera), lo que está en curso (telar y Edad Feudal) y cómo quedan los aldeanos al terminar el paso."
             width={380}
             height={184}
-            priority
+            preload
             className="w-full max-w-md rounded-lg border border-line shadow-lg"
           />
           <figcaption className="text-xs text-faint">El overlay a los 8:20 de una partida de scouts.</figcaption>
