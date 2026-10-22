@@ -1,10 +1,12 @@
 import { formatClock } from "./buildOrder";
+import { CIV_NAMES } from "./civNames";
 
 export const SITE_NAME = "AoE2 BO Coach";
 
-/** "Cualquier civ" para "any"; si no, la clave de la civ ("britons"). */
+/** "Cualquier civ" para "any"; si no, el nombre en castellano ("Britanos"), o la clave si no es una civ conocida. */
 export function civLabel(civ: string) {
-  return civ === "any" ? "Cualquier civ" : civ;
+  if (civ === "any") return "Cualquier civ";
+  return Object.hasOwn(CIV_NAMES, civ.toLowerCase()) ? CIV_NAMES[civ.toLowerCase()] : civ;
 }
 
 /** Lo que hace falta de una BO para mostrarla al compartir el enlace. */
