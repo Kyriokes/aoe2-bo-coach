@@ -43,6 +43,9 @@
 //       Elige una guía por civ (la de su apertura típica, mejor votada y con menos avisos; sin guía propia, la del grupo
 //       o una genérica con la civ puesta), guarda la original en los fixtures y la convertida en build_orders/civs.
 //       --survey solo muestra la elección y los avisos.
+//   improve <carpeta> [--civ clave]
+//       Mejora con el simulador cada BO de la carpeta sin cambiar su estrategia (BuildOrderOptimizer) y guarda
+//       <civ>-mejorada.json con lo que cambió y los tiempos antes y después.
 //   autocalibrate <pantalla.png> [--out regions.json] [--read [--dump carpeta]]
 //       Busca el HUD del mod en una captura de pantalla entera y muestra las cajas y la escala del HUD. --read recorta
 //       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
@@ -94,6 +97,7 @@ try
         "import" => ImportGuide(args[1], args[2], args),
         "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
         "civs" => CivGuides.Civs(args[1], args),
+        "improve" => CivGuides.Improve(args[1], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),

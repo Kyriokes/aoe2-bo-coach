@@ -199,6 +199,45 @@ internal static class CivGuides
     }
 
     /// <summary>
+    /// La versión mejorada de cada BO importada de la carpeta (<c>&lt;civ&gt;-mejorada.json</c>): el optimizador busca
+    /// cambios chicos con el simulador sin cambiar la estrategia. Si no encuentra nada que valga, la mejorada es igual
+    /// a la importada y lo dice.
+    /// </summary>
+    public static int Improve(string folder, string[] args)
+    {
+        var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+        var only = Text(args, "--civ", "");
+        var files = Directory.EnumerateFiles(folder, "*.json")
+            .Where(f => !Path.GetFileNameWithoutExtension(f).EndsWith("-mejorada", StringComparison.Ordinal))
+            .Where(f => only.Length == 0 || Path.GetFileNameWithoutExtension(f) == only)
+            .Order().ToList();
+        var lines = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
+        Parallel.ForEach(files, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount - 1) }, file =>
+        {
+            var original = BuildOrderSerializer.Load(file);
+            var result = new BuildOrderOptimizer(data).Improve(original);
+            var civ = Path.GetFileNameWithoutExtension(file);
+            var summary = result.Improved
+                ? $"Mejorada con el simulador del coach desde \"{original.Name}\", con la misma estrategia: {string.Join("; ", result.Changes)}. " +
+                  $"Simulada antes: {result.Before.Describe()}. Después: {result.After.Describe()}."
+                : $"El simulador del coach no encontró cambios que la mejoren (antes y después: {result.Before.Describe()}).";
+            var improved = result.BuildOrder with
+            {
+                Id = $"{original.Id}-mejorada",
+                Name = $"{original.Name} (mejorada)",
+                Tags = original.Tags.Select(t => t == "importada" ? "mejorada" : t).ToList(),
+                Description = $"{summary} {original.Description}",
+            };
+            BuildOrderSerializer.Save(improved, Path.Combine(folder, $"{civ}-mejorada.json"));
+            lines[civ] = $"{civ,-12} {(result.Improved ? $"{result.Before.Score - result.After.Score,6:0} s" : "     -  ")} {result.Before.Describe()} → {result.After.Describe()}" +
+                         (result.Improved ? Environment.NewLine + string.Join(Environment.NewLine, result.Changes.Select(c => $"    {c}")) : "");
+        });
+        foreach (var line in lines.OrderBy(l => l.Key))
+            Console.WriteLine(line.Value);
+        return 0;
+    }
+
+    /// <summary>
     /// La apertura de una guía: la primera unidad militar antes del clic en Castillos (las guías siguen con otras
     /// unidades después), o fast castle si no hay ninguna y clica Castillos. null si no se entiende.
     /// </summary>
