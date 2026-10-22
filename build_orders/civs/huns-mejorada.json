@@ -1,0 +1,289 @@
+{
+  "schema_version": 2,
+  "id": "bog-huns-mejorada",
+  "name": "Scouts \u2192 CA (mejorada)",
+  "civ": "huns",
+  "author": "WololoCrash",
+  "description": "Mejorada con el simulador del coach desde \u0022Scouts \u2192 CA\u0022, con la misma estrategia: Antes de \u0022Construir 1 galer\u00EDa de tiro \u2192 madera\u0022: \u002B5 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -5 en oro; \u0022Investigar Carretilla\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 7:30, Edad de los Castillos 18:30, fin 21:10, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:30, Edad de los Castillos 15:30, fin 18:11, centro urbano parado 0 s. The Truth. Fuente: https://www.buildorderguide.com/builds/LC9e8kHi1EDD9Uc3Afqg.",
+  "tags": [
+    "mejorada",
+    "buildorderguide",
+    "scouts"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "move",
+      "count": 3,
+      "assign": "sheep",
+      "after": [],
+      "note": "Los 3 aldeanos iniciales van directo: la civ no necesita casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "hunt",
+      "after": [],
+      "note": "Atra\u00E9 3 ciervo"
+    },
+    {
+      "id": "s9",
+      "do": "train",
+      "what": "villager",
+      "count": 10,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 21
+    },
+    {
+      "id": "s12",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 3,
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "farm",
+      "count": 1,
+      "assign": "farm",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "build",
+      "what": "farm",
+      "count": 5,
+      "assign": "farm",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "train",
+      "what": "villager",
+      "count": 12,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s22",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "archery_range",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s27",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s28",
+      "do": "build",
+      "what": "archery_range",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "research",
+      "what": "bloodlines",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s30",
+      "do": "research",
+      "what": "fletching",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "research",
+      "what": "gold_mining",
+      "count": 1,
+      "after": []
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 16,
+      "wood": 4,
+      "gold": 0,
+      "stone": 0,
+      "total": 20
+    },
+    "villagers_at_castle": {
+      "food": 17,
+      "wood": 9,
+      "gold": 5,
+      "stone": 0,
+      "total": 31
+    }
+  }
+}

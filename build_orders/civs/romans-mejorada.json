@@ -1,0 +1,343 @@
+{
+  "schema_version": 2,
+  "id": "bog-romans-mejorada",
+  "name": "Romans Infantry (mejorada)",
+  "civ": "romans",
+  "author": "Rambo",
+  "description": "Mejorada con el simulador del coach desde \u0022Romans Infantry\u0022, con la misma estrategia: Antes de \u0022Construir 1 cuartel \u2192 madera\u0022: \u002B2 en madera; Antes de \u0022Investigar Telar\u0022: -2 en madera; Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B19 en madera; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: -19 en madera; \u0022Construir 5 granjas \u2192 granjas\u0022 antes que \u0022Construir 6 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 8:09, Edad de los Castillos 19:53, fin 24:13, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:09, Edad de los Castillos 17:39, fin 21:59, centro urbano parado 3 s. M@A rush in feudal into castle and infantry spam with late game flex Fuente: https://www.buildorderguide.com/builds/lfvaDnYsatp8TDhn8VM6.",
+  "tags": [
+    "mejorada",
+    "buildorderguide",
+    "maa"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "sheep",
+      "after": [],
+      "note": "Atra\u00E9 jabal\u00ED"
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "wood",
+      "after": [],
+      "note": "At 175 wood"
+    },
+    {
+      "id": "s11",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 20
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "sheep",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s16",
+      "do": "move",
+      "count": 1,
+      "assign": "gold",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "train",
+      "what": "militia",
+      "count": 3,
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "research",
+      "what": "man_at_arms",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "farm",
+      "count": 5,
+      "assign": "farm",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "wood",
+      "after": [],
+      "note": "If enemy has 0 units \u003E Farm| Archers\u003E 6-10 Skirms, maybe armor |  Scouts \u003E 1/2 no. as spears"
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s28",
+      "do": "train",
+      "what": "villager",
+      "count": 25,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s30",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "build",
+      "what": "farm",
+      "count": 12,
+      "assign": "farm",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s32",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s33",
+      "do": "research",
+      "what": "scale_mail_armor",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s34",
+      "do": "move",
+      "count": 4,
+      "assign": "gold",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s35",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s36",
+      "do": "train",
+      "what": "villager",
+      "count": 10,
+      "assign": "gold",
+      "after": [],
+      "note": "Research Squires and longswords man, spam infantry, some new vills on stone, most to food gold and wood. Either build siege for scorpions\u0027 vs archers, upgrade to pikemen vs knights, or go castle into Centurions and imp as needed"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 13,
+      "wood": 6,
+      "gold": 0,
+      "stone": 0,
+      "total": 19
+    },
+    "villagers_at_castle": {
+      "food": 23,
+      "wood": 13,
+      "gold": 2,
+      "stone": 0,
+      "total": 38
+    }
+  }
+}

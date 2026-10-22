@@ -20,6 +20,28 @@ public class CivBuildOrdersTests
     }
 
     [Fact]
+    public void Cada_civ_tiene_su_BO_mejorada_y_nunca_es_peor_que_la_importada()
+    {
+        var all = All();
+        var optimizer = new BuildOrderOptimizer(TestData.GameData);
+        foreach (var civ in TestData.GameData.Civs.Keys)
+        {
+            var imported = Assert.Single(all, bo => bo.Civ == civ && bo.Tags.Contains("importada"));
+            var improved = Assert.Single(all, bo => bo.Civ == civ && bo.Tags.Contains("mejorada"));
+            Assert.Equal($"{imported.Id}-mejorada", improved.Id);
+            Assert.True(optimizer.Summarize(improved).Score <= optimizer.Summarize(imported).Score, civ);
+            // La misma estrategia: los mismos edificios, unidades y tecnologías, y los mismos aldeanos en total.
+            Assert.Equal(Strategy(imported), Strategy(improved));
+            Assert.Equal(LivePlan.Units(imported).Where((_, i) => LivePlan.IsVillagerTarget(imported.Steps[i])).Sum(),
+                LivePlan.Units(improved).Where((_, i) => LivePlan.IsVillagerTarget(improved.Steps[i])).Sum());
+        }
+    }
+
+    private static string Strategy(BuildOrder bo) => string.Join(",", bo.Steps
+        .Where(s => !LivePlan.IsVillagerTarget(s) && s.Do != StepAction.Move)
+        .GroupBy(s => $"{s.Do} {s.What}").OrderBy(g => g.Key).Select(g => $"{g.Key}×{g.Sum(s => s.Count)}"));
+
+    [Fact]
     public void Todas_validan_y_se_simulan_completas_con_su_civ()
     {
         var validator = new BuildOrderValidator(TestData.GameData);

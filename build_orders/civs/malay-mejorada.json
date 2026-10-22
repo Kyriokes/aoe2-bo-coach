@@ -1,0 +1,302 @@
+{
+  "schema_version": 2,
+  "id": "bog-malay-mejorada",
+  "name": "Two Militia Rush (mejorada)",
+  "civ": "malay",
+  "author": "oSetinhas",
+  "description": "Mejorada con el simulador del coach desde \u0022Two Militia Rush\u0022, con la misma estrategia: Antes de \u0022Mover 3 de ovejas a caza\u0022: \u002B1 en madera, -1 en caza; Antes de \u0022Mover 3 de ovejas a caza\u0022: \u002B1 en madera, -1 en ovejas. Simulada antes: Edad Feudal 8:22, fin 11:24, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:03, fin 10:02, centro urbano parado 0 s. Malay Two Militia Rush Fuente: https://www.buildorderguide.com/builds/1VZRboZgqwk2pqH67uZi.",
+  "tags": [
+    "mejorada",
+    "buildorderguide",
+    "maa"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "move",
+      "count": 3,
+      "assign": "hunt",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s9",
+      "do": "move",
+      "count": 3,
+      "assign": "hunt",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "move",
+      "count": 1,
+      "assign": "hunt",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s16",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s17",
+      "do": "move",
+      "count": 1,
+      "assign": "berries",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "berries",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 20
+    },
+    {
+      "id": "s21",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "move",
+      "count": 4,
+      "assign": "sheep",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "militia",
+      "count": 2,
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "move",
+      "count": 1,
+      "assign": "berries",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s28",
+      "do": "move",
+      "count": 2,
+      "assign": "berries",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "build",
+      "what": "archery_range",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s30",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "move",
+      "count": 2,
+      "assign": "berries",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s32",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s33",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar. 6 Farms Before Blacksmith"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 14,
+      "wood": 5,
+      "gold": 0,
+      "stone": 0,
+      "total": 19
+    }
+  }
+}
