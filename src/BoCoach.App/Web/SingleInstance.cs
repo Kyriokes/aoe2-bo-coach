@@ -48,7 +48,7 @@ public sealed class SingleInstance : IDisposable
         {
             try
             {
-                await using var server = new NamedPipeServerStream(_pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                await using var server = new NamedPipeServerStream(_pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await server.WaitForConnectionAsync(_stop.Token);
                 if (await ReadLinkAsync(server, _stop.Token) is { Length: > 0 } link)
                     onLink(link);
@@ -90,7 +90,9 @@ public sealed class SingleInstance : IDisposable
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.Out);
+            // CurrentUserOnly en los dos lados: el pipe solo acepta procesos del mismo usuario de Windows, y el cliente
+            // solo le habla a un pipe creado por ese usuario (otro no puede hacerse pasar por la app y recibir enlaces).
+            using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             client.Connect(timeout: 3000);
             using var writer = new StreamWriter(client) { AutoFlush = true };
             writer.WriteLine(link);
