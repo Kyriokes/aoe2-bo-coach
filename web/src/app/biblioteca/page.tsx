@@ -63,7 +63,7 @@ export default function LibraryPage({ searchParams }: PageProps<"/biblioteca">) 
         </Suspense>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           Buscá una BO, mirá su línea de tiempo y abrila en BO Coach para que el overlay te la vaya marcando durante la
-          partida. ¿Tenés una propia? <Link href="/subir" className="text-amber hover:underline">Subila</Link>.
+          partida. ¿Tenés una propia? <Link href="/subir" className="text-amber hover:underline">Armala o subila</Link>.
         </p>
       </section>
       <Suspense fallback={<div className="h-10" />}>

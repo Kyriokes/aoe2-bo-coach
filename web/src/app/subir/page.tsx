@@ -1,23 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Uploader } from "@/components/Uploader";
+import { BuildOrderEditor } from "@/components/editor/BuildOrderEditor";
 import { getBuildOrder } from "@/lib/data";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata: Metadata = {
-  title: "Subir una build order",
-  description: "Publicá tu build order de Age of Empires II: se revisa y se simula con el motor de BO Coach antes de subirla.",
+  title: "Armar una build order",
+  description:
+    "Armá tu build order de Age of Empires II arrastrando pasos a una línea de tiempo: cada cambio se simula con el motor de BO Coach y se publica en la biblioteca.",
   alternates: { canonical: "/subir" },
 };
 
 export default function UploadPage({ searchParams }: PageProps<"/subir">) {
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Subir una build order</h1>
+      <h1 className="text-2xl font-semibold">Armar una build order</h1>
       <p className="max-w-2xl text-sm text-muted">
-        Exportala desde el editor de BO Coach (o pegá el JSON). Antes de publicarla se revisa y se simula con el mismo
-        motor que usa la app, así ves la línea de tiempo y si algo no cierra.
+        Arrastrá pasos de la paleta a la línea de tiempo: cada cambio se simula con el mismo motor que usa la app, y
+        ninguna caja puede ir a donde el juego no la deja. También podés abrir un JSON del editor de la app o empezar
+        de un ejemplo.
       </p>
       <Suspense fallback={<p className="text-sm text-faint">Cargando…</p>}>
         <Upload searchParams={searchParams} />
@@ -46,7 +48,7 @@ async function Upload({ searchParams }: { searchParams: PageProps<"/subir">["sea
           código y los votos.
         </p>
       ) : null}
-      <Uploader loggedIn={user !== null} editCode={ownEdit?.code} initialJson={ownEdit ? JSON.stringify(ownEdit.body, null, 2) : ""} />
+      <BuildOrderEditor loggedIn={user !== null} editCode={ownEdit?.code} initialJson={ownEdit ? JSON.stringify(ownEdit.body) : ""} />
     </>
   );
 }

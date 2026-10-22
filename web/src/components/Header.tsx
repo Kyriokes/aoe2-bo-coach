@@ -14,7 +14,7 @@ export function Header() {
             Biblioteca
           </Link>
           <Link href="/subir" className="hover:text-amber">
-            Subir una BO
+            Armar una BO
           </Link>
           <Link href="/#descargar" className="hover:text-amber">
             Descargar

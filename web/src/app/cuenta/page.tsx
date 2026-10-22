@@ -50,7 +50,7 @@ async function Account() {
           <p className="text-sm text-muted">
             Todavía no publicaste ninguna.{" "}
             <Link href="/subir" className="text-amber hover:underline">
-              Subí una
+              Armá una
             </Link>{" "}
             o publicala desde la app.
           </p>

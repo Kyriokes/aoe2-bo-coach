@@ -23,7 +23,7 @@ export function OwnerActions({ code }: { code: string }) {
     <section className="flex flex-wrap items-center gap-3 text-sm">
       <span className="text-faint">Es tuya:</span>
       <Link href={`/subir?editar=${code}`} className="button">
-        Reemplazar con otra versión
+        Editar en la web
       </Link>
       <button type="button" onClick={remove} disabled={pending} className="button">
         Borrar
