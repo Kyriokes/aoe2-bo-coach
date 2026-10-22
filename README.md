@@ -28,7 +28,7 @@ dotnet test BoCoach.slnx
 dotnet run --project src/BoCoach.App
 ```
 
-La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders` (la primera vez se copian las BO de ejemplo). Atajos: Ctrl+1 a Ctrl+4 agregan aldeanos, construcción, investigación o movimiento; Ctrl+D duplica el paso; Alt+↑/↓ lo mueve; Ctrl+Supr lo quita; Ctrl+S guarda. Los pasos también se reordenan arrastrando el ícono ⋮⋮.
+La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders`. Trae una BO por civ importada de [buildorderguide.com](https://www.buildorderguide.com) y su versión mejorada con el simulador del coach (misma estrategia, otro reparto u orden de pasos), además de los ejemplos; las que agrega una versión nueva se suman solas, y el filtro "Civ" ayuda a encontrarlas. "Importar…" también lee las guías de esa página. Atajos: Ctrl+1 a Ctrl+4 agregan aldeanos, construcción, investigación o movimiento; Ctrl+D duplica el paso; Alt+↑/↓ lo mueve; Ctrl+Supr lo quita; Ctrl+S guarda. Los pasos también se reordenan arrastrando el ícono ⋮⋮.
 
 Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número]` la dibuja en un PNG con una biblioteca temporal.
 
