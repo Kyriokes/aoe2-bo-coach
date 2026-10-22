@@ -15,7 +15,9 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
    - Plan **Free**. Tocá **Create new project** y esperá a que termine (un par de minutos).
 3. En el menú de la izquierda, entrá a **SQL Editor** y tocá **New query**.
 4. Abrí en la PC el archivo `web/supabase/migrations/20261016000000_biblioteca.sql`, copiá todo y pegalo en el editor.
-   Tocá **Run**. Abajo tiene que decir **Success. No rows returned**.
+   Tocá **Run**. Abajo tiene que decir **Success. No rows returned**. Repetí lo mismo, en orden, con cada uno de los
+   demás archivos de esa carpeta (por ejemplo `20261022000000_topes.sql`), cada uno en una consulta nueva. Cuando
+   aparezca un archivo nuevo en la carpeta, se corre solo ese.
 5. Andá a **Project Settings** (el engranaje) → **API Keys** y copiá:
    - la **Project URL** (`https://<proyecto>.supabase.co`; también está en **Data API**),
    - la **Publishable key** (empieza con `sb_publishable_`). La **Secret key** no se usa: no la copies a ningún lado.
