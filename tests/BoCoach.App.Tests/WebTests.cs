@@ -225,6 +225,16 @@ public sealed class WebTests : IDisposable
     }
 
     [Fact]
+    public void Un_enlace_con_comillas_no_cuela_otros_argumentos()
+    {
+        // Lo que llega si el enlace es bocoach://import/k7m2xq" --stats "C:\Users\x\archivo
+        string[] args = ["--import", "bocoach://import/k7m2xq", "--stats", @"C:\Users\x\archivo"];
+
+        Assert.Equal(["--import", "bocoach://import/k7m2xq"], LinkProtocol.StartupArguments(args));
+        Assert.Equal(["--replay", "carpeta", "--stats", "uso.csv"], LinkProtocol.StartupArguments(["--replay", "carpeta", "--stats", "uso.csv"]));
+    }
+
+    [Fact]
     public void Registra_los_enlaces_bocoach_para_este_ejecutable()
     {
         // En una clave de prueba propia, no en la de verdad (HKCU\Software\Classes).

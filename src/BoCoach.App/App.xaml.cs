@@ -23,7 +23,7 @@ public partial class App : Application
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
 
-        var args = e.Args;
+        var args = Web.LinkProtocol.StartupArguments(e.Args);
         var screenshot = Argument(args, "--screenshot") ?? Argument(args, "--overlay-screenshot");
         var importLink = Argument(args, "--import");
 

@@ -16,6 +16,13 @@ public sealed class LinkProtocol(string classesKey = @"Software\Classes")
     /// <summary>Comando que Windows corre al abrir un enlace: esta app con --import "bocoach://...".</summary>
     public static string CommandFor(string exePath) => $"\"{exePath}\" --import \"%1\"";
 
+    /// <summary>
+    /// Los argumentos con que arranca la app. Un enlace llega como --import "&lt;enlace&gt;" (ver <see cref="CommandFor"/>),
+    /// pero si el enlace trae comillas Windows lo parte en varios argumentos: uno armado a propósito podía colar
+    /// --screenshot o --stats, que escriben un archivo donde se les diga. Con --import primero, vale solo el enlace.
+    /// </summary>
+    public static string[] StartupArguments(string[] args) => args is ["--import", var link, ..] ? ["--import", link] : args;
+
     /// <summary>True si los enlaces abren este mismo ejecutable.</summary>
     public bool IsRegisteredTo(string exePath)
     {
