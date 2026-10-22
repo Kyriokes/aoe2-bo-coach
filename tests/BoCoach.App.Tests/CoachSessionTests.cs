@@ -156,14 +156,14 @@ public sealed class CoachSessionTests : IDisposable
             await session.LiveCoach!.StepAsync();
 
         Assert.True(host.Lowered); // sin reloj, el overlay baja
-        Assert.StartsWith("Sugerida: Arqueros Feudal (23 pop)", session.Overlay!.BoSuggestion);
+        // El jugador juega con japoneses: desde D7 la biblioteca tiene una BO de cada civ y gana la suya.
+        Assert.StartsWith("Sugerida: Fast Men-at-Arms (de tu civ", session.Overlay!.BoSuggestion);
         Assert.Contains("Ctrl+Alt+B", session.Overlay.BoSuggestion);
-        // Segunda parte de D4: el jugador 1 es una punta de su equipo y enfrente tiene al primero del otro (cumanos).
-        Assert.Contains("para el flanco", session.Overlay.BoSuggestion);
+        // Segunda parte de D4: enfrente tiene al primero del otro equipo (cumanos).
         Assert.StartsWith("Contra cumanos (enfrente): ", session.Overlay.MatchAdvice);
 
         session.AcceptSuggestionCommand.Execute(null);
-        Assert.Equal("Arqueros Feudal (23 pop)", session.LiveCoach!.BuildOrder.Name);
+        Assert.Equal("Fast Men-at-Arms", session.LiveCoach!.BuildOrder.Name);
     }
 
     // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.

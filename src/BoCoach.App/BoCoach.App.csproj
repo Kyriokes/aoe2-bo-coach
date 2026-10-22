@@ -51,6 +51,8 @@
     <None Include="..\..\data\fonts\*.json" Link="data\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\icons\*.json" Link="data\icons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\build_orders\*.json" Link="data\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- D7: una BO por civ (importada y mejorada), junto a los ejemplos: a la biblioteca se copian las que falten. -->
+    <None Include="..\..\build_orders\civs\*.json" Link="data\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <!-- Instrucciones de la versión portable -->

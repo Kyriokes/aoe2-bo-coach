@@ -105,13 +105,33 @@ public sealed partial class BuildOrderLibrary
         return destination;
     }
 
-    /// <summary>Copia las BO de ejemplo si la biblioteca está vacía (primer uso).</summary>
-    public void SeedIfEmpty(IEnumerable<string> examplePaths)
+    /// <summary>
+    /// Copia las BO de ejemplo que la biblioteca no tiene (por id): las de una versión nueva llegan solas (D7, una por
+    /// civ). Las que el usuario mandó a la papelera no vuelven, y las que ya tiene no se tocan aunque las haya
+    /// cambiado. Devuelve cuántas copió.
+    /// </summary>
+    public int SeedMissing(IEnumerable<string> examplePaths)
     {
-        if (System.IO.Directory.EnumerateFiles(Directory, "*.json").Any())
-            return;
+        var trash = System.IO.Path.Combine(Directory, TrashFolder);
+        var known = System.IO.Directory.EnumerateFiles(Directory, "*.json")
+            .Concat(System.IO.Directory.Exists(trash) ? System.IO.Directory.EnumerateFiles(trash, "*.json") : [])
+            .Select(Read)
+            .Select(e => e.BuildOrder?.Id)
+            .OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var copied = 0;
         foreach (var path in examplePaths)
-            File.Copy(path, System.IO.Path.Combine(Directory, System.IO.Path.GetFileName(path)));
+        {
+            if (Read(path).BuildOrder is not { } example || !known.Add(example.Id))
+                continue;
+            // Con el nombre de su id, como todo en la biblioteca: así guardarla desde el editor pisa este archivo.
+            var destination = PathFor(example);
+            if (File.Exists(destination))
+                continue;
+            File.Copy(path, destination);
+            copied++;
+        }
+        return copied;
     }
 
     public static string NewId() => Guid.NewGuid().ToString("N")[..10];

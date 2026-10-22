@@ -145,10 +145,28 @@ public sealed class BuildOrderLibraryTests : IDisposable
     [Fact]
     public void Primer_uso_copia_los_ejemplos()
     {
-        _library.SeedIfEmpty(TestData.ExampleBuildOrders);
-        _library.SeedIfEmpty(TestData.ExampleBuildOrders); // la segunda vez no hace nada
+        Assert.Equal(TestData.ExampleBuildOrders.Count(), _library.SeedMissing(TestData.ExampleBuildOrders));
+        Assert.Equal(0, _library.SeedMissing(TestData.ExampleBuildOrders)); // la segunda vez no hace nada
 
         Assert.Equal(TestData.ExampleBuildOrders.Count(), _library.List().Count);
+    }
+
+    [Fact]
+    public void Agrega_los_ejemplos_que_faltan_sin_tocar_los_cambiados_ni_reponer_los_de_la_papelera()
+    {
+        // D7: con la biblioteca ya armada, una versión nueva trae BO de ejemplo nuevas (una por civ).
+        var examples = TestData.ExampleBuildOrders.ToList();
+        _library.SeedMissing(examples.Take(1));
+        var changed = _library.List()[0];
+        _library.Save(changed.BuildOrder! with { Name = "La mía" });
+        _library.SeedMissing(examples.Take(2));
+        var second = _library.List().Single(e => e.BuildOrder!.Id != changed.BuildOrder!.Id);
+        _library.MoveToTrash(second.Path);
+
+        Assert.Equal(examples.Count - 2, _library.SeedMissing(examples));
+        Assert.Equal(examples.Count - 1, _library.List().Count);
+        Assert.Contains(_library.List(), e => e.Name == "La mía");
+        Assert.DoesNotContain(_library.List(), e => e.BuildOrder!.Id == second.BuildOrder!.Id);
     }
 
     [Theory]

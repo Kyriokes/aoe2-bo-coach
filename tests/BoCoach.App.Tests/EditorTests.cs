@@ -296,23 +296,24 @@ public sealed class EditorTests : IDisposable
     {
         var dialogs = new FakeDialogs();
         var main = new MainViewModel(_data, dialogs);
-        Assert.Equal(3, main.Entries.Count); // ejemplos copiados en el primer uso
+        var examples = main.Entries.Count; // ejemplos copiados en el primer uso: los 3 de siempre y una por civ (D7)
+        Assert.True(examples > 60, $"{examples} ejemplos");
 
         main.NewCommand.Execute(null);
         main.Editor!.Name = "Mi BO";
         main.Editor.AddVillagersCommand.Execute(null);
         main.SaveCommand.Execute(null);
 
-        Assert.Equal(4, main.Entries.Count);
+        Assert.Equal(examples + 1, main.Entries.Count);
         Assert.Equal("Mi BO", main.SelectedEntry?.Name);
         Assert.False(main.Editor.IsDirty);
 
         main.DuplicateCommand.Execute(null);
         Assert.Equal("Mi BO (copia)", main.SelectedEntry?.Name);
-        Assert.Equal(5, main.Entries.Count);
+        Assert.Equal(examples + 2, main.Entries.Count);
 
         main.TrashCommand.Execute(null);
-        Assert.Equal(4, main.Entries.Count);
+        Assert.Equal(examples + 1, main.Entries.Count);
         Assert.True(Directory.EnumerateFiles(Path.Combine(_libraryDir.FullName, BuildOrderLibrary.TrashFolder)).Any());
     }
 
@@ -336,7 +337,7 @@ public sealed class EditorTests : IDisposable
     {
         var main = new MainViewModel(_data, new FakeDialogs());
 
-        main.SearchText = "castle";
+        main.SearchText = "castle principiantes";
 
         Assert.Equal("Fast Castle para principiantes (27 + 2)", Assert.Single(main.Entries).Name);
     }
