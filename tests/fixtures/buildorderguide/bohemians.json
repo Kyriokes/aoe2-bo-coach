@@ -1,0 +1,311 @@
+{
+  "difficulty": 3,
+  "id": "vm4MUf5yp1ERGDt5dke2",
+  "number_of_ratings": 1,
+  "publisher": "pHvsvodMHCVafiNiBNC9coVGEnO2",
+  "title": "Fast Castle → Hand Cannoneers",
+  "attributes": [
+    "fastCastle"
+  ],
+  "avg_rating": 3,
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FHand%20Cannoneer.png?alt=media&token=e4707880-f835-4d4b-9571-4b1698eeae98",
+  "pop": {
+    "feudalAge": 25,
+    "castleAge": 2
+  },
+  "civilization": "Bohemians",
+  "image": "Hand Cannoneer",
+  "description": "Fast castle directly into two range hand cannoneers.  Best on Arena.",
+  "reference": "",
+  "uptime": {
+    "castleAge": "14:25",
+    "feudalAge": "10:55"
+  },
+  "status": "draft",
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "lure",
+      "animal": "deer"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "deer"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ]
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "boar",
+      "buildings": []
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "farm"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        },
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 3,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 3,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 3,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "custom",
+      "text": "Begin moving your shephards to farms when available, otherwise to straggler trees."
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 3,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 4,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "moveVillagers",
+      "from": "wood",
+      "to": "gold"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "newVillagers",
+      "task": "gold",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "custom",
+      "text": "Continue building farms and gathering wood."
+    }
+  ],
+  "author": "Scout Cavalry"
+}

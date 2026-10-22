@@ -1,0 +1,371 @@
+{
+  "civilization": "Huns",
+  "uptime": {
+    "feudalAge": "09:40",
+    "castleAge": "16:55"
+  },
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": []
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "lure",
+      "animal": "deer"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 16,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": []
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 16,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 16,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 16,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ]
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "trainUnit",
+      "unit": "scout"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "farm"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        },
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ]
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "gold",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "miningCamp"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "archeryRange"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "bloodlines",
+        "fletching",
+        "goldMining"
+      ],
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 17,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    }
+  ],
+  "author": "WololoCrash",
+  "description": "The Truth.",
+  "pop": {
+    "castleAge": 11,
+    "feudalAge": 21
+  },
+  "id": "LC9e8kHi1EDD9Uc3Afqg",
+  "publisher": "UvTU83CDjBgpVQoGsduikL37LCF2",
+  "status": "draft",
+  "image": "Scout",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "reference": "",
+  "avg_rating": 4.333333333333333,
+  "difficulty": 1,
+  "title": "Scouts → CA",
+  "number_of_ratings": 3
+}

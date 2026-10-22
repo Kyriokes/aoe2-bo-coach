@@ -1,0 +1,354 @@
+{
+  "avg_rating": 5,
+  "status": "changed",
+  "publisher": "ZHQEwN3CLnhfgLqFunfb6dapyr92",
+  "image": "Longbowman",
+  "civilization": "Generic",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FLongbowman.png?alt=media&token=64c24272-ecbc-4079-a6bb-c1d80a899cf8",
+  "pop": {
+    "feudalAge": 20
+  },
+  "number_of_ratings": 5,
+  "id": "ZCQtzQOMVL1lcHSGNbOl",
+  "author": "Hera",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 5,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 5,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 5,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 9,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 12,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "stragglerTree",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 12,
+        "food": 6,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 12,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 12,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "sheep",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [],
+      "count": 2,
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        }
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "unit": "archer",
+      "count": 4,
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "fletching"
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "berries",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "text": "make farms when you have wood ~4-6",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 12,
+        "food": 5,
+        "stone": 0
+      },
+      "text": "wall with 2 vills",
+      "type": "custom"
+    }
+  ],
+  "attributes": [
+    "fastFeudal",
+    "fastCastle"
+  ],
+  "difficulty": 1,
+  "uptime": {
+    "feudalAge": "09:15"
+  },
+  "description": "standard 1 range archer build order ",
+  "title": "19 Vil 1 Range"
+}

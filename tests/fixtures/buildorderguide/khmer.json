@@ -1,0 +1,288 @@
+{
+  "description": "In the quest for the fast Scout rushes, it seems that Khmer have risen to the occasion with a Scout rush uptime that rivals the Mongols. While this build is extremely lean, it can be adapted to go up at 17/18 population as well in order to adjust for the game being played.",
+  "uptime": {
+    "feudalAge": "07:35",
+    "castleAge": "17:45"
+  },
+  "difficulty": 3,
+  "avg_rating": 4.5,
+  "author": "HumzaCrumza",
+  "image": "Scout",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "pop": {
+    "feudalAge": 16,
+    "castleAge": 18
+  },
+  "id": 43,
+  "title": "Fast Scouts",
+  "status": "published",
+  "civilization": "Khmer",
+  "publisher": "nOuk4lquYrXt4H2xafiZpPUFvN82",
+  "reference": "https://www.youtube.com/watch?v=fzMDhRF_9RE&feature=youtu.be",
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 8,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "lure",
+      "animal": "boar"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "lure",
+      "animal": "deer"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": []
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 8,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 8
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "wood",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "trainUnit",
+      "unit": "scout"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "berries"
+    },
+    {
+      "tech": [
+        "horseCollar"
+      ],
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "count": 11,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    }
+  ],
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "number_of_ratings": 2
+}

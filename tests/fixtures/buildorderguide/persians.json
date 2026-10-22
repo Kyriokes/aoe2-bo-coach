@@ -1,0 +1,382 @@
+{
+  "avg_rating": 5,
+  "difficulty": 2,
+  "pop": {
+    "castleAge": 2,
+    "feudalAge": 22
+  },
+  "status": "draft",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "buildings": [],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 3,
+      "animal": "deer",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "boar",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        },
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        },
+        {
+          "count": 1,
+          "type": "market"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resource": "stone",
+      "count": 200,
+      "action": "sell",
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "trade"
+    },
+    {
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 6,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "tech": [
+        "bloodlines"
+      ],
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "unit": "knight",
+      "count": 3,
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "task": "forward",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "monastery"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 7,
+        "build": 1,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "farm",
+      "count": 1,
+      "resources": {
+        "gold": 7,
+        "build": 1,
+        "wood": 6,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "unit": "knight",
+      "count": "∞",
+      "resources": {
+        "gold": 7,
+        "build": 1,
+        "wood": 6,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "unit": "monk",
+      "count": "∞",
+      "resources": {
+        "gold": 7,
+        "build": 1,
+        "wood": 6,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    }
+  ],
+  "id": "40kdCWlDpozjPvxDzuxA",
+  "author": "Morley Games",
+  "description": "Fast castle into knights and monk",
+  "attributes": [
+    "fastCastle"
+  ],
+  "uptime": {
+    "castleAge": "13:30",
+    "feudalAge": "10:05"
+  },
+  "number_of_ratings": 3,
+  "civilization": "Persians",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FFast%20Castle.png?alt=media&token=a12d6e5f-f68b-4f5d-bf8b-9b7670beb357",
+  "image": "Fast Castle",
+  "title": "FC KM",
+  "publisher": "wbjcQK7dmJW3cFi93eRoP3NH7ij2"
+}

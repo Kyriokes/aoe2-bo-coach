@@ -1,0 +1,625 @@
+{
+  "id": "MpKkuNhdFj0HhguzSNGE",
+  "civilization": "Malians",
+  "author": "robpob",
+  "avg_rating": 4.333333333333333,
+  "image": "Scout",
+  "uptime": {
+    "castleAge": "18:10",
+    "feudalAge": "09:15"
+  },
+  "pop": {
+    "feudalAge": 20,
+    "castleAge": 15
+  },
+  "attributes": [
+    "fastFeudal"
+  ],
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 8,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        },
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "berries"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "berries"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 5
+      },
+      "type": "newVillagers",
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 6
+      },
+      "type": "moveVillagers",
+      "from": "build",
+      "to": "wood"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 6
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 13,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 6
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "build"
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        },
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 9
+      },
+      "type": "trainUnit",
+      "unit": "scout"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "wall"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "custom",
+      "text": "2 builders wall up + build houses"
+    },
+    {
+      "tech": [
+        "horseCollar"
+      ],
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 0,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "count": 9,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 0,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 2,
+        "wood": 9
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "moveVillagers",
+      "from": "build",
+      "to": "gold"
+    },
+    {
+      "tech": [
+        "bloodlines",
+        "scaleMailArmor"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "tech": [
+        "chainMailArmor",
+        "bowSaw"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 10,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "tech": [
+        "goldShaftMining",
+        "heavyPlow"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 10,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 10,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "custom",
+      "text": "This is sufficient for 2 stable knights"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 21,
+        "stone": 0,
+        "gold": 10,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 21,
+        "stone": 0,
+        "gold": 15,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "resources": {
+        "food": 21,
+        "stone": 0,
+        "gold": 15,
+        "build": 0,
+        "wood": 9
+      },
+      "type": "custom",
+      "text": "This is sufficient for 3 stable knights"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 21,
+        "stone": 0,
+        "gold": 15,
+        "build": 0,
+        "wood": 12
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 21,
+        "stone": 0,
+        "gold": 15,
+        "build": 5,
+        "wood": 12
+      },
+      "type": "newVillagers",
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "townCenter"
+        }
+      ]
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 26,
+        "stone": 0,
+        "gold": 15,
+        "build": 0,
+        "wood": 12
+      },
+      "type": "moveVillagers",
+      "from": "build",
+      "to": "farm"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 26,
+        "stone": 0,
+        "gold": 15,
+        "build": 5,
+        "wood": 12
+      },
+      "type": "newVillagers",
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "townCenter"
+        }
+      ]
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 31,
+        "stone": 0,
+        "gold": 15,
+        "build": 0,
+        "wood": 12
+      },
+      "type": "moveVillagers",
+      "from": "build",
+      "to": "farm"
+    }
+  ],
+  "description": "Malian fast scouts, using wood bonus to go up early.\n\nAfter castle age, build order shows rough roadmap to 3 stable knights, and then adding 2 TCs. If you want to create constant camels instead of knights, rule of thumb is 1 more on food & gold per stable (as creation time is lower).\n\nAfter this rush to imp for farimba powerspike.",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "status": "changed",
+  "number_of_ratings": 3,
+  "publisher": "U4qKLDikYgYGQaZob9iNAk4U9BY2",
+  "reference": "",
+  "difficulty": 1,
+  "title": "Fast Scouts → Knights"
+}

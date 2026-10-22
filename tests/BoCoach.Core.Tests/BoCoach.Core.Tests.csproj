@@ -31,6 +31,8 @@
     <!-- Las BO de ejemplo viejas (scouts y fast castle a mano): muchos tests dependen de sus pasos. -->
     <None Include="..\fixtures\build_orders\*.json" Link="build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\rts-overlay\*.json" Link="fixtures\rts-overlay\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\buildorderguide\*.json" Link="fixtures\buildorderguide\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\build_orders\civs\*.json" Link="civs\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- Lecturas reales (ya suavizadas) de la partida de scouts grabada, para correr el coach sin OCR -->
     <None Include="..\fixtures\rec-20261015-214512\lecturas.csv" Link="fixtures\scouts-20261015-214512.csv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

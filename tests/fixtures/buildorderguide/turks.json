@@ -1,0 +1,418 @@
+{
+  "number_of_ratings": 2,
+  "description": "Fast Imp before 20",
+  "image": "Fast Imperial",
+  "attributes": [
+    "fastImperial"
+  ],
+  "status": "changed",
+  "author": "Danny",
+  "uptime": {
+    "castleAge": "15:40",
+    "feudalAge": "12:10",
+    "imperialAge": "19:40"
+  },
+  "publisher": "c9WyFK0pFuPbkyzwufvjkaJhf052",
+  "title": "Turks 28+2+2 Fast Imp",
+  "avg_rating": 5,
+  "difficulty": 2,
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FFast%20Imperial.png?alt=media&token=0d8d1c36-fe49-41f3-b8d7-9f6aa3c6cd6e",
+  "id": "1YkHpDTKpN7A4LwJvMko",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "buildings": [],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 11,
+        "stone": 0
+      },
+      "animal": "boar",
+      "type": "lure"
+    },
+    {
+      "task": "deer",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "farm",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 16,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 9,
+        "food": 16,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 9,
+        "food": 16,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 9,
+        "food": 16,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 8,
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 9,
+        "food": 16,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 2,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "task": "gold",
+      "buildings": [],
+      "count": 2,
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "market"
+        }
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "tech": [
+        "goldMining",
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "gold": 4,
+        "build": 0,
+        "wood": 11,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "from": "wood",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "siegeWorkshop"
+        },
+        {
+          "count": 1,
+          "type": "monastery"
+        }
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resource": "stone",
+      "count": 200,
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "action": "sell",
+      "type": "trade"
+    },
+    {
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "imperialAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        },
+        {
+          "count": 2,
+          "type": "archeryRange"
+        }
+      ],
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "horseCollar",
+        "bowSaw"
+      ],
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 9,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "imperialAge"
+    }
+  ],
+  "pop": {
+    "imperialAge": 2,
+    "castleAge": 2,
+    "feudalAge": 28
+  },
+  "civilization": "Turks"
+}

@@ -1,0 +1,369 @@
+{
+  "difficulty": 1,
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FArcher.png?alt=media&token=049d898a-7322-4520-8597-da91446238e7",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "animal": "boar",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "sheep",
+      "buildings": [],
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        },
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [],
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "stragglerTree",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "unit": "archer",
+      "count": "∞",
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 8,
+        "food": 9,
+        "stone": 0
+      },
+      "from": "stragglerTree",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 8,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 12,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 12,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 12,
+        "food": 9,
+        "stone": 0
+      },
+      "from": "berries",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 12,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "fletching"
+      ],
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 12,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "research"
+    }
+  ],
+  "image": "Archer",
+  "avg_rating": 5,
+  "attributes": [
+    "fastFeudal"
+  ],
+  "number_of_ratings": 6,
+  "description": "1 Range Archers",
+  "publisher": "zTC1R36A9FfCsBgJZy4VBJVkmSB3",
+  "title": "1 Range Archers",
+  "author": "Hiphopmind",
+  "pop": {
+    "feudalAge": 21
+  },
+  "status": "changed",
+  "civilization": "Koreans",
+  "uptime": {
+    "feudalAge": "09:40"
+  },
+  "id": "sooX8KLK90G8iLXYsKO1"
+}

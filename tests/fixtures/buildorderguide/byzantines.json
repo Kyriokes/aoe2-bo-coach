@@ -1,0 +1,667 @@
+{
+  "title": "Skirmisher Spam",
+  "pop": {
+    "feudalAge": 20,
+    "imperialAge": 7,
+    "castleAge": 19
+  },
+  "difficulty": 2,
+  "status": "draft",
+  "id": "avmmLBy8tsc0mhsMUFPs",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 2,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "berries",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 5,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 5,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 5,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "boar",
+      "to": "sheep",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 3,
+        "wood": 5,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "boar",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 3,
+        "wood": 5,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 7,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 9,
+        "food": 8,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 9,
+        "food": 8,
+        "stone": 0
+      },
+      "text": "Barracks Builder builds Houses and Wall",
+      "type": "custom"
+    },
+    {
+      "task": "wood",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "text": "2nd Builder helps with the wall",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "archeryRange"
+        },
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "task": "sheep",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "unit": "skirmisher",
+      "count": "∞",
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 10,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 11,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "stragglerTree",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 11,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "farm",
+      "buildings": [],
+      "count": 9,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "fletching",
+        "paddedArcherArmor"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "from": "berries",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 7,
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "tech": [
+        "goldMining"
+      ],
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 7,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "task": "gold",
+      "count": 7,
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "monastery"
+        }
+      ],
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "bodkinArrow",
+        "bowSaw",
+        "heavyPlow"
+      ],
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "text": "Research Elite Skirmisher",
+      "type": "custom"
+    },
+    {
+      "unit": "monk",
+      "count": 3,
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "townCenter"
+        }
+      ],
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "text": "Start sending Villagers to Stone",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "imperialAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "university"
+        }
+      ],
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "ballistics"
+      ],
+      "resources": {
+        "gold": 14,
+        "build": 0,
+        "wood": 11,
+        "food": 20,
+        "stone": 0
+      },
+      "type": "research"
+    }
+  ],
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FArcher.png?alt=media&token=049d898a-7322-4520-8597-da91446238e7",
+  "number_of_ratings": 1,
+  "uptime": {
+    "feudalAge": "08:50",
+    "castleAge": "19:25",
+    "imperialAge": "25:30"
+  },
+  "image": "Archer",
+  "reference": "https://www.youtube.com/watch?v=CjGQynjo1HI&ab_channel=TheViper",
+  "publisher": "hGsFkfrJ2qMMDRaPahMeyaL4aFg2",
+  "description": "TheViper played this Byzantines game to demonstrate how strong the civilization was during King of the Desert. He sends the fifth Villager to Wood too early, which ultimately didn't matter.",
+  "author": "TheViper",
+  "civilization": "Byzantines",
+  "avg_rating": 2
+}

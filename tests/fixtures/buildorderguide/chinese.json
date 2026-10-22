@@ -1,0 +1,360 @@
+{
+  "id": "tFPWddfokx2Stuxfkd9V",
+  "number_of_ratings": 3,
+  "title": "Hera Chinese",
+  "reference": "https://www.youtube.com/watch?v=EKZThgQulOg",
+  "description": "Hera build from video \"How To Do The Chinese Opening 2024\" - https://www.youtube.com/watch?v=EKZThgQulOg\n\nNotes:\n- Use \"drop off\" hotkeys on villagers to quickly update the food count and start (and continue) creating villagers as soon as possible\n- ",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "publisher": "zEucv33mCWWiHUU9YwFdFJ0FPg12",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "avg_rating": 5,
+  "image": "Scout",
+  "difficulty": 1,
+  "uptime": {
+    "feudalAge": "08:25"
+  },
+  "status": "changed",
+  "build": [
+    {
+      "task": "sheep",
+      "count": 7,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "boar",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 1,
+      "animal": "deer",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "build",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "deer",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "berries",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "animal": "boar",
+      "type": "lure"
+    },
+    {
+      "task": "boar",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 17,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 17,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 16,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 3,
+        "food": 16,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 5,
+        "food": 14,
+        "stone": 0
+      },
+      "from": "boar",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 5,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 9,
+        "stone": 0
+      },
+      "from": "boar",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "task": "sheep",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [
+        {
+          "count": 3,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "wall"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "unit": "scout",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "count": 10,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 10,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    }
+  ],
+  "pop": {
+    "feudalAge": 21
+  },
+  "author": "Hera",
+  "civilization": "Chinese"
+}

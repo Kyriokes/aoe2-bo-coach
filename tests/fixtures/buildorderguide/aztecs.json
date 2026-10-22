@@ -1,0 +1,339 @@
+{
+  "build": [
+    {
+      "type": "newVillagers",
+      "count": 6,
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "food": 6,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "boar",
+      "resources": {
+        "food": 7,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 1
+    },
+    {
+      "type": "newVillagers",
+      "task": "berries",
+      "count": 3,
+      "buildings": [
+        {
+          "type": "mill",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 10,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "berries",
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "build",
+      "count": 1,
+      "buildings": [
+        {
+          "type": "house",
+          "count": 2
+        }
+      ],
+      "resources": {
+        "food": 12,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 1,
+      "from": "boar",
+      "to": "build",
+      "buildings": [
+        {
+          "type": "barracks",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "type": "trainUnit",
+      "unit": "militia",
+      "count": 5,
+      "resources": {
+        "food": 11,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 2,
+      "from": "build",
+      "to": "sheep",
+      "resources": {
+        "food": 13,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "sheep",
+      "count": 4,
+      "resources": {
+        "food": 17,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 4,
+      "from": "sheep",
+      "to": "farm",
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "research",
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "custom",
+      "text": "Start making farms as you have wood, at least 9.",
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "stragglerTree",
+      "count": 5,
+      "resources": {
+        "food": 17,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "lumberCamp",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 17,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "ageUp",
+      "age": "feudalAge",
+      "resources": {
+        "food": 17,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 5,
+      "from": "stragglerTree",
+      "to": "gold",
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 5,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newAge",
+      "age": "feudalAge",
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 5,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "research",
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar",
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 5,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "archeryRange",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 5,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "trainUnit",
+      "unit": "archer",
+      "count": 4,
+      "resources": {
+        "food": 17,
+        "wood": 6,
+        "gold": 5,
+        "stone": 0,
+        "build": 0
+      }
+    }
+  ],
+  "difficulty": 2,
+  "status": "draft",
+  "id": "XvnfdG3b3EK7Xi2JlOkL",
+  "title": "Aztec 5 Militia Rush",
+  "attributes": [
+    "drush"
+  ],
+  "pop": {
+    "feudalAge": 29
+  },
+  "number_of_ratings": 1,
+  "uptime": {
+    "feudalAge": "13:00"
+  },
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FMilitia.png?alt=media&token=465ff671-67e6-49cb-a020-5615c426c480",
+  "description": "5 Militia Rush with Aztecs",
+  "avg_rating": 5,
+  "civilization": "Aztecs",
+  "author": "TheViper",
+  "image": "Militia",
+  "reference": "https://www.youtube.com/watch?v=4J1SzkX_6uA",
+  "publisher": "RansEK7n88gz7uF5vEuI3gxVGlU2"
+}

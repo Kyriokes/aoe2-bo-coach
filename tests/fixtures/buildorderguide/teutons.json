@@ -1,0 +1,166 @@
+{
+  "title": "4TC Boom Gandalf",
+  "civilization": "Teutons",
+  "attributes": [
+    "fastCastle"
+  ],
+  "id": "Wc3VEf3kt1xX8BL2qVfz",
+  "uptime": {
+    "feudalAge": "09:40"
+  },
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FTeutonic%20Knight.png?alt=media&token=bc8452dd-13aa-47ec-b60b-26d626f4bd45",
+  "author": "Hera",
+  "difficulty": 1,
+  "build": [
+    {
+      "task": "sheep",
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 1,
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "text": "after he collects 20 gold move him to food under tc",
+      "type": "custom"
+    },
+    {
+      "task": "stone",
+      "count": 2,
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 2
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 2
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 2
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "gold": 1,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 2
+      },
+      "text": "build market sell 100 stone ",
+      "type": "custom"
+    }
+  ],
+  "description": "aa",
+  "publisher": "SfPUspMmgfQWl703GuOZIIRMqyL2",
+  "reference": "https://buildorderguide.com/#/builder/build/Wc3VEf3kt1xX8BL2qVfz",
+  "avg_rating": 3,
+  "pop": {
+    "feudalAge": 22
+  },
+  "status": "changed",
+  "image": "Teutonic Knight",
+  "number_of_ratings": 1
+}

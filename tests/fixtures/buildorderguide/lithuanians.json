@@ -1,0 +1,323 @@
+{
+  "difficulty": 2,
+  "avg_rating": 5,
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 8,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ]
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "lure",
+      "animal": "boar"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "newVillagers",
+      "task": "berries"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 3
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "berries"
+    },
+    {
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "research"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 7
+      },
+      "type": "trainUnit",
+      "unit": "scout"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "tech": [
+        "horseCollar"
+      ],
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "count": 8,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 5,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    }
+  ],
+  "attributes": [
+    "fastFeudal"
+  ],
+  "pop": {
+    "castleAge": 16,
+    "feudalAge": 18
+  },
+  "publisher": "nOuk4lquYrXt4H2xafiZpPUFvN82",
+  "author": "Hera",
+  "civilization": "Lithuanians",
+  "reference": "https://youtu.be/AJqfHlSLYyA",
+  "uptime": {
+    "castleAge": "17:45",
+    "feudalAge": "08:25"
+  },
+  "id": 49,
+  "image": "Scout",
+  "number_of_ratings": 6,
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "description": "Lithuanians are basically the new Mongols, in terms of how fast they can get up to Feudal and get their scout rush going. This is the best scout rush build order and timing to be able to sustain production in feudal, as well as get up very quickly.",
+  "title": "Fast Scouts",
+  "status": "published"
+}

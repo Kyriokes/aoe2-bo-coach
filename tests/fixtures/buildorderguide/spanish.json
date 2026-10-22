@@ -1,0 +1,369 @@
+{
+  "status": "changed",
+  "civilization": "Spanish",
+  "attributes": [
+    "fastCastle"
+  ],
+  "title": "Hideout Conqs",
+  "difficulty": 2,
+  "publisher": "UvTU83CDjBgpVQoGsduikL37LCF2",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "text": "Insta Push Deer. You may have to use a Sheep to keep open a Gate.",
+      "type": "custom"
+    },
+    {
+      "task": "wood",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "stone",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "miningCamp"
+        }
+      ],
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "miningCamp"
+        }
+      ],
+      "count": 3,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 4,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 1,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "market"
+        },
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 3
+      },
+      "type": "build"
+    },
+    {
+      "task": "stone",
+      "count": 1,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 4
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 4
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 5,
+        "food": 13,
+        "stone": 4
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 5,
+        "food": 10,
+        "stone": 4
+      },
+      "from": "foodUnderTC",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "from": "foodUnderTC",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "castle"
+        }
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "bowSaw"
+      ],
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 6,
+        "build": 0,
+        "wood": 8,
+        "food": 7,
+        "stone": 4
+      },
+      "text": "Now spam Farms everywhere.",
+      "type": "custom"
+    }
+  ],
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FCastle.png?alt=media&token=16a7511e-6ce2-49e4-a198-3020b18c6871",
+  "image": "Castle",
+  "avg_rating": 4.333333333333333,
+  "id": "QMnkjT1SEfiWrN3twMN9",
+  "uptime": {
+    "castleAge": "14:00",
+    "feudalAge": "10:55"
+  },
+  "number_of_ratings": 3,
+  "author": "WololoCrash",
+  "description": "14:30 defensive Castle, Conqs to harass. Then either boom behind or go forward siege.",
+  "pop": {
+    "castleAge": 1,
+    "feudalAge": 25
+  }
+}

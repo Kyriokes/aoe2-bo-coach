@@ -1,0 +1,463 @@
+{
+  "publisher": "r8yJi0OzdIhmLeCTyvFeIPzsF9a2",
+  "civilization": "Romans",
+  "title": "Romans Infantry",
+  "avg_rating": 3,
+  "uptime": {
+    "castleAge": "19:50",
+    "feudalAge": "09:15"
+  },
+  "build": [
+    {
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 6,
+      "buildings": [
+        {
+          "type": "house",
+          "count": 2
+        }
+      ],
+      "task": "sheep"
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 3,
+      "buildings": [
+        {
+          "type": "lumberCamp",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 6,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "boar",
+      "type": "newVillagers",
+      "buildings": []
+    },
+    {
+      "type": "newVillagers",
+      "resources": {
+        "food": 8,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 1,
+      "task": "sheep",
+      "buildings": []
+    },
+    {
+      "animal": "boar",
+      "type": "lure",
+      "resources": {
+        "food": 8,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 1
+    },
+    {
+      "resources": {
+        "food": 13,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "berries",
+      "type": "newVillagers",
+      "count": 5,
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        },
+        {
+          "type": "mill",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 13,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "buildings": [],
+      "task": "wood",
+      "count": 1
+    },
+    {
+      "type": "custom",
+      "text": "At 175 wood",
+      "resources": {
+        "food": 13,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 1,
+      "resources": {
+        "food": 13,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "buildings": [
+        {
+          "type": "barracks",
+          "count": 1
+        }
+      ],
+      "from": "wood",
+      "to": "build"
+    },
+    {
+      "buildings": [
+        {
+          "type": "house",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 13,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "type": "build"
+    },
+    {
+      "type": "moveVillagers",
+      "count": 1,
+      "from": "build",
+      "to": "wood",
+      "resources": {
+        "food": 13,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "resources": {
+        "food": 13,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 2
+    },
+    {
+      "resources": {
+        "food": 13,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "tech": [
+        "loom"
+      ],
+      "type": "research"
+    },
+    {
+      "type": "ageUp",
+      "resources": {
+        "food": 13,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge"
+    },
+    {
+      "age": "feudalAge",
+      "resources": {
+        "food": 13,
+        "wood": 6,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newAge"
+    },
+    {
+      "from": "sheep",
+      "buildings": [
+        {
+          "type": "miningCamp",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 6,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 2,
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "type": "trainUnit",
+      "unit": "militia",
+      "count": 3,
+      "resources": {
+        "food": 11,
+        "wood": 6,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "count": 6,
+      "to": "wood",
+      "resources": {
+        "food": 5,
+        "wood": 12,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "sheep",
+      "type": "moveVillagers"
+    },
+    {
+      "type": "newAge",
+      "resources": {
+        "food": 5,
+        "wood": 12,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 5,
+        "wood": 12,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "tech": [
+        "manAtArms",
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "type": "research"
+    },
+    {
+      "from": "wood",
+      "type": "moveVillagers",
+      "count": 6,
+      "to": "farm",
+      "resources": {
+        "food": 11,
+        "wood": 6,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "text": "If enemy has 0 units > Farm| Archers> 6-10 Skirms, maybe armor |  Scouts > 1/2 no. as spears",
+      "resources": {
+        "food": 11,
+        "wood": 6,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "decision"
+    },
+    {
+      "count": 5,
+      "to": "farm",
+      "resources": {
+        "food": 11,
+        "wood": 6,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "moveVillagers",
+      "from": "berries"
+    },
+    {
+      "task": "wood",
+      "resources": {
+        "food": 11,
+        "wood": 25,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 19,
+      "buildings": [],
+      "type": "newVillagers"
+    },
+    {
+      "to": "farm",
+      "from": "wood",
+      "count": 12,
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "type": "moveVillagers",
+      "resources": {
+        "food": 23,
+        "wood": 13,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "age": "castleAge",
+      "type": "ageUp",
+      "resources": {
+        "food": 23,
+        "wood": 13,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "tech": [
+        "scaleMailArmor"
+      ],
+      "resources": {
+        "food": 23,
+        "wood": 13,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "research"
+    },
+    {
+      "count": 4,
+      "type": "moveVillagers",
+      "to": "gold",
+      "resources": {
+        "food": 23,
+        "wood": 9,
+        "gold": 6,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "wood"
+    },
+    {
+      "type": "newAge",
+      "resources": {
+        "food": 23,
+        "wood": 9,
+        "gold": 6,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "food": 23,
+        "wood": 9,
+        "gold": 10,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 4,
+      "task": "gold"
+    },
+    {
+      "text": "Research Squires and longswords man, spam infantry, some new vills on stone, most to food gold and wood",
+      "resources": {
+        "food": 23,
+        "wood": 9,
+        "gold": 10,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "custom"
+    },
+    {
+      "text": "Either build siege for scorpions' vs archers, upgrade to pikemen vs knights, or go castle into Centurions and imp as needed",
+      "resources": {
+        "food": 23,
+        "wood": 9,
+        "gold": 10,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "custom"
+    }
+  ],
+  "author": "Rambo",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FMan-at-Arms.png?alt=media&token=3d86a2c0-835d-4dbe-844d-cecb1da83773",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "id": "lfvaDnYsatp8TDhn8VM6",
+  "image": "Man-at-Arms",
+  "status": "changed",
+  "number_of_ratings": 1,
+  "description": "M@A rush in feudal into castle and infantry spam with late game flex",
+  "difficulty": 2,
+  "pop": {
+    "castleAge": 19,
+    "feudalAge": 20
+  }
+}

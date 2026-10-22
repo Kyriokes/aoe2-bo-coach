@@ -1,0 +1,423 @@
+{
+  "id": "1VZRboZgqwk2pqH67uZi",
+  "publisher": "9RnrxKYRcVaq3cyyC3nOzT5KhSh2",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "pop": {
+    "feudalAge": 21
+  },
+  "title": "Two Militia Rush",
+  "image": "Militia",
+  "difficulty": 1,
+  "status": "published",
+  "description": "Malay Two Militia Rush",
+  "reference": "https://www.youtube.com/watch?v=rDHWdN1FUys",
+  "build": [
+    {
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 6,
+      "buildings": [
+        {
+          "type": "house",
+          "count": 2
+        }
+      ],
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "resources": {
+        "food": 6,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "task": "wood",
+      "buildings": [
+        {
+          "type": "lumberCamp",
+          "count": 1
+        }
+      ],
+      "count": 3
+    },
+    {
+      "type": "newVillagers",
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "boar",
+      "count": 1
+    },
+    {
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 3,
+      "from": "sheep",
+      "to": "boar",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 1,
+      "task": "build",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "type": "newVillagers",
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      }
+    },
+    {
+      "count": 1,
+      "buildings": [],
+      "resources": {
+        "food": 8,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "task": "foodUnderTC",
+      "type": "newVillagers"
+    },
+    {
+      "count": 3,
+      "type": "moveVillagers",
+      "resources": {
+        "food": 8,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "from": "sheep",
+      "to": "boar"
+    },
+    {
+      "task": "boar",
+      "resources": {
+        "food": 9,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "count": 1,
+      "type": "newVillagers"
+    },
+    {
+      "type": "moveVillagers",
+      "resources": {
+        "food": 10,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "to": "boar",
+      "from": "build",
+      "count": 1
+    },
+    {
+      "type": "newVillagers",
+      "task": "foodUnderTC",
+      "resources": {
+        "food": 11,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 1
+    },
+    {
+      "task": "build",
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "task": "wood",
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "food": 12,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "count": 1,
+      "buildings": [
+        {
+          "type": "mill",
+          "count": 1
+        }
+      ],
+      "type": "newVillagers",
+      "task": "berries"
+    },
+    {
+      "from": "build",
+      "type": "moveVillagers",
+      "count": 1,
+      "to": "berries",
+      "resources": {
+        "food": 13,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "count": 1,
+      "type": "newVillagers",
+      "task": "berries",
+      "resources": {
+        "food": 14,
+        "wood": 4,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 14,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "wood",
+      "count": 1,
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge",
+      "type": "ageUp"
+    },
+    {
+      "from": "boar",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "type": "moveVillagers",
+      "count": 5,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "to": "wood"
+    },
+    {
+      "type": "moveVillagers",
+      "count": 7,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "boar",
+      "to": "sheep"
+    },
+    {
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 2,
+      "unit": "militia",
+      "type": "trainUnit"
+    },
+    {
+      "type": "moveVillagers",
+      "resources": {
+        "food": 8,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 1
+      },
+      "count": 1,
+      "from": "berries",
+      "to": "build",
+      "buildings": [
+        {
+          "type": "house",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "to": "berries",
+      "from": "build",
+      "type": "moveVillagers",
+      "count": 1,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "sheep",
+      "type": "moveVillagers",
+      "to": "berries"
+    },
+    {
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge",
+      "type": "newAge"
+    },
+    {
+      "to": "build",
+      "buildings": [
+        {
+          "type": "archeryRange",
+          "count": 1
+        }
+      ],
+      "type": "moveVillagers",
+      "count": 2,
+      "from": "berries",
+      "resources": {
+        "food": 7,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "to": "berries",
+      "from": "build",
+      "count": 2,
+      "type": "moveVillagers",
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "gold",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "miningCamp"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "text": "6 Farms Before Blacksmith",
+      "type": "custom"
+    }
+  ],
+  "civilization": "Malay",
+  "uptime": {
+    "feudalAge": "08:23"
+  },
+  "author": "oSetinhas",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FMilitia.png?alt=media&token=465ff671-67e6-49cb-a020-5615c426c480"
+}

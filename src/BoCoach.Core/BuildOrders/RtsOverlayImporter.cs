@@ -53,12 +53,16 @@ public static partial class RtsOverlayImporter
         }
         if (root["build_order"] is not JsonArray guide || guide.Count == 0)
             throw new BuildOrderFormatException("No tiene pasos ('build_order').");
-        return new Converter(data).Run(root, guide);
+        return new Converter(data, Civ(Text(root["civilization"]), data)).Run(root, guide);
     }
 
     private static readonly JsonDocumentOptions Options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
-    private sealed class Converter(GameData data)
+    /// <summary>
+    /// Arma la BO paso a paso con lo que las guías dan por sabido. Lo usan este importador (que lee notas de texto)
+    /// y <see cref="BuildOrderGuideImporter"/> (que lee el formato estructurado de buildorderguide.com).
+    /// </summary>
+    internal sealed class Converter(GameData data, string civ = "any")
     {
         private readonly List<Step> _steps = [];
         private readonly List<string> _warnings = [];
@@ -84,27 +88,37 @@ public static partial class RtsOverlayImporter
                 var resources = step["resources"] as JsonObject;
                 foreach (var note in notes)
                     Note(note, i + 1, ref created);
-                Check(i + 1, Number(step["villager_count"]), resources);
-                if (_steps.Count > 0 && _pendingNote is not null)
-                    AppendNote(_steps[^1], _pendingNote);
-                _pendingNote = null;
-                if (resources is not null && _steps.Any(s => s is { Do: StepAction.Research, What: "feudal_age" }) && _atFeudal is null)
-                    _atFeudal = Distribution(resources);
-                if (resources is not null && _steps.Any(s => s is { Do: StepAction.Research, What: "castle_age" }) && _atCastle is null)
-                    _atCastle = Distribution(resources);
+                EndStep(i + 1, Number(step["villager_count"]), resources);
             }
 
-            for (var i = 0; i < _steps.Count; i++)
-                _steps[i].Id = $"s{i + 1}";
-            var name = Text(root["name"]) ?? "BO importada";
             var source = Text(root["source"]);
             var description = string.Join(" ", new[] { Text(root["description"])?.Replace('\n', ' '), source is null ? null : $"Fuente: {source}." }.Where(t => t is not null));
+            return Finish(Text(root["name"]) ?? "BO importada", Civ(Text(root["civilization"])), Text(root["author"]), description);
+        }
+
+        /// <summary>Cierra un paso de la guía: lo compara con los aldeanos que dice la guía y guarda el reparto de los clics de edad.</summary>
+        internal void EndStep(int guideStep, int? villagerCount, JsonObject? resources)
+        {
+            Check(guideStep, villagerCount, resources);
+            if (_steps.Count > 0 && _pendingNote is not null)
+                AppendNote(_steps[^1], _pendingNote);
+            _pendingNote = null;
+            if (resources is not null && _steps.Any(s => s is { Do: StepAction.Research, What: "feudal_age" }) && _atFeudal is null)
+                _atFeudal = Distribution(resources);
+            if (resources is not null && _steps.Any(s => s is { Do: StepAction.Research, What: "castle_age" }) && _atCastle is null)
+                _atCastle = Distribution(resources);
+        }
+
+        internal ImportResult Finish(string name, string civ, string? author, string description)
+        {
+            for (var i = 0; i < _steps.Count; i++)
+                _steps[i].Id = $"s{i + 1}";
             var bo = new BuildOrder
             {
                 Id = "",
                 Name = name,
-                Civ = Civ(Text(root["civilization"])),
-                Author = Text(root["author"]),
+                Civ = civ,
+                Author = author,
                 Description = description,
                 Tags = ["importada"],
                 Steps = _steps,
@@ -113,21 +127,91 @@ public static partial class RtsOverlayImporter
             return new ImportResult(bo, _warnings);
         }
 
-        /// <summary>Los 3 aldeanos iniciales hacen 2 casas y van a donde van los primeros aldeanos (casi siempre ovejas).</summary>
-        private void Opening(JsonArray guide)
+        /// <summary>Los aldeanos que lleva la conversión (los 3 iniciales incluidos).</summary>
+        internal int VillagerCount => _villagers;
+
+        internal int On(GatherSource source) => _on[source];
+
+        internal bool HasCamp(string camp) => _camps.Contains(camp);
+
+        internal bool Has(StepAction action, string what) => _steps.Any(s => s.Do == action && s.What == what);
+
+        /// <summary>Una nota del autor para el paso siguiente; con <paramref name="warning"/>, también un aviso.</summary>
+        internal void Remark(string note, string? warning = null)
         {
-            var first = guide.OfType<JsonObject>()
-                .SelectMany(s => s["notes"] as JsonArray ?? [])
-                .Select(n => Tokenize(n?.GetValue<string>() ?? ""))
-                .Select(t => Words(t).Contains("create") ? SourceAfter(t, "on") : null)
-                .FirstOrDefault(s => s is not null) ?? GatherSource.Sheep;
+            _pendingNote = _pendingNote is null ? note : $"{_pendingNote}. {note}";
+            if (warning is not null)
+                _warnings.Add(warning);
+        }
+
+        internal void Warn(string warning) => _warnings.Add(warning);
+
+        /// <summary>Clic de edad o investigación.</summary>
+        internal void Research(string key) =>
+            Add(new Step { Do = StepAction.Research, What = key, AtPop = key.EndsWith("_age", StringComparison.Ordinal) ? Population : null });
+
+        /// <summary>Unidades que no son aldeanos, con las casas que hagan falta.</summary>
+        internal void Train(Entity unit, int count)
+        {
+            var pop = count * Math.Max(1, unit.Pop);
+            HousesFor(_villagers, pop);
+            Add(new Step { Do = StepAction.Train, What = unit.Key, Count = count });
+            _military += pop;
+        }
+
+        internal bool TryEntity(string key, out Entity entity) => data.TryGet(key, out entity!);
+
+        private void Opening(JsonArray guide) => Begin(guide.OfType<JsonObject>()
+            .SelectMany(s => s["notes"] as JsonArray ?? [])
+            .Select(n => Tokenize(n?.GetValue<string>() ?? ""))
+            .Select(t => Words(t).Contains("create") ? SourceAfter(t, "on") : null)
+            .FirstOrDefault(s => s is not null) ?? GatherSource.Sheep);
+
+        /// <summary>
+        /// Los 3 aldeanos iniciales hacen 2 casas y van a donde van los primeros aldeanos (casi siempre ovejas). En una
+        /// civ sin casas (hunos) van directo. Los aldeanos de más del arranque de la civ (chinos, mayas) ya están en las
+        /// ovejas, como en <see cref="Engine.PlanStart.For"/>.
+        /// </summary>
+        internal void Begin(GatherSource first)
+        {
+            var extra = data.Civ(civ).Start.ExtraVillagers;
+            _villagers += extra;
+            _on[GatherSource.Sheep] += extra;
+            _on[first] += Engine.PlanStart.Standard.IdleVillagers;
+            if (NoHouses)
+            {
+                _cap = BuildOrderValidator.MaxPopulation;
+                _steps.Add(new Step
+                {
+                    Do = StepAction.Move, Count = Engine.PlanStart.Standard.IdleVillagers, Assign = first,
+                    Note = "Los 3 aldeanos iniciales van directo: la civ no necesita casas (agregado al importar)",
+                });
+                return;
+            }
             _cap = TownCenterPop + 2 * HousePop;
-            _on[first] = _villagers;
             _steps.Add(new Step
             {
                 Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = first,
                 Note = "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)",
             });
+        }
+
+        /// <summary>La civ no hace casas (los hunos): la población no tiene tope y las casas de la guía no van.</summary>
+        private bool NoHouses => data.Civ(civ).Start.NoHouses || !data.CanMake(civ, "house");
+
+        /// <summary>
+        /// Lo que hace la civ en lugar de un campamento o un molino que no tiene: el carro de mulas (armenios y
+        /// georgianos, por los campamentos) o el asentamiento (incas y sudamericanos, también por el molino); null si nada.
+        /// </summary>
+        private string? ForCiv(string building)
+        {
+            if (data.CanMake(civ, building))
+                return building;
+            if (building is "lumber_camp" or "mining_camp" && data.CanMake(civ, "mule_cart") && data.TryGet("mule_cart", out _))
+                return "mule_cart";
+            if (building is "lumber_camp" or "mining_camp" or "mill" && data.CanMake(civ, "settlement") && data.TryGet("settlement", out _))
+                return "settlement";
+            return building == "house" ? null : building; // lo demás queda: el validador dice que la civ no lo tiene
         }
 
         private void Note(string note, int guideStep, ref int? created)
@@ -165,7 +249,7 @@ public static partial class RtsOverlayImporter
             {
                 if (Entities(tokens).FirstOrDefault(e => e.Kind == EntityKind.Tech && e.Key.EndsWith("_age", StringComparison.Ordinal)) is { } ageUp)
                 {
-                    Add(new Step { Do = StepAction.Research, What = ageUp.Key, AtPop = Population });
+                    Research(ageUp.Key);
                     return;
                 }
             }
@@ -200,7 +284,7 @@ public static partial class RtsOverlayImporter
             {
                 var techs = Entities(tokens).Where(e => e.Kind == EntityKind.Tech).ToList();
                 foreach (var tech in techs)
-                    Add(new Step { Do = StepAction.Research, What = tech.Key, AtPop = tech.Key.EndsWith("_age", StringComparison.Ordinal) ? Population : null });
+                    Research(tech.Key);
                 if (techs.Count > 0)
                     return;
             }
@@ -214,10 +298,7 @@ public static partial class RtsOverlayImporter
                         count = c;
                     else if (Entity(token) is { Kind: EntityKind.Unit } unit && unit.Key != "villager")
                     {
-                        var pop = (count ?? 1) * Math.Max(1, unit.Pop);
-                        HousesFor(_villagers, pop);
-                        Add(new Step { Do = StepAction.Train, What = unit.Key, Count = count ?? 1 });
-                        _military += pop;
+                        Train(unit, count ?? 1);
                         (count, any) = (null, true);
                     }
                 }
@@ -237,7 +318,7 @@ public static partial class RtsOverlayImporter
         private static bool LooksLikeAdvice(IReadOnlyCollection<string> words) =>
             words.Contains("lure") || words.Contains("%");
 
-        private void Villagers(int count, GatherSource to)
+        internal void Villagers(int count, GatherSource to)
         {
             if (count <= 0)
                 return;
@@ -258,13 +339,15 @@ public static partial class RtsOverlayImporter
             _villagers += count;
         }
 
-        private void Move(int count, GatherSource from, GatherSource to)
+        internal void Move(int count, GatherSource from, GatherSource to)
         {
+            if (from == to)
+                return;
             // Las guías llaman "jabalí" a todos los que están en animales: lo que falta en uno sale del otro.
             if (_on[from] < count && from is GatherSource.Hunt or GatherSource.Sheep)
             {
                 var other = from == GatherSource.Hunt ? GatherSource.Sheep : GatherSource.Hunt;
-                var rest = Math.Min(count - _on[from], _on[other]);
+                var rest = other == to ? 0 : Math.Min(count - _on[from], _on[other]);
                 if (rest > 0)
                     Move(rest, other, to);
                 count -= rest;
@@ -296,7 +379,9 @@ public static partial class RtsOverlayImporter
         {
             if (CampFor(source) is not { } camp || !_camps.Add(camp))
                 return;
-            var step = new Step { Do = StepAction.Build, What = camp, From = from, Assign = source, Note = "Agregado al importar" };
+            if (ForCiv(camp) is not { } made)
+                return;
+            var step = new Step { Do = StepAction.Build, What = made, From = from, Assign = source, Note = "Agregado al importar" };
             if (with is not null && camp == "mill")
             {
                 // El molino se hace mientras siguen llegando aldeanos a las bayas.
@@ -318,8 +403,11 @@ public static partial class RtsOverlayImporter
             _ => null,
         };
 
-        private void Build(int count, string what, string? note = null)
+        internal void Build(int count, string what, string? note = null)
         {
+            if (ForCiv(what) is not { } made)
+                return;
+            what = made;
             if (what == "house")
                 _cap += count * HousePop;
             if (what == "farm")
@@ -338,7 +426,7 @@ public static partial class RtsOverlayImporter
         /// </summary>
         private void HousesFor(int villagers, int military = 0)
         {
-            while (villagers + 1 + _military + military > _cap && _cap < BuildOrderValidator.MaxPopulation)
+            while (!NoHouses && villagers + 1 + _military + military > _cap && _cap < BuildOrderValidator.MaxPopulation)
             {
                 var from = Builders();
                 Add(new Step { Do = StepAction.Build, What = "house", From = from, Assign = from, Note = "Agregada al importar: sin esta casa no hay población" });
@@ -392,20 +480,26 @@ public static partial class RtsOverlayImporter
         private static VillagerDistribution Distribution(JsonObject r) =>
             new(Number(r["food"]) ?? 0, Number(r["wood"]) ?? 0, Number(r["gold"]) ?? 0, Number(r["stone"]) ?? 0);
 
-        private string Civ(string? civ)
+        internal string Civ(string? name)
         {
-            if (civ is null || civ.Equals("any", StringComparison.OrdinalIgnoreCase))
-                return "any";
-            var key = civ.Trim().ToLowerInvariant().Replace(' ', '_');
-            if (data.IsKnownCiv(key))
-                return key;
-            _warnings.Add($"No conozco la civ \"{civ}\": quedó para cualquier civ.");
-            return "any";
+            var key = RtsOverlayImporter.Civ(name, data);
+            if (key == "any" && name is not null && !name.Equals("any", StringComparison.OrdinalIgnoreCase))
+                _warnings.Add($"No conozco la civ \"{name}\": quedó para cualquier civ.");
+            return key;
         }
 
         private Entity? Entity(Token token) => token.Key is { } key && data.TryGet(key, out var entity) ? entity : null;
 
         private IEnumerable<Entity> Entities(IEnumerable<Token> tokens) => tokens.Select(Entity).OfType<Entity>();
+    }
+
+    /// <summary>La clave de una civ por su clave o su nombre ("Mayans", "Inca"); "any" si no se conoce.</summary>
+    internal static string Civ(string? name, GameData data)
+    {
+        if (name is null || name.Equals("any", StringComparison.OrdinalIgnoreCase))
+            return "any";
+        var key = name.Trim().ToLowerInvariant().Replace(' ', '_');
+        return data.IsKnownCiv(key) ? key : data.CivByName(name) ?? "any";
     }
 
     private const string Hammer = "hammer";
@@ -461,7 +555,7 @@ public static partial class RtsOverlayImporter
     [GeneratedRegex(@"(_alpha|_aoe2DE|_aoe2de|_aoe2|_?Icon|DE)+$")]
     private static partial Regex IconSuffix();
 
-    private static GatherSource? SourceOf(string icon) => Flat(icon) switch
+    internal static GatherSource? SourceOf(string icon) => Flat(icon) switch
     {
         "sheep" or "goat" or "llama" or "turkey" or "pig" or "cow" or "goose" or "buffalo" => GatherSource.Sheep,
         "boar" or "deer" or "elephant" or "rhinoceros" or "ostrich" or "zebra" or "javelina" or "wildboar" or "ibex" => GatherSource.Hunt,
@@ -478,7 +572,7 @@ public static partial class RtsOverlayImporter
     /// La clave de game_data de un ícono o una palabra: "Archer" → archer, "archeryRange" → archery_range,
     /// "FeudalAge" → feudal_age, "MaleVill" → villager, "Lumber_camp" → lumber_camp.
     /// </summary>
-    private static string? KeyOf(string name) => Flat(name) switch
+    internal static string? KeyOf(string name) => Flat(name) switch
     {
         "malevill" or "femalevill" or "villager" or "vill" => "villager",
         "hammer" => Hammer,
@@ -543,7 +637,7 @@ public static partial class RtsOverlayImporter
     [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.+?)\s*-->\s*(?<then>.+)$")]
     private static partial Regex HalfWayFirst();
 
-    private static int? Number(JsonNode? node)
+    internal static int? Number(JsonNode? node)
     {
         try
         {
@@ -555,7 +649,7 @@ public static partial class RtsOverlayImporter
         }
     }
 
-    private static string? Text(JsonNode? node)
+    internal static string? Text(JsonNode? node)
     {
         try
         {

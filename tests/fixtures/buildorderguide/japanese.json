@@ -1,0 +1,231 @@
+{
+  "status": "published",
+  "description": "A build that allows for creating 3 militia while advancing and researching the men-at-arms upgrade upon hitting Feudal but adapted for the Japanese wood bonus that allows going up with 20 pop instead of the standard 22 pop. You then can follow up with archers or towers.",
+  "id": 57,
+  "title": "Fast Men-at-Arms",
+  "pop": {
+    "feudalAge": 20
+  },
+  "image": "Man-at-Arms",
+  "reference": "https://buildorderguide.com",
+  "uptime": {
+    "feudalAge": "09:15"
+  },
+  "author": "Build Order Guide",
+  "civilization": "Japanese",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FMan-at-Arms.png?alt=media&token=3d86a2c0-835d-4dbe-844d-cecb1da83773",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "publisher": "nOuk4lquYrXt4H2xafiZpPUFvN82",
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "lure",
+      "animal": "boar"
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 0,
+        "build": 1,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 1,
+        "build": 1,
+        "wood": 2
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 1,
+        "build": 1,
+        "wood": 2
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 1,
+        "build": 1,
+        "wood": 2
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "moveVillagers",
+      "from": "build",
+      "to": "gold"
+    },
+    {
+      "count": "∞",
+      "resources": {
+        "food": 15,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 2
+      },
+      "type": "trainUnit",
+      "unit": "militia"
+    },
+    {
+      "count": 8,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "manAtArms"
+      ],
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    }
+  ],
+  "difficulty": 3,
+  "number_of_ratings": 2,
+  "avg_rating": 3.5
+}

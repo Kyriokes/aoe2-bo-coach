@@ -1,0 +1,481 @@
+{
+  "pop": {
+    "castleAge": 20,
+    "feudalAge": 19
+  },
+  "description": "you know just the transition, this build also helps in macro management ",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FCavalry%20Archer.png?alt=media&token=de001a72-61f6-4b1d-aa78-d29cc125cb9c",
+  "image": "Cavalry Archer",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "title": "Magyar Scouts → Cav Arch With Boom",
+  "id": "H0sQDlhkPwFpVMIRzaWi",
+  "avg_rating": 5,
+  "reference": "https://www.youtube.com/watch?v=SN5546QTr5M&list=PLBzwl9SZz2zz4CWK7sX_RcfFntJVNors3&index=7",
+  "difficulty": 3,
+  "author": "Dragonstar_AoE",
+  "publisher": "SfPUspMmgfQWl703GuOZIIRMqyL2",
+  "uptime": {
+    "castleAge": "19:50",
+    "feudalAge": "08:50"
+  },
+  "number_of_ratings": 4,
+  "build": [
+    {
+      "task": "sheep",
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "berries",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "animal": "boar",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 13,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "boar",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 3,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 9,
+        "food": 9,
+        "stone": 0
+      },
+      "from": "boar",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "tech": [
+        "doubleBitAxe",
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "wall"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 8,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "farm",
+      "count": 10,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "unit": "scout",
+      "count": 8,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "task": "gold",
+      "count": 5,
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 3,
+          "type": "archeryRange"
+        }
+      ],
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 5,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "gold",
+      "count": 3,
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 10,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 12,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "fletching",
+        "paddedArcherArmor",
+        "bloodlines"
+      ],
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 12,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 8,
+        "build": 0,
+        "wood": 12,
+        "food": 18,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "from": "berries",
+      "to": "gold",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "tech": [
+        "bodkinArrow",
+        "bowSaw"
+      ],
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "university"
+        }
+      ],
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "don't reseed your farms ",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "get wheel when 42 vills ",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 11,
+        "build": 0,
+        "wood": 12,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "now send everything to wood and make 2 tc's and make 35 farms without thinking anything",
+      "type": "custom"
+    }
+  ],
+  "civilization": "Magyars",
+  "status": "changed"
+}

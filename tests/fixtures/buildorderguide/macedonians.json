@@ -1,0 +1,359 @@
+{
+  "uptime": {
+    "feudalAge": "09:40",
+    "castleAge": "18:10"
+  },
+  "author": "Hera",
+  "image": "Man-at-Arms",
+  "avg_rating": 5,
+  "difficulty": 3,
+  "publisher": "nOuk4lquYrXt4H2xafiZpPUFvN82",
+  "title": "Men-at-Arms → Archers",
+  "status": "draft",
+  "description": "This build is one way of buying time to mass archers since your opponent is usually forced to deal with the men-at-arms in their base first.",
+  "attributes": [
+    "fastFeudal"
+  ],
+  "build": [
+    {
+      "count": 6,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 0
+      },
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 4,
+      "resources": {
+        "food": 6,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 10,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "boar"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 12,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ]
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 4
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 0,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "newVillagers",
+      "task": "wood"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "newVillagers",
+      "task": "gold"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ]
+    },
+    {
+      "count": 3,
+      "resources": {
+        "food": 14,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 5
+      },
+      "type": "trainUnit",
+      "unit": "militia"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "wood"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "moveVillagers",
+      "from": "sheep",
+      "to": "farm"
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "tech": [
+        "manAtArms"
+      ],
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 2,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "count": 5,
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "gold",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "archeryRange"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "build",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ]
+    },
+    {
+      "tech": [
+        "fletching"
+      ],
+      "resources": {
+        "food": 9,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "count": 9,
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "newVillagers",
+      "task": "farm"
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 18,
+        "stone": 0,
+        "gold": 7,
+        "build": 0,
+        "wood": 10
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    }
+  ],
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FMan-at-Arms.png?alt=media&token=3d86a2c0-835d-4dbe-844d-cecb1da83773",
+  "reference": "https://www.youtube.com/watch?v=5Rir2BEaYOE",
+  "id": "11",
+  "number_of_ratings": 9,
+  "pop": {
+    "feudalAge": 22,
+    "castleAge": 14
+  },
+  "civilization": "Generic"
+}

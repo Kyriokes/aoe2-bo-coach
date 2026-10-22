@@ -1,0 +1,397 @@
+{
+  "number_of_ratings": 3,
+  "title": "Fast Scout Rush",
+  "difficulty": 3,
+  "uptime": {
+    "feudalAge": "07:10"
+  },
+  "civilization": "Mongols",
+  "author": "Hera",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 4,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 5,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "sheep",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 3,
+      "animal": "deer",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "wood",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "sheep",
+      "buildings": [],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "sheep",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 9,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "sheep",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 2,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [],
+      "count": 5,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 7,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 9,
+        "food": 5,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "stragglerTree",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 9,
+        "food": 3,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 9,
+        "food": 3,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 9,
+        "food": 3,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 9,
+        "food": 3,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 5,
+        "stone": 0
+      },
+      "from": "stragglerTree",
+      "to": "sheep",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "berries",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "unit": "scout",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 10,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "sheep",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "sheep",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "text": "Add Range for skirms if they go archer",
+      "type": "decision"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "text": "9 at Lumber Camp",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "text": "Add Farms",
+      "type": "custom"
+    }
+  ],
+  "attributes": [
+    "fastFeudal"
+  ],
+  "id": "P1iWBJnvISZYe5KUN2uW",
+  "status": "draft",
+  "pop": {
+    "feudalAge": 15
+  },
+  "image": "Scout",
+  "avg_rating": 4.666666666666667,
+  "description": "Build from Hera vs Yo from his stream ",
+  "reference": "https://www.twitch.tv/hera",
+  "publisher": "BUZcVRxKiWRGLvC21MDPtFOebdf2",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505"
+}

@@ -172,6 +172,8 @@ public sealed partial class MainViewModel : ObservableObject
         BuildOrder bo;
         if (RtsOverlayImporter.IsRtsOverlay(json))
             (bo, warnings) = RtsOverlayImporter.Convert(json, _app.GameData);
+        else if (BuildOrderGuideImporter.IsBuildOrderGuide(json))
+            (bo, warnings) = BuildOrderGuideImporter.Convert(json, _app.GameData);
         else
             bo = BuildOrderSerializer.Parse(json);
         LeaveCurrent();

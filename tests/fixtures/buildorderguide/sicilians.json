@@ -1,0 +1,360 @@
+{
+  "pop": {
+    "feudalAge": "?"
+  },
+  "author": "knz",
+  "status": "draft",
+  "civilization": "Sicilians",
+  "uptime": {},
+  "title": "Sicilians",
+  "publisher": "QpCPCPoHsTTr5iMk7YtmwWK5G6a2",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FCastle.png?alt=media&token=16a7511e-6ce2-49e4-a198-3020b18c6871",
+  "id": "v8sYayYaRRozalg2MmjU",
+  "attributes": [
+    "fastImperial"
+  ],
+  "build": [
+    {
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 6,
+      "type": "newVillagers",
+      "task": "sheep",
+      "buildings": [
+        {
+          "type": "house",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "food": 6,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "buildings": [],
+      "task": "boar",
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 1
+    },
+    {
+      "type": "newVillagers",
+      "resources": {
+        "food": 10,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "berries",
+      "count": 3
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "house",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 10,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "buildings": [],
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "gold",
+      "count": 1,
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "custom",
+      "text": "22 aldeões clicar para feudal age  ",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newAge",
+      "age": "feudalAge",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "barracks",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "stable",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "stone",
+      "count": 2,
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 2,
+        "build": 0
+      }
+    },
+    {
+      "type": "trainUnit",
+      "unit": "scout",
+      "count": 4,
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 2,
+        "build": 0
+      }
+    },
+    {
+      "type": "custom",
+      "text": "e atacar",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 2,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "task": "stone",
+      "count": 3,
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "blacksmith",
+          "count": 1
+        },
+        {
+          "type": "market",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "custom",
+      "text": "Castle Age 30 aldeões ",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "newAge",
+      "age": "castleAge",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "donjon",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "townCenter",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "trainUnit",
+      "unit": "knight",
+      "count": "∞",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "donjon",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "trainUnit",
+      "unit": "serjeant",
+      "count": "∞",
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "townCenter",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 7,
+        "gold": 1,
+        "stone": 5,
+        "build": 0
+      }
+    }
+  ],
+  "difficulty": 1,
+  "image": "Castle",
+  "description": "Sicilianos - Castle Drop Build Order"
+}

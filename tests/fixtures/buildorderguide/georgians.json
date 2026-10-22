@@ -1,0 +1,530 @@
+{
+  "title": "Fast Castle 10min",
+  "attributes": [
+    "fastCastle"
+  ],
+  "id": "bR8HzKNpngmnlYgF36ws",
+  "pop": {
+    "feudalAge": 24,
+    "castleAge": 2
+  },
+  "status": "changed",
+  "build": [
+    {
+      "type": "newVillagers",
+      "count": 6,
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "sheep"
+    },
+    {
+      "type": "custom",
+      "text": "Scout with 3 Sheep, if you find Deer, push it in (after 2 Sheep found). Send sheep back in time.",
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "count": 2,
+      "type": "newVillagers",
+      "buildings": [
+        {
+          "type": "lumberCamp",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 6,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "wood"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "food": 7,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "boar",
+      "type": "newVillagers"
+    },
+    {
+      "type": "custom",
+      "text": "House next to forward Boar, then lure",
+      "resources": {
+        "food": 7,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 13,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "foodUnderTC",
+      "count": 6,
+      "type": "newVillagers"
+    },
+    {
+      "type": "custom",
+      "text": "5th Villager lures Boar , Should have all Deer gathered by now",
+      "resources": {
+        "food": 13,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "newVillagers",
+      "count": 1,
+      "resources": {
+        "food": 14,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "task": "berries"
+    },
+    {
+      "resources": {
+        "food": 14,
+        "wood": 2,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "text": "1 house with a wood Villager",
+      "type": "custom"
+    },
+    {
+      "type": "newVillagers",
+      "task": "wood",
+      "count": 5,
+      "buildings": [],
+      "resources": {
+        "food": 14,
+        "wood": 7,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "text": "All on 1 lumber camp",
+      "resources": {
+        "food": 14,
+        "wood": 7,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "custom"
+    },
+    {
+      "task": "gold",
+      "count": 2,
+      "resources": {
+        "food": 14,
+        "wood": 7,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "age": "feudalAge",
+      "type": "ageUp",
+      "resources": {
+        "food": 14,
+        "wood": 7,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "from": "sheep",
+      "resources": {
+        "food": 14,
+        "wood": 7,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "to": "berries",
+      "type": "moveVillagers",
+      "count": 5
+    },
+    {
+      "type": "moveVillagers",
+      "from": "sheep",
+      "count": 2,
+      "to": "wood",
+      "resources": {
+        "food": 12,
+        "wood": 9,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "count": 4,
+      "from": "sheep",
+      "to": "farm",
+      "buildings": [],
+      "resources": {
+        "food": 12,
+        "wood": 9,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "type": "moveVillagers",
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "to": "stragglerTree",
+      "from": "sheep",
+      "count": 2
+    },
+    {
+      "type": "moveVillagers",
+      "from": "stragglerTree",
+      "resources": {
+        "food": 11,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 1,
+      "to": "farm"
+    },
+    {
+      "text": "1 Builds house, then to farm.",
+      "type": "custom",
+      "resources": {
+        "food": 11,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 11,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge",
+      "type": "newAge"
+    },
+    {
+      "type": "research",
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 11,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "buildings": [],
+      "count": 2,
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 2
+      },
+      "from": "berries",
+      "type": "moveVillagers",
+      "to": "build"
+    },
+    {
+      "type": "build",
+      "buildings": [
+        {
+          "type": "blacksmith",
+          "count": 1
+        },
+        {
+          "type": "market",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 9,
+        "wood": 10,
+        "gold": 2,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "task": "stragglerTree",
+      "type": "newVillagers",
+      "count": 2,
+      "resources": {
+        "food": 9,
+        "wood": 12,
+        "gold": 2,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "count": 1,
+      "from": "stragglerTree",
+      "to": "farm",
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 2,
+        "stone": 0,
+        "build": 2
+      },
+      "type": "moveVillagers"
+    },
+    {
+      "type": "custom",
+      "text": "Stragglers to farm as wood comes in",
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 2,
+        "stone": 0,
+        "build": 2
+      }
+    },
+    {
+      "count": 2,
+      "type": "moveVillagers",
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "build",
+      "to": "gold"
+    },
+    {
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "trade",
+      "action": "sell",
+      "count": 100,
+      "resource": "stone"
+    },
+    {
+      "type": "custom",
+      "text": "Force Drop Food ",
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 10,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "food": 10,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 1
+      },
+      "to": "build",
+      "count": 1,
+      "type": "moveVillagers",
+      "from": "stragglerTree",
+      "buildings": [
+        {
+          "type": "barracks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "wall"
+        }
+      ],
+      "resources": {
+        "food": 8,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 3
+      },
+      "type": "moveVillagers",
+      "count": 2,
+      "to": "build",
+      "from": "berries"
+    },
+    {
+      "type": "custom",
+      "text": "1 House, 1 Stable. Goal: 12 Villagers on Food for TC and Knight production, 6 on Gold for Knights",
+      "resources": {
+        "food": 8,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 3
+      }
+    },
+    {
+      "type": "newAge",
+      "age": "castleAge",
+      "resources": {
+        "food": 8,
+        "wood": 10,
+        "gold": 4,
+        "stone": 0,
+        "build": 3
+      }
+    },
+    {
+      "task": "gold",
+      "resources": {
+        "food": 8,
+        "wood": 10,
+        "gold": 8,
+        "stone": 0,
+        "build": 3
+      },
+      "type": "newVillagers",
+      "count": 4
+    },
+    {
+      "type": "moveVillagers",
+      "resources": {
+        "food": 11,
+        "wood": 10,
+        "gold": 8,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "build",
+      "count": 3,
+      "to": "farm"
+    },
+    {
+      "resources": {
+        "food": 12,
+        "wood": 10,
+        "gold": 8,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 1,
+      "task": "farm"
+    },
+    {
+      "type": "custom",
+      "text": "Balance as needed: Boom or Knights",
+      "resources": {
+        "food": 12,
+        "wood": 10,
+        "gold": 8,
+        "stone": 0,
+        "build": 0
+      }
+    }
+  ],
+  "number_of_ratings": 1,
+  "civilization": "Generic",
+  "difficulty": 2,
+  "uptime": {
+    "feudalAge": "10:30",
+    "castleAge": "14:00"
+  },
+  "avg_rating": 5,
+  "image": "Castle",
+  "reference": "https://www.youtube.com/watch?v=mm8S9Wtpgrc",
+  "publisher": "D8hC3UeyXxNXCCUOr9kOrQgmFG83",
+  "author": "Toaster226",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FCastle.png?alt=media&token=16a7511e-6ce2-49e4-a198-3020b18c6871",
+  "description": "Fast Castle into Knights"
+}

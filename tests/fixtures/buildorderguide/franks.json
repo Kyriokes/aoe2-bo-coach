@@ -1,0 +1,582 @@
+{
+  "publisher": "PVvOpIXNVfeVBLKzHe56UKUcMe63",
+  "title": "WesternAOE Rush Updated",
+  "id": "JMmYa7X0rqYSJ4t3uJaa",
+  "image": "Knight",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FKnight.png?alt=media&token=6841f7c6-7df3-470b-ba7b-53fd2f709abe",
+  "pop": {
+    "feudalAge": 21,
+    "castleAge": 20
+  },
+  "attributes": [
+    "fastFeudal"
+  ],
+  "status": "published",
+  "description": "WesternAOE build order for the Franks. \n\nThis build order is designed to maximize damage and disrupt your opponent's economy by utilizing the Franks' strengths. While there is a small element of micro involved, the primary objective of this build is to disrupt the enemy economy count during the Feudal Age with the scouts. By doing so, you'll have ample time to build up a formidable force of knights once you're in Castle Age.",
+  "number_of_ratings": 4,
+  "difficulty": 2,
+  "build": [
+    {
+      "buildings": [
+        {
+          "type": "house",
+          "count": 2
+        }
+      ],
+      "count": 6,
+      "task": "sheep",
+      "type": "newVillagers",
+      "resources": {
+        "food": 6,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "task": "wood",
+      "resources": {
+        "food": 6,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 3
+    },
+    {
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "task": "boar",
+      "count": 1,
+      "buildings": []
+    },
+    {
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "custom",
+      "text": "Sheep Vills to Boar"
+    },
+    {
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "food": 7,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "food": 11,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 4,
+      "type": "newVillagers",
+      "task": "sheep"
+    },
+    {
+      "type": "newVillagers",
+      "resources": {
+        "food": 15,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 4
+    },
+    {
+      "type": "lure",
+      "resources": {
+        "food": 15,
+        "wood": 3,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "animal": "deer",
+      "count": 1,
+      "method": "push"
+    },
+    {
+      "resources": {
+        "food": 15,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 2,
+      "buildings": [
+        {
+          "count": 1,
+          "type": "lumberCamp"
+        }
+      ],
+      "task": "wood"
+    },
+    {
+      "type": "research",
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "food": 15,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 15,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge",
+      "type": "ageUp"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        },
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "type": "build",
+      "resources": {
+        "food": 15,
+        "wood": 5,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "from": "boar",
+      "to": "wood",
+      "count": 6,
+      "type": "moveVillagers",
+      "resources": {
+        "food": 9,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 4,
+        "wood": 16,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "to": "stragglerTree",
+      "type": "moveVillagers",
+      "count": 5,
+      "from": "sheep"
+    },
+    {
+      "resources": {
+        "food": 4,
+        "wood": 16,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "age": "feudalAge",
+      "type": "newAge"
+    },
+    {
+      "type": "research",
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "food": 4,
+        "wood": 16,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 4,
+        "wood": 16,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        },
+        {
+          "type": "house",
+          "count": 3
+        }
+      ],
+      "type": "build"
+    },
+    {
+      "type": "trainUnit",
+      "resources": {
+        "food": 4,
+        "wood": 16,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "count": 4,
+      "unit": "scout"
+    },
+    {
+      "from": "stragglerTree",
+      "type": "moveVillagers",
+      "count": 5,
+      "to": "farms",
+      "resources": {
+        "food": 9,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "buildings": []
+    },
+    {
+      "count": 6,
+      "resources": {
+        "food": 15,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "task": "farms"
+    },
+    {
+      "text": "Once You Have Enough Wood Move to Farms. ",
+      "type": "custom",
+      "resources": {
+        "food": 15,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "food": 15,
+        "wood": 11,
+        "gold": 0,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "build"
+    },
+    {
+      "to": "gold",
+      "count": 4,
+      "type": "moveVillagers",
+      "resources": {
+        "food": 11,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "from": "berries"
+    },
+    {
+      "task": "farms",
+      "resources": {
+        "food": 17,
+        "wood": 11,
+        "gold": 4,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newVillagers",
+      "count": 6
+    },
+    {
+      "type": "newVillagers",
+      "task": "gold",
+      "count": 5,
+      "resources": {
+        "food": 17,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "farms",
+      "count": 3,
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "type": "house",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "build"
+    },
+    {
+      "age": "castleAge",
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "ageUp"
+    },
+    {
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "tech": [
+        "goldMining"
+      ],
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "type": "stable",
+          "count": 1
+        }
+      ],
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "build"
+    },
+    {
+      "type": "research",
+      "tech": [
+        "forging",
+        "scaleMailArmor"
+      ],
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "age": "castleAge",
+      "resources": {
+        "food": 20,
+        "wood": 11,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "newAge"
+    },
+    {
+      "count": 6,
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "task": "wood",
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "ironCasting",
+        "chainBardingArmor"
+      ],
+      "type": "research",
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "tech": [
+        "bowSaw"
+      ],
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "count": "∞",
+      "unit": "knight",
+      "type": "trainUnit"
+    },
+    {
+      "buildings": [
+        {
+          "type": "townCenter",
+          "count": 1
+        },
+        {
+          "type": "market",
+          "count": 1
+        }
+      ],
+      "type": "build",
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      }
+    },
+    {
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "text": "Build a TC on Your Gold",
+      "type": "custom"
+    },
+    {
+      "type": "build",
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "buildings": [
+        {
+          "count": 1,
+          "type": "monastery"
+        }
+      ]
+    },
+    {
+      "resources": {
+        "food": 20,
+        "wood": 17,
+        "gold": 9,
+        "stone": 0,
+        "build": 0
+      },
+      "text": "Attack Your Enemy's Base",
+      "type": "decision"
+    }
+  ],
+  "avg_rating": 5,
+  "uptime": {
+    "castleAge": "20:40",
+    "feudalAge": "09:40"
+  },
+  "civilization": "Franks",
+  "author": "WesternAOE"
+}

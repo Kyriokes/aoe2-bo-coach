@@ -1,0 +1,526 @@
+{
+  "civilization": "Generic",
+  "reference": "https://villwar.ru/articles/bild/skautrash/",
+  "image": "Scout",
+  "title": "Scout Rush",
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FScout.png?alt=media&token=62e0c066-bc52-4ae3-9624-deee2d4fe505",
+  "number_of_ratings": 3,
+  "author": "Vinchester",
+  "description": "Scout Rush in Feudal Age from Vinchester",
+  "uptime": {
+    "feudalAge": "09:40",
+    "castleAge": "18:35"
+  },
+  "attributes": [
+    "fastFeudal"
+  ],
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 6,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 6,
+        "stone": 0
+      },
+      "text": "Optional: Push Deers With Scout Under TC ",
+      "type": "custom"
+    },
+    {
+      "task": "boar",
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 7,
+        "stone": 0
+      },
+      "animal": "boar",
+      "type": "lure"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        },
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "boar",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "task": "wood",
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "text": "Drop Food From Boar to TC",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 6,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 9,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 9,
+        "food": 11,
+        "stone": 0
+      },
+      "text": "30% researched:",
+      "type": "custom"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 8,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "wood",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 8,
+        "food": 11,
+        "stone": 0
+      },
+      "text": "95% researched:",
+      "type": "custom"
+    },
+    {
+      "buildings": [],
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "wood",
+      "to": "build",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "stable"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "tech": [
+        "doubleBitAxe"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 2,
+        "wood": 7,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 8,
+        "food": 11,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "unit": "scout",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 8,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "trainUnit"
+    },
+    {
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 1,
+        "wood": 8,
+        "food": 11,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "count": 1,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "build",
+      "to": "farm",
+      "type": "moveVillagers"
+    },
+    {
+      "tech": [
+        "horseCollar"
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "task": "farm",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "Actions against Enemy:",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "Send 2 Groups of Scouts: 1 & 4 or 2 & 3",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "Enemy Fast Feudal -> Train 2-3 Spearmen",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "Enemy Trains Few Archers -> Kill Archers",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 8,
+        "food": 15,
+        "stone": 0
+      },
+      "text": "Enemy Trains Many Archers -> Range & Train Skirmishers",
+      "type": "custom"
+    },
+    {
+      "task": "wood",
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 15,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "farm",
+      "count": 6,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 3,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "wheelbarrow"
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 11,
+        "food": 21,
+        "stone": 0
+      },
+      "text": "Play Castle Age with your build!",
+      "type": "custom"
+    }
+  ],
+  "id": "43lI37Hun78KgdSnn7x1",
+  "pop": {
+    "castleAge": 15,
+    "feudalAge": 21
+  },
+  "difficulty": 1,
+  "publisher": "ajf1rVWQKwhfC74qZGOuScTcki23",
+  "status": "changed",
+  "avg_rating": 5
+}

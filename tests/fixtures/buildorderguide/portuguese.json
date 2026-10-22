@@ -1,0 +1,346 @@
+{
+  "imageURL": "https://firebasestorage.googleapis.com/v0/b/build-order-guide.appspot.com/o/Images%2FCastle.png?alt=media&token=16a7511e-6ce2-49e4-a198-3020b18c6871",
+  "difficulty": 2,
+  "publisher": "Lm2yQgKM0KUbvdA9CbFxnyRcFyJ2",
+  "id": "waVxaGiR75R97DexFlQN",
+  "description": "oSethinas Castle drop on Arena",
+  "avg_rating": 5,
+  "attributes": [
+    "fastCastle"
+  ],
+  "title": "Castle Drop ARENA",
+  "author": "oSethinas",
+  "civilization": "Portuguese",
+  "build": [
+    {
+      "task": "sheep",
+      "buildings": [
+        {
+          "count": 2,
+          "type": "house"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 4,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "berries",
+      "buildings": [
+        {
+          "count": 1,
+          "type": "mill"
+        }
+      ],
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "count": 3,
+      "animal": "deer",
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 8,
+        "stone": 0
+      },
+      "type": "lure"
+    },
+    {
+      "task": "sheep",
+      "buildings": [],
+      "count": 2,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 10,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 10,
+        "stone": 0
+      },
+      "text": "Lure Boar With Villager that built House",
+      "type": "custom"
+    },
+    {
+      "task": "sheep",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "house"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 0,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "wood",
+      "count": 4,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "task": "gold",
+      "count": 3,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 4,
+        "food": 14,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "feudalAge"
+    },
+    {
+      "count": 2,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "from": "sheep",
+      "to": "wood",
+      "type": "moveVillagers"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newAge",
+      "age": "feudalAge"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "market"
+        },
+        {
+          "count": 1,
+          "type": "blacksmith"
+        }
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 6,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "build"
+    },
+    {
+      "task": "wood",
+      "count": 1,
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 7,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "newVillagers"
+    },
+    {
+      "tech": [
+        "loom"
+      ],
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 7,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "research"
+    },
+    {
+      "resources": {
+        "gold": 3,
+        "build": 0,
+        "wood": 7,
+        "food": 12,
+        "stone": 0
+      },
+      "type": "ageUp",
+      "age": "castleAge"
+    },
+    {
+      "buildings": [],
+      "count": 3,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 12,
+        "stone": 3
+      },
+      "from": "gold",
+      "to": "stone",
+      "type": "moveVillagers"
+    },
+    {
+      "count": 7,
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "from": "sheep",
+      "to": "stone",
+      "type": "moveVillagers"
+    },
+    {
+      "buildings": [
+        {
+          "count": 1,
+          "type": "barracks"
+        }
+      ],
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "type": "build"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "text": "train 2 pikes",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "type": "newAge",
+      "age": "castleAge"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "text": "Use 7 pop to drop the castle",
+      "type": "custom"
+    },
+    {
+      "resources": {
+        "gold": 0,
+        "build": 0,
+        "wood": 7,
+        "food": 5,
+        "stone": 10
+      },
+      "text": "HAVE 10 POP ON WOOD AND 8 ON GOLD AT ALL TIMES",
+      "type": "custom"
+    }
+  ],
+  "uptime": {
+    "castleAge": "12:45",
+    "feudalAge": "09:40"
+  },
+  "status": "draft",
+  "pop": {
+    "castleAge": 1,
+    "feudalAge": 22
+  },
+  "reference": "https://www.youtube.com/watch?v=3lwiQS6m9RA",
+  "image": "Castle",
+  "number_of_ratings": 4
+}
