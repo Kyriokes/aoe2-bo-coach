@@ -19,6 +19,9 @@ export function Header() {
           <Link href="/#descargar" className="hover:text-amber">
             Descargar
           </Link>
+          <Link href="/#apoyar" className="hover:text-amber">
+            Apoyar
+          </Link>
         </nav>
         <div className="ml-auto">
           <Suspense fallback={<span className="text-sm text-faint">…</span>}>

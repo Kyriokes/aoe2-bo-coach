@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
+import { SupportLinks } from "@/components/SupportSection";
 import { SITE_NAME } from "@/lib/share";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/privacidad" className="hover:text-amber">
             Privacidad
           </Link>
+          <SupportLinks />
         </footer>
       </body>
     </html>

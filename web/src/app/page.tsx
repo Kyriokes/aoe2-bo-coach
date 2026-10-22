@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ExampleDemo } from "@/components/ExampleDemo";
 import { JsonLd } from "@/components/JsonLd";
+import { SupportSection } from "@/components/SupportSection";
 import { GAME } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/lib/share";
 import { DOWNLOAD_URL, REPO_URL, siteUrl } from "@/lib/site";
@@ -192,6 +193,17 @@ export default function HomePage() {
             Descargar para Windows
           </a>
         </div>
+      </section>
+
+      <section id="apoyar" aria-labelledby="apoyar-titulo" className="flex scroll-mt-6 flex-col gap-4">
+        <h2 id="apoyar-titulo" className="text-xl font-semibold">
+          Apoyar el proyecto
+        </h2>
+        <p className="max-w-2xl text-sm text-muted">
+          BO Coach es gratis y de código abierto. Si te sirve, podés invitarme un café: con eso se pagan el dominio y
+          la web, y cada aporte se anota acá, a la vista, contra las metas de abajo.
+        </p>
+        <SupportSection />
       </section>
 
       <section aria-labelledby="como-esta-hecho" className="flex flex-col gap-4">
