@@ -178,7 +178,7 @@ public static class LivePlan
                         _ => age,
                     };
                     break;
-                case StepAction.Move when step.From is not null:
+                case StepAction.Move:
                     Put(step.Assign, Take(step.From, step.Count));
                     break;
             }

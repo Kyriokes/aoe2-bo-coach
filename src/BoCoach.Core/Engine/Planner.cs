@@ -468,15 +468,16 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
 
         private void Move(ItemSim item)
         {
-            if (item.Step.From is not { } from || item.Step.Assign is not { } to)
+            if (item.Step.Assign is not { } to)
                 return;
-            if (_villagers[from] == 0)
+            // Sin 'from', los que no tienen tarea (los 3 iniciales de una civ sin casas).
+            var available = item.Step.From is { } from ? _villagers[from] : _idle;
+            if (available == 0)
             {
                 Block(item, BlockReason.Villagers);
                 return;
             }
-            var moved = Math.Min(item.Step.Count, _villagers[from]);
-            _villagers[from] -= moved;
+            var moved = TakeVillagers(item.Step.From, Math.Min(item.Step.Count, available));
             _villagers[to] += moved;
             item.Started = true;
             item.Remaining = 0;

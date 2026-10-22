@@ -67,7 +67,7 @@ public sealed record Step
     /// </summary>
     public GatherSource? Assign { get; set; }
 
-    /// <summary>Move: de dónde salen los aldeanos. Build: de dónde salen los constructores (null = aldeanos sin tarea, como los iniciales).</summary>
+    /// <summary>Move y Build: de dónde salen los aldeanos (null = aldeanos sin tarea, como los 3 iniciales).</summary>
     public GatherSource? From { get; set; }
 
     /// <summary>
