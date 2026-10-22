@@ -110,7 +110,8 @@ export function entityName(key: string, count = 1) {
   return names ? (count === 1 ? names[0] : names[1]) : key.replaceAll("_", " ");
 }
 
-function sourceName(source: unknown) {
+/** "ovejas", "madera"... a partir de la clave de la fuente. */
+export function sourceName(source: unknown) {
   return typeof source === "string" && Object.hasOwn(SOURCES, source) ? SOURCES[source] : String(source);
 }
 
