@@ -3,13 +3,40 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BoCard } from "@/components/BoCard";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
-import { civLabel } from "@/lib/share";
+import { filterValue } from "@/lib/filters";
+import { civLabel, SITE_NAME } from "@/lib/share";
 import { supabaseConfigured } from "@/lib/supabase/env";
 
-export const metadata: Metadata = {
-  title: "Biblioteca de build orders",
-  description: "Buscá build orders de Age of Empires II, mirá su línea de tiempo simulada y abrilas en BO Coach.",
-};
+const DESCRIPTION = "Buscá build orders de Age of Empires II, mirá su línea de tiempo simulada y abrilas en BO Coach.";
+
+/** "de Britanos", "para cualquier civ" o null sin filtro de civ. */
+function civSubject(civ: string | undefined) {
+  if (!civ) return null;
+  return civ === "any" ? "para cualquier civ" : `de ${civLabel(civ)}`;
+}
+
+/**
+ * Cada civ y cada etiqueta es una página para los buscadores ("Build orders de Britanos"); las búsquedas por texto
+ * y el orden no: se pueden seguir, pero no se indexan, y la canónica es la de la civ o la etiqueta.
+ */
+export async function generateMetadata({ searchParams }: PageProps<"/biblioteca">): Promise<Metadata> {
+  const query = await readQuery(searchParams);
+  const civ = filterValue(query.civ);
+  const tag = civ ? undefined : filterValue(query.tag);
+  const subject = civSubject(civ);
+  const title = subject ? `Build orders ${subject}` : tag ? `Build orders: ${tag}` : "Biblioteca de build orders";
+  const description = subject
+    ? `Build orders de Age of Empires II ${subject}: cada paso, a qué minuto llegás a Feudal y Castillos, y para abrir en BO Coach.`
+    : DESCRIPTION;
+  const canonical = civ ? `/biblioteca?civ=${encodeURIComponent(civ)}` : tag ? `/biblioteca?tag=${encodeURIComponent(tag)}` : "/biblioteca";
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title, description, url: canonical },
+    robots: query.q || (civ && query.tag) ? { index: false, follow: true } : undefined,
+  };
+}
 
 type SearchParams = PageProps<"/biblioteca">["searchParams"];
 
@@ -31,7 +58,9 @@ export default function LibraryPage({ searchParams }: PageProps<"/biblioteca">) 
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h1 className="text-2xl font-semibold">Biblioteca de build orders</h1>
+        <Suspense fallback={<h1 className="text-2xl font-semibold">Biblioteca de build orders</h1>}>
+          <Title searchParams={searchParams} />
+        </Suspense>
         <p className="mt-1 max-w-2xl text-sm text-muted">
           Buscá una BO, mirá su línea de tiempo y abrila en BO Coach para que el overlay te la vaya marcando durante la
           partida. ¿Tenés una propia? <Link href="/subir" className="text-amber hover:underline">Subila</Link>.
@@ -45,6 +74,11 @@ export default function LibraryPage({ searchParams }: PageProps<"/biblioteca">) 
       </Suspense>
     </div>
   );
+}
+
+async function Title({ searchParams }: { searchParams: SearchParams }) {
+  const subject = civSubject(filterValue((await readQuery(searchParams)).civ));
+  return <h1 className="text-2xl font-semibold">{subject ? `Build orders ${subject}` : "Biblioteca de build orders"}</h1>;
 }
 
 async function Filters({ searchParams }: { searchParams: SearchParams }) {
@@ -61,7 +95,7 @@ async function Filters({ searchParams }: { searchParams: SearchParams }) {
       />
       <select name="civ" defaultValue={query.civ ?? ""} className="field" aria-label="Civilización">
         <option value="">Todas las civs</option>
-        {facets.civs.map((civ) => (
+        {[...facets.civs].sort((a, b) => civLabel(a).localeCompare(civLabel(b), "es")).map((civ) => (
           <option key={civ} value={civ}>
             {civLabel(civ)}
           </option>
