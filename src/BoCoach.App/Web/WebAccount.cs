@@ -77,7 +77,10 @@ public sealed class WebAccount(HttpClient http, string? path = null)
             var json = JsonNode.Parse(File.ReadAllText(path)) as JsonObject ?? [];
             return new WebSettings
             {
-                WebUrl = json["web_url"]?.GetValue<string>() is { Length: > 0 } url ? url : WebSettings.DefaultUrl,
+                // Una dirección que no sirve (web.json editado a mano) haría fallar BaseUri al publicar o bajar.
+                WebUrl = json["web_url"]?.GetValue<string>() is { Length: > 0 } url && Uri.TryCreate(url, UriKind.Absolute, out _)
+                    ? url
+                    : WebSettings.DefaultUrl,
                 Token = json["token"]?.GetValue<string>() is { Length: > 0 } token ? Unprotect(token) : "",
                 Published = (json["published"] as JsonObject ?? [])
                     .Where(p => p.Value is not null)

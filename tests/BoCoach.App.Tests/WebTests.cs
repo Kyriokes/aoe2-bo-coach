@@ -98,6 +98,17 @@ public sealed class WebTests : IDisposable
     }
 
     [Fact]
+    public void Una_direccion_que_no_sirve_vuelve_a_la_de_fabrica()
+    {
+        File.WriteAllText(SettingsPath, """{ "web_url": "esto no es una dirección" }""");
+
+        var settings = new WebAccount(new HttpClient(), SettingsPath).Settings;
+
+        Assert.Equal(WebSettings.DefaultUrl, settings.WebUrl);
+        Assert.Equal(new Uri(WebSettings.DefaultUrl + "/"), settings.BaseUri);
+    }
+
+    [Fact]
     public async Task Importa_una_BO_de_la_web_con_el_enlace_de_la_pagina()
     {
         var (vm, web, dialogs, _) = Editor();
