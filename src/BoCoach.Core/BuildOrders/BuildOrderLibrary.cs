@@ -26,11 +26,33 @@ public sealed partial class BuildOrderLibrary
 
     public string Directory { get; }
 
-    public IReadOnlyList<LibraryEntry> List() => System.IO.Directory
-        .EnumerateFiles(Directory, "*.json")
-        .Select(Read)
-        .OrderBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase)
-        .ToList();
+    // Lo leído de cada archivo, con su fecha y tamaño: el buscador del editor lista la biblioteca en cada tecla, y con
+    // una BO por civ (127 archivos, más de 1 MB de JSON) leerla entera cada vez trababa la escritura.
+    private readonly Dictionary<string, (DateTime Written, long Length, LibraryEntry Entry)> _read = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Lock _readLock = new();
+
+    /// <summary>Las BO de la carpeta por nombre. Solo vuelve a leer los archivos que cambiaron desde la última vez.</summary>
+    public IReadOnlyList<LibraryEntry> List()
+    {
+        lock (_readLock)
+        {
+            var entries = new List<LibraryEntry>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in new DirectoryInfo(Directory).EnumerateFiles("*.json"))
+            {
+                seen.Add(file.FullName);
+                if (!_read.TryGetValue(file.FullName, out var known) || known.Written != file.LastWriteTimeUtc || known.Length != file.Length)
+                {
+                    known = (file.LastWriteTimeUtc, file.Length, Read(file.FullName));
+                    _read[file.FullName] = known;
+                }
+                entries.Add(known.Entry);
+            }
+            foreach (var gone in _read.Keys.Where(path => !seen.Contains(path)).ToList())
+                _read.Remove(gone);
+            return entries.OrderBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        }
+    }
 
     /// <summary>Busca en nombre, civ, tags, autor y descripción, sin distinguir mayúsculas ni acentos.</summary>
     public IReadOnlyList<LibraryEntry> Search(string? text)

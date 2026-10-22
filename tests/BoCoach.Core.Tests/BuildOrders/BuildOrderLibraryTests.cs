@@ -118,6 +118,25 @@ public sealed class BuildOrderLibraryTests : IDisposable
     }
 
     [Fact]
+    public void Listar_de_nuevo_no_vuelve_a_leer_lo_que_no_cambio()
+    {
+        var a = _library.Save(Bo("A"));
+        _library.Save(Bo("B"));
+        var first = _library.List();
+
+        var again = _library.List();
+        Assert.Same(first[0], again[0]);
+        Assert.Same(first[1], again[1]);
+
+        // Lo que cambia se vuelve a leer, lo nuevo aparece y lo que se va desaparece.
+        _library.Save(a with { Name = "A cambiada" });
+        File.SetLastWriteTimeUtc(_library.PathFor(a), DateTime.UtcNow.AddMinutes(1));
+        _library.Save(Bo("C"));
+        File.Delete(first[1].Path);
+        Assert.Equal(["A cambiada", "C"], _library.List().Select(e => e.Name));
+    }
+
+    [Fact]
     public void Un_archivo_roto_en_la_biblioteca_se_lista_con_su_error()
     {
         File.WriteAllText(Path.Combine(_dir.FullName, "rota.json"), "{ nada");
