@@ -46,7 +46,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
         <footer className="border-t border-line px-4 py-4 text-center text-xs text-faint">
           AoE2 BO Coach es un proyecto de la comunidad, sin relación con Microsoft ni con los estudios del juego. Solo
-          lee la pantalla: no toca la memoria del juego ni manda inputs.{" "}
+          lee la pantalla: no toca la memoria del juego ni manda inputs. Hecho por{" "}
+          <a
+            href="https://portfoliosergiofb.vercel.app/es"
+            target="_blank"
+            rel="noopener"
+            className="hover:text-amber"
+          >
+            Sergio Ferrari Bryce
+          </a>
+          .{" "}
           <Link href="/privacidad" className="hover:text-amber">
             Privacidad
           </Link>
