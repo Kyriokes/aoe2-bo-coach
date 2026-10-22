@@ -10,17 +10,22 @@ namespace BoCoach.App;
 /// <summary>Datos que comparten todas las ventanas: game_data, eventos, planner, validador y biblioteca.</summary>
 public sealed class CoachData
 {
-    private CoachData(GameData gameData, EventCatalog events, BuildOrderLibrary library)
+    private CoachData(GameData gameData, EventCatalog events, Maps maps, BuildOrderLibrary library)
     {
         GameData = gameData;
         Events = events;
+        Maps = maps;
         Library = library;
         Planner = new Planner(gameData);
-        Validator = new BuildOrderValidator(gameData, events);
+        Validator = new BuildOrderValidator(gameData, events, maps);
     }
 
     public GameData GameData { get; }
     public EventCatalog Events { get; }
+
+    /// <summary>Los mapas (data/maps.json): qué fuentes tiene cada uno y si hay agua (D8).</summary>
+    public Maps Maps { get; }
+
     public BuildOrderLibrary Library { get; }
     public Planner Planner { get; }
     public BuildOrderValidator Validator { get; }
@@ -64,8 +69,9 @@ public sealed class CoachData
     {
         var gameData = GameDataLoader.LoadLatest(Path.Combine(DataDir, "game_data"));
         var events = EventCatalog.Load(Path.Combine(DataDir, "events.json")).PreferringEntitiesOf(gameData);
+        var maps = Maps.Load(Path.Combine(DataDir, "maps.json"));
         var library = new BuildOrderLibrary(libraryDir ?? Path.Combine(UserDir, "build_orders"));
         library.SeedMissing(Directory.EnumerateFiles(Path.Combine(DataDir, "build_orders"), "*.json"));
-        return new CoachData(gameData, events, library);
+        return new CoachData(gameData, events, maps, library);
     }
 }

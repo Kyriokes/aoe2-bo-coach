@@ -17,7 +17,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 {
     private static readonly HashSet<string> InputProperties =
     [
-        nameof(Name), nameof(Civ), nameof(Author), nameof(Description), nameof(TagsText),
+        nameof(Name), nameof(Civ), nameof(Map), nameof(Author), nameof(Description), nameof(TagsText),
         nameof(FeudalTargetText), nameof(CastleTargetText),
         nameof(FeudalFood), nameof(FeudalWood), nameof(FeudalGold), nameof(FeudalStone),
         nameof(PostureVillagers), nameof(PostureUnit), nameof(PostureNextAge),
@@ -53,6 +53,10 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         Id = bo.Id;
         Name = bo.Name;
         Civ = bo.Civ;
+        Map = Maps.IsAny(bo.Map) ? Maps.Any : bo.Map!;
+        MapOptions = app.Maps.All.Select(m => new Option<string>(m.Key, m.Name)).ToList();
+        if (MapOptions.All(o => o.Value != Map))
+            MapOptions = [.. MapOptions, new Option<string>(Map, $"{Map} (no está en maps.json)")];
         Author = bo.Author ?? "";
         Description = bo.Description ?? "";
         TagsText = string.Join(", ", bo.Tags);
@@ -97,6 +101,13 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
 
     [ObservableProperty] public partial string Name { get; set; }
     [ObservableProperty] public partial string Civ { get; set; }
+
+    /// <summary>D8: el mapa de la BO (clave de data/maps.json; "any" es cualquiera y no se guarda).</summary>
+    [ObservableProperty] public partial string Map { get; set; }
+
+    /// <summary>Los mapas de data/maps.json ("any" primero), más el de la BO si no está en el archivo.</summary>
+    public IReadOnlyList<Option<string>> MapOptions { get; }
+
     [ObservableProperty] public partial string Author { get; set; }
     [ObservableProperty] public partial string Description { get; set; }
     [ObservableProperty] public partial string TagsText { get; set; }
@@ -243,6 +254,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
             Id = Id,
             Name = Name.Trim(),
             Civ = string.IsNullOrWhiteSpace(Civ) ? "any" : Civ.Trim(),
+            Map = Maps.IsAny(Map) ? null : Map.Trim(),
             Author = string.IsNullOrWhiteSpace(Author) ? null : Author.Trim(),
             Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             Tags = TagsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),

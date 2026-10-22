@@ -240,6 +240,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="120" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -248,10 +250,15 @@
                         <ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding CivOptions}"
                                   Text="{Binding Civ, UpdateSourceTrigger=PropertyChanged}"
                                   ToolTip="'any' o la civ: la vista previa usa sus bonificaciones (recolección, costos, arranque)" />
-                        <TextBlock Grid.Column="2" Text="Autor" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                        <TextBox Grid.Column="3" Text="{Binding Author, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Grid.Column="4" Text="Tags" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                        <TextBox Grid.Column="5" Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separados por coma" />
+                        <!-- D8: el mapa dice qué fuentes hay y si hay agua (data/maps.json) -->
+                        <TextBlock Grid.Column="2" Text="Mapa" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
+                        <ComboBox Grid.Column="3" ItemsSource="{Binding MapOptions}" SelectedValuePath="Value" SelectedValue="{Binding Map}"
+                                  AutomationProperties.Name="Mapa de la build order"
+                                  ToolTip="Para qué mapa es: el validador avisa si usa una fuente o el muelle que el mapa no tiene" />
+                        <TextBlock Grid.Column="4" Text="Autor" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
+                        <TextBox Grid.Column="5" Text="{Binding Author, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="6" Text="Tags" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
+                        <TextBox Grid.Column="7" Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separados por coma" />
                     </Grid>
                     <TextBox Margin="0,8,0,0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"
                              AcceptsReturn="True" MinHeight="44" MaxHeight="80" VerticalScrollBarVisibility="Auto" ToolTip="Descripción" />

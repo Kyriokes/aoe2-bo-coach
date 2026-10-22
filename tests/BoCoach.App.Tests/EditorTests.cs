@@ -69,6 +69,29 @@ public sealed class EditorTests : IDisposable
         Assert.False(vm.IsDirty);
     }
 
+    // D8: el mapa de la BO, con la lista de data/maps.json; "any" no se guarda.
+    [Fact]
+    public void El_mapa_se_elige_de_la_lista_y_se_guarda_solo_si_no_es_cualquiera()
+    {
+        var vm = new BuildOrderEditorViewModel(ScoutsBo, _data);
+
+        Assert.Equal("any", vm.Map);
+        Assert.Equal("Cualquiera", vm.MapOptions[0].Label);
+        Assert.Contains(vm.MapOptions, o => o.Value == "arabia" && o.Label == "Arabia");
+        Assert.Null(vm.ToBuildOrder().Map);
+
+        vm.Map = "arabia";
+        Assert.True(vm.IsDirty);
+        Assert.Equal("arabia", vm.ToBuildOrder().Map);
+        Assert.Equal("arabia", new BuildOrderEditorViewModel(vm.ToBuildOrder(), _data).Map);
+
+        // Una BO con un mapa que no está en el archivo lo conserva, y la lista lo muestra para que se vea.
+        var raro = new BuildOrderEditorViewModel(ScoutsBo with { Map = "atlantis" }, _data);
+        Assert.Equal("atlantis", raro.Map);
+        Assert.Contains(raro.MapOptions, o => o.Value == "atlantis");
+        Assert.Contains(raro.Problems, p => p.Contains("atlantis"));
+    }
+
     // D2: la postura de cierre. Sin tocarla, una BO que no la tenía se guarda sin postura (sigue a sus pasos).
     [Fact]
     public void La_postura_deducida_se_muestra_y_sin_tocarla_no_se_guarda()
