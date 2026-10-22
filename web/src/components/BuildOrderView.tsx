@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import type { Analysis, AnalysisResult, PlanBlock } from "@/lib/coach/types";
@@ -19,8 +19,17 @@ type State = { status: "loading" } | { status: "error"; message: string } | { st
 /**
  * Valida, describe y simula una BO con el Core de la app corriendo en el navegador (WebAssembly), y muestra el
  * resultado. <paramref name="onAnalysis"/> recibe el análisis (por ejemplo, para publicar con la Feudal estimada).
+ * <paramref name="fallback"/> se ve mientras carga el Core o si no carga (los pasos escritos desde el servidor).
  */
-export function BuildOrderView({ json, onAnalysis }: { json: string; onAnalysis?: (result: AnalysisResult) => void }) {
+export function BuildOrderView({
+  json,
+  onAnalysis,
+  fallback,
+}: {
+  json: string;
+  onAnalysis?: (result: AnalysisResult) => void;
+  fallback?: ReactNode;
+}) {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -42,15 +51,21 @@ export function BuildOrderView({ json, onAnalysis }: { json: string; onAnalysis?
 
   if (state.status === "loading")
     return (
-      <p role="status" className="text-sm text-faint">
-        Simulando la BO con el motor de la app…
-      </p>
+      <div className="flex flex-col gap-3">
+        <p role="status" className="text-sm text-faint">
+          Simulando la BO con el motor de la app…
+        </p>
+        {fallback}
+      </div>
     );
   if (state.status === "error")
     return (
-      <p role="alert" className="text-sm text-red">
-        No se pudo cargar el simulador: {state.message}
-      </p>
+      <div className="flex flex-col gap-3">
+        <p role="alert" className="text-sm text-red">
+          No se pudo cargar el simulador: {state.message}
+        </p>
+        {fallback}
+      </div>
     );
   if (!state.result.ok)
     return (
