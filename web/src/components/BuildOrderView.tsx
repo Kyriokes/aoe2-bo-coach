@@ -3,16 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
-import type { Analysis, AnalysisResult, PlanBlock } from "@/lib/coach/types";
+import type { Analysis, AnalysisResult, Issue, PlanBlock } from "@/lib/coach/types";
+import { BLOCK_TEXT } from "@/lib/editor/text";
 import { Timeline } from "./Timeline";
-
-const BLOCK_TEXT: Record<PlanBlock["reason"], string> = {
-  population: "falta población (casas)",
-  resources: "faltan recursos",
-  producer: "falta el edificio que lo produce",
-  villagers: "no hay aldeanos libres",
-  age: "todavía no se llegó a la edad",
-};
 
 type State = { status: "loading" } | { status: "error"; message: string } | { status: "done"; result: AnalysisResult };
 
@@ -105,16 +98,7 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
         </div>
       </dl>
 
-      {analysis.issues.length > 0 ? (
-        <ul className="flex flex-col gap-1 rounded-md border border-line bg-panel p-3 text-sm">
-          {analysis.issues.map((issue, i) => (
-            <li key={i} className={issue.severity === "error" ? "text-red" : "text-amber"}>
-              {issue.step_id ? <span className="font-mono text-xs text-faint">{issue.step_id} </span> : null}
-              {issue.message}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <IssuesList issues={analysis.issues} />
 
       {analysis.timeline ? <Timeline analysis={analysis} /> : null}
 
@@ -143,17 +127,44 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
         ))}
       </ol>
 
-      {analysis.posture?.text || analysis.posture?.next_age ? (
-        <p className="rounded-md border border-line bg-panel p-3 text-sm">
-          <span className="text-faint">Al terminar: </span>
-          {[analysis.posture.text, analysis.posture.next_age ? `y después, ${analysis.posture.next_age}` : null]
-            .filter(Boolean)
-            .join(", ")}
-          {analysis.posture.derived ? <span className="text-xs text-faint"> (deducido de los pasos)</span> : null}
-        </p>
-      ) : null}
+      <PostureLine posture={analysis.posture} />
+      <BranchList branches={analysis.branches} />
+    </div>
+  );
+}
 
-      {(analysis.branches ?? []).map((branch, i) => (
+/** Los problemas del validador, errores en rojo y avisos en ámbar (también los usa el editor). */
+export function IssuesList({ issues }: { issues: Issue[] }) {
+  if (issues.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-1 rounded-md border border-line bg-panel p-3 text-sm">
+      {issues.map((issue, i) => (
+        <li key={i} className={issue.severity === "error" ? "text-red" : "text-amber"}>
+          {issue.step_id ? <span className="font-mono text-xs text-faint">{issue.step_id} </span> : null}
+          {issue.message}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** La postura de cierre (D2): qué queda siempre en cola y a qué edad se apunta. */
+export function PostureLine({ posture }: { posture: Analysis["posture"] }) {
+  if (!posture?.text && !posture?.next_age) return null;
+  return (
+    <p className="rounded-md border border-line bg-panel p-3 text-sm">
+      <span className="text-faint">Al terminar: </span>
+      {[posture.text, posture.next_age ? `y después, ${posture.next_age}` : null].filter(Boolean).join(", ")}
+      {posture.derived ? <span className="text-xs text-faint"> (deducido de los pasos)</span> : null}
+    </p>
+  );
+}
+
+/** Las ramas (D3): los pasos que se agregan con cada señal de la partida. */
+export function BranchList({ branches }: { branches: Analysis["branches"] }) {
+  return (
+    <>
+      {(branches ?? []).map((branch, i) => (
         <div key={i} className="rounded-md border border-line bg-panel p-3 text-sm">
           <p>
             <span className="font-semibold">{branch.on}</span>
@@ -167,11 +178,12 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
           </ol>
         </div>
       ))}
-    </div>
+    </>
   );
 }
 
-function Stat({ label, value, target }: { label: string; value?: number | null; target?: number }) {
+/** Una tarjeta con un clic de edad y, si hay, el objetivo de la BO (en rojo con más de 15 s de atraso). */
+export function Stat({ label, value, target }: { label: string; value?: number | null; target?: number }) {
   const delta = value != null && target != null ? value - target : null;
   return (
     <div className="rounded-md border border-line bg-panel p-3">
