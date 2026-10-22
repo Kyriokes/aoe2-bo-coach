@@ -37,6 +37,11 @@ export const buildOrderSchema = z.looseObject({
   description: z.string().max(4000).nullish(),
   tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
   steps: z.array(step).min(1, "La BO no tiene pasos.").max(300),
+  // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
+  branches: z
+    .array(z.looseObject({ steps: z.array(step).min(1).max(300) }))
+    .max(20)
+    .nullish(),
 });
 
 export type BuildOrderBody = z.infer<typeof buildOrderSchema>;

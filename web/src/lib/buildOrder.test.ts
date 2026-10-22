@@ -33,6 +33,18 @@ describe("tope de count y builders", () => {
 });
 
 // Sin tope, los pasos admiten notas de cualquier largo: una BO de varios megas la bajaría cada visita a su página.
+describe("ramas", () => {
+  const withBranch = (count: number) => ({
+    ...bo({}),
+    branches: [{ on: "enemy_feudal_click", steps: [{ id: "r1", do: "train", what: "archer", count }] }],
+  });
+
+  it("los pasos de las ramas tienen el mismo tope", () => {
+    expect(errorOf(withBranch(6))).toBeNull();
+    expect(errorOf(withBranch(999_999))).toContain("branches");
+  });
+});
+
 describe("tamaño de la BO", () => {
   it("rechaza una BO de más de 512 KB, como texto o como objeto", () => {
     const heavy = bo({ notes: "x".repeat(600_000) });
