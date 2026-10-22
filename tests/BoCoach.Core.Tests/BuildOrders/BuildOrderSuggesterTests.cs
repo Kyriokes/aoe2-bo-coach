@@ -15,6 +15,19 @@ public class BuildOrderSuggesterTests
     private static readonly CivStyles Styles = CivStyles.Load(Path.Combine(AppContext.BaseDirectory, "civ_styles.json"));
 
     [Fact]
+    public void Entre_la_importada_y_la_mejorada_de_la_civ_sugiere_la_mejorada()
+    {
+        // D7: build_orders/civs tiene las dos de cada civ.
+        var civs = Path.Combine(AppContext.BaseDirectory, "civs");
+        var library = new[] { "huns.json", "huns-mejorada.json" }.Select(f => BuildOrderSerializer.Load(Path.Combine(civs, f))).Concat(Library);
+
+        var suggestion = BuildOrderSuggester.Suggest(library, new MatchSetup("huns"), Styles);
+
+        Assert.Equal("bog-huns-mejorada", suggestion?.BuildOrder.Id);
+        Assert.Contains("de tu civ", suggestion!.Reason);
+    }
+
+    [Fact]
     public void El_estilo_de_una_BO_sale_de_sus_pasos()
     {
         Assert.Equal("archers", BuildOrderSuggester.StyleOf(Archers));

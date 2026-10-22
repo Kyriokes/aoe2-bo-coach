@@ -116,7 +116,7 @@ public sealed record BuildOrderSuggestion(BuildOrder BuildOrder, string Reason, 
 /// carga. Puntos: la civ de la BO es la del jugador (+4; "any" vale 0; otra civ la descarta), el mapa está en sus
 /// etiquetas (+2) y su estilo (deducido de los pasos) es el primero típico de la civ (+3) u otro típico (+2). Segunda
 /// parte (2026-10-21): le gana al estilo del rival de enfrente (+2) y al de cada uno de los demás (+0,5), y conviene
-/// en la posición del jugador en su equipo (+1).
+/// en la posición del jugador en su equipo (+1). Entre una BO importada y su versión mejorada (D7), la mejorada (+0,5).
 /// </summary>
 public static class BuildOrderSuggester
 {
@@ -226,6 +226,9 @@ public static class BuildOrderSuggester
             score += 1;
             why.Add(c.Match.Position == TeamPosition.Flank ? "para el flanco" : "para el bolsillo");
         }
+        // D7: de cada civ hay una importada y su versión mejorada con el simulador; entre las dos, la mejorada.
+        if (score > 0 && bo.Tags.Contains("mejorada", StringComparer.OrdinalIgnoreCase))
+            score += 0.5;
         return (score, why);
     }
 
