@@ -1,0 +1,270 @@
+{
+  "schema_version": 2,
+  "id": "bog-spanish",
+  "name": "Hideout Conqs",
+  "civ": "spanish",
+  "author": "WololoCrash",
+  "description": "14:30 defensive Castle, Conqs to harass. Then either boom behind or go forward siege. Fuente: https://www.buildorderguide.com/builds/QMnkjT1SEfiWrN3twMN9.",
+  "tags": [
+    "importada",
+    "buildorderguide",
+    "fast_castle"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": [],
+      "note": "Insta Push Deer. You may have to use a Sheep to keep open a Gate."
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s9",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "stone",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "stone",
+      "from": "stone",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s12",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 25
+    },
+    {
+      "id": "s16",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "build",
+      "what": "market",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "stone",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 26
+    },
+    {
+      "id": "s22",
+      "do": "move",
+      "count": 3,
+      "assign": "gold",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "move",
+      "count": 3,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "castle",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s28",
+      "do": "research",
+      "what": "bow_saw",
+      "count": 1,
+      "after": [],
+      "note": "Now spam Farms everywhere."
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 13,
+      "wood": 5,
+      "gold": 3,
+      "stone": 3,
+      "total": 24
+    },
+    "villagers_at_castle": {
+      "food": 13,
+      "wood": 5,
+      "gold": 3,
+      "stone": 4,
+      "total": 25
+    }
+  }
+}

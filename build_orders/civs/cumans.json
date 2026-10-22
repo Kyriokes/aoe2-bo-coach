@@ -1,0 +1,313 @@
+{
+  "schema_version": 2,
+  "id": "bog-cumans",
+  "name": "Scout Rush (Cumanos)",
+  "civ": "cumans",
+  "author": "Vinchester",
+  "description": "Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Cumanos. Scout Rush in Feudal Age from Vinchester Fuente: https://www.buildorderguide.com/builds/43lI37Hun78KgdSnn7x1.",
+  "tags": [
+    "importada",
+    "buildorderguide",
+    "scouts",
+    "gen\u00E9rica"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar. Optional: Push Deers With Scout Under TC"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": [],
+      "note": "Atra\u00E9 jabal\u00ED"
+    },
+    {
+      "id": "s6",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s8",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s9",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "build",
+      "what": "farm",
+      "count": 1,
+      "assign": "farm",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": [],
+      "note": "Drop Food From Boar to TC"
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 21
+    },
+    {
+      "id": "s14",
+      "do": "move",
+      "count": 3,
+      "assign": "wood",
+      "from": "sheep",
+      "after": [],
+      "note": "30% researched:"
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "95% researched:"
+    },
+    {
+      "id": "s16",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 4,
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "build",
+      "what": "farm",
+      "count": 1,
+      "assign": "farm",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "farm",
+      "count": 3,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas2",
+      "note": "Actions against Enemy:. Send 2 Groups of Scouts: 1 \u0026 4 or 2 \u0026 3. Enemy Fast Feudal -\u003E Train 2-3 Spearmen. Enemy Trains Few Archers -\u003E Kill Archers. Enemy Trains Many Archers -\u003E Range \u0026 Train Skirmishers"
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s26",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s28",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s30",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s32",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": [],
+      "note": "Play Castle Age with your build!"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 14,
+      "wood": 6,
+      "gold": 0,
+      "stone": 0,
+      "total": 20
+    },
+    "villagers_at_castle": {
+      "food": 21,
+      "wood": 11,
+      "gold": 3,
+      "stone": 0,
+      "total": 35
+    }
+  }
+}

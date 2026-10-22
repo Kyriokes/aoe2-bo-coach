@@ -1,0 +1,255 @@
+{
+  "schema_version": 2,
+  "id": "bog-mapuche",
+  "name": "Archer (Mapuches)",
+  "civ": "mapuche",
+  "author": "Hera",
+  "description": "Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Mapuches. 19 pop archer build, mainly for teamgames Fuente: https://www.buildorderguide.com/builds/4Pii3RvkcpLfxHAATY26.",
+  "tags": [
+    "importada",
+    "buildorderguide",
+    "archers",
+    "gen\u00E9rica"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "settlement",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar. Next 7 on hunt/sheep. Atra\u00E9 3 ciervo"
+    },
+    {
+      "id": "s5",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 13,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "settlement",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 15,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 19,
+      "note": "After hunt, send 7 vils to wood. 1st lumber camp."
+    },
+    {
+      "id": "s12",
+      "do": "move",
+      "count": 7,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "archery_range",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "move",
+      "count": 4,
+      "assign": "sheep",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "move",
+      "count": 1,
+      "assign": "gold",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "train",
+      "what": "archer",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "research",
+      "what": "fletching",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "settlement",
+      "count": 1,
+      "assign": "berries",
+      "from": "sheep",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s27",
+      "do": "move",
+      "count": 5,
+      "assign": "berries",
+      "from": "sheep",
+      "after": [],
+      "note": "new vils to strangler and farms when you can afford it"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 15,
+      "wood": 2,
+      "gold": 1,
+      "stone": 0,
+      "total": 18
+    }
+  }
+}

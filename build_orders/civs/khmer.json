@@ -1,0 +1,273 @@
+{
+  "schema_version": 2,
+  "id": "bog-khmer",
+  "name": "Fast Scouts",
+  "civ": "khmer",
+  "author": "HumzaCrumza",
+  "description": "In the quest for the fast Scout rushes, it seems that Khmer have risen to the occasion with a Scout rush uptime that rivals the Mongols. While this build is extremely lean, it can be adapted to go up at 17/18 population as well in order to adjust for the game being played.",
+  "tags": [
+    "importada",
+    "buildorderguide",
+    "scouts"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "train",
+      "what": "villager",
+      "count": 10,
+      "assign": "sheep",
+      "after": [],
+      "note": "Atra\u00E9 jabal\u00ED. Atra\u00E9 2 ciervo"
+    },
+    {
+      "id": "s5",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "sheep",
+      "from": "sheep",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 13,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 16
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "sheep",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s10",
+      "do": "move",
+      "count": 7,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "train",
+      "what": "villager",
+      "count": 10,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 2,
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "sheep",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s16",
+      "do": "move",
+      "count": 4,
+      "assign": "berries",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s19",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s20",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s21",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas1"
+    },
+    {
+      "id": "s22",
+      "do": "build",
+      "what": "farm",
+      "count": 11,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas1"
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s26",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s28",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 15,
+      "wood": 0,
+      "gold": 0,
+      "stone": 0,
+      "total": 15
+    },
+    "villagers_at_castle": {
+      "food": 18,
+      "wood": 10,
+      "gold": 5,
+      "stone": 0,
+      "total": 33
+    }
+  }
+}

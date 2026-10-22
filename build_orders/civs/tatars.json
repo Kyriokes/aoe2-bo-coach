@@ -1,0 +1,415 @@
+{
+  "schema_version": 2,
+  "id": "bog-tatars",
+  "name": "Fast Scouts \u2192 Cavalry Archer",
+  "civ": "tatars",
+  "author": "Imperius",
+  "description": "Fast Feudal with 4 Scouts =\u003E Transition into Castle Age with 3 Range Cavalry Archer Fuente: https://www.buildorderguide.com/builds/oOPDnmZAxz4r5clAeZMK.",
+  "tags": [
+    "importada",
+    "buildorderguide",
+    "scouts"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": [],
+      "note": "Lure before 2nd Sheep runs out"
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 8,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "berries",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "move",
+      "count": 4,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "move",
+      "count": 1,
+      "assign": "berries",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 19
+    },
+    {
+      "id": "s17",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 3,
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s26",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "farm",
+      "count": 4,
+      "assign": "farm",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s28",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s29",
+      "do": "train",
+      "what": "villager",
+      "count": 14,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s30",
+      "do": "build",
+      "what": "farm",
+      "count": 10,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s31",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s32",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s33",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s34",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s35",
+      "do": "move",
+      "count": 5,
+      "assign": "gold",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s36",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s37",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s38",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s39",
+      "do": "move",
+      "count": 4,
+      "assign": "wood",
+      "from": "farm",
+      "after": []
+    },
+    {
+      "id": "s40",
+      "do": "research",
+      "what": "gold_mining",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s41",
+      "do": "research",
+      "what": "fletching",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s42",
+      "do": "research",
+      "what": "bloodlines",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s43",
+      "do": "build",
+      "what": "archery_range",
+      "count": 3,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Start training Cavalry Archers. New Villagers on Wood"
+    },
+    {
+      "id": "s44",
+      "do": "research",
+      "what": "husbandry",
+      "count": 1,
+      "after": [],
+      "note": "Investig\u00E1 bodkin_arrow"
+    },
+    {
+      "id": "s45",
+      "do": "build",
+      "what": "university",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Investig\u00E1 ballistics"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 11,
+      "wood": 7,
+      "gold": 0,
+      "stone": 0,
+      "total": 18
+    },
+    "villagers_at_castle": {
+      "food": 14,
+      "wood": 11,
+      "gold": 12,
+      "stone": 0,
+      "total": 37
+    }
+  }
+}

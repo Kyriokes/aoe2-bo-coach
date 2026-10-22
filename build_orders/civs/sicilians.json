@@ -1,0 +1,260 @@
+{
+  "schema_version": 2,
+  "id": "bog-sicilians",
+  "name": "Sicilians",
+  "civ": "sicilians",
+  "author": "knz",
+  "description": "Sicilianos - Castle Drop Build Order Fuente: https://www.buildorderguide.com/builds/v8sYayYaRRozalg2MmjU.",
+  "tags": [
+    "importada",
+    "buildorderguide"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s6",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s7",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s8",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s9",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 7,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "gold",
+      "after": [],
+      "note": "Agregado al importar. 22 alde\u00F5es clicar para feudal age"
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 20
+    },
+    {
+      "id": "s14",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s17",
+      "do": "train",
+      "what": "villager",
+      "count": 2,
+      "assign": "stone",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s19",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 4,
+      "after": [],
+      "note": "e atacar"
+    },
+    {
+      "id": "s20",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "stone",
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "build",
+      "what": "market",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Castle Age 30 alde\u00F5es"
+    },
+    {
+      "id": "s23",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": [],
+      "note": "Constru\u00ED donjon"
+    },
+    {
+      "id": "s24",
+      "do": "build",
+      "what": "town_center",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "train",
+      "what": "knight",
+      "count": 1,
+      "after": [],
+      "note": "Constru\u00ED donjon. Entren\u00E1 1 serjeant"
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "town_center",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 11,
+      "wood": 7,
+      "gold": 1,
+      "stone": 0,
+      "total": 19
+    },
+    "villagers_at_castle": {
+      "food": 11,
+      "wood": 7,
+      "gold": 1,
+      "stone": 5,
+      "total": 24
+    }
+  }
+}

@@ -1,0 +1,428 @@
+{
+  "schema_version": 2,
+  "id": "bog-franks",
+  "name": "WesternAOE Rush Updated",
+  "civ": "franks",
+  "author": "WesternAOE",
+  "description": "WesternAOE build order for the Franks.   This build order is designed to maximize damage and disrupt your opponent\u0027s economy by utilizing the Franks\u0027 strengths. While there is a small element of micro involved, the primary objective of this build is to disrupt the enemy economy count during the Feudal Age with the scouts. By doing so, you\u0027ll have ample time to build up a formidable force of knights once you\u0027re in Castle Age. Fuente: https://www.buildorderguide.com/builds/JMmYa7X0rqYSJ4t3uJaa.",
+  "tags": [
+    "importada",
+    "buildorderguide"
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "sheep",
+      "builders": 3,
+      "after": [],
+      "note": "Los 3 aldeanos iniciales hacen 2 casas (agregado al importar)"
+    },
+    {
+      "id": "s2",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s3",
+      "do": "train",
+      "what": "villager",
+      "count": 3,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s4",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s5",
+      "do": "train",
+      "what": "villager",
+      "count": 1,
+      "assign": "hunt",
+      "after": [],
+      "note": "Sheep Vills to Boar"
+    },
+    {
+      "id": "s6",
+      "do": "build",
+      "what": "house",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s7",
+      "do": "train",
+      "what": "villager",
+      "count": 10,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "berries",
+      "after": [],
+      "group": "molino1"
+    },
+    {
+      "id": "s9",
+      "do": "build",
+      "what": "mill",
+      "count": 1,
+      "assign": "berries",
+      "from": "berries",
+      "after": [],
+      "group": "molino1",
+      "note": "Agregado al importar. Atra\u00E9 ciervo"
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s11",
+      "do": "build",
+      "what": "lumber_camp",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s12",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "feudal_age",
+      "count": 1,
+      "after": [],
+      "at_pop": 21
+    },
+    {
+      "id": "s14",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s15",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s16",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s17",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s18",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "research",
+      "what": "double_bit_axe",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s20",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "house",
+      "count": 3,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s22",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 4,
+      "after": []
+    },
+    {
+      "id": "s23",
+      "do": "build",
+      "what": "farm",
+      "count": 5,
+      "assign": "farm",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "villager",
+      "count": 11,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas2"
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas2",
+      "note": "Once You Have Enough Wood Move to Farms."
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "build",
+      "what": "mining_camp",
+      "count": 1,
+      "assign": "gold",
+      "from": "berries",
+      "after": [],
+      "note": "Agregado al importar"
+    },
+    {
+      "id": "s28",
+      "do": "move",
+      "count": 3,
+      "assign": "gold",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s29",
+      "do": "train",
+      "what": "villager",
+      "count": 17,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s30",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas3"
+    },
+    {
+      "id": "s31",
+      "do": "train",
+      "what": "villager",
+      "count": 9,
+      "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s32",
+      "do": "train",
+      "what": "villager",
+      "count": 20,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas4"
+    },
+    {
+      "id": "s33",
+      "do": "build",
+      "what": "farm",
+      "count": 3,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas4"
+    },
+    {
+      "id": "s34",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s35",
+      "do": "research",
+      "what": "castle_age",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s36",
+      "do": "research",
+      "what": "gold_mining",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s37",
+      "do": "build",
+      "what": "stable",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s38",
+      "do": "research",
+      "what": "forging",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s39",
+      "do": "research",
+      "what": "scale_mail_armor",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s40",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s41",
+      "do": "train",
+      "what": "villager",
+      "count": 17,
+      "assign": "wood",
+      "after": [],
+      "note": "Investig\u00E1 iron_casting. Investig\u00E1 chain_barding_armor"
+    },
+    {
+      "id": "s42",
+      "do": "research",
+      "what": "bow_saw",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s43",
+      "do": "train",
+      "what": "knight",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s44",
+      "do": "build",
+      "what": "town_center",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s45",
+      "do": "build",
+      "what": "market",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Build a TC on Your Gold"
+    },
+    {
+      "id": "s46",
+      "do": "build",
+      "what": "monastery",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Attack Your Enemy\u0027s Base"
+    }
+  ],
+  "targets": {
+    "villagers_at_feudal": {
+      "food": 15,
+      "wood": 5,
+      "gold": 0,
+      "stone": 0,
+      "total": 20
+    },
+    "villagers_at_castle": {
+      "food": 20,
+      "wood": 11,
+      "gold": 9,
+      "stone": 0,
+      "total": 40
+    }
+  }
+}
