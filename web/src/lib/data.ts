@@ -53,7 +53,21 @@ function cleanSearch(text: string) {
   return text.replace(/[^\p{L}\p{N} _-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60);
 }
 
-export async function listBuildOrders(query: LibraryQuery): Promise<BuildOrderSummary[]> {
+/**
+ * La biblioteca con los filtros. La consulta se normaliza antes del caché: búsquedas equivalentes ("Scouts " y
+ * "scouts") comparten la entrada y lo que no sirve como filtro no ocupa lugar en él.
+ */
+export function listBuildOrders(query: LibraryQuery): Promise<BuildOrderSummary[]> {
+  // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
+  return cachedBuildOrders(
+    cleanSearch(query.q ?? "").toLowerCase(),
+    filterValue(query.civ) ?? "",
+    filterValue(query.tag) ?? "",
+    query.sort === "recientes" ? "recientes" : "votos",
+  );
+}
+
+async function cachedBuildOrders(search: string, civ: string, tag: string, sort: Sort): Promise<BuildOrderSummary[]> {
   "use cache";
   cacheLife("minutes");
   cacheTag(LIBRARY_TAG);
@@ -61,15 +75,11 @@ export async function listBuildOrders(query: LibraryQuery): Promise<BuildOrderSu
   const db = publicClient();
   if (!db) return [];
   let request = db.from("build_orders").select(summaryColumns).limit(60);
-  const search = cleanSearch(query.q ?? "");
   if (search) request = request.or(`name.ilike.*${search}*,description.ilike.*${search}*`);
-  // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
-  const civ = filterValue(query.civ);
-  const tag = filterValue(query.tag);
   if (civ) request = request.eq("civ", civ);
   if (tag) request = request.contains("tags", [tag]);
   request =
-    query.sort === "recientes"
+    sort === "recientes"
       ? request.order("created_at", { ascending: false })
       : request.order("votes", { ascending: false }).order("created_at", { ascending: false });
 
@@ -106,13 +116,21 @@ export async function listSitemapEntries(): Promise<{ code: string; updated_at: 
   return data as { code: string; updated_at: string }[];
 }
 
-export async function getBuildOrder(code: string): Promise<BuildOrderDetail | null> {
+/** Los códigos de las BO: 6 letras y números, sin los que se confunden (como new_short_code en la base). */
+export const CODE_PATTERN = /^[a-z2-9]{6}$/;
+
+/** Una BO por su código. Un código mal formado ni se busca ni ocupa lugar en el caché. */
+export function getBuildOrder(code: string): Promise<BuildOrderDetail | null> {
+  return CODE_PATTERN.test(code) ? cachedBuildOrder(code) : Promise.resolve(null);
+}
+
+async function cachedBuildOrder(code: string): Promise<BuildOrderDetail | null> {
   "use cache";
   cacheLife("minutes");
   cacheTag(buildOrderTag(code));
 
   const db = publicClient();
-  if (!db || !/^[a-z2-9]{6}$/.test(code)) return null;
+  if (!db) return null;
   const { data, error } = await db
     .from("build_orders")
     .select(`${summaryColumns}, owner_id, updated_at, body`)
