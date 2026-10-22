@@ -21,6 +21,7 @@ beforeAll(async () => {
     dotnetModule,
     readFileSync(join(coachDir, "game_data.json"), "utf8"),
     readFileSync(join(coachDir, "events.json"), "utf8"),
+    readFileSync(join(coachDir, "maps.json"), "utf8"),
   );
 }, 60_000);
 

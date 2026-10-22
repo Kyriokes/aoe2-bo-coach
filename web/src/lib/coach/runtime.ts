@@ -9,7 +9,7 @@ export interface CoachRuntime {
 }
 
 interface CoachExports {
-  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string): string; Analyze(json: string): string } } };
+  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string, maps: string): string; Analyze(json: string): string } } };
 }
 
 interface DotnetModule {
@@ -18,12 +18,12 @@ interface DotnetModule {
   };
 }
 
-/** Arranca el runtime de .NET (dotnet.js) y le carga game_data y events.json. */
-export async function startCoach(dotnetModule: DotnetModule, gameDataJson: string, eventsJson: string): Promise<CoachRuntime> {
+/** Arranca el runtime de .NET (dotnet.js) y le carga game_data, events.json y maps.json. */
+export async function startCoach(dotnetModule: DotnetModule, gameDataJson: string, eventsJson: string, mapsJson = ""): Promise<CoachRuntime> {
   const runtime = await dotnetModule.dotnet.create();
   const exports = (await runtime.getAssemblyExports("BoCoach.Wasm")) as CoachExports;
   const coach = exports.BoCoach.Wasm.Exports;
-  const datVersion = coach.Init(gameDataJson, eventsJson);
+  const datVersion = coach.Init(gameDataJson, eventsJson, mapsJson);
   return {
     datVersion,
     analyze: (json) => JSON.parse(coach.Analyze(json)) as AnalysisResult,

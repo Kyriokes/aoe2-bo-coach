@@ -15,6 +15,8 @@ export interface AnalyzedStep {
   do: "train" | "build" | "research" | "move";
   what: string | null;
   count: number;
+  /** Unidades que hace el paso: aldeanos nuevos en los de aldeanos (count es el total en la fuente), count en los demás, 1 en move y research. */
+  units: number;
   note: string | null;
   /** Segundos de partida en que el Planner estima que empieza y termina (null si no se simuló). */
   start: number | null;
@@ -51,6 +53,8 @@ export interface Analysis {
   id: string;
   name: string;
   civ: string;
+  /** El mapa para el que está pensada (clave de maps.json), o null si sirve para cualquiera (D8). */
+  map: string | null;
   author: string | null;
   description: string | null;
   schema_version: number;

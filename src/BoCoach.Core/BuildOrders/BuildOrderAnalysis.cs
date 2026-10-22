@@ -13,7 +13,8 @@ namespace BoCoach.Core.BuildOrders;
 /// </summary>
 public static class BuildOrderAnalysis
 {
-    public static string Analyze(string json, GameData data, EventCatalog? events = null)
+    /// <param name="maps">Los mapas (data/maps.json), para los avisos del mapa de la BO (D8).</param>
+    public static string Analyze(string json, GameData data, EventCatalog? events = null, Maps? maps = null)
     {
         using var stream = new MemoryStream();
         using (var w = new Utf8JsonWriter(stream))
@@ -33,7 +34,7 @@ public static class BuildOrderAnalysis
                 return Encoding.UTF8.GetString(stream.ToArray());
             }
 
-            var validation = new BuildOrderValidator(data, events).Validate(bo);
+            var validation = new BuildOrderValidator(data, events, maps).Validate(bo);
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             WriteBuildOrder(w, bo);
@@ -54,6 +55,7 @@ public static class BuildOrderAnalysis
         w.WriteString("id", bo.Id);
         w.WriteString("name", bo.Name);
         w.WriteString("civ", bo.Civ);
+        w.WriteString("map", bo.Map);
         w.WriteString("author", bo.Author);
         w.WriteString("description", bo.Description);
         w.WriteNumber("schema_version", bo.SchemaVersion);
@@ -113,9 +115,13 @@ public static class BuildOrderAnalysis
 
     private static void WriteSteps(Utf8JsonWriter w, BuildOrder bo, PlanResult? plan)
     {
+        // D8: las unidades de cada paso (aldeanos nuevos en los de aldeanos, donde count es el total en la fuente), para
+        // que el editor de la web cargue cualquier BO a su modelo en unidades.
+        var units = Engine.LivePlan.Units(bo);
         w.WriteStartArray("steps");
-        foreach (var step in bo.Steps)
+        for (var i = 0; i < bo.Steps.Count; i++)
         {
+            var step = bo.Steps[i];
             var estimate = plan?.For(step.Id);
             w.WriteStartObject();
             w.WriteString("id", step.Id);
@@ -123,6 +129,7 @@ public static class BuildOrderAnalysis
             w.WriteString("do", step.Do.ToString().ToLowerInvariant());
             w.WriteString("what", step.What);
             w.WriteNumber("count", step.Count);
+            w.WriteNumber("units", units[i]);
             w.WriteString("note", step.Note);
             Number(w, "start", estimate?.Start);
             Number(w, "end", estimate?.End);
