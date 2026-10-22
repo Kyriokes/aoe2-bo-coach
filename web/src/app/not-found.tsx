@@ -9,7 +9,7 @@ export default function NotFound() {
         y números, como <span className="font-mono text-amber">k7m2qa</span>.
       </p>
       <p>
-        <Link href="/" className="button no-underline">
+        <Link href="/biblioteca" className="button no-underline">
           Volver a la biblioteca
         </Link>
       </p>

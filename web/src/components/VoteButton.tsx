@@ -20,7 +20,7 @@ export function VoteButton(props: { buildOrderId: string; code: string; votes: n
 
   if (!props.loggedIn) {
     return (
-      <Link href="/login" className="button" title="Iniciá sesión para votar">
+      <Link href={`/login?volver=/bo/${props.code}`} className="button" title="Iniciá sesión para votar">
         <Votes votes={props.votes} />
         <span className="sr-only">: iniciá sesión para votar</span>
       </Link>
@@ -35,7 +35,8 @@ export function VoteButton(props: { buildOrderId: string; code: string; votes: n
         startTransition(async () => {
           const vote = !state.voted;
           setOptimistic({ voted: vote, votes: state.votes + (vote ? 1 : -1) });
-          await setVote(props.buildOrderId, props.code, vote);
+          const result = await setVote(props.buildOrderId, props.code, vote);
+          if (!result.ok) alert(result.error);
         })
       }
       className={state.voted ? "button-primary" : "button"}
