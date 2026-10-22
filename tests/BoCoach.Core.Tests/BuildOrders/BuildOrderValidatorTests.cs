@@ -34,6 +34,28 @@ public class BuildOrderValidatorTests
         Assert.Empty(result.Warnings);
     }
 
+    // D8: el mapa dice qué fuentes hay y si hay agua. Es un aviso, no un error: la tabla es aproximada y el Planner simula igual.
+    [Fact]
+    public void Avisa_si_la_BO_usa_una_fuente_o_el_muelle_que_su_mapa_no_tiene()
+    {
+        var maps = Maps.Load(Path.Combine(AppContext.BaseDirectory, "maps.json"));
+        var validator = new BuildOrderValidator(TestData.GameData, TestData.Events, maps);
+        var fishing = Bo(Villagers("a", 6), Villagers("b", 3, GatherSource.Fish), Build("c", "dock"),
+            new Step { Id = "d", Do = StepAction.Move, Count = 1, From = GatherSource.Fish, Assign = GatherSource.Wood });
+
+        var arabia = validator.Validate(fishing with { Map = "arabia" });
+        Assert.True(arabia.IsValid);
+        Assert.Equal(["b", "c", "d"], arabia.Warnings.Select(w => w.StepId));
+        Assert.Contains("El mapa Arabia no tiene pesca", arabia.Warnings.First().Message);
+        Assert.Contains("no tiene agua: no hay muelle", arabia.Warnings.ElementAt(1).Message);
+
+        Assert.Empty(validator.Validate(fishing with { Map = "islands" }).Warnings);
+        Assert.Empty(validator.Validate(fishing).Warnings);
+        Assert.Empty(Validator.Validate(fishing with { Map = "arabia" }).Warnings); // sin mapas cargados no se mira
+        var unknown = Assert.Single(validator.Validate(fishing with { Map = "atlantis" }).Warnings);
+        Assert.Contains("'atlantis' no está en maps.json", unknown.Message);
+    }
+
     [Fact]
     public void Avisa_si_la_poblacion_del_clic_nunca_se_alcanza()
     {

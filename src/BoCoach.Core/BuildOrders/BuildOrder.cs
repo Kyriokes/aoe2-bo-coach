@@ -31,6 +31,13 @@ public sealed record BuildOrder
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Civ { get; set; } = "any";
+
+    /// <summary>
+    /// El mapa para el que está pensada (clave de data/maps.json: "arabia", "arena", "islands"...). Opcional y sin
+    /// subir <see cref="SchemaVersion"/>; null es cualquier mapa (D8). El mapa dice qué fuentes hay y si hay agua.
+    /// </summary>
+    public string? Map { get; set; }
+
     public string? Author { get; set; }
     public string? Description { get; set; }
     public IReadOnlyList<string> Tags { get; set; } = [];

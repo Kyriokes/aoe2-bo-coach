@@ -27,6 +27,7 @@
     <None Include="..\..\data\game_data\*.json" Link="game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\events*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\civ_styles.json" Link="civ_styles.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\maps.json" Link="maps.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\build_orders\*.json" Link="build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <!-- Las BO de ejemplo viejas (scouts y fast castle a mano): muchos tests dependen de sus pasos. -->
     <None Include="..\fixtures\build_orders\*.json" Link="build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

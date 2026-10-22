@@ -23,7 +23,8 @@ public sealed record ValidationResult(IReadOnlyList<ValidationIssue> Issues)
 }
 
 /// <summary>Revisa que una BO tenga sentido contra los datos del juego. No simula tiempos (eso es del Planner).</summary>
-public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events = null)
+/// <param name="maps">Los mapas (data/maps.json) para avisar si la BO usa algo que su mapa no tiene; sin ellos no se mira el mapa.</param>
+public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events = null, Maps? maps = null)
 {
     public const int MaxPopulation = 200;
 
@@ -79,6 +80,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
                 Error(step.Id, $"El id '{step.Id}' está repetido.");
         }
 
+        var map = MapOf(bo, Warn);
         var age = Age.Dark;
         var built = new HashSet<string> { StartingBuilding };
         foreach (var step in bo.Steps)
@@ -87,6 +89,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             ValidateStep(step, id, age, built, ids, Error, Warn);
             if (step.What is { } what && step.Do != StepAction.Move && !gameData.CanMake(bo.Civ, what))
                 Error(id, $"La civ {CivName(bo.Civ)} no tiene {StepText.Name(what)} (según su árbol de tecnologías).");
+            if (map is not null)
+                ValidateMap(step, id, map, Warn);
 
             if (step.Do == StepAction.Build && step.What is not null)
             {
@@ -141,6 +145,34 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
     private string CivName(string civ) =>
         gameData.Civ(civ).Names.TryGetValue("mx", out var name) ? name : civ;
+
+    /// <summary>El mapa de la BO si hay que mirarlo: con mapas cargados, un mapa puesto y conocido (uno desconocido avisa).</summary>
+    private GameMap? MapOf(BuildOrder bo, Action<string?, string> warn)
+    {
+        if (maps is null || Maps.IsAny(bo.Map))
+            return null;
+        if (maps.Get(bo.Map) is { } map)
+            return map;
+        warn(null, $"El mapa '{bo.Map}' no está en maps.json: se revisa como si fuera cualquier mapa (usá, por ejemplo, 'arabia' o 'any').");
+        return null;
+    }
+
+    /// <summary>
+    /// D8: lo que el mapa no tiene. Un aviso y no un error, porque la tabla de mapas es aproximada y el Planner simula
+    /// igual: una fuente que el mapa no tiene (pesca en Arabia), o el muelle y lo que sale de él sin agua.
+    /// </summary>
+    private void ValidateMap(Step step, string? id, GameMap map, Action<string?, string> warn)
+    {
+        foreach (var source in new[] { step.Assign, step.From }.OfType<GatherSource>().Distinct())
+        {
+            if (!map.Has(source))
+                warn(id, $"El mapa {map.Name} no tiene {StepText.Source(source)}.");
+        }
+        if (map.Water || step.What is null || !gameData.TryGet(step.What, out var entity))
+            return;
+        if (step.What == "dock" || entity.MadeIn == "dock")
+            warn(id, $"El mapa {map.Name} no tiene agua: no hay {StepText.Name(step.What, step.Count)}.");
+    }
 
     /// <summary>
     /// Las ramas: una señal conocida y pasos que existan. Sus pasos se hacen en cualquier momento de la partida, así

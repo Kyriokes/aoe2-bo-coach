@@ -1,0 +1,54 @@
+// Los mapas que conoce el coach (D8: el editor de la web filtra la paleta y el validador avisa).
+// PARA REVISAR por el usuario. Por mapa:
+//   name: el nombre en castellano, como lo muestra el juego en Latinoamérica.
+//   water: si hay agua para pescar y para el muelle (sin agua, la paleta esconde el muelle y lo que sale de él).
+//   sources: las fuentes de comida y recursos que tiene, de las 8 que entiende la app:
+//     sheep (ovejas y animales de rebaño), hunt (jabalíes, ciervos), berries, fish (pesca de orilla y mar), farm,
+//     wood, gold, stone.
+//   note: lo que conviene saber (arranque sin centro urbano, agua que varía).
+// La clave de cada mapa es el nombre en inglés en snake_case: así la sugerencia de BO (D4) lo compara con lo que
+// lee la pantalla de carga con el juego en inglés. "any" es "cualquier mapa" y no filtra nada.
+{
+  "maps": {
+    "any": { "name": "Cualquiera", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "arabia": { "name": "Arabia", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "arena": { "name": "Arena", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Amurallado: las aperturas agresivas de Feudal rinden menos." },
+    "black_forest": { "name": "Bosque Negro", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "A veces hay lagunas chicas con peces, pero no alcanzan para una apertura de pesca." },
+    "hideout": { "name": "Hideout", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "nomad": { "name": "Nómada", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"],
+      "note": "Se arranca sin centro urbano: el simulador todavía no lo modela (arranca siempre con uno)." },
+    "land_nomad": { "name": "Nómada terrestre", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Se arranca sin centro urbano: el simulador todavía no lo modela." },
+    "islands": { "name": "Islas", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "team_islands": { "name": "Islas por equipos", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "mediterranean": { "name": "Mediterráneo", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "baltic": { "name": "Báltico", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "continental": { "name": "Continental", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "coastal": { "name": "Costero", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "four_lakes": { "name": "Cuatro Lagos", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "rivers": { "name": "Ríos", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "highland": { "name": "Tierras altas", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
+    "lombardia": { "name": "Lombardía", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Revisar si el agua de este mapa alcanza para pescar." },
+    "gold_rush": { "name": "Gold Rush", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "El oro grande está en el centro del mapa." },
+    "acropolis": { "name": "Acrópolis", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "socotra": { "name": "Socotra", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"],
+      "note": "Isla compartida: el agua es la de la costa." },
+    "atacama": { "name": "Atacama", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Revisar si hay agua para pescar." },
+    "african_clearing": { "name": "Claro africano", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "steppe": { "name": "Estepa", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Mucha caza; revisar las fuentes." },
+    "mongolia": { "name": "Mongolia", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "Revisar las fuentes (hay lagunas chicas)." },
+    "ghost_lake": { "name": "Lago fantasma", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "note": "El lago está congelado: no se pesca." },
+    "fortress": { "name": "Fortaleza", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "golden_pit": { "name": "Pozo dorado", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "megarandom": { "name": "MegaRandom", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"],
+      "note": "Cambia cada vez: puede tener agua o no." }
+  }
+}
