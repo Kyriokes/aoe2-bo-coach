@@ -1,0 +1,35 @@
+// Apoyo al proyecto: las formas de donar y las metas con lo que entró. Lo muestra la web (portada, sección
+// "Apoyar el proyecto", y el pie) y el botón "Apoyar" de la app abre esa sección.
+// PARA COMPLETAR por el usuario:
+//   links: tu usuario en cada sitio (sin la dirección): cafecito.app/<usuario>, paypal.me/<usuario>,
+//     ko-fi.com/<usuario>; mercado_pago es el enlace de pago entero (https://link.mercadopago.com.ar/...).
+//     Lo que quede vacío no se muestra.
+//   currency: la moneda de las metas y los aportes (ARS, USD...).
+//   goals: las metas en orden, con el monto objetivo. Los aportes sin "goal" van llenando las metas en ese orden.
+//   donations: cada aporte que entra, a mano: fecha (AAAA-MM-DD), monto, "via" (cafecito, paypal, kofi,
+//     mercado_pago, otro), "from" (quién, si quiere aparecer; vacío = anónimo), "goal" (el id de una meta, o nada)
+//     y "note" (opcional). La web suma todo y muestra el progreso de cada meta.
+{
+  "links": {
+    "cafecito": "",
+    "paypal": "",
+    "kofi": "",
+    "mercado_pago": ""
+  },
+  "currency": "ARS",
+  "goals": [
+    {
+      "id": "dominio",
+      "name": "Dominio propio",
+      "description": "Una dirección propia para la web en vez de la de Vercel, por un año.",
+      "target": 30000
+    },
+    {
+      "id": "hosting",
+      "name": "Un año de web y base de datos",
+      "description": "Para que la biblioteca no se pause por falta de uso en el plan gratis y aguante más gente.",
+      "target": 120000
+    }
+  ],
+  "donations": []
+}

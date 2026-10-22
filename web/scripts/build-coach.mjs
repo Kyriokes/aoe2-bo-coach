@@ -4,6 +4,7 @@
 //   public/coach/game_data.json   data/game_data de la versión más alta del .dat
 //   public/coach/events.json      data/events.json
 //   public/coach/maps.json        data/maps.json (los mapas: fuentes y agua, D8)
+//   public/coach/donaciones.json  data/donaciones.json (formas de donar y metas)
 //   public/coach/ejemplos/        las BO de build_orders/ e index.json (nombre de cada una)
 //
 // Corre solo antes de `next build` y `next dev` (prebuild/predev). Necesita el SDK de .NET (ver global.json).
@@ -51,6 +52,7 @@ if (!gameData) throw new Error("No hay archivos en data/game_data.");
 cpSync(join(repo, "data", "game_data", gameData.file), join(out, "game_data.json"));
 cpSync(join(repo, "data", "events.json"), join(out, "events.json"));
 cpSync(join(repo, "data", "maps.json"), join(out, "maps.json"));
+cpSync(join(repo, "data", "donaciones.json"), join(out, "donaciones.json"));
 
 // BO de ejemplo (las mismas que trae la app), para probar "Subir una BO" sin tener una propia.
 const examples = join(out, "ejemplos");
