@@ -36,6 +36,7 @@ public static class StepText
         ["lumber_camp"] = ("campamento maderero", "campamentos madereros"),
         ["mining_camp"] = ("campamento minero", "campamentos mineros"),
         ["settlement"] = ("asentamiento", "asentamientos"), // el Settlement de los incas
+        ["mule_cart"] = ("carro de mulas", "carros de mulas"), // armenios y georgianos: vale por los campamentos
         ["farm"] = ("granja", "granjas"),
         ["dock"] = ("muelle", "muelles"),
         ["barracks"] = ("cuartel", "cuarteles"),
@@ -110,7 +111,9 @@ public static class StepText
     {
         if (step.Do == StepAction.Move)
         {
-            var from = step.From is { } f ? Source(f) : "?";
+            if (step.From is null)
+                return $"Mandar {step.Count} {(step.Count == 1 ? "aldeano sin tarea" : "aldeanos sin tarea")} a {(step.Assign is { } a ? Source(a) : "?")}";
+            var from = Source(step.From.Value);
             var to = step.Assign is { } t ? Source(t) : "?";
             return $"Mover {step.Count} de {from} a {to}";
         }

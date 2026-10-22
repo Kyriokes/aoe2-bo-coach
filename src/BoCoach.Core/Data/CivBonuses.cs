@@ -69,6 +69,12 @@ public sealed class CivBonuses
     /// </summary>
     public IReadOnlyDictionary<string, string> Names { get; init; } = new Dictionary<string, string>();
 
+    /// <summary>
+    /// Lo que la civ no tiene según su árbol de tecnologías (claves de game_data): los hunos no tienen casas, los
+    /// mesoamericanos establo. Las unidades de un edificio que falta las descarta <see cref="GameData.CanMake"/>.
+    /// </summary>
+    public IReadOnlySet<string> Unavailable { get; init; } = new HashSet<string>();
+
     public CivStart Start { get; }
 
     public bool IsNone => ReferenceEquals(this, None);

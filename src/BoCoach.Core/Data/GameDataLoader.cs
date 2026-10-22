@@ -176,6 +176,7 @@ public static partial class GameDataLoader
             ageResources)
         {
             Names = dto.Names ?? new Dictionary<string, string>(),
+            Unavailable = (dto.Unavailable ?? []).ToHashSet(),
         };
     }
 
@@ -246,7 +247,8 @@ public static partial class GameDataLoader
         Dictionary<string, double[]>? Carry,
         double[]? VillagerSpeed,
         Dictionary<string, Dictionary<string, double>>? AgeResources,
-        Dictionary<string, string>? Names);
+        Dictionary<string, string>? Names,
+        List<string>? Unavailable);
 
     internal sealed record CivStartDto(int Food, int Wood, int Stone, int Gold, int Villagers, bool NoHouses);
 

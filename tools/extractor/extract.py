@@ -36,6 +36,7 @@ CIV_BASE = 0  # Gaia: tiene todas las unidades sin bonificaciones de civ
 # requisitos de edad y para lo que se produce en ellos.
 CUENTA_COMO: dict[str, list[str]] = {
     "settlement": ["lumber_camp", "mining_camp", "mill", "house"],
+    "mule_cart": ["lumber_camp", "mining_camp"],
 }
 
 # Entidades que se exportan: clave estable -> (tipo, id en el .dat)
@@ -71,6 +72,7 @@ ENTIDADES: dict[str, tuple[str, int]] = {
     "lumber_camp": ("building", 562),
     "mining_camp": ("building", 584),
     "settlement": ("building", 2556),  # incas: campamento maderero, minero, molino y casa en uno
+    "mule_cart": ("building", 1808),  # armenios y georgianos: lo hace un aldeano y vale por los campamentos
     "farm": ("building", 50),
     "dock": ("building", 45),
     "barracks": ("building", 12),
@@ -272,6 +274,53 @@ def cargar_disponibles(carpeta: Path) -> dict[str, set[int]]:
                 if es_mejora and nodo.get("Trigger Tech ID", -1) >= 0:
                     ids["tech"].add(nodo["Trigger Tech ID"])
     return ids
+
+
+def cargar_no_disponibles(carpeta: Path) -> dict[str, set[tuple[str, int]]]:
+    """Lo que cada civ no tiene según su árbol, por el civ_id del árbol ("AZTECS"): pares (tipo, id del .dat) con Node
+    Status NotAvailable, o que aparecen en el árbol de otra civ y en el suyo no (el carro de mulas solo está en los
+    árboles de armenios y georgianos). Las mejoras de unidad también se marcan por su tech (Trigger Tech ID). Las
+    unidades de un edificio que la civ no tiene a veces no aparecen: eso lo deduce el Core por el edificio."""
+    faltan: dict[str, set[tuple[str, int]]] = {}
+    tiene: dict[str, set[tuple[str, int]]] = {}
+    for archivo in sorted(carpeta.glob("*.json")):
+        arbol = json.loads(archivo.read_text(encoding="utf-8"))
+        civ_id = str(arbol.get("civ_id", archivo.stem)).upper()
+        civ_faltan = faltan.setdefault(civ_id, set())
+        civ_tiene = tiene.setdefault(civ_id, set())
+        for nodos in arbol.values():
+            if not isinstance(nodos, list):
+                continue
+            for nodo in nodos:
+                tipo = TIPO_DE_NODO.get(nodo.get("Use Type"))
+                if tipo is None:
+                    continue
+                pares = {(tipo, nodo["Node ID"])}
+                if nodo.get("Trigger Tech ID", -1) >= 0:
+                    pares.add(("tech", nodo["Trigger Tech ID"]))
+                (civ_faltan if nodo.get("Node Status") == "NotAvailable" else civ_tiene).update(pares)
+    en_algun_arbol = set().union(*tiene.values())
+    for civ_id, civ_faltan in faltan.items():
+        civ_faltan |= en_algun_arbol - tiene[civ_id]
+    return faltan
+
+
+def no_disponibles_por_civ(faltan: dict[str, set[tuple[str, int]]], civs: dict) -> dict[str, list[str]]:
+    """Clave de civ -> claves de game_data que su árbol marca como no disponibles. El árbol se identifica por la clave o
+    el nombre en inglés de la civ, sin la "s" del plural ("MAYANS" es "mayan"), o por los nombres viejos del .dat
+    ("INDIANS" son los hindustanis)."""
+    def plano(texto: str) -> str:
+        return re.sub(r"[^a-z]", "", texto.lower()).rstrip("s")
+
+    resultado = {}
+    for clave, civ in civs.items():
+        nombres = {plano(clave), plano(civ.get("dat_name", ""))} | {plano(n) for n in civ.get("names", {}).values()}
+        arbol = next((ids for civ_id, ids in faltan.items()
+                      if plano(civ_id) in nombres or clave_de_civ(civ_id.title()) == clave), None)
+        if arbol is None:
+            continue
+        resultado[clave] = sorted(k for k, (tipo, dat_id) in ENTIDADES.items() if (tipo, dat_id) in arbol)
+    return resultado
 
 
 def cargar_edades_de_unidades(carpeta: Path) -> dict[int, str]:
@@ -872,6 +921,8 @@ def main() -> int:
                                           if (recursos / c / "strings" / "key-value").is_dir()}
     for clave, nombres in nombres_de_civs(dat, textos_por_idioma).items():
         datos["civs"][clave]["names"] = nombres
+    for clave, claves in no_disponibles_por_civ(cargar_no_disponibles(args.dat.parent / "CivTechTrees"), datos["civs"]).items():
+        datos["civs"][clave]["unavailable"] = claves
 
     eventos, conflictos = extractor.eventos(textos, disponibles)
     escribir_eventos(eventos, args.eventos)

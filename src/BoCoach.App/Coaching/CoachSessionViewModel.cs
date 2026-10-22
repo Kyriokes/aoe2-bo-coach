@@ -260,15 +260,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         Stop();
         _startedAutomatically = automatic;
-        // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
-        bo = bo with { Civ = CivFor(bo) };
         // Una BO con errores no se simula: el editor y la web validan antes, pero un .json importado a mano no pasa
-        // por ahí, y un count enorme agota la memoria del Planner (encola una entrada por unidad).
+        // por ahí, y un count enorme agota la memoria del Planner (encola una entrada por unidad). Se valida con su
+        // propia civ: jugar con otra civ una BO que pide algo que esa civ no tiene no frena al coach.
         if (_data.Validator.Validate(bo).Issues.FirstOrDefault(i => i.Severity == Severity.Error) is { } error)
         {
             Status = $"\"{bo.Name}\" tiene errores ({error.Message}): corregila en el editor antes de empezar el coach.";
             return;
         }
+        // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
+        bo = bo with { Civ = CivFor(bo) };
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
         // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
         var ocr = Language.CreateOcr();

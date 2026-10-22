@@ -365,6 +365,21 @@
         "house"
       ]
     },
+    "mule_cart": {
+      "kind": "building",
+      "dat_id": 1808,
+      "dat_name": "MULECART",
+      "cost": {
+        "wood": 80,
+        "food": 20
+      },
+      "time": 25,
+      "age": "dark",
+      "counts_as": [
+        "lumber_camp",
+        "mining_camp"
+      ]
+    },
     "farm": {
       "kind": "building",
       "dat_id": 50,
@@ -1040,7 +1055,19 @@
         "en": "Britons",
         "es": "Britanos",
         "mx": "Britanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "franks": {
       "dat_name": "French",
@@ -1098,7 +1125,18 @@
         "en": "Franks",
         "es": "Francos",
         "mx": "Francos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "goths": {
       "dat_name": "Goths",
@@ -1186,7 +1224,17 @@
         "en": "Goths",
         "es": "Godos",
         "mx": "Godos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_wall"
+      ]
     },
     "teutons": {
       "dat_name": "Teutons",
@@ -1210,7 +1258,19 @@
         "en": "Teutons",
         "es": "Teutones",
         "mx": "Teutones"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "husbandry",
+        "light_cavalry",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "japanese": {
       "dat_name": "Japanese",
@@ -1262,7 +1322,16 @@
         "en": "Japanese",
         "es": "Japoneses",
         "mx": "Japoneses"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "chinese": {
       "dat_name": "Chinese",
@@ -1721,7 +1790,17 @@
         "en": "Chinese",
         "es": "Chinos",
         "mx": "Chinos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mangonel",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "byzantines": {
       "dat_name": "Byzantine",
@@ -1817,7 +1896,15 @@
         "en": "Byzantines",
         "es": "Bizantinos",
         "mx": "Bizantinos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "persians": {
       "dat_name": "Persians",
@@ -1843,7 +1930,14 @@
         "en": "Persians",
         "es": "Persas",
         "mx": "Persas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "saracens": {
       "dat_name": "Saracens",
@@ -1867,7 +1961,15 @@
         "en": "Saracens",
         "es": "Sarracenos",
         "mx": "Sarracenos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "turks": {
       "dat_name": "Turks",
@@ -1905,7 +2007,15 @@
         "en": "Turks",
         "es": "Turcos",
         "mx": "Turcos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "vikings": {
       "dat_name": "Vikings",
@@ -2009,7 +2119,21 @@
         "en": "Vikings",
         "es": "Vikingos",
         "mx": "Vikingos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "demolition_raft",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "mongols": {
       "dat_name": "Mongols",
@@ -2025,7 +2149,14 @@
         "en": "Mongols",
         "es": "Mongoles",
         "mx": "Mongoles"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement"
+      ]
     },
     "celts": {
       "dat_name": "Celts",
@@ -2049,7 +2180,18 @@
         "en": "Celts",
         "es": "Celtas",
         "mx": "Celtas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "spanish": {
       "dat_name": "Spanish",
@@ -2079,7 +2221,18 @@
         "en": "Spanish",
         "es": "Españoles",
         "mx": "Españoles"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "crossbowman",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "aztecs": {
       "dat_name": "Aztecs",
@@ -2238,7 +2391,23 @@
         "en": "Aztecs",
         "es": "Aztecas",
         "mx": "Aztecas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "settlement",
+        "stable",
+        "steppe_lancer"
+      ]
     },
     "mayan": {
       "dat_name": "Mayan",
@@ -2298,7 +2467,24 @@
         "en": "Maya",
         "es": "Maya",
         "mx": "Mayas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "settlement",
+        "stable",
+        "steppe_lancer"
+      ]
     },
     "huns": {
       "dat_name": "Huns",
@@ -2338,7 +2524,18 @@
         "en": "Huns",
         "es": "Hunos",
         "mx": "Hunos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "house",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "koreans": {
       "dat_name": "Koreans",
@@ -2496,7 +2693,18 @@
         "en": "Koreans",
         "es": "Coreanos",
         "mx": "Coreanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "demolition_raft",
+        "eagle_scout",
+        "mangonel",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "italians": {
       "dat_name": "Italians",
@@ -2538,7 +2746,17 @@
         "en": "Italians",
         "es": "Italianos",
         "mx": "Italianos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "hindustanis": {
       "dat_name": "Hindustanis",
@@ -2562,7 +2780,16 @@
         "en": "Hindustanis",
         "es": "Indostanos",
         "mx": "Indostaníes"
-      }
+      },
+      "unavailable": [
+        "battering_ram",
+        "battle_elephant",
+        "eagle_scout",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "incas": {
       "dat_name": "Incas",
@@ -2762,7 +2989,28 @@
         "en": "Inca",
         "es": "Inca",
         "mx": "Incas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "lumber_camp",
+        "man_at_arms",
+        "militia",
+        "mill",
+        "mining_camp",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "stable",
+        "steppe_lancer"
+      ]
     },
     "magyars": {
       "dat_name": "Magyars",
@@ -2806,7 +3054,17 @@
         "en": "Magyars",
         "es": "Magiares",
         "mx": "Magiares"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "slavs": {
       "dat_name": "Slavs",
@@ -2886,7 +3144,17 @@
         "en": "Slavs",
         "es": "Eslavos",
         "mx": "Eslavos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "portuguese": {
       "dat_name": "Portuguese",
@@ -2894,7 +3162,18 @@
         "en": "Portuguese",
         "es": "Portugueses",
         "mx": "Portugueses"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "demolition_raft",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "ethiopians": {
       "dat_name": "Ethiopians",
@@ -2916,7 +3195,16 @@
         "en": "Ethiopians",
         "es": "Etíopes",
         "mx": "Etíopes"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "malians": {
       "dat_name": "Malians",
@@ -3007,6 +3295,24 @@
           },
           {
             "wood": 106
+          }
+        ],
+        "mule_cart": [
+          {
+            "food": 20,
+            "wood": 68
+          },
+          {
+            "food": 20,
+            "wood": 68
+          },
+          {
+            "food": 20,
+            "wood": 68
+          },
+          {
+            "food": 20,
+            "wood": 68
           }
         ],
         "dock": [
@@ -3184,7 +3490,14 @@
         "en": "Malians",
         "es": "Malíes",
         "mx": "Malíes"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "berbers": {
       "dat_name": "Berbers",
@@ -3286,7 +3599,14 @@
         "en": "Berbers",
         "es": "Bereberes",
         "mx": "Bereberes"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "khmer": {
       "dat_name": "Khmer",
@@ -3294,7 +3614,14 @@
         "en": "Khmer",
         "es": "Jemeres",
         "mx": "Jemeres"
-      }
+      },
+      "unavailable": [
+        "camel_rider",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "malay": {
       "dat_name": "Malay",
@@ -3348,7 +3675,16 @@
         "en": "Malay",
         "es": "Malayos",
         "mx": "Malayos"
-      }
+      },
+      "unavailable": [
+        "bloodlines",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "burmese": {
       "dat_name": "Burmese",
@@ -3384,7 +3720,16 @@
         "en": "Burmese",
         "es": "Birmanos",
         "mx": "Birmanos"
-      }
+      },
+      "unavailable": [
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "vietnamese": {
       "dat_name": "Vietnamese",
@@ -3596,7 +3941,16 @@
         "en": "Vietnamese",
         "es": "Vietnamitas",
         "mx": "Vietnamitas"
-      }
+      },
+      "unavailable": [
+        "camel_rider",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "bulgarians": {
       "dat_name": "Bulgarians",
@@ -3702,7 +4056,17 @@
         "en": "Bulgarians",
         "es": "Búlgaros",
         "mx": "Búlgaros"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "crossbowman",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "tatars": {
       "dat_name": "Tatars",
@@ -3710,7 +4074,14 @@
         "en": "Tatars",
         "es": "Tártaros",
         "mx": "Tártaros"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "stone_shaft_mining"
+      ]
     },
     "cumans": {
       "dat_name": "Cumans",
@@ -3748,7 +4119,17 @@
         "en": "Cumans",
         "es": "Cumanos",
         "mx": "Cumanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "mule_cart",
+        "settlement",
+        "stone_shaft_mining",
+        "stone_wall"
+      ]
     },
     "lithuanians": {
       "dat_name": "Lithuanians",
@@ -3767,7 +4148,16 @@
         "en": "Lithuanians",
         "es": "Lituanos",
         "mx": "Lituanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "burgundians": {
       "dat_name": "Burgundians",
@@ -4007,7 +4397,17 @@
         "en": "Burgundians",
         "es": "Borgoñeses",
         "mx": "Borgoñones"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "sicilians": {
       "dat_name": "Sicilians",
@@ -4066,7 +4466,18 @@
         "en": "Sicilians",
         "es": "Sicilianos",
         "mx": "Sicilianos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "watch_tower"
+      ]
     },
     "poles": {
       "dat_name": "Poles",
@@ -4112,7 +4523,19 @@
         "en": "Poles",
         "es": "Polacos",
         "mx": "Polacos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "mill",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "bohemians": {
       "dat_name": "Bohemians",
@@ -4208,7 +4631,17 @@
         "en": "Bohemians",
         "es": "Bohemios",
         "mx": "Bohemios"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "dravidians": {
       "dat_name": "Dravidians",
@@ -4309,7 +4742,20 @@
         "en": "Dravidians",
         "es": "Dravídicos",
         "mx": "Dravídicos"
-      }
+      },
+      "unavailable": [
+        "battering_ram",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "bengalis": {
       "dat_name": "Bengalis",
@@ -4317,7 +4763,19 @@
         "en": "Bengalis",
         "es": "Bengalíes",
         "mx": "Bengalíes"
-      }
+      },
+      "unavailable": [
+        "battering_ram",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "gurjaras": {
       "dat_name": "Gurjaras",
@@ -4339,7 +4797,17 @@
         "en": "Gurjaras",
         "es": "Gurjara",
         "mx": "Gurjaras"
-      }
+      },
+      "unavailable": [
+        "battering_ram",
+        "battle_elephant",
+        "cavalry_archer",
+        "eagle_scout",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "romans": {
       "dat_name": "Romans",
@@ -4411,15 +4879,57 @@
         "en": "Romans",
         "es": "Romanos",
         "mx": "Romanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "armenians": {
       "dat_name": "Armenians",
+      "costs": {
+        "mule_cart": [
+          {
+            "food": 15,
+            "wood": 60
+          },
+          {
+            "food": 15,
+            "wood": 60
+          },
+          {
+            "food": 15,
+            "wood": 60
+          },
+          {
+            "food": 15,
+            "wood": 60
+          }
+        ]
+      },
       "names": {
         "en": "Armenians",
         "es": "Armenios",
         "mx": "Armenios"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "lumber_camp",
+        "mining_camp",
+        "monastery",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "georgians": {
       "dat_name": "Georgians",
@@ -4427,7 +4937,18 @@
         "en": "Georgians",
         "es": "Georgianos",
         "mx": "Georgianos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "lumber_camp",
+        "mining_camp",
+        "monastery",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "achaemenids": {
       "dat_name": "Achaemenids",
@@ -4461,7 +4982,21 @@
         "en": "Achaemenids",
         "es": "Aqueménidas",
         "mx": "Aqueménidas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "transport_ship"
+      ]
     },
     "athenians": {
       "dat_name": "Athenians",
@@ -4469,7 +5004,21 @@
         "en": "Athenians",
         "es": "Atenienses",
         "mx": "Atenienses"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "husbandry",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "transport_ship"
+      ]
     },
     "spartans": {
       "dat_name": "Spartans",
@@ -4517,7 +5066,23 @@
         "en": "Spartans",
         "es": "Espartanos",
         "mx": "Espartanos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_wall",
+        "transport_ship"
+      ]
     },
     "shu": {
       "dat_name": "Shu",
@@ -4525,7 +5090,20 @@
         "en": "Shu",
         "es": "Shu",
         "mx": "Shu"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "knight",
+        "mule_cart",
+        "scorpion",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "wu": {
       "dat_name": "Wu",
@@ -4533,7 +5111,17 @@
         "en": "Wu",
         "es": "Wu",
         "mx": "Wu"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "wei": {
       "dat_name": "Wei",
@@ -4541,7 +5129,18 @@
         "en": "Wei",
         "es": "Wei",
         "mx": "Wei"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "knight",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "jurchens": {
       "dat_name": "Jurchens",
@@ -4549,7 +5148,17 @@
         "en": "Jurchens",
         "es": "Yurchen",
         "mx": "Jurchens"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "eagle_scout",
+        "hand_cannoneer",
+        "knight",
+        "mangonel",
+        "mule_cart",
+        "settlement"
+      ]
     },
     "khitans": {
       "dat_name": "Khitans",
@@ -4583,7 +5192,21 @@
         "en": "Khitans",
         "es": "Kitán",
         "mx": "Kitáns"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "eagle_scout",
+        "farm",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "heavy_plow",
+        "horse_collar",
+        "knight",
+        "mangonel",
+        "mule_cart",
+        "settlement"
+      ]
     },
     "macedonians": {
       "dat_name": "Macedonians",
@@ -4591,7 +5214,22 @@
         "en": "Macedonians",
         "es": "Macedonios",
         "mx": "Macedonios"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "hand_cannoneer",
+        "mule_cart",
+        "scale_barding_armor",
+        "settlement",
+        "steppe_lancer",
+        "transport_ship"
+      ]
     },
     "thracians": {
       "dat_name": "Thracians",
@@ -4599,7 +5237,22 @@
         "en": "Thracians",
         "es": "Tracios",
         "mx": "Tracios"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "hand_cannoneer",
+        "husbandry",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "transport_ship"
+      ]
     },
     "puru": {
       "dat_name": "Puru",
@@ -4607,7 +5260,24 @@
         "en": "Puru",
         "es": "Purus",
         "mx": "Puru"
-      }
+      },
+      "unavailable": [
+        "battering_ram",
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "demolition_raft",
+        "dock",
+        "eagle_scout",
+        "fire_galley",
+        "galley",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "transport_ship"
+      ]
     },
     "muisca": {
       "dat_name": "Muisca",
@@ -4667,7 +5337,28 @@
         "en": "Muisca",
         "es": "Muiscas",
         "mx": "Muiscas"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "lumber_camp",
+        "man_at_arms",
+        "militia",
+        "mill",
+        "mining_camp",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "stable",
+        "steppe_lancer"
+      ]
     },
     "mapuche": {
       "dat_name": "Mapuche",
@@ -4675,7 +5366,28 @@
         "en": "Mapuche",
         "es": "Mapuches",
         "mx": "Mapuches"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "lumber_camp",
+        "man_at_arms",
+        "militia",
+        "mill",
+        "mining_camp",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "stable",
+        "steppe_lancer"
+      ]
     },
     "tupi": {
       "dat_name": "Tupi",
@@ -4727,7 +5439,29 @@
         "en": "Tupi",
         "es": "Tupís",
         "mx": "Tupíes"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "bloodlines",
+        "camel_rider",
+        "cavalry_archer",
+        "eagle_scout",
+        "hand_cannoneer",
+        "husbandry",
+        "knight",
+        "light_cavalry",
+        "lumber_camp",
+        "man_at_arms",
+        "militia",
+        "mill",
+        "mining_camp",
+        "mule_cart",
+        "scale_barding_armor",
+        "scout_cavalry",
+        "stable",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "saxons": {
       "dat_name": "Saxons",
@@ -4735,7 +5469,19 @@
         "en": "Saxons",
         "es": "Sajones",
         "mx": "Sajones"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "demolition_raft",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer",
+        "stone_shaft_mining"
+      ]
     },
     "varangians": {
       "dat_name": "Varangians",
@@ -4743,7 +5489,19 @@
         "en": "Varangians",
         "es": "Varegos",
         "mx": "Varegos"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "demolition_raft",
+        "eagle_scout",
+        "gold_shaft_mining",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     },
     "danes": {
       "dat_name": "Danes",
@@ -4771,7 +5529,18 @@
         "en": "Danes",
         "es": "Daneses",
         "mx": "Daneses"
-      }
+      },
+      "unavailable": [
+        "battle_elephant",
+        "camel_rider",
+        "cavalry_archer",
+        "demolition_raft",
+        "eagle_scout",
+        "hand_cannoneer",
+        "mule_cart",
+        "settlement",
+        "steppe_lancer"
+      ]
     }
   }
 }

@@ -76,4 +76,31 @@ public sealed class GameData
         key is not null && Civs.TryGetValue(key.Trim().ToLowerInvariant(), out var civ) ? civ : CivBonuses.None;
 
     public bool IsKnownCiv(string? key) => key is not null && Civs.ContainsKey(key.Trim().ToLowerInvariant());
+
+    /// <summary>
+    /// Si la civ puede hacer esa entidad: no está entre las que le faltan y tampoco el edificio donde se hace (las
+    /// unidades del establo no figuran en el árbol de una civ sin establo). "any" puede todo.
+    /// </summary>
+    public bool CanMake(string? civ, string key)
+    {
+        var bonuses = Civ(civ);
+        if (bonuses.Unavailable.Contains(key))
+            return false;
+        return !(TryGet(key, out var entity) && entity.MadeIn is { } producer && bonuses.Unavailable.Contains(producer));
+    }
+
+    /// <summary>
+    /// La clave de una civ por cualquiera de sus nombres ("Mayans", "Inca", "Mayas"), sin mayúsculas, espacios ni la
+    /// "s" del plural; null si no es ninguna.
+    /// </summary>
+    public string? CivByName(string? name)
+    {
+        var wanted = Flat(name);
+        if (wanted.Length == 0)
+            return null;
+        return Civs.FirstOrDefault(c => new[] { c.Key }.Concat(c.Value.Names.Values).Any(n => Flat(n) == wanted)).Key;
+
+        static string Flat(string? text) =>
+            new string((text ?? "").ToLowerInvariant().Where(char.IsLetter).ToArray()).TrimEnd('s');
+    }
 }

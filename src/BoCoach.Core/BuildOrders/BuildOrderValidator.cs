@@ -85,6 +85,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         {
             var id = string.IsNullOrWhiteSpace(step.Id) ? null : step.Id;
             ValidateStep(step, id, age, built, ids, Error, Warn);
+            if (step.What is { } what && step.Do != StepAction.Move && !gameData.CanMake(bo.Civ, what))
+                Error(id, $"La civ {CivName(bo.Civ)} no tiene {StepText.Name(what)} (según su árbol de tecnologías).");
 
             if (step.Do == StepAction.Build && step.What is not null)
             {
@@ -136,6 +138,9 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         ValidateBranches(bo.Branches, Error, Warn);
         return new ValidationResult(issues);
     }
+
+    private string CivName(string civ) =>
+        gameData.Civ(civ).Names.TryGetValue("mx", out var name) ? name : civ;
 
     /// <summary>
     /// Las ramas: una señal conocida y pasos que existan. Sus pasos se hacen en cualquier momento de la partida, así
@@ -259,8 +264,6 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     {
         if (step.What is not null)
             error(id, "Un paso 'move' no usa 'what'.");
-        if (step.From is null)
-            error(id, "Falta 'from': ¿de qué recurso salen los aldeanos?");
         if (step.Assign is null)
             error(id, "Falta 'assign': ¿a qué recurso van los aldeanos?");
         if (step.From is not null && step.From == step.Assign)

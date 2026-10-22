@@ -1,3 +1,4 @@
+using BoCoach.Core.Engine;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 
@@ -141,8 +142,28 @@ public class BuildOrderValidatorTests
         Assert.Contains("casa_lista", error.Message);
     }
 
+    [Fact]
+    public void Una_civ_no_puede_pedir_lo_que_su_arbol_no_tiene()
+    {
+        // Los hunos no tienen casas; los aztecas no tienen establo, así que tampoco sus unidades.
+        Assert.Contains("no tiene", SingleError(Bo(Build("s1", "house")) with { Civ = "huns" }).Message);
+        var scouts = Bo(new Step { Id = "s1", Do = StepAction.Train, What = "scout_cavalry" }) with { Civ = "aztecs" };
+        Assert.Contains(Validator.Validate(scouts).Errors, e => e.Message.Contains("no tiene"));
+        Assert.True(Validator.Validate(Bo(Build("s1", "house"))).IsValid); // "any" puede todo
+    }
+
+    [Fact]
+    public void Mover_sin_from_son_los_aldeanos_sin_tarea()
+    {
+        // Los 3 iniciales de una civ sin casas van directo al recurso.
+        var bo = Bo(new Step { Id = "s1", Do = StepAction.Move, Count = 3, Assign = GatherSource.Sheep }) with { Civ = "huns" };
+        Assert.True(Validator.Validate(bo).IsValid);
+        var plan = new Planner(TestData.GameData).Simulate(bo);
+        Assert.True(plan.Completed);
+        Assert.Equal("Mandar 3 aldeanos sin tarea a ovejas", StepText.Describe(bo.Steps[0]));
+    }
+
     [Theory]
-    [InlineData(null, GatherSource.Gold, "from")]
     [InlineData(GatherSource.Wood, null, "assign")]
     [InlineData(GatherSource.Wood, GatherSource.Wood, "mismo recurso")]
     public void Move_mal_armado(GatherSource? from, GatherSource? assign, string expected)
