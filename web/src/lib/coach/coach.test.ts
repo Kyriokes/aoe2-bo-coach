@@ -1,28 +1,16 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { describeStep, type StepLike } from "../stepText";
-import { startCoach, type CoachRuntime } from "./runtime";
+import type { CoachRuntime } from "./runtime";
+import { coachDir, repoDir as repo, startTestCoach } from "./testing";
 import type { Analysis } from "./types";
 
-/**
- * El Core en WebAssembly corrido en Node: el mismo runtime que carga el navegador desde public/coach
- * (hay que correr antes `npm run coach`).
- */
-const coachDir = join(__dirname, "..", "..", "..", "public", "coach");
-const repo = join(__dirname, "..", "..", "..", "..");
-
+/** El Core en WebAssembly corrido en Node (ver testing.ts). */
 let coach: CoachRuntime;
 
 beforeAll(async () => {
-  const dotnetModule = await import(pathToFileURL(join(coachDir, "_framework", "dotnet.js")).href);
-  coach = await startCoach(
-    dotnetModule,
-    readFileSync(join(coachDir, "game_data.json"), "utf8"),
-    readFileSync(join(coachDir, "events.json"), "utf8"),
-    readFileSync(join(coachDir, "maps.json"), "utf8"),
-  );
+  coach = await startTestCoach();
 }, 60_000);
 
 describe("Core en WebAssembly", () => {
