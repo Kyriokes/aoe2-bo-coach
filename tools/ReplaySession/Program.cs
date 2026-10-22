@@ -35,8 +35,14 @@
 //       si no, lo agrega. La fila se busca como al leer (o --row si no hay ningún ícono conocido). Clave "-" para lo
 //       que no es un ícono (adornos del panel, mapa).
 //   import <guía.json> <salida.json> [--id ejemplo-arqueros]
-//       Convierte una BO exportada de buildorderguide.com (formato de RTS Overlay) a nuestro formato, muestra los
-//       pasos y los avisos, y la simula.
+//       Convierte una BO de buildorderguide.com (el formato de la página o el exportable de RTS Overlay) a nuestro
+//       formato, muestra los pasos y los avisos, y la simula.
+//   fetch-guides <guías.json>
+//       Baja todas las guías públicas de buildorderguide.com (D7).
+//   civs <guías.json> [--survey] [--out build_orders/civs] [--fixtures tests/fixtures/buildorderguide]
+//       Elige una guía por civ (la de su apertura típica, mejor votada y con menos avisos; sin guía propia, la del grupo
+//       o una genérica con la civ puesta), guarda la original en los fixtures y la convertida en build_orders/civs.
+//       --survey solo muestra la elección y los avisos.
 //   autocalibrate <pantalla.png> [--out regions.json] [--read [--dump carpeta]]
 //       Busca el HUD del mod en una captura de pantalla entera y muestra las cajas y la escala del HUD. --read recorta
 //       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
@@ -86,6 +92,8 @@ try
         "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
+        "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
+        "civs" => CivGuides.Civs(args[1], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
@@ -230,7 +238,8 @@ static int TeachIcon(string recording, int frame, int slot, string key, string l
 static int ImportGuide(string guide, string output, string[] args)
 {
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
-    var result = RtsOverlayImporter.Convert(File.ReadAllText(guide), data);
+    var json = File.ReadAllText(guide);
+    var result = BuildOrderGuideImporter.IsBuildOrderGuide(json) ? BuildOrderGuideImporter.Convert(json, data) : RtsOverlayImporter.Convert(json, data);
     var bo = result.BuildOrder;
     if (Text(args, "--id", "") is { Length: > 0 } id)
         bo = bo with { Id = id };
