@@ -40,5 +40,7 @@ export function securityHeaders(options: HeaderOptions): { key: string; value: s
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+    // Otra pestaña abierta desde la web (o que la abrió) no puede tocar esta ventana.
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   ];
 }

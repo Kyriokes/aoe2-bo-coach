@@ -33,7 +33,12 @@ execFileSync(dotnet, ["publish", join(repo, "src", "BoCoach.Wasm"), "-c", "Relea
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-cpSync(join(publish, "wwwroot", "_framework"), join(out, "_framework"), { recursive: true });
+// Sin las copias .br y .gz que deja dotnet publish: el navegador pide los archivos tal cual y Vercel los comprime
+// al servirlos, así que solo agrandaban el deploy.
+cpSync(join(publish, "wwwroot", "_framework"), join(out, "_framework"), {
+  recursive: true,
+  filter: (source) => !/\.(br|gz)$/.test(source),
+});
 rmSync(publish, { recursive: true, force: true });
 
 // game_data: la versión más alta (v8.9.json, v8.10.json, ...), como GameDataLoader.LoadLatest.

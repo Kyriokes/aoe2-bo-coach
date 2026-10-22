@@ -43,12 +43,13 @@ describe("cabeceras de seguridad", () => {
     expect(directive(contentSecurityPolicy({ supabaseUrl, dev: false }), "script-src")).not.toContain("'unsafe-eval'");
   });
 
-  it("manda también nosniff, X-Frame-Options y la política de referer", () => {
+  it("manda también nosniff, X-Frame-Options, la política de referer y COOP", () => {
     const headers = Object.fromEntries(securityHeaders({ supabaseUrl }).map((h) => [h.key, h.value]));
 
     expect(headers["X-Content-Type-Options"]).toBe("nosniff");
     expect(headers["X-Frame-Options"]).toBe("DENY");
     expect(headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+    expect(headers["Cross-Origin-Opener-Policy"]).toBe("same-origin");
     expect(headers["Content-Security-Policy"]).toBe(contentSecurityPolicy({ supabaseUrl }));
   });
 });
