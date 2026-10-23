@@ -165,6 +165,12 @@ export function insertByNewVillager(
 export function insertNewStep(steps: EditorStep[], step: EditorStep, index: number, start: GameStart, villagerId: string, available: readonly Source[]): Inserted {
   const at = snapDown(steps, index);
   const before = steps.slice(0, at);
+  // Aldeanos al mismo lugar que la tanda de arriba: se suman a esa tanda ("Aldeanos 4 a 6 → ovejas"), no son otra fila.
+  const previous = before[at - 1];
+  if (isVillagerStep(step) && isVillagerStep(previous) && previous.assign === step.assign && !previous.withPrevious && !(steps[at]?.withPrevious ?? false)) {
+    const merged = steps.map((s, i) => (i === at - 1 ? { ...s, count: s.count + step.count } : s));
+    return { steps: merged, block: [merged[at - 1]], blockId: previous.id, selectId: previous.id, note: null };
+  }
   if (step.do === "build" && step.what !== "farm" && villagersAfter(before, start).idle === 0) {
     return insertByNewVillager(steps, step, at, start, villagerId, available);
   }
@@ -238,4 +244,9 @@ export function chainLabel(chain: EditorStep[], all: EditorStep[], labels: Map<s
     parts.push(labels.get(step.id) ?? capitalize(textOf(step)));
   });
   return parts.join(" + ");
+}
+
+/** El número del próximo aldeano que sale después de los primeros `index` pasos. */
+export function nextVillagerAt(steps: EditorStep[], index: number, start: GameStart) {
+  return initialVillagers(start) + steps.slice(0, index).reduce((sum, s) => sum + (isVillagerStep(s) ? s.count : 0), 0) + 1;
 }

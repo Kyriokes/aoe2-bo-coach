@@ -81,6 +81,21 @@ describe("el editor por aldeano", () => {
     expect(insertNewStep(BO, farm, 3, start, "s10", SOURCES).steps.map((s) => s.id)).toEqual(["s1", "s2", "s3", "s9"]);
   });
 
+  it("aldeanos al mismo lugar que la tanda de arriba se suman a ella", () => {
+    const wood = step("s9", { do: "train", what: "villager", count: 1, assign: "wood" });
+    const r = insertNewStep(BO, wood, 3, start, "s10", SOURCES);
+    expect(r.steps.map((s) => [s.id, s.count])).toEqual([
+      ["s1", 2],
+      ["s2", 3],
+      ["s3", 5],
+    ]);
+    expect(r.selectId).toBe("s3");
+    // A otro lugar, o pegado al aldeano de un edificio, es una tanda nueva.
+    expect(insertNewStep(BO, { ...wood, assign: "gold" }, 3, start, "s10", SOURCES).steps).toHaveLength(4);
+    const withCamp = insertByNewVillager(BO, camp, 2, start, "s10", SOURCES).steps;
+    expect(insertNewStep(withCamp, wood, 3, start, "s11", SOURCES).steps.find((s) => s.id === "s10")!.count).toBe(1);
+  });
+
   it("si cambia lo que hay antes, el edificio sigue esperando a su aldeano", () => {
     const r = insertByNewVillager(BO, camp, 2, start, "s10", SOURCES).steps;
     const ids = newVillagerBuilds(r, start);
