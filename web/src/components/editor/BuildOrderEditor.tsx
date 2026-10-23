@@ -4,30 +4,53 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { publishBuildOrder, updateBuildOrder } from "@/app/actions";
-import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
-import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
+import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
-import { detectOpening, placeNew, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
+import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
+import {
+  chainLabel,
+  detachNewVillager,
+  guideLabels,
+  insertByNewVillager,
+  insertNewStep,
+  isBuiltByNewVillager,
+  newVillagerBuilds,
+  nextVillagerAt,
+  removeNewVillagerBuild,
+  syncNewVillagerBuilds,
+  villagerNumbers,
+  type Inserted,
+} from "@/lib/editor/villagers";
 import { BoFields } from "./BoFields";
 import { EditorSummary } from "./EditorSummary";
 import { EditorTimeline } from "./EditorTimeline";
+import { GuideList } from "./GuideList";
 import { LoadMenu } from "./LoadMenu";
 import { Palette } from "./Palette";
 import { ChartLegend } from "./ResourceChart";
 import { StartCard } from "./StartCard";
 import { StepPanel } from "./StepPanel";
+import { useNarrow } from "./useNarrow";
 import { useTimelineDrag } from "./useTimelineDrag";
 
 /** Un id de BO como los de la app (10 caracteres de un GUID). */
 function newBoId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 10);
+}
+
+/** Las acciones después de las cuales los edificios que hace el próximo aldeano vuelven a esperar a su aldeano. */
+const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField"]);
+
+/** Cambia los pasos (y pide simular de nuevo) solo si son otros. */
+function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
+  return steps === state.steps ? state : { ...state, steps, revision: state.revision + 1 };
 }
 
 /** Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. */
@@ -70,13 +93,22 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   }, [data]);
 
   /**
-   * Aplica una acción y simula el resultado (el Core es sincrónico: el estado nuevo ya trae su análisis). Una edición
-   * que deja la BO rota (un error nuevo, o un paso que deja de arrancar) no se aplica: se explica por qué.
+   * Aplica una acción y simula el resultado (el Core es sincrónico: el estado nuevo ya trae su análisis). Los edificios
+   * que construye el próximo aldeano siguen esperando a ese aldeano (su población cambia con lo que hay antes y con la
+   * civ). Una edición que deja la BO rota (un error nuevo, o un paso que deja de arrancar) no se aplica: se explica por qué.
    */
   const dispatch = useCallback(
     (action: EditorAction) => {
       const prev = stateRef.current;
-      const next = settle(reduce(prev, action), coach);
+      const before = prev.analysis?.start ?? STANDARD_START;
+      const builds = KEEPS_BUILDERS.has(action.type) ? newVillagerBuilds(prev.steps, before) : new Set<string>();
+      let next = reduce(prev, action);
+      if (builds.size > 0) next = withSteps(next, syncNewVillagerBuilds(next.steps, builds, before));
+      next = settle(next, coach);
+      const after = next.analysis?.start;
+      if (builds.size > 0 && after && after.population !== before.population) {
+        next = settle(withSteps(next, syncNewVillagerBuilds(next.steps, builds, after)), coach);
+      }
       const reason = isGuarded(action) ? brokenBy(prev.analysis, next.analysis, next.steps, dataRef.current) : null;
       if (reason) {
         showNotice(`No se puede: ${reason}`);
@@ -158,15 +190,34 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   // La paleta en ese lugar: solo lo que se puede agregar ahí.
   const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data) : null), [palette, data, state.steps, insertIndex]);
   const paletteAll = useMemo(() => (palette ? allItems(palette) : []), [palette]);
-  const insertAfter = useMemo(() => {
-    const chain = state.selected ? blockOf(state.steps, state.selected) : null;
-    return chain ? label(state.steps[chain.to]) : null;
-  }, [label, state.selected, state.steps]);
 
   // El arranque de la partida (con la civ) y lo que hacen los aldeanos iniciales: el primer paso de la BO.
   const start = state.analysis?.start ?? STANDARD_START;
   const opening = useMemo(() => detectOpening(state.steps, start), [state.steps, start]);
-  const place = useCallback((step: EditorStep, before: EditorStep[]) => placeNew(step, before, start), [start]);
+  const sources = useMemo(() => (map ? map.sources : SOURCES), [map]);
+  // La BO como en las guías: "Aldeanos 4 a 6 → ovejas", "Aldeano 7: campamento maderero → madera".
+  const guide = useMemo(() => guideLabels(state.steps, start), [state.steps, start]);
+  const builtByNew = useMemo(() => newVillagerBuilds(state.steps, start), [state.steps, start]);
+  const textOf = useCallback((step: EditorStep) => guide.get(step.id) ?? label(step), [guide, label]);
+  const insertAfter = useMemo(() => {
+    const chain = state.selected ? blockOf(state.steps, state.selected) : null;
+    return chain ? chainLabel(state.steps.slice(chain.from, chain.to + 1), state.steps, guide, label) : null;
+  }, [guide, label, state.selected, state.steps]);
+
+  /** Un paso nuevo de la paleta en ese lugar: sus aldeanos de lo que hay ahí, o un edificio que hace el próximo aldeano. */
+  const insertNew = useCallback(
+    (steps: EditorStep[], step: EditorStep, index: number): Inserted => insertNewStep(steps, step, index, start, nextId({ bo: state.bo, steps: [...steps, step] }), sources),
+    [sources, start, state.bo],
+  );
+  const normalize = useCallback((steps: EditorStep[]) => syncNewVillagerBuilds(steps, newVillagerBuilds(state.steps, start), start), [start, state.steps]);
+  /** Lo que se cuenta cuando el editor decidió algo que no se ve: "Aldeano 7: campamento maderero → madera (sale de los 4...)". */
+  const tellInserted = useCallback(
+    (inserted: Inserted) => {
+      if (inserted.note) showNotice(`${guideLabels(inserted.steps, start).get(inserted.selectId) ?? "Listo"} (${inserted.note}).`);
+    },
+    [showNotice, start],
+  );
+
   /**
    * Agrega un paso sin arrastrar: en el lugar pedido si se puede, si no en el primero (o último) donde el juego lo
    * deja; si no hay ninguno, explica qué falta.
@@ -180,10 +231,39 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         return;
       }
       const at = snapDownTo(state.steps, Math.min(Math.max(index, range.lo), range.hi));
-      const placed = place(step, state.steps.slice(0, at));
-      dispatch({ type: "insert", step: placed, index: at });
+      const inserted = insertNew(state.steps, step, at);
+      if (dispatch({ type: "setSteps", steps: inserted.steps, selected: inserted.selectId })) tellInserted(inserted);
     },
-    [data, dispatch, label, place, showNotice, state.steps],
+    [data, dispatch, insertNew, label, showNotice, state.steps, tellInserted],
+  );
+  /** Borrar: un edificio que hace el próximo aldeano se lleva a su aldeano (que vuelve a su tanda si la hay). */
+  const removeStep = useCallback(
+    (id: string) => {
+      const without = removeNewVillagerBuild(state.steps, id);
+      if (without) dispatch({ type: "setSteps", steps: without, selected: null });
+      else dispatch({ type: "remove", id });
+    },
+    [dispatch, state.steps],
+  );
+  /** Quién construye el edificio: el próximo aldeano, uno de una fuente o los sin tarea. */
+  const changeBuilder = useCallback(
+    (id: string, builder: "new" | Source | null) => {
+      const i = state.steps.findIndex((s) => s.id === id);
+      if (i < 0) return;
+      const isNew = isBuiltByNewVillager(state.steps, i, start);
+      if (builder === "new") {
+        if (isNew) return;
+        const without = state.steps.filter((s) => s.id !== id);
+        // Si encabezaba un paso mixto, el que sigue pasa a encabezarlo.
+        if (!state.steps[i].withPrevious && without[i]?.withPrevious) without[i] = { ...without[i], withPrevious: false };
+        const inserted = insertByNewVillager(without, { ...state.steps[i], withPrevious: false }, i, start, nextId(state), sources);
+        if (dispatch({ type: "setSteps", steps: inserted.steps, selected: id })) tellInserted(inserted);
+        return;
+      }
+      if (isNew) dispatch({ type: "setSteps", steps: detachNewVillager(state.steps, id, builder ?? undefined) });
+      else dispatch({ type: "update", id, patch: { from: builder ?? undefined } });
+    },
+    [dispatch, sources, start, state, tellInserted],
   );
   const changeOpening = useCallback(
     (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
@@ -213,7 +293,8 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     onReject: showNotice,
     onPaletteClick: (step) => insertAt(step, insertIndex()),
     onBoxClick: (id) => dispatch({ type: "select", id }),
-    place,
+    insertNew,
+    normalize,
   });
 
   /** Mueve la cadena del paso un lugar (teclado o botones del panel), dentro de lo que las reglas dejan. */
@@ -239,8 +320,16 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     [data, state.steps, label, showNotice, dispatch],
   );
 
+  const narrow = useNarrow();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const selectedStep = state.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIndex = selectedStep ? state.steps.indexOf(selectedStep) : -1;
+  const builder = useMemo(() => {
+    if (!selectedStep || selectedStep.do !== "build") return null;
+    const isNew = builtByNew.has(selectedStep.id);
+    const number = isNew ? (villagerNumbers(state.steps, start).get(state.steps[selectedIndex - 1].id)?.first ?? 0) : nextVillagerAt(state.steps, selectedIndex, start);
+    return { isNew, number };
+  }, [builtByNew, selectedIndex, selectedStep, start, state.steps]);
   const analyzedSelected = state.analysis?.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIssues = state.analysis?.issues.filter((i) => i.step_id === state.selected) ?? [];
   const analysisIsCurrent = state.analysis !== null && state.analyzedRevision >= state.revision;
@@ -278,6 +367,56 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     return step !== undefined && (step.do === "train" || step.do === "build" || step.do === "move");
   };
 
+  const palettePanel = (tapOnly: boolean) =>
+    paletteNow ? (
+      <Palette
+        bar={paletteNow.bar}
+        all={paletteAll}
+        hidden={paletteNow.hidden}
+        where={insertAfter}
+        onAtEnd={() => dispatch({ type: "select", id: null })}
+        onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))}
+        onPick={(item) => insertAt(newStep(item), insertIndex())}
+        tapOnly={tapOnly}
+      />
+    ) : null;
+  const stepPanel = (inline: boolean) => (
+    <StepPanel
+      inline={inline}
+      step={selectedStep}
+      analyzed={analyzedSelected}
+      issues={selectedIssues}
+      isFirst={selectedIndex === 0}
+      availableSources={sources}
+      builder={builder}
+      title={selectedStep ? (guide.get(selectedStep.id) ?? null) : null}
+      onBuilder={(value) => selectedStep && changeBuilder(selectedStep.id, value)}
+      onUpdate={(patch) => selectedStep && dispatch({ type: "update", id: selectedStep.id, patch })}
+      onCount={(count) => selectedStep && dispatch({ type: "setCount", id: selectedStep.id, count })}
+      onToggleGroup={() => selectedStep && dispatch({ type: "toggleWithPrevious", id: selectedStep.id })}
+      onMove={(direction) => selectedStep && nudge(selectedStep.id, direction)}
+      onRemove={() => selectedStep && removeStep(selectedStep.id)}
+    />
+  );
+  const guideList = (
+    <GuideList
+      steps={state.steps}
+      analysis={state.analysis}
+      labels={guide}
+      newVillagerBuilds={builtByNew}
+      selected={state.selected}
+      expanded={narrow}
+      panel={stepPanel(true)}
+      textOf={textOf}
+      countOf={(chain) => (chain.length === 1 && countEditable(chain[0].id) ? chain[0] : null)}
+      onSelect={(id) => dispatch({ type: "select", id: state.selected === id && narrow ? null : id })}
+      onCount={(id, count) => dispatch({ type: "setCount", id, count })}
+      onMove={nudge}
+      onRemove={removeStep}
+      onAddBelow={() => setSheetOpen(true)}
+    />
+  );
+
   if (runtimeError) {
     return (
       <p role="alert" className="text-sm text-red">
@@ -295,7 +434,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         </p>
       ) : null}
       {notice ? (
-        <p role="alert" className="rounded-md border border-amber bg-panel px-3 py-2 text-sm text-amber">
+        <p role="alert" className="sticky top-2 z-30 rounded-md border border-amber bg-panel px-3 py-2 text-sm text-amber">
           {notice}
         </p>
       ) : null}
@@ -305,21 +444,12 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         onField={(field, value) => (field === "civ" ? changeCiv(value) : dispatch({ type: "setField", field, value }))}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
-      {paletteNow ? (
-        <Palette
-          bar={paletteNow.bar}
-          all={paletteAll}
-          hidden={paletteNow.hidden}
-          where={insertAfter}
-          onAtEnd={() => dispatch({ type: "select", id: null })}
-          onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))}
-          onPick={(item) => insertAt(newStep(item), insertIndex())}
-        />
-      ) : null}
+      {paletteNow && !narrow ? palettePanel(false) : null}
       <StartCard start={start} opening={opening} map={map} onOpening={changeOpening} />
       <EditorTimeline
         steps={state.steps}
         analysis={state.analysis}
+        start={start}
         scale={scale}
         mode={mode}
         viewportWidth={width}
@@ -332,7 +462,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
           if (chain) startBoxDrag(e, chain.from, chain.to, countEditable(item.stepId) && !item.construction ? item.stepId : undefined);
         }}
         onNudge={nudge}
-        onRemove={(id) => dispatch({ type: "remove", id })}
+        onRemove={removeStep}
         onSelect={(id) => dispatch({ type: "select", id })}
         onCount={(id, delta) => {
           const step = state.steps.find((s) => s.id === id);
@@ -341,46 +471,49 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         isCountEditable={countEditable}
       />
       <ChartLegend />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <StepPanel
-          step={selectedStep}
-          analyzed={analyzedSelected}
-          issues={selectedIssues}
-          isFirst={selectedIndex === 0}
-          availableSources={map ? map.sources : SOURCES}
-          onUpdate={(patch) => selectedStep && dispatch({ type: "update", id: selectedStep.id, patch })}
-          onCount={(count) => selectedStep && dispatch({ type: "setCount", id: selectedStep.id, count })}
-          onToggleGroup={() => selectedStep && dispatch({ type: "toggleWithPrevious", id: selectedStep.id })}
-          onMove={(direction) => selectedStep && nudge(selectedStep.id, direction)}
-          onRemove={() => selectedStep && dispatch({ type: "remove", id: selectedStep.id })}
-        />
-        <EditorSummary analysis={state.analysis} />
-      </div>
-      {state.steps.length > 0 ? (
-        <ol className="flex flex-col divide-y divide-line rounded-md border border-line bg-panel" aria-label="Pasos en orden">
-          {state.steps.map((step, i) => {
-            const analyzed = state.analysis?.steps.find((s) => s.id === step.id);
-            return (
-              <li key={step.id}>
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: "select", id: step.id })}
-                  className={`flex w-full gap-3 px-3 py-1.5 text-left text-sm hover:bg-panel-2 ${state.selected === step.id ? "bg-panel-2" : ""}`}
-                >
-                  <span className="w-6 shrink-0 text-right text-faint">{i + 1}</span>
-                  <span className="flex-1">
-                    {step.withPrevious ? <span className="text-faint">+ </span> : null}
-                    {analyzed?.text ?? label(step)}
-                    {step.note ? <span className="text-xs text-muted"> · {step.note}</span> : null}
-                  </span>
-                  <span className="shrink-0 font-mono text-xs text-faint">
-                    {analyzed?.start != null && analyzed.end != null ? `${formatClock(analyzed.start)} – ${formatClock(analyzed.end)}` : ""}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+      {narrow ? (
+        <>
+          {guideList}
+          {paletteNow ? (
+            <div className="sticky bottom-3 z-30 flex justify-center">
+              <button type="button" className="button-primary px-4 py-2.5 text-base shadow-lg" onClick={() => setSheetOpen(true)}>
+                + Agregar {insertAfter ? "abajo del elegido" : "al final"}
+              </button>
+            </div>
+          ) : null}
+          <EditorSummary analysis={state.analysis} />
+        </>
+      ) : (
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {stepPanel(false)}
+            <EditorSummary analysis={state.analysis} />
+          </div>
+          {guideList}
+        </>
+      )}
+      {narrow && sheetOpen && paletteNow ? (
+        <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/60" onClick={() => setSheetOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Agregar un paso"
+            className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setSheetOpen(false);
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold">Agregar un paso</p>
+              <button type="button" className="button" onClick={() => setSheetOpen(false)}>
+                Listo
+              </button>
+            </div>
+            {notice ? <p className="rounded-md border border-amber px-3 py-2 text-sm text-amber">{notice}</p> : null}
+            {palettePanel(true)}
+          </div>
+        </div>
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="button" onClick={download} disabled={!canDownload}>

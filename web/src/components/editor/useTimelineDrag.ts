@@ -9,6 +9,8 @@ import { neverStartsReason } from "@/lib/editor/guard";
 import { ORDINAL_W, type Scale } from "@/lib/editor/layout";
 import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { COUNT_HINT, DROP_OUTSIDE_TEXT, neverStartsText, notBeforeText, PINNED_TEXT } from "@/lib/editor/text";
+import { guideLabels, type Inserted } from "@/lib/editor/villagers";
+import { formatClock } from "@/lib/buildOrder";
 
 /** Más de esto por simulación y el arrastre deja de simular en cada cambio de lugar (simula al soltar). */
 export const SLOW_ANALYZE_MS = 150;
@@ -63,8 +65,10 @@ interface Options {
   onReject: (message: string) => void;
   onPaletteClick: (step: EditorStep) => void;
   onBoxClick: (id: string) => void;
-  /** Una caja nueva de la paleta en su lugar: de dónde salen sus aldeanos con los pasos de antes (placeNew). */
-  place: (step: EditorStep, before: EditorStep[]) => EditorStep;
+  /** Una caja nueva de la paleta en ese lugar: sus aldeanos, o el próximo aldeano que construye el edificio (insertNewStep). */
+  insertNew: (steps: EditorStep[], step: EditorStep, index: number) => Inserted;
+  /** Lo que el editor ajusta después de cada cambio (la población de los edificios que hace el próximo aldeano). */
+  normalize: (steps: EditorStep[]) => EditorStep[];
 }
 
 interface Pending {
@@ -83,6 +87,8 @@ interface Session {
   others: EditorStep[];
   block: EditorStep[];
   blockId: string;
+  /** El paso que queda elegido al soltar (de la paleta, el edificio aunque lo encabece su aldeano). */
+  selectId: string;
   range: Range;
   pinned: number;
   starts: (number | null)[];
@@ -142,15 +148,24 @@ export function useTimelineDrag(options: Options) {
       pinned = state.steps.length;
     }
     const byId = new Map(state.analysis?.steps.map((s) => [s.id, s]) ?? []);
+    // Un edificio de la paleta lo hace el próximo aldeano que sale: el lugar se cuenta por cuándo sale el primer aldeano de
+    // cada tanda, no por cuándo entra a la cola (soltar a la 1:20 es antes de que salga el 7 a la 1:40, no después de la 1:15).
+    const firstOut = new Map<string, number>();
+    if (pending.source.kind === "palette" && pending.source.step.do === "build") {
+      for (const j of state.analysis?.jobs ?? []) {
+        if (j.kind === "produce" && j.what === "villager") firstOut.set(j.step_id, Math.min(firstOut.get(j.step_id) ?? Infinity, j.end));
+      }
+    }
     sessionRef.current = {
       kind: "move",
       count: null,
       others,
       block,
       blockId: block[0].id,
+      selectId: block[0].id,
       range: allowedRange(others, block, data, label),
       pinned,
-      starts: others.map((s) => byId.get(s.id)?.start ?? null),
+      starts: others.map((s) => firstOut.get(s.id) ?? byId.get(s.id)?.start ?? null),
       ends: others.map((s) => byId.get(s.id)?.end ?? null),
       candidate: -1,
       previewSteps: state.steps,
@@ -173,6 +188,7 @@ export function useTimelineDrag(options: Options) {
       others: state.steps,
       block: [step],
       blockId: stepId,
+      selectId: stepId,
       range: { lo: 0, hi: 0, loReason: null, hiReason: null },
       pinned: 0,
       starts: [],
@@ -200,7 +216,7 @@ export function useTimelineDrag(options: Options) {
       const value = Math.max(1, Math.min(MAX_COUNT, session.count.base + Math.round((pending.y0 - pointerRef.current.y) / COUNT_STEP_PX)));
       if (value !== session.count.value) {
         session.count.value = value;
-        session.previewSteps = state.steps.map((s) => (s.id === session.count!.id ? { ...s, count: value } : s));
+        session.previewSteps = optionsRef.current.normalize(state.steps.map((s) => (s.id === session.count!.id ? { ...s, count: value } : s)));
         session.preview = null;
         if (session.previewEnabled && coach) {
           const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })));
@@ -249,9 +265,16 @@ export function useTimelineDrag(options: Options) {
 
     if (index !== session.candidate) {
       session.candidate = index;
-      // Una caja de la paleta toma sus aldeanos de lo que hay en ese lugar (sin tarea, madera, la fuente con más gente).
-      if (pending.source.kind === "palette") session.block = [optionsRef.current.place(pending.source.step, session.others.slice(0, index))];
-      session.previewSteps = insertBlock(session.others, session.block, index);
+      // Una caja de la paleta toma sus aldeanos de lo que hay en ese lugar, o la construye el próximo aldeano.
+      if (pending.source.kind === "palette") {
+        const inserted = optionsRef.current.insertNew(session.others, pending.source.step, index);
+        session.block = inserted.block;
+        session.blockId = inserted.blockId;
+        session.selectId = inserted.selectId;
+        session.previewSteps = optionsRef.current.normalize(inserted.steps);
+      } else {
+        session.previewSteps = optionsRef.current.normalize(insertBlock(session.others, session.block, index));
+      }
       session.preview = null;
       if (session.previewEnabled && coach && session.range.lo <= session.range.hi) {
         const started = performance.now();
@@ -268,8 +291,14 @@ export function useTimelineDrag(options: Options) {
 
     let label = reason;
     if (!label && session.preview) {
-      const first = session.preview.steps.find((s) => s.id === session.blockId);
-      if (first) {
+      // El que manda en la caja: el que no arranca nunca o el último en arrancar (el edificio, no el aldeano que lo hace).
+      const ids = new Set(session.block.map((s) => s.id));
+      const members = session.preview.steps.filter((s) => ids.has(s.id));
+      const first = members.find((s) => s.start === null) ?? members.reduce<(typeof members)[number] | undefined>((a, s) => (a === undefined || (s.start ?? 0) > (a.start ?? 0) ? s : a), undefined);
+      // Un edificio que hace el próximo aldeano: el cartel dice cuál y cuándo arranca.
+      const builtBy = session.selectId !== session.blockId ? guideLabels(session.previewSteps, session.preview.start).get(session.selectId) : undefined;
+      if (first && builtBy && first.start !== null) label = `${builtBy}: arranca en ${formatClock(first.start)}`;
+      else if (first) {
         if (first.start !== null && t < first.start - 1) label = notBeforeText(first.start, waitReason(session.preview, session.block, data) ?? "arranca después del paso anterior");
         else if (first.start === null && session.preview.valid) label = neverStartsText(waitReason(session.preview, session.block, data));
       }
@@ -318,15 +347,14 @@ export function useTimelineDrag(options: Options) {
       } else if (session.preview) {
         const ids = new Set(session.block.map((s) => s.id));
         const error = session.preview.issues.find((i) => i.severity === "error" && i.step_id !== null && ids.has(i.step_id));
-        const first = session.preview.steps.find((s) => s.id === session.blockId);
-        // Si en ese lugar nunca arranca (población, "after", aldeanos, o su edificio no está en la BO), no se suelta y se
-        // dice qué falta.
-        const neverStarts = session.preview.valid && first !== undefined && first.start === null;
+        // Si en ese lugar algo de la caja nunca arranca (población, "after", aldeanos, o su edificio no está en la BO),
+        // no se suelta y se dice qué falta.
+        const neverStarts = session.preview.valid && session.preview.steps.some((s) => ids.has(s.id) && s.start === null);
         if (error) onReject(error.message);
         else if (neverStarts) onReject(neverStartsText(neverStartsReason(session.preview, session.block, data)));
-        else dispatch({ type: "commit", steps: session.previewSteps, analysis: session.preview, selected: session.blockId });
+        else dispatch({ type: "commit", steps: session.previewSteps, analysis: session.preview, selected: session.selectId });
       } else if (pending.source.kind === "palette") {
-        dispatch({ type: "insert", step: session.block[0], index: session.candidate });
+        dispatch({ type: "setSteps", steps: session.previewSteps, selected: session.selectId });
       } else {
         dispatch({ type: "move", blockFrom: pending.source.from, blockTo: pending.source.to, index: session.candidate });
       }

@@ -15,16 +15,22 @@ const FRAME: Record<PaletteItem["kind"], string> = {
 const AGE_BADGE: Record<string, string> = { feudal: "II", castle: "III", imperial: "IV" };
 const AGE_NAME: Record<string, string> = { dark: "Edad Oscura", feudal: "Feudal", castle: "Castillos", imperial: "Imperial" };
 
-type Handlers = { onPointerDown: (e: ReactPointerEvent<HTMLElement>, item: PaletteItem) => void; onPick: (item: PaletteItem) => void };
+type Handlers = {
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>, item: PaletteItem) => void;
+  onPick: (item: PaletteItem) => void;
+  /** Solo tocar para agregar (la hoja del celular): sin arrastre, así el dedo desplaza la paleta. */
+  tapOnly?: boolean;
+};
 
-function Item({ item, onPointerDown, onPick }: { item: PaletteItem } & Handlers) {
+function Item({ item, onPointerDown, onPick, tapOnly }: { item: PaletteItem } & Handlers) {
   const badge = item.key.startsWith("villagers:") ? "+1" : item.key === "move" ? "⇄" : null;
   return (
     <button
       type="button"
-      title={`${item.label} (${AGE_NAME[item.age] ?? item.age}): arrastrá a la línea de tiempo, o tocá para agregar`}
+      title={`${item.label} (${AGE_NAME[item.age] ?? item.age})${tapOnly ? "" : ": arrastrá a la línea de tiempo, o tocá para agregar"}`}
       aria-label={item.label}
-      onPointerDown={(e) => onPointerDown(e, item)}
+      onPointerDown={tapOnly ? undefined : (e) => onPointerDown(e, item)}
+      onClick={tapOnly ? () => onPick(item) : undefined}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -32,7 +38,7 @@ function Item({ item, onPointerDown, onPick }: { item: PaletteItem } & Handlers)
         }
       }}
       className="relative block shrink-0 rounded-sm border-2 hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-      style={{ borderColor: FRAME[item.kind], width: 40, height: 40, touchAction: "none", cursor: "grab" }}
+      style={{ borderColor: FRAME[item.kind], width: 40, height: 40, touchAction: tapOnly ? "manipulation" : "none", cursor: tapOnly ? "pointer" : "grab" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- íconos del juego, ya chicos (64×64) */}
       <img src={`/icons/${item.icon}.png`} alt="" width={36} height={36} draggable={false} />
@@ -47,7 +53,8 @@ function Item({ item, onPointerDown, onPick }: { item: PaletteItem } & Handlers)
 function Row({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <span className="w-24 shrink-0 text-[11px] font-semibold text-faint">{label}</span>
+      {/* En el celular el nombre va arriba de los íconos, así entran más por renglón. */}
+      <span className="w-full shrink-0 text-[11px] font-semibold text-faint sm:w-24">{label}</span>
       {children}
     </div>
   );
@@ -68,6 +75,7 @@ export function Palette({
   onAtEnd,
   onPointerDown,
   onPick,
+  tapOnly,
 }: {
   bar: PaletteBar;
   /** Todas las cajas (también las escondidas), para el buscador. */
@@ -84,7 +92,7 @@ export function Palette({
   const found = query.trim() ? searchPalette(all, query) : null;
   const foundShown = found?.filter((i) => !hidden.has(i.key)) ?? [];
   const foundHidden = found?.filter((i) => hidden.has(i.key)) ?? [];
-  const handlers = { onPointerDown, onPick };
+  const handlers = { onPointerDown, onPick, tapOnly };
 
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-line bg-panel p-2" aria-label="Paleta de pasos">

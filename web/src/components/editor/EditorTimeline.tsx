@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import type { Analysis } from "@/lib/coach/types";
+import type { Analysis, GameStart } from "@/lib/coach/types";
 import type { GameDataLite } from "@/lib/editor/constraints";
 import { BOX_H, LANE_H, LANES_TOP, lanesFor, NARROW_LABEL_W, ORDINAL_W, PAD_R, placeLanes, type PlacedItem, type Scale } from "@/lib/editor/layout";
 import type { EditorStep } from "@/lib/editor/model";
+import { guideLabels } from "@/lib/editor/villagers";
 import { ResourceChart, type Marker } from "./ResourceChart";
 import { StepBox } from "./StepBox";
 import type { DragState } from "./useTimelineDrag";
@@ -21,6 +22,7 @@ export function EditorTimeline({
   steps,
   analysis,
   data,
+  start,
   scale: committedScale,
   mode: committedMode,
   viewportWidth,
@@ -37,6 +39,8 @@ export function EditorTimeline({
   steps: EditorStep[];
   analysis: Analysis | null;
   data: GameDataLite | null;
+  /** El arranque de la civ, para numerar los aldeanos como en las guías. */
+  start: GameStart;
   scale: Scale;
   mode: "time" | "ordinal";
   /** El ancho del lugar donde va la línea (si la línea mide más, se desplaza). */
@@ -56,7 +60,10 @@ export function EditorTimeline({
   const shownSteps = drag?.previewSteps ?? steps;
   const shownAnalysis = drag ? (drag.preview ?? analysis) : analysis;
   const lanesTop = mode === "time" ? LANES_TOP : 24;
-  const placed = useMemo(() => placeLanes(lanesFor(shownSteps, shownAnalysis, data), scale, mode, lanesTop), [shownSteps, shownAnalysis, data, scale, mode, lanesTop]);
+  const placed = useMemo(
+    () => placeLanes(lanesFor(shownSteps, shownAnalysis, data, guideLabels(shownSteps, start)), scale, mode, lanesTop),
+    [shownSteps, shownAnalysis, data, start, scale, mode, lanesTop],
+  );
   const height = lanesTop + placed.height + 24;
   const innerWidth = mode === "ordinal" ? Math.max(scale.width, scale.padL + shownSteps.length * ORDINAL_W + PAD_R) : scale.width;
   const labelWidth = scale.padL - 8;
