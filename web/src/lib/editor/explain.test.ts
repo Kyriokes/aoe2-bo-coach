@@ -21,6 +21,7 @@ function analysis(extra: Partial<Analysis>): Analysis {
     schema_version: 2,
     tags: [],
     targets: {},
+    start: { food: 200, wood: 200, gold: 100, stone: 200, population: 4, population_cap: 5, idle_villagers: 3, villagers: {}, houses: true },
     build_order: {},
     issues: [],
     steps: [],

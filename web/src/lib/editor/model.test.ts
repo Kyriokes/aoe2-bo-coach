@@ -16,6 +16,7 @@ function analysis(steps: Record<string, unknown>[], units: number[], extra: Reco
     schema_version: 2,
     tags: ["feudal"],
     targets: {},
+    start: { food: 200, wood: 200, gold: 100, stone: 200, population: 4, population_cap: 5, idle_villagers: 3, villagers: {}, houses: true },
     build_order: { schema_version: 2, id: "bo1", name: "Prueba", civ: "any", tags: ["feudal"], steps, ...extra },
     issues: [],
     steps: steps.map((s, i) => ({
@@ -164,9 +165,9 @@ describe("el reductor", () => {
     expect(fresh.analyzedRevision).toBe(edited.revision);
   });
 
-  it("nueva arranca vacía con nombre y load vuelve a cargar", () => {
+  it("nueva arranca con la apertura de siempre (2 casas con los 3 iniciales, después ovejas) y load vuelve a cargar", () => {
     const state = reduce(base, { type: "new", id: "n1" });
-    expect(state.steps).toEqual([]);
+    expect(state.steps).toEqual([{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }]);
     expect(state.bo.name).toBe("Nueva build order");
     expect(state.analysis).toBeNull();
     expect(reduce(state, { type: "load", analysis: loaded }).steps).toHaveLength(5);

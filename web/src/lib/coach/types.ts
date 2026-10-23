@@ -60,6 +60,8 @@ export interface Analysis {
   schema_version: number;
   tags: string[];
   targets: { feudal_click_time?: number; castle_click_time?: number };
+  /** Con qué arranca la partida para la civ de la BO (lo que usa el simulador). */
+  start: GameStart;
   /** Postura de cierre (al terminar los pasos): qué va siempre en cola y a qué edad se apunta; deducida si la BO no la trae. */
   posture?: { text: string | null; next_age: string | null; derived: boolean };
   /** Ramas: pasos que el coach pone primero cuando ve una señal de la partida. */
@@ -78,3 +80,18 @@ export interface Analysis {
 }
 
 export type AnalysisResult = Analysis | AnalysisFailure;
+
+/** El arranque de la partida: recursos, población, los aldeanos sin tarea (los iniciales) y los que ya trabajan. */
+export interface GameStart {
+  food: number;
+  wood: number;
+  gold: number;
+  stone: number;
+  population: number;
+  population_cap: number;
+  idle_villagers: number;
+  /** Los que arrancan trabajando, por fuente (los de más de algunas civs, en las ovejas). */
+  villagers: Partial<Record<"sheep" | "hunt" | "berries" | "fish" | "farm" | "wood" | "gold" | "stone", number>>;
+  /** Si la civ hace casas (los hunos no). */
+  houses: boolean;
+}

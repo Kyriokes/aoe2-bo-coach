@@ -78,7 +78,8 @@ export type EditorAction =
   | { type: "select"; id: string | null }
   | { type: "commit"; steps: EditorStep[]; analysis: Analysis; selected?: string | null }
   | { type: "analyzed"; analysis: Analysis; revision: number }
-  | { type: "loadFailed"; message: string };
+  | { type: "loadFailed"; message: string }
+  | { type: "setSteps"; steps: EditorStep[]; selected?: string | null };
 
 export const NEW_NAME = "Nueva build order";
 
@@ -274,13 +275,17 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, loadError: null };
     }
     case "new":
+      // Una BO nueva arranca con la apertura de siempre: los 3 iniciales hacen 2 casas y van a las ovejas (si no,
+      // quedan sin tarea y ningún paso puede arrancar). Se cambia en la caja "Inicio".
       return edited(state, {
         bo: { id: action.id, name: NEW_NAME, civ: "any", map: "any", author: "", description: "", tags: [] },
-        steps: [],
+        steps: [{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }],
         selected: null,
         analysis: null,
         loadError: null,
       });
+    case "setSteps":
+      return edited(state, { steps: action.steps, selected: action.selected === undefined ? state.selected : action.selected });
     case "setField":
       return edited(state, { bo: { ...state.bo, [action.field]: action.value } });
     case "setTags":

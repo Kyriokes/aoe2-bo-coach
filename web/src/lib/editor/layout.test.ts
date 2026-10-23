@@ -24,6 +24,7 @@ function analysis(times: Record<string, [number | null, number | null]>, blocks:
     schema_version: 2,
     tags: [],
     targets: {},
+    start: { food: 200, wood: 200, gold: 100, stone: 200, population: 4, population_cap: 5, idle_villagers: 3, villagers: {}, houses: true },
     build_order: {},
     issues: [],
     steps: Object.entries(times).map(([id, [start, end]]) => ({ id, text: `paso ${id}`, do: "train", what: null, count: 1, units: 1, note: null, start, end })),
