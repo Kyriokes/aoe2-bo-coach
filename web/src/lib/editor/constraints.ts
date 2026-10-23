@@ -61,7 +61,7 @@ export function canMake(data: GameDataLite, civ: string, key: string) {
 }
 
 /** Lo que construye un paso de construir: el edificio y lo que vale por otros (asentamiento, carro de mulas). */
-function provides(step: EditorStep, data: GameDataLite): string[] {
+export function provides(step: EditorStep, data: GameDataLite): string[] {
   if (step.do !== "build" || !step.what) return [];
   return [step.what, ...(data.entities[step.what]?.counts_as ?? [])];
 }

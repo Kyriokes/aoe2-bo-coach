@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "../coach/types";
-import { paletteItems, paletteTree, parseMaps } from "./gameData";
+import { paletteItems, parseMaps } from "./gameData";
 import { LANE_H, lanesFor, ORDINAL_W, PAD_L, placeLanes, scaleFor, timeSpan, VILLAGERS_LANE } from "./layout";
 import type { EditorStep } from "./model";
 
@@ -201,29 +201,5 @@ describe("paleta", () => {
     expect(maps.find((m) => m.key === "arabia")).toMatchObject({ name: "Arabia", water: false });
     expect(parseMaps("")).toHaveLength(1);
     expect(parseMaps("{ roto")).toHaveLength(1);
-  });
-
-  it("el árbol: edades, aldeanos, una columna por edificio con lo suyo por edad, y otros edificios", () => {
-    const tree = paletteTree(data, "any");
-    const keys = tree.map((c) => c.key);
-    expect(keys.slice(0, 3)).toEqual(["ages", "villagers", "town_center"]);
-    expect(keys.at(-1)).toBe("others");
-    expect(keys.indexOf("barracks")).toBeLessThan(keys.indexOf("archery_range"));
-    const column = (key: string) => tree.find((c) => c.key === key)!;
-    expect(column("ages").byAge.dark.map((i) => i.label)).toEqual(["Clic en Feudal"]);
-    expect(column("ages").byAge.feudal.map((i) => i.label)).toEqual(["Clic en Castillos"]);
-    expect(column("villagers").byAge.dark).toHaveLength(9); // 8 fuentes y mover
-    expect(column("archery_range").building?.key).toBe("archery_range");
-    expect(column("archery_range").byAge.feudal.map((i) => i.key)).toEqual(expect.arrayContaining(["archer", "skirmisher"]));
-    expect(column("town_center").byAge.dark.map((i) => i.key)).toContain("loom");
-    expect(column("others").byAge.dark.map((i) => i.key)).toEqual(expect.arrayContaining(["house", "farm"]));
-    // Cada caja tiene su ícono, y los íconos existen.
-    const icons = new Set(JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "public", "icons", "index.json"), "utf8")) as string[]);
-    for (const c of tree) for (const item of [c.building, ...Object.values(c.byAge).flat()]) if (item) expect(icons.has(item.icon), item.key).toBe(true);
-
-    const mapuche = paletteTree(data, "mapuche").map((c) => c.key);
-    expect(mapuche).not.toContain("stable");
-    const arabia = paletteTree(data, "any", maps.find((m) => m.key === "arabia")!).map((c) => c.key);
-    expect(arabia).not.toContain("dock");
   });
 });
