@@ -43,8 +43,9 @@ describe("escala", () => {
   it("en pantallas angostas la columna de nombres se achica y la línea se desplaza de costado", () => {
     expect(labelWidthFor(1024)).toBe(LABEL_W);
     expect(labelWidthFor(375)).toBe(NARROW_LABEL_W);
-    // En una pantalla grande, 10 minutos entran: el ancho es el que hay.
+    // En PC la BO entera entra en el ancho que hay, aunque sea larga.
     expect(timelineWidth(1016, 600)).toBe(1016);
+    expect(timelineWidth(1016, 30 * 60)).toBe(1016);
     // En un celular, 22 minutos no entran a 72 px por minuto: la línea mide más y se desplaza.
     expect(timelineWidth(343, 22 * 60)).toBe(NARROW_LABEL_W + 8 + 22 * MIN_PX_PER_MIN + 8);
     const scale = scaleFor(timelineWidth(343, 22 * 60), 22 * 60, NARROW_LABEL_W);

@@ -59,8 +59,12 @@ export function labelWidthFor(viewport: number) {
   return viewport < NARROW_WIDTH ? NARROW_LABEL_W : LABEL_W;
 }
 
-/** Lo que mide la línea: lo que hay, o más si no entra un minuto en MIN_PX_PER_MIN (y entonces se desplaza). */
+/**
+ * Lo que mide la línea: en PC, lo que hay (la BO entera a la vista); en el celular, más si un minuto no llega a
+ * MIN_PX_PER_MIN (y entonces se desplaza de costado).
+ */
 export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport)) {
+  if (viewport >= NARROW_WIDTH) return viewport;
   return Math.max(viewport, labelWidth + 8 + (span / 60) * MIN_PX_PER_MIN + PAD_R);
 }
 
@@ -150,9 +154,10 @@ function labelsFor(keys: string[]): string[] {
 
 /**
  * Las líneas de la línea de tiempo. Con la BO simulada salen de los trabajos del Core (qué edificio hizo cada cosa);
- * sin simulación (BO con errores), cada paso va a la línea de su edificio por la clave, en el orden de la BO.
+ * sin simulación (BO con errores), cada paso va a la línea de su edificio por la clave, en el orden de la BO. `labels`
+ * son los textos como en las guías ("Aldeanos 4 a 6 → ovejas"); los pasos que no están van con el texto del Core.
  */
-export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: GameDataLite | null): Lane[] {
+export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: GameDataLite | null, labels?: Map<string, string>): Lane[] {
   const chains = chainIds(steps);
   const byId = new Map(steps.map((s, i) => [s.id, { step: s, index: i }]));
   const texts = new Map(analysis?.steps.map((s) => [s.id, s.text]) ?? []);
@@ -160,7 +165,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
   const blocksByStep = new Map<string, PlanBlock[]>();
   for (const b of analysis?.blocks ?? []) blocksByStep.set(b.step_id, [...(blocksByStep.get(b.step_id) ?? []), b]);
   const simulated = analysis?.ok === true && analysis.valid && analysis.jobs !== undefined;
-  const textOf = (step: EditorStep) => texts.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do);
+  const textOf = (step: EditorStep) => labels?.get(step.id) ?? texts.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do);
   const item = (step: EditorStep, extra: Partial<LaneItem>): LaneItem => ({
     key: `${step.id}`,
     stepId: step.id,
