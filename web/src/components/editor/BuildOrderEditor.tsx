@@ -7,17 +7,19 @@ import { publishBuildOrder, updateBuildOrder } from "@/app/actions";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import type { CoachRuntime } from "@/lib/coach/runtime";
-import { allowedRange, snapDownTo, snapUp } from "@/lib/editor/constraints";
+import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { loadGameData, loadMaps, paletteItems, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { scaleFor, timeSpan, type PlacedBox } from "@/lib/editor/layout";
 import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
+import { detectOpening, placeNew, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { BoFields } from "./BoFields";
 import { EditorSummary } from "./EditorSummary";
 import { EditorTimeline } from "./EditorTimeline";
 import { LoadMenu } from "./LoadMenu";
 import { Palette } from "./Palette";
 import { ChartLegend } from "./ResourceChart";
+import { StartCard } from "./StartCard";
 import { StepPanel } from "./StepPanel";
 import { useTimelineDrag } from "./useTimelineDrag";
 
@@ -120,6 +122,31 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     return chain ? chain.to + 1 : state.steps.length;
   }, [state.selected, state.steps]);
 
+  // El arranque de la partida (con la civ) y lo que hacen los aldeanos iniciales: el primer paso de la BO.
+  const start = state.analysis?.start ?? STANDARD_START;
+  const opening = useMemo(() => detectOpening(state.steps, start), [state.steps, start]);
+  const place = useCallback((step: EditorStep, before: EditorStep[]) => placeNew(step, before, start), [start]);
+  /** Agrega un paso sin arrastrar, con los aldeanos de donde haya en ese lugar. */
+  const insertAt = useCallback(
+    (step: EditorStep, index: number) => dispatch({ type: "insert", step: place(step, state.steps.slice(0, index)), index }),
+    [dispatch, place, state.steps],
+  );
+  const changeOpening = useCallback(
+    (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
+    [dispatch, start, state],
+  );
+  /** Cambiar la civ: si la nueva no hace casas (hunos) y la apertura era de casas, los iniciales van directo. */
+  const changeCiv = useCallback(
+    (civ: string) => {
+      dispatch({ type: "setField", field: "civ", value: civ });
+      if (data && opening.kind === "houses" && !canMake(data, civ, "house")) {
+        dispatch({ type: "setSteps", steps: withOpening(state.steps, { kind: "direct", source: opening.source }, { ...start, houses: false }, nextId(state)) });
+        showNotice("Esa civ no hace casas: los aldeanos iniciales van directo a " + (opening.source === "sheep" ? "las ovejas" : "su recurso") + ".");
+      }
+    },
+    [data, dispatch, opening, showNotice, start, state],
+  );
+
   const { drag, startBoxDrag, startPaletteDrag } = useTimelineDrag({
     state,
     coach,
@@ -130,8 +157,9 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     label,
     dispatch,
     onReject: showNotice,
-    onPaletteClick: (step) => dispatch({ type: "insert", step, index: insertIndex() }),
+    onPaletteClick: (step) => insertAt(step, insertIndex()),
     onBoxClick: (id) => dispatch({ type: "select", id }),
+    place,
   });
 
   /** Mueve la cadena del paso un lugar (teclado o botones del panel), dentro de lo que las reglas dejan. */
@@ -220,10 +248,11 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
       <BoFields
         bo={state.bo}
         maps={maps.length > 0 ? maps : [{ key: "any", name: "Cualquiera", water: true, sources: [...SOURCES] }]}
-        onField={(field, value) => dispatch({ type: "setField", field, value })}
+        onField={(field, value) => (field === "civ" ? changeCiv(value) : dispatch({ type: "setField", field, value }))}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
-      <Palette groups={palette} onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))} onPick={(item) => dispatch({ type: "insert", step: newStep(item), index: insertIndex() })} />
+      <Palette groups={palette} onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))} onPick={(item) => insertAt(newStep(item), insertIndex())} />
+      <StartCard start={start} opening={opening} map={map} onOpening={changeOpening} />
       <EditorTimeline
         steps={state.steps}
         analysis={state.analysis}

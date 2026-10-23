@@ -54,6 +54,8 @@ interface Options {
   onReject: (message: string) => void;
   onPaletteClick: (step: EditorStep) => void;
   onBoxClick: (id: string) => void;
+  /** Una caja nueva de la paleta en su lugar: de dónde salen sus aldeanos con los pasos de antes (placeNew). */
+  place: (step: EditorStep, before: EditorStep[]) => EditorStep;
 }
 
 interface Pending {
@@ -176,6 +178,8 @@ export function useTimelineDrag(options: Options) {
 
     if (index !== session.candidate) {
       session.candidate = index;
+      // Una caja de la paleta toma sus aldeanos de lo que hay en ese lugar (sin tarea, madera, la fuente con más gente).
+      if (pending.source.kind === "palette") session.block = [optionsRef.current.place(pending.source.step, session.others.slice(0, index))];
       session.previewSteps = insertBlock(session.others, session.block, index);
       session.preview = null;
       if (session.previewEnabled && coach && session.range.lo <= session.range.hi) {
@@ -246,7 +250,7 @@ export function useTimelineDrag(options: Options) {
         else if (neverStarts) onReject(neverStartsText(waitReason(session.preview, session.block, data)));
         else dispatch({ type: "commit", steps: session.previewSteps, analysis: session.preview, selected: session.blockId });
       } else if (pending.source.kind === "palette") {
-        dispatch({ type: "insert", step: pending.source.step, index: session.candidate });
+        dispatch({ type: "insert", step: session.block[0], index: session.candidate });
       } else {
         dispatch({ type: "move", blockFrom: pending.source.from, blockTo: pending.source.to, index: session.candidate });
       }

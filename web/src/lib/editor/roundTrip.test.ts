@@ -5,7 +5,9 @@ import type { CoachRuntime } from "../coach/runtime";
 import { coachDir, repoDir, startTestCoach } from "../coach/testing";
 import type { Analysis } from "../coach/types";
 import { allowedRange, type GameDataLite } from "./constraints";
-import { blockOf, fromAnalysis, insertBlock, splitBlock, toJson, type EditorStep } from "./model";
+import { paletteItems } from "./gameData";
+import { blockOf, fromAnalysis, initialState, insertBlock, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
+import { placeNew, withOpening } from "./opening";
 
 /**
  * El editor contra el Core de verdad (WebAssembly): la ida y vuelta de cada BO del repo por el modelo en unidades,
@@ -106,4 +108,53 @@ describe("allowedRange concuerda con el validador", () => {
     },
     120_000,
   );
+});
+
+describe("una BO nueva arranca", () => {
+  /** Agrega una caja de la paleta al final, como un clic: con los aldeanos de donde haya en ese lugar. */
+  function add(state: EditorState, key: string): EditorState {
+    const item = paletteItems(data, state.bo.civ).flatMap((g) => g.items).find((i) => i.key === key)!;
+    const start = analyze(toJson(state)).start;
+    const step = placeNew({ ...item.step, id: nextId(state), after: [], withPrevious: false }, state.steps, start);
+    return reduce(state, { type: "insert", step, index: state.steps.length });
+  }
+
+  it("con la apertura de siempre, cada caja de la paleta arranca", () => {
+    let state = reduce(initialState(), { type: "new", id: "n1" });
+    const first = analyze(toJson(state));
+    expect(first.valid).toBe(true);
+    expect(first.steps[0]).toMatchObject({ text: "Construir 2 casas (3 constructores) → ovejas", start: 0 });
+    expect(first.start).toMatchObject({ food: 200, wood: 200, gold: 100, stone: 200, idle_villagers: 3 });
+
+    for (const key of ["villagers:sheep", "villagers:sheep", "villagers:wood", "lumber_camp", "house", "move", "villagers:berries", "mill", "farm"]) state = add(state, key);
+    const a = analyze(toJson(state));
+    expect(a.valid).toBe(true);
+    expect(a.steps.filter((s) => s.start === null).map((s) => s.text)).toEqual([]);
+    expect(a.completed).toBe(true);
+  });
+
+  it("sin apertura, la primera casa toma a los iniciales sin tarea", () => {
+    let state = reduce(initialState(), { type: "new", id: "n1" });
+    state = reduce(state, { type: "setSteps", steps: withOpening(state.steps, { kind: "custom", source: "sheep" }, analyze(toJson(state)).start, "x") });
+    expect(state.steps).toEqual([]);
+    state = add(state, "house");
+    expect(state.steps[0].from).toBeUndefined();
+    const a = analyze(toJson(state));
+    expect(a.steps[0].start).toBe(0);
+  });
+
+  it("una civ sin casas (hunos) manda a los iniciales directo y arranca", () => {
+    let state = reduce(initialState(), { type: "new", id: "n1" });
+    state = reduce(state, { type: "setField", field: "civ", value: "huns" });
+    const start = analyze(toJson(state)).start;
+    expect(start.houses).toBe(false);
+    state = reduce(state, { type: "setSteps", steps: withOpening(state.steps, { kind: "houses", source: "sheep" }, start, nextId(state)) });
+    state = add(state, "villagers:wood");
+    const a = analyze(toJson(state));
+    expect(a.valid).toBe(true);
+    expect(a.steps.map((s) => [s.text, s.start])).toEqual([
+      ["Mandar 3 aldeanos sin tarea a ovejas", 0],
+      ["1 aldeano en madera", 0],
+    ]);
+  });
 });

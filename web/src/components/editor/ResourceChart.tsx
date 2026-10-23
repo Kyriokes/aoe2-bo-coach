@@ -35,6 +35,12 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
           </text>
         </g>
       ))}
+      <text x={scale.x(0) + 4} y={12} fontSize={11} fill="var(--faint)">
+        {maxStock}
+      </text>
+      <text x={scale.x(0) + 4} y={CHART_H + 2} fontSize={11} fill="var(--faint)">
+        0
+      </text>
       {RESOURCES.map((r) => (
         <polyline key={r.key} fill="none" stroke={r.color} strokeWidth={2} points={samples.map((t) => `${scale.x(t.time)},${y(t[r.key])}`).join(" ")} />
       ))}
