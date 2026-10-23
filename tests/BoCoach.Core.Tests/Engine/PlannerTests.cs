@@ -170,4 +170,35 @@ public class PlannerTests
         // Con 60 de comida alcanza para el aldeano, pero el centro urbano está ocupado hasta que termina la Feudal.
         Assert.True(plan.For("v")!.Start >= research.End);
     }
+
+    // D8: qué edificio hace cada cosa, para la línea de cada edificio en el editor de la web.
+    [Fact]
+    public void Cada_trabajo_dice_en_que_edificio_se_hizo_y_cada_edificio_hace_una_cosa_a_la_vez()
+    {
+        var plan = Planner.Simulate(Load("archers_feudal.json"));
+
+        Assert.True(plan.Completed);
+        Assert.Equal("town_center#1", plan.Buildings[0].Id);
+        Assert.Null(plan.Buildings[0].Built);
+        // Las dos galerías del paso s23 son dos edificios distintos.
+        Assert.Equal(["s23#1", "s23#2"], plan.Buildings.Where(b => b.Key == "archery_range").Select(b => b.Id));
+        Assert.All(plan.Buildings.Where(b => b.StepId is not null), b => Assert.Contains(plan.Jobs, j => j.Kind == PlanJobKind.Build && j.Building == b.Id && j.End == b.Built));
+
+        var produced = plan.Jobs.Where(j => j.Kind == PlanJobKind.Produce).ToList();
+        Assert.All(produced, j => Assert.NotNull(j.Building));
+        Assert.All(produced.Where(j => j.What == "villager"), j => Assert.Equal("town_center#1", j.Building));
+        // Los 24 arqueros se reparten entre las dos galerías.
+        var archers = produced.Where(j => j.What == "archer").ToList();
+        Assert.Equal(24, archers.Count);
+        Assert.Equal(["s23#1", "s23#2"], archers.Select(j => j.Building).Distinct().Order());
+        // Ningún edificio hace dos cosas a la vez, y nada se produce antes de que su edificio esté terminado.
+        foreach (var group in produced.GroupBy(j => j.Building))
+        {
+            var jobs = group.OrderBy(j => j.Start).ToList();
+            for (var i = 1; i < jobs.Count; i++)
+                Assert.True(jobs[i].Start >= jobs[i - 1].End - 1e-9, $"{group.Key}: {jobs[i - 1]} y {jobs[i]}");
+            var built = plan.Buildings.Single(b => b.Id == group.Key).Built ?? 0;
+            Assert.All(jobs, j => Assert.True(j.Start >= built - 1e-9));
+        }
+    }
 }

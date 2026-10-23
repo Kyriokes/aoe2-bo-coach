@@ -116,11 +116,35 @@ public sealed record StepEstimate(Step Step, double? Start, double? End, bool Pa
 
 public sealed record PlanSample(double Time, ResourceAmounts Stock, int Population, int PopulationCap, int Villagers);
 
+public enum PlanJobKind
+{
+    /// <summary>Un edificio que produce una unidad o investiga una tecnología (de a una cosa por edificio).</summary>
+    Produce,
+
+    /// <summary>Aldeanos construyendo un edificio.</summary>
+    Build,
+}
+
+/// <summary>Un trabajo de la simulación: qué se hizo, para qué paso, en qué edificio y cuándo (D8: una línea por edificio).</summary>
+/// <param name="Building">El edificio que produce o el que se construye (<see cref="PlanBuilding.Id"/>); null si no se sabe.</param>
+public sealed record PlanJob(string StepId, PlanJobKind Kind, string What, string? Building, double Start, double End);
+
+/// <summary>Un edificio de la partida: los del arranque ("town_center#1") y cada uno que construye la BO ("s4#1").</summary>
+/// <param name="StepId">El paso que lo construye; null si estaba al arrancar.</param>
+/// <param name="Built">Cuándo se terminó; null si estaba al arrancar.</param>
+public sealed record PlanBuilding(string Id, string Key, string? StepId, double? Built);
+
 public sealed record PlanResult(
     IReadOnlyList<StepEstimate> Steps,
     IReadOnlyList<PlanBlock> Blocks,
     IReadOnlyList<PlanSample> Timeline)
 {
+    /// <summary>Cada unidad, tecnología y construcción con su edificio, en el orden en que empezó.</summary>
+    public IReadOnlyList<PlanJob> Jobs { get; init; } = [];
+
+    /// <summary>Los edificios: los del arranque y los que se terminaron, en orden.</summary>
+    public IReadOnlyList<PlanBuilding> Buildings { get; init; } = [];
+
     public bool Completed => Steps.All(s => s.End is not null);
 
     public StepEstimate? For(string stepId) => Steps.FirstOrDefault(s => s.Step.Id == stepId);
@@ -169,6 +193,11 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private readonly List<PlanBlock> _blocks = [];
         private readonly List<PlanSample> _timeline = [];
         private readonly HashSet<string> _finishedSteps = [];
+        // D8: qué edificio hace cada cosa. Cada clave (y lo que cuenta como ella) tiene sus edificios en el orden en
+        // que se terminaron, con hasta cuándo están ocupados; cada trabajo toma el primero libre.
+        private readonly Dictionary<string, List<Instance>> _instances = [];
+        private readonly List<PlanJob> _jobs = [];
+        private readonly List<PlanBuilding> _buildingList = [];
         private double _time;
         private ResourceAmounts _stock;
         private int _population;
@@ -195,6 +224,15 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _idle = start.IdleVillagers;
             _villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, s => start.Villagers.GetValueOrDefault(s));
             _buildings = new Dictionary<string, int>(start.Buildings);
+            foreach (var (key, count) in start.Buildings)
+            {
+                for (var k = 1; k <= count; k++)
+                {
+                    var id = $"{key}#{k}";
+                    _buildingList.Add(new PlanBuilding(id, key, null, null));
+                    AddInstance(key, id);
+                }
+            }
             _gatherModel = new GatherModel(data, settings.Efficiency);
             _researched = [.. start.Researched];
             RefreshRates();
@@ -205,12 +243,29 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 StartPaid(item);
         }
 
+        private void AddInstance(string key, string id) =>
+            (_instances.TryGetValue(key, out var list) ? list : _instances[key] = []).Add(new Instance(id) { FreeAt = _time });
+
+        /// <summary>El primer edificio de esa clave libre ahora, que queda ocupado hasta <paramref name="until"/>.</summary>
+        private string? TakeInstance(string producer, double until)
+        {
+            if (!_instances.TryGetValue(producer, out var list))
+                return null;
+            var free = list.FirstOrDefault(i => i.FreeAt <= _time + 1e-9);
+            if (free is null)
+                return null;
+            free.FreeAt = until;
+            return free.Id;
+        }
+
         /// <summary>Lo ya pagado no se vuelve a pagar: ocupa su edificio hasta que termina.</summary>
         private void StartPaid(ItemSim item)
         {
             var entity = item.Entity!;
             var producer = entity.MadeIn ?? "";
             _busyProducers[producer] = _busyProducers.GetValueOrDefault(producer) + 1;
+            var end = Math.Max(_time, item.PaidAt!.Value + ProductionTime(entity, producer));
+            _jobs.Add(new PlanJob(item.Step.Id, PlanJobKind.Produce, entity.Key, TakeInstance(producer, end), item.PaidAt!.Value, end));
             _reserved += entity.Pop;
             item.Remaining--;
             item.Unfinished++;
@@ -250,7 +305,11 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             return new PlanResult(
                 _items.Select(i => new StepEstimate(i.Step, i.Start, i.End, i.PaidAt is not null)).ToList(),
                 _blocks,
-                _timeline);
+                _timeline)
+            {
+                Jobs = _jobs,
+                Buildings = _buildingList,
+            };
         }
 
         private void Gather()
@@ -370,7 +429,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 item.Remaining--;
                 item.Unfinished++;
                 item.Start ??= _time;
-                _running.Add((_time + ProductionTime(entity, producer), item, Completion(item, entity, producer)));
+                var end = _time + ProductionTime(entity, producer);
+                _jobs.Add(new PlanJob(item.Step.Id, PlanJobKind.Produce, entity.Key, TakeInstance(producer, end), _time, end));
+                _running.Add((end, item, Completion(item, entity, producer)));
             }
         }
 
@@ -447,11 +508,20 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 item.Started = true;
                 var buildTime = _civ.Time(entity, _age) * 3.0 / (builders + 2) / _civ.BuildRate(_age);
                 var last = item.Remaining == 0;
-                _running.Add((_time + buildTime, item, () =>
+                var started = _time;
+                var finished = _time + buildTime;
+                _running.Add((finished, item, () =>
                 {
                     _buildings[entity.Key] = _buildings.GetValueOrDefault(entity.Key) + 1;
                     foreach (var counted in entity.CountsAs)
                         _buildings[counted] = _buildings.GetValueOrDefault(counted) + 1;
+                    // D8: el edificio nuevo ("s4#1", "s4#2"...) y la construcción como trabajo.
+                    var id = $"{item.Step.Id}#{++item.Built}";
+                    _buildingList.Add(new PlanBuilding(id, entity.Key, item.Step.Id, finished));
+                    _jobs.Add(new PlanJob(item.Step.Id, PlanJobKind.Build, entity.Key, id, started, finished));
+                    AddInstance(entity.Key, id);
+                    foreach (var counted in entity.CountsAs)
+                        AddInstance(counted, id);
                     _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + _civ.PopBonus(entity, _age));
                     if (parallel || last)
                     {
@@ -542,8 +612,18 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _time, _stock, _population, _cap, _villagers.Values.Sum() + _idle + _builders));
     }
 
+    /// <summary>Un edificio que produce, con hasta cuándo está ocupado.</summary>
+    private sealed class Instance(string id)
+    {
+        public string Id { get; } = id;
+        public double FreeAt { get; set; }
+    }
+
     private sealed class ItemSim(Step step, int index, int remaining, Entity? entity)
     {
+        /// <summary>Cuántos edificios de este paso ya se terminaron (para numerarlos).</summary>
+        public int Built { get; set; }
+
         public Step Step { get; } = step;
         public int Index { get; } = index;
         public Entity? Entity { get; } = entity;

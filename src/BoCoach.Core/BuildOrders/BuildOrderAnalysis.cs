@@ -165,6 +165,31 @@ public static class BuildOrderAnalysis
 
     private static void WritePlan(Utf8JsonWriter w, PlanResult plan)
     {
+        // D8: qué edificio produce cada cosa y cuándo, para la línea de cada edificio en el editor de la web.
+        w.WriteStartArray("buildings");
+        foreach (var b in plan.Buildings)
+        {
+            w.WriteStartObject();
+            w.WriteString("id", b.Id);
+            w.WriteString("key", b.Key);
+            w.WriteString("step_id", b.StepId);
+            Number(w, "built", b.Built);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("jobs");
+        foreach (var j in plan.Jobs)
+        {
+            w.WriteStartObject();
+            w.WriteString("step_id", j.StepId);
+            w.WriteString("kind", j.Kind == PlanJobKind.Build ? "build" : "produce");
+            w.WriteString("what", j.What);
+            w.WriteString("building", j.Building);
+            Number(w, "start", j.Start);
+            Number(w, "end", j.End);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
         w.WriteBoolean("completed", plan.Completed);
         Number(w, "feudal_click", plan.ClickTime("feudal_age"));
         Number(w, "castle_click", plan.ClickTime("castle_age"));
