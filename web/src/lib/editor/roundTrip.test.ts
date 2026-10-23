@@ -8,6 +8,7 @@ import { allowedRange, type GameDataLite } from "./constraints";
 import { paletteItems } from "./gameData";
 import { blockOf, fromAnalysis, initialState, insertBlock, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
 import { placeNew, withOpening } from "./opening";
+import { brokenBy } from "./guard";
 
 /**
  * El editor contra el Core de verdad (WebAssembly): la ida y vuelta de cada BO del repo por el modelo en unidades,
@@ -156,5 +157,38 @@ describe("una BO nueva arranca", () => {
       ["Mandar 3 aldeanos sin tarea a ovejas", 0],
       ["1 aldeano en madera", 0],
     ]);
+  });
+});
+
+describe("ninguna edición deja la BO rota", () => {
+  const scouts = () => fromAnalysis(analyze(readFileSync(join(repoDir, "build_orders", "scouts_22p.json"), "utf8")));
+  function attempt(state: EditorState, action: Parameters<typeof reduce>[1]) {
+    const before = analyze(toJson(state));
+    const next = reduce(state, action);
+    const after = analyze(toJson(next));
+    return brokenBy(before, after, next.steps, data);
+  }
+
+  it("deja las ediciones que no rompen nada", () => {
+    const state = { ...initialState(), ...scouts() };
+    const villagers = state.steps.find((s) => s.do === "train" && s.what === "villager")!;
+    expect(attempt(state, { type: "setCount", id: villagers.id, count: villagers.count + 1 })).toBeNull();
+  });
+
+  it("borrar el establo deja a los exploradores sin edificio: no se puede, y dice qué falta", () => {
+    const state = { ...initialState(), ...scouts() };
+    const stable = state.steps.find((s) => s.what === "stable")!;
+    expect(attempt(state, { type: "remove", id: stable.id })).toMatch(/no arranca nunca: falta un establo en la BO/);
+  });
+
+  it("una civ que no tiene lo que la BO usa no se puede elegir, y dice por qué", () => {
+    const state = { ...initialState(), ...scouts() };
+    expect(attempt(state, { type: "setField", field: "civ", value: "mapuche" })).toMatch(/^La civ Mapuches no tiene /);
+  });
+
+  it("arqueros sin galería en la BO no se pueden agregar", () => {
+    const state = { ...initialState(), ...scouts() };
+    const archer = { id: "x1", do: "train" as const, what: "archer", count: 1, after: [], withPrevious: false };
+    expect(attempt(state, { type: "insert", step: archer, index: state.steps.length })).toMatch(/falta una galería de tiro en la BO/);
   });
 });
