@@ -8,8 +8,9 @@ import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
-import { loadGameData, loadMaps, paletteItems, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
-import { scaleFor, timeSpan, type PlacedBox } from "@/lib/editor/layout";
+import { brokenBy, isGuarded } from "@/lib/editor/guard";
+import { loadGameData, loadMaps, paletteTree, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
+import { scaleFor, timeSpan, type PlacedItem } from "@/lib/editor/layout";
 import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, placeNew, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
@@ -52,13 +53,40 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(960);
 
-  /** Aplica una acción y simula el resultado (el Core es sincrónico: el estado nuevo ya trae su análisis). */
-  const dispatch = useCallback((action: EditorAction) => setState((prev) => settle(reduce(prev, action), coach)), [coach]);
-
   const showNotice = useCallback((message: string) => {
     setNotice(message);
-    window.setTimeout(() => setNotice((current) => (current === message ? null : current)), 5000);
+    window.setTimeout(() => setNotice((current) => (current === message ? null : current)), 6000);
   }, []);
+
+  // El estado de ahora, para comparar antes y después de cada edición (las acciones del mismo evento se encadenan).
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  /**
+   * Aplica una acción y simula el resultado (el Core es sincrónico: el estado nuevo ya trae su análisis). Una edición
+   * que deja la BO rota (un error nuevo, o un paso que deja de arrancar) no se aplica: se explica por qué.
+   */
+  const dispatch = useCallback(
+    (action: EditorAction) => {
+      const prev = stateRef.current;
+      const next = settle(reduce(prev, action), coach);
+      const reason = isGuarded(action) ? brokenBy(prev.analysis, next.analysis, next.steps, dataRef.current) : null;
+      if (reason) {
+        showNotice(`No se puede: ${reason}`);
+        return false;
+      }
+      stateRef.current = next;
+      setState(next);
+      return true;
+    },
+    [coach, showNotice],
+  );
 
   // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva.
   useEffect(() => {
@@ -110,7 +138,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   const labels = useMemo(() => new Map(state.analysis?.steps.map((s) => [s.id, s.text]) ?? []), [state.analysis]);
   const label = useCallback((step: EditorStep) => labels.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do), [labels]);
   const map = maps.find((m) => m.key === state.bo.map) ?? null;
-  const palette = useMemo(() => (data ? paletteItems(data, state.bo.civ, map) : []), [data, state.bo.civ, map]);
+  const palette = useMemo(() => (data ? paletteTree(data, state.bo.civ, map) : []), [data, state.bo.civ, map]);
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
   const scale = useMemo(() => scaleFor(width, timeSpan(state.analysis)), [width, state.analysis]);
@@ -127,9 +155,23 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   const opening = useMemo(() => detectOpening(state.steps, start), [state.steps, start]);
   const place = useCallback((step: EditorStep, before: EditorStep[]) => placeNew(step, before, start), [start]);
   /** Agrega un paso sin arrastrar, con los aldeanos de donde haya en ese lugar. */
+  /**
+   * Agrega un paso sin arrastrar: en el lugar pedido si se puede, si no en el primero (o último) donde el juego lo
+   * deja; si no hay ninguno, explica qué falta.
+   */
   const insertAt = useCallback(
-    (step: EditorStep, index: number) => dispatch({ type: "insert", step: place(step, state.steps.slice(0, index)), index }),
-    [dispatch, place, state.steps],
+    (step: EditorStep, index: number) => {
+      if (!data) return;
+      const range = allowedRange(state.steps, [step], data, label);
+      if (range.lo > range.hi) {
+        showNotice(`No se puede: ${range.loReason ?? range.hiReason ?? "no hay lugar para ese paso"}`);
+        return;
+      }
+      const at = snapDownTo(state.steps, Math.min(Math.max(index, range.lo), range.hi));
+      const placed = place(step, state.steps.slice(0, at));
+      dispatch({ type: "insert", step: placed, index: at });
+    },
+    [data, dispatch, label, place, showNotice, state.steps],
   );
   const changeOpening = useCallback(
     (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
@@ -251,7 +293,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         onField={(field, value) => (field === "civ" ? changeCiv(value) : dispatch({ type: "setField", field, value }))}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
-      <Palette groups={palette} onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))} onPick={(item) => insertAt(newStep(item), insertIndex())} />
+      <Palette columns={palette} onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))} onPick={(item) => insertAt(newStep(item), insertIndex())} />
       <StartCard start={start} opening={opening} map={map} onOpening={changeOpening} />
       <EditorTimeline
         steps={state.steps}
@@ -261,7 +303,11 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         drag={drag}
         selected={state.selected}
         timelineRef={timelineRef}
-        onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, box: PlacedBox) => startBoxDrag(e, box.from, box.to)}
+        data={data}
+        onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => {
+          const chain = blockOf(state.steps, item.stepId);
+          if (chain) startBoxDrag(e, chain.from, chain.to);
+        }}
         onNudge={nudge}
         onRemove={(id) => dispatch({ type: "remove", id })}
         onSelect={(id) => dispatch({ type: "select", id })}

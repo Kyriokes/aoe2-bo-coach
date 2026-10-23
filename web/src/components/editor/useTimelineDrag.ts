@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type PointerEv
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import type { Analysis } from "@/lib/coach/types";
 import { allowedRange, clampCandidate, indexFromTime, snapToBoundary, type GameDataLite, type Range } from "@/lib/editor/constraints";
-import { lastWait, waitReason } from "@/lib/editor/explain";
-import { boxesFor, packLanes, type Scale } from "@/lib/editor/layout";
+import { waitReason } from "@/lib/editor/explain";
+import { neverStartsReason } from "@/lib/editor/guard";
+import { ORDINAL_W, PAD_L, type Scale } from "@/lib/editor/layout";
 import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { DROP_OUTSIDE_TEXT, neverStartsText, notBeforeText, PINNED_TEXT } from "@/lib/editor/text";
 
@@ -75,8 +76,6 @@ interface Session {
   pinned: number;
   starts: (number | null)[];
   ends: (number | null)[];
-  /** Modo ordinal: el índice de inserción de cada caja de `others` y su centro en píxeles. */
-  ordinal: { from: number; center: number }[];
   candidate: number;
   previewSteps: EditorStep[];
   preview: Analysis | null;
@@ -132,7 +131,6 @@ export function useTimelineDrag(options: Options) {
       pinned = state.steps.length;
     }
     const byId = new Map(state.analysis?.steps.map((s) => [s.id, s]) ?? []);
-    const placed = packLanes(boxesFor(others, null), scale, "ordinal").boxes;
     sessionRef.current = {
       others,
       block,
@@ -141,7 +139,6 @@ export function useTimelineDrag(options: Options) {
       pinned,
       starts: others.map((s) => byId.get(s.id)?.start ?? null),
       ends: others.map((s) => byId.get(s.id)?.end ?? null),
-      ordinal: placed.map((b) => ({ from: b.from, center: (b.x0 + b.x1) / 2 })),
       candidate: -1,
       previewSteps: state.steps,
       preview: null,
@@ -170,8 +167,8 @@ export function useTimelineDrag(options: Options) {
     if (mode === "time") {
       raw = snapToBoundary(indexFromTime(t, session.starts), session.others, t, session.starts, session.ends);
     } else {
-      const next = session.ordinal.find((b) => b.center > localX);
-      raw = next ? next.from : session.others.length;
+      // Sin tiempos, cada paso ocupa una columna en el orden de la BO.
+      raw = Math.max(0, Math.min(session.others.length, Math.round((localX - PAD_L) / ORDINAL_W)));
     }
     const { index, reason } = clampCandidate(raw, session.range, session.pinned);
     session.outside = outside;
@@ -243,11 +240,11 @@ export function useTimelineDrag(options: Options) {
         const ids = new Set(session.block.map((s) => s.id));
         const error = session.preview.issues.find((i) => i.severity === "error" && i.step_id !== null && ids.has(i.step_id));
         const first = session.preview.steps.find((s) => s.id === session.blockId);
-        // Sin arranque por población, "after" o aldeanos no hay lugar posible; sin su edificio productor se deja (la caja queda
-        // en rojo hasta que se construya, y el Core lo avisa).
-        const neverStarts = session.preview.valid && first !== undefined && first.start === null && lastWait(session.preview, session.block)?.reason !== "producer";
+        // Si en ese lugar nunca arranca (población, "after", aldeanos, o su edificio no está en la BO), no se suelta y se
+        // dice qué falta.
+        const neverStarts = session.preview.valid && first !== undefined && first.start === null;
         if (error) onReject(error.message);
-        else if (neverStarts) onReject(neverStartsText(waitReason(session.preview, session.block, data)));
+        else if (neverStarts) onReject(neverStartsText(neverStartsReason(session.preview, session.block, data)));
         else dispatch({ type: "commit", steps: session.previewSteps, analysis: session.preview, selected: session.blockId });
       } else if (pending.source.kind === "palette") {
         dispatch({ type: "insert", step: session.block[0], index: session.candidate });

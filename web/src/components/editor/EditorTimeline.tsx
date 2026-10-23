@@ -2,20 +2,23 @@
 
 import { useMemo, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { Analysis } from "@/lib/coach/types";
-import { BOX_H, boxesFor, LANE_H, LANES_TOP, ORDINAL_W, packLanes, PAD_L, PAD_R, type PlacedBox, type Scale } from "@/lib/editor/layout";
+import type { GameDataLite } from "@/lib/editor/constraints";
+import { BOX_H, LABEL_W, LANE_H, LANES_TOP, lanesFor, ORDINAL_W, PAD_L, PAD_R, placeLanes, type PlacedItem, type Scale } from "@/lib/editor/layout";
 import type { EditorStep } from "@/lib/editor/model";
 import { ResourceChart, type Marker } from "./ResourceChart";
 import { StepBox } from "./StepBox";
 import type { DragState } from "./useTimelineDrag";
 
 /**
- * La línea de tiempo del editor: el stock de recursos arriba y las cajas de los pasos en carriles, en píxeles. Con la
- * BO inválida (sin tiempos) las cajas van una al lado de la otra (modo ordinal). Durante un arrastre dibuja la vista
- * previa con la escala con que empezó, la caja movida en su lugar simulado, un fantasma bajo el puntero y el cartel.
+ * La línea de tiempo del editor: el stock de recursos arriba y una línea por edificio que produce (con su
+ * construcción al principio y lo que produce de a una cosa), más la línea de los aldeanos (casas, granjas, lo que no
+ * produce y los movimientos). Con la BO inválida (sin tiempos) cada paso va en la columna de su lugar en la BO.
+ * Durante un arrastre dibuja la vista previa con la escala con que empezó, un fantasma bajo el puntero y el cartel.
  */
 export function EditorTimeline({
   steps,
   analysis,
+  data,
   scale: committedScale,
   mode: committedMode,
   drag,
@@ -30,70 +33,99 @@ export function EditorTimeline({
 }: {
   steps: EditorStep[];
   analysis: Analysis | null;
+  data: GameDataLite | null;
   scale: Scale;
   mode: "time" | "ordinal";
   drag: DragState | null;
   selected: string | null;
   timelineRef: RefObject<HTMLDivElement | null>;
-  onBoxPointerDown: (e: ReactPointerEvent<HTMLDivElement>, box: PlacedBox) => void;
-  onNudge: (id: string, direction: -1 | 1) => void;
-  onRemove: (id: string) => void;
-  onSelect: (id: string) => void;
-  onCount: (id: string, delta: 1 | -1) => void;
-  isCountEditable: (id: string) => boolean;
+  onBoxPointerDown: (e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => void;
+  onNudge: (stepId: string, direction: -1 | 1) => void;
+  onRemove: (stepId: string) => void;
+  onSelect: (stepId: string) => void;
+  onCount: (stepId: string, delta: 1 | -1) => void;
+  isCountEditable: (stepId: string) => boolean;
 }) {
   const scale = drag ? drag.scale : committedScale;
   const mode = drag ? drag.mode : committedMode;
   const shownSteps = drag?.previewSteps ?? steps;
   const shownAnalysis = drag ? (drag.preview ?? analysis) : analysis;
-  const { boxes, laneCount } = useMemo(() => packLanes(boxesFor(shownSteps, shownAnalysis), scale, mode), [shownSteps, shownAnalysis, scale, mode]);
   const lanesTop = mode === "time" ? LANES_TOP : 24;
-  const height = lanesTop + Math.max(1, laneCount) * LANE_H + 24;
-  const innerWidth = mode === "ordinal" ? Math.max(scale.width, PAD_L + boxes.length * ORDINAL_W + PAD_R) : scale.width;
+  const placed = useMemo(() => placeLanes(lanesFor(shownSteps, shownAnalysis, data), scale, mode, lanesTop), [shownSteps, shownAnalysis, data, scale, mode, lanesTop]);
+  const height = lanesTop + placed.height + 24;
+  const innerWidth = mode === "ordinal" ? Math.max(scale.width, PAD_L + shownSteps.length * ORDINAL_W + PAD_R) : scale.width;
   const markers: Marker[] = [
     shownAnalysis?.feudal_click != null ? { t: shownAnalysis.feudal_click, label: "Feudal", dashed: false } : null,
     shownAnalysis?.castle_click != null ? { t: shownAnalysis.castle_click, label: "Castillos", dashed: false } : null,
     shownAnalysis?.targets.feudal_click_time != null ? { t: shownAnalysis.targets.feudal_click_time, label: "objetivo", dashed: true } : null,
   ].filter((m): m is Marker => m !== null);
-  const draggedLane = drag ? (boxes.find((b) => b.id === drag.blockId)?.lane ?? 0) : 0;
+  const selectedChain = placed.items.find((i) => i.stepId === selected)?.chainId ?? null;
+  const dragged = drag ? placed.items.find((i) => i.chainId === drag.blockId) : undefined;
+  const ghostTop = dragged ? placed.lanes[dragged.lane].top + dragged.row * LANE_H - 2 : lanesTop - 2;
 
   return (
     <>
       <div
         ref={timelineRef}
         className={`relative rounded-md border border-line bg-panel ${mode === "ordinal" ? "overflow-x-auto" : "overflow-hidden"}`}
-        style={{ height }}
+        style={{ height: height + (mode === "ordinal" ? 14 : 0) }}
         aria-label="Línea de tiempo de la build order"
       >
         <div className="relative" style={{ width: innerWidth, height }}>
           {mode === "time" ? <ResourceChart timeline={shownAnalysis?.timeline ?? []} scale={scale} height={height} markers={markers} /> : null}
-          {steps.length === 0 && !drag ? (
-            <p className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-sm text-faint">Arrastrá pasos de la paleta hasta acá, o tocalos para agregarlos.</p>
-          ) : null}
-          {mode === "ordinal" && steps.length > 0 ? <p className="absolute left-2 top-1 text-xs text-faint">Sin tiempos: corregí los errores para ver la simulación.</p> : null}
-          {boxes.map((box) => (
+          {placed.lanes.map((lane, i) => (
+            <div
+              key={lane.id}
+              aria-hidden="true"
+              className={`absolute border-t border-line/60 ${i % 2 === 1 ? "bg-white/[0.02]" : ""}`}
+              style={{ left: 0, top: lane.top, width: innerWidth, height: lane.rows * LANE_H }}
+            />
+          ))}
+          {placed.items.map((item) => (
             <StepBox
-              key={box.id}
-              box={box}
-              top={lanesTop + box.lane * LANE_H}
+              key={item.key}
+              box={item}
+              top={placed.lanes[item.lane].top + item.row * LANE_H + (LANE_H - BOX_H) / 2}
               scale={scale}
-              selected={box.ids.includes(selected ?? "")}
-              dragging={drag?.blockId === box.id}
-              countEditable={isCountEditable(box.id)}
-              onPointerDown={(e) => onBoxPointerDown(e, box)}
-              onNudge={(direction) => onNudge(box.id, direction)}
-              onRemove={() => onRemove(box.id)}
-              onSelect={() => onSelect(box.id)}
-              onCount={(delta) => onCount(box.id, delta)}
+              selected={item.chainId === selectedChain}
+              dragging={drag?.blockId === item.chainId}
+              countEditable={isCountEditable(item.stepId) && !item.construction}
+              onPointerDown={(e) => onBoxPointerDown(e, item)}
+              onNudge={(direction) => onNudge(item.stepId, direction)}
+              onRemove={() => onRemove(item.stepId)}
+              onSelect={() => onSelect(item.stepId)}
+              onCount={(delta) => onCount(item.stepId, delta)}
             />
           ))}
           {drag ? (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute rounded-md border-2 border-dashed border-foreground/70"
-              style={{ left: drag.ghostX - 24, top: lanesTop + draggedLane * LANE_H - 2, width: 48, height: BOX_H + 4 }}
+              style={{ left: drag.ghostX - 24, top: ghostTop, width: 48, height: BOX_H + 4 }}
             />
           ) : null}
+          {/* La columna con el nombre de cada línea, encima de la grilla (queda fija al hacer scroll en modo ordinal). */}
+          <div className="sticky left-0 top-0 h-full bg-panel" style={{ width: LABEL_W }}>
+            {mode === "time" ? (
+              <p className="absolute left-2 text-xs text-faint" style={{ top: 8 }}>
+                Recursos y población
+              </p>
+            ) : (
+              <p className="absolute left-2 top-1 text-xs text-red">Sin tiempos: la BO tiene errores</p>
+            )}
+            {placed.lanes.map((lane) => (
+              <div
+                key={lane.id}
+                className="absolute left-0 flex items-center gap-1.5 border-t border-line/60 pl-2 pr-1 text-xs text-muted"
+                style={{ top: lane.top, width: LABEL_W, height: lane.rows * LANE_H }}
+                title={lane.label}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- íconos del juego, ya chicos (64×64) */}
+                <img src={`/icons/${lane.icon}.png`} alt="" width={20} height={20} className="shrink-0 rounded-sm" />
+                <span className="truncate">{lane.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       {drag?.label ? (

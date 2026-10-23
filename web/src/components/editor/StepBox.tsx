@@ -2,7 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { formatClock } from "@/lib/buildOrder";
-import { BOX_H, type PlacedBox, type Scale } from "@/lib/editor/layout";
+import { BOX_H, type PlacedItem, type Scale } from "@/lib/editor/layout";
 import { blockReason } from "@/lib/editor/text";
 
 export const ACTION_COLORS: Record<string, string> = {
@@ -29,7 +29,7 @@ export function StepBox({
   onSelect,
   onCount,
 }: {
-  box: PlacedBox;
+  box: PlacedItem;
   top: number;
   scale: Scale;
   selected: boolean;
@@ -66,7 +66,8 @@ export function StepBox({
       aria-label={`${box.label}, ${times}`}
       aria-pressed={selected}
       title={title}
-      data-box={box.id}
+      data-box={box.chainId}
+      data-step={box.stepId}
       onPointerDown={onPointerDown}
       onKeyDown={onKeyDown}
       className={`absolute flex select-none items-center overflow-hidden rounded-md text-xs text-background outline-offset-2 transition-[left,width] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-amber ${
@@ -81,7 +82,11 @@ export function StepBox({
           style={{ width: leadInWidth, background: "repeating-linear-gradient(135deg, rgba(0,0,0,0.35) 0 4px, transparent 4px 8px)" }}
         />
       ) : null}
-      <span className="relative truncate px-1.5 font-medium" style={{ marginLeft: leadInWidth }}>
+      {box.what && width - leadInWidth > 40 ? (
+        // eslint-disable-next-line @next/next/no-img-element -- íconos del juego, ya chicos (64×64)
+        <img src={`/icons/${box.what}.png`} alt="" width={20} height={20} className="relative ml-0.5 shrink-0 rounded-sm" style={{ marginLeft: leadInWidth + 2 }} />
+      ) : null}
+      <span className="relative truncate px-1.5 font-medium" style={{ marginLeft: box.what && width - leadInWidth > 40 ? 0 : leadInWidth }}>
         {box.label}
       </span>
       {countEditable && selected ? (
