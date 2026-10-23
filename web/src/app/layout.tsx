@@ -64,6 +64,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             Privacidad
           </Link>
           <SupportLinks />
+          {/* El aviso que piden las reglas de Microsoft para usar contenido del juego (los íconos del editor). */}
+          <p className="mx-auto mt-2 max-w-3xl">
+            Age of Empires II © Microsoft Corporation. AoE2 BO Coach se hizo bajo las{" "}
+            <a href="https://www.xbox.com/en-US/developers/rules" target="_blank" rel="noopener noreferrer" className="hover:text-amber">
+              Game Content Usage Rules
+            </a>{" "}
+            de Microsoft con contenido de Age of Empires II, y no está respaldado por Microsoft ni afiliado a Microsoft.
+          </p>
         </footer>
       </body>
     </html>
