@@ -1,13 +1,8 @@
 import { formatClock } from "@/lib/buildOrder";
 import type { PlanSample } from "@/lib/coach/types";
 import { CHART_H, type Scale } from "@/lib/editor/layout";
+import { POPULATION, RESOURCES } from "@/lib/resourceColors";
 
-const RESOURCES = [
-  { key: "food", label: "Comida", color: "var(--orange)" },
-  { key: "wood", label: "Madera", color: "var(--green)" },
-  { key: "gold", label: "Oro", color: "var(--amber)" },
-  { key: "stone", label: "Piedra", color: "var(--muted)" },
-] as const;
 
 export interface Marker {
   t: number;
@@ -24,6 +19,9 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
   const samples = timeline.filter((t) => t.time <= scale.span);
   const maxStock = Math.max(100, ...samples.flatMap((t) => RESOURCES.map((r) => t[r.key])));
   const y = (v: number) => 4 + CHART_H - (v / maxStock) * CHART_H;
+  // La población va con su propia escala (hasta el tope más alto), en azul como en el HUD.
+  const maxPop = Math.max(5, ...samples.map((t) => t.population_cap));
+  const yPop = (v: number) => 4 + CHART_H - (v / maxPop) * CHART_H;
   const ticks = Array.from({ length: Math.floor(scale.span / 60) + 1 }, (_, i) => i * 60);
   return (
     <svg width={scale.width} height={height} className="absolute inset-0" aria-hidden="true">
@@ -44,6 +42,11 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
       {RESOURCES.map((r) => (
         <polyline key={r.key} fill="none" stroke={r.color} strokeWidth={2} points={samples.map((t) => `${scale.x(t.time)},${y(t[r.key])}`).join(" ")} />
       ))}
+      <polyline fill="none" stroke={POPULATION.color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} points={samples.map((t) => `${scale.x(t.time)},${yPop(t.population_cap)}`).join(" ")} />
+      <polyline fill="none" stroke={POPULATION.color} strokeWidth={2} points={samples.map((t) => `${scale.x(t.time)},${yPop(t.population)}`).join(" ")} />
+      <text x={scale.x(scale.span) - 4} y={12} fontSize={11} fill={POPULATION.color} textAnchor="end">
+        {`${maxPop} de población`}
+      </text>
       {markers.map((m) => (
         <g key={m.label}>
           <line x1={scale.x(m.t)} x2={scale.x(m.t)} y1={0} y2={height - 18} stroke={m.dashed ? "var(--muted)" : "var(--red)"} strokeWidth={2} strokeDasharray={m.dashed ? "6 4" : undefined} />
@@ -64,6 +67,9 @@ export function ChartLegend() {
           <span className="inline-block h-0.5 w-4" style={{ background: r.color }} /> {r.label}
         </span>
       ))}
+      <span className="flex items-center gap-1">
+        <span className="inline-block h-0.5 w-4" style={{ background: POPULATION.color }} /> {POPULATION.label} (punteado: el tope)
+      </span>
       <span>Cajas: aldeanos y unidades (celeste), edificios (verde), investigaciones (ámbar), mover (gris). Rayado: espera.</span>
     </p>
   );

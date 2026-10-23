@@ -1,12 +1,7 @@
 import { formatClock } from "@/lib/buildOrder";
 import type { Analysis } from "@/lib/coach/types";
+import { POPULATION, RESOURCES } from "@/lib/resourceColors";
 
-const RESOURCES = [
-  { key: "food", label: "Comida", color: "var(--orange)" },
-  { key: "wood", label: "Madera", color: "var(--green)" },
-  { key: "gold", label: "Oro", color: "var(--amber)" },
-  { key: "stone", label: "Piedra", color: "var(--muted)" },
-] as const;
 
 const ACTION_COLORS: Record<string, string> = {
   train: "var(--blue)",
@@ -32,6 +27,9 @@ export function Timeline({ analysis }: { analysis: Analysis }) {
   const x = (t: number) => LEFT + (t / end) * (WIDTH - LEFT - RIGHT);
   const maxStock = Math.max(100, ...timeline.flatMap((t) => RESOURCES.map((r) => t[r.key])));
   const y = (v: number) => 4 + CHART - (v / maxStock) * CHART;
+  // La población va con su propia escala (hasta el tope más alto), en azul como en el HUD.
+  const maxPop = Math.max(5, ...timeline.map((t) => t.population_cap));
+  const yPop = (v: number) => 4 + CHART - (v / maxPop) * CHART;
   const barsTop = CHART + 24;
   const height = barsTop + steps.length * ROW + 24;
   const ticks = Array.from({ length: Math.floor(end / 60) + 1 }, (_, i) => i * 60);
@@ -58,6 +56,10 @@ export function Timeline({ analysis }: { analysis: Analysis }) {
           <polyline key={r.key} fill="none" stroke={r.color} strokeWidth={2}
             points={timeline.map((t) => `${x(t.time)},${y(t[r.key])}`).join(" ")} />
         ))}
+        <polyline fill="none" stroke={POPULATION.color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7}
+          points={timeline.map((t) => `${x(t.time)},${yPop(t.population_cap)}`).join(" ")} />
+        <polyline fill="none" stroke={POPULATION.color} strokeWidth={2}
+          points={timeline.map((t) => `${x(t.time)},${yPop(t.population)}`).join(" ")} />
 
         {steps.map((s, i) => {
           const top = barsTop + i * ROW;
@@ -89,6 +91,9 @@ export function Timeline({ analysis }: { analysis: Analysis }) {
             <span className="inline-block h-0.5 w-4" style={{ background: r.color }} /> {r.label}
           </span>
         ))}
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-0.5 w-4" style={{ background: POPULATION.color }} /> {POPULATION.label} (punteado: el tope)
+        </span>
         <span>Barras: aldeanos y unidades (celeste), edificios (verde), investigaciones (ámbar).</span>
       </figcaption>
     </figure>

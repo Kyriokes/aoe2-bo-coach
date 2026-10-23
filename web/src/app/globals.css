@@ -18,6 +18,12 @@
   --red: #f08070;
   --blue: #8fc3e8;
   --orange: #f0a060;
+  /* Recursos como en el HUD del juego (madera y oro un poco más claros para que se lean sobre el panel oscuro). */
+  --food: #e5686a;
+  --wood: #b98042;
+  --gold: #f0c019;
+  --stone: #9e9ea7;
+  --pop: #4f8dff;
 }
 
 @theme inline {
