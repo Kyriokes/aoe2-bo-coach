@@ -75,6 +75,27 @@ public class BuildOrderAnalysisTests
         Assert.Equal(0, moved.GetProperty("steps")[2].GetProperty("units").GetInt32());
     }
 
+    // D8: el arranque de la partida para la civ de la BO, para la caja "Inicio" del editor de la web.
+    [Theory]
+    [InlineData("any", 200, 200, 4, 5, 0, true)]
+    [InlineData("chinese", 0, 150, 7, 15, 3, true)]
+    [InlineData("huns", 200, 100, 4, 200, 0, false)]
+    public void Trae_el_arranque_de_la_civ(string civ, int food, int wood, int population, int cap, int sheep, bool houses)
+    {
+        var r = Analyze($$"""{ "schema_version": 2, "name": "x", "civ": "{{civ}}", "steps": [ { "id": "a", "do": "train", "what": "villager", "count": 6, "assign": "sheep" } ] }""");
+
+        var start = r.GetProperty("start");
+        Assert.Equal(food, start.GetProperty("food").GetInt32());
+        Assert.Equal(wood, start.GetProperty("wood").GetInt32());
+        Assert.Equal(100, start.GetProperty("gold").GetInt32());
+        Assert.Equal(200, start.GetProperty("stone").GetInt32());
+        Assert.Equal(population, start.GetProperty("population").GetInt32());
+        Assert.Equal(cap, start.GetProperty("population_cap").GetInt32());
+        Assert.Equal(3, start.GetProperty("idle_villagers").GetInt32());
+        Assert.Equal(sheep, start.GetProperty("villagers").TryGetProperty("sheep", out var s) ? s.GetInt32() : 0);
+        Assert.Equal(houses, start.GetProperty("houses").GetBoolean());
+    }
+
     [Fact]
     public void Un_JSON_roto_devuelve_el_error()
     {

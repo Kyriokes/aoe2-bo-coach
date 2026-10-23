@@ -38,6 +38,7 @@ public static class BuildOrderAnalysis
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             WriteBuildOrder(w, bo);
+            WriteStart(w, bo, data);
             WriteIssues(w, validation);
 
             // Una BO con errores puede no simularse (por ejemplo, una entidad que no existe).
@@ -97,6 +98,30 @@ public static class BuildOrderAnalysis
         w.WritePropertyName("build_order");
         using var doc = JsonDocument.Parse(BuildOrderSerializer.Serialize(bo));
         doc.RootElement.WriteTo(w);
+    }
+
+    /// <summary>
+    /// Con qué arranca la partida para la civ de la BO (lo que usa el Planner): recursos, población, los aldeanos sin
+    /// tarea (los 3 iniciales) y los que ya trabajan (los de más de algunas civs, en las ovejas), y si hace casas. El
+    /// editor de la web lo muestra en la caja "Inicio" (D8).
+    /// </summary>
+    private static void WriteStart(Utf8JsonWriter w, BuildOrder bo, GameData data)
+    {
+        var start = PlanStart.For(data.Civ(bo.Civ), data);
+        w.WriteStartObject("start");
+        w.WriteNumber("food", Math.Round(start.Stock.Food));
+        w.WriteNumber("wood", Math.Round(start.Stock.Wood));
+        w.WriteNumber("gold", Math.Round(start.Stock.Gold));
+        w.WriteNumber("stone", Math.Round(start.Stock.Stone));
+        w.WriteNumber("population", start.Population);
+        w.WriteNumber("population_cap", start.PopulationCap);
+        w.WriteNumber("idle_villagers", start.IdleVillagers);
+        w.WriteStartObject("villagers");
+        foreach (var (source, count) in start.Villagers.Where(v => v.Value > 0))
+            w.WriteNumber(source.ToString().ToLowerInvariant(), count);
+        w.WriteEndObject();
+        w.WriteBoolean("houses", data.CanMake(bo.Civ, "house"));
+        w.WriteEndObject();
     }
 
     private static void WriteIssues(Utf8JsonWriter w, ValidationResult validation)
