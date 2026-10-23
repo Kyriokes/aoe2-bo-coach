@@ -69,7 +69,7 @@ const steps = [
 ];
 
 const features = [
-  "Overlay liviano arriba del juego que no toma los clics (unos 60 MB de RAM y menos del 2 % de CPU).",
+  "Overlay liviano arriba del juego que no toma los clics: unos 60 MB de RAM y menos del 2 % de CPU, medidos en un i5 de 2014 de 4 núcleos (en una PC actual es bastante menos).",
   "Editor de build orders con vista previa simulada: ves a qué minuto llegás a Feudal antes de jugar.",
   "Importa las guías de buildorderguide.com y las pasa al formato de la app.",
   "Biblioteca en la web para buscar, votar y compartir build orders, que se abren directo en la app.",
