@@ -10,10 +10,15 @@ import { isVillagerTarget, type EditorStep, type StepKind } from "./model";
  * Puro, en píxeles.
  */
 
-/** Ancho de la columna con el nombre de cada línea. */
+/** Ancho de la columna con el nombre de cada línea; en pantallas angostas, solo el ícono. */
 export const LABEL_W = 150;
+export const NARROW_LABEL_W = 44;
 export const PAD_L = LABEL_W + 8;
 export const PAD_R = 8;
+/** Debajo de este ancho, la línea de tiempo va con la columna angosta (celular). */
+export const NARROW_WIDTH = 640;
+/** Lo mínimo que mide un minuto: si no entra, la línea se desplaza de costado (un aldeano de 25 s mide 30 px). */
+export const MIN_PX_PER_MIN = 72;
 /** Alto del gráfico de recursos. */
 export const CHART_H = 110;
 export const LANES_TOP = CHART_H + 24;
@@ -34,6 +39,8 @@ export interface Scale {
   /** Segundos que entran. */
   span: number;
   width: number;
+  /** Donde empieza el tiempo 0 (después de la columna de nombres). */
+  padL: number;
   x(t: number): number;
   t(x: number): number;
 }
@@ -47,15 +54,27 @@ export function timeSpan(analysis: Analysis | null): number {
   return Math.max(MIN_SPAN, Math.ceil((last + 60) / 60) * 60);
 }
 
-export function scaleFor(width: number, span: number): Scale {
-  const usable = Math.max(1, width - PAD_L - PAD_R);
+/** El ancho de la columna de nombres según el ancho que hay. */
+export function labelWidthFor(viewport: number) {
+  return viewport < NARROW_WIDTH ? NARROW_LABEL_W : LABEL_W;
+}
+
+/** Lo que mide la línea: lo que hay, o más si no entra un minuto en MIN_PX_PER_MIN (y entonces se desplaza). */
+export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport)) {
+  return Math.max(viewport, labelWidth + 8 + (span / 60) * MIN_PX_PER_MIN + PAD_R);
+}
+
+export function scaleFor(width: number, span: number, labelWidth = LABEL_W): Scale {
+  const padL = labelWidth + 8;
+  const usable = Math.max(1, width - padL - PAD_R);
   const pps = usable / span;
   return {
     pps,
     span,
     width,
-    x: (t) => PAD_L + t * pps,
-    t: (x) => (x - PAD_L) / pps,
+    padL,
+    x: (t) => padL + t * pps,
+    t: (x) => (x - padL) / pps,
   };
 }
 
@@ -303,7 +322,7 @@ export function placeLanes(lanes: Lane[], scale: Scale, mode: "time" | "ordinal"
       let x0: number;
       let x1: number;
       if (mode === "ordinal") {
-        x0 = PAD_L + it.index * ORDINAL_W;
+        x0 = scale.padL + it.index * ORDINAL_W;
         x1 = x0 + ORDINAL_W - GAP_PX;
       } else if (it.start === null) {
         x1 = scale.x(scale.span);

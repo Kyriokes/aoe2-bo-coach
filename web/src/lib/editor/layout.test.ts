@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "../coach/types";
 import { paletteItems, parseMaps } from "./gameData";
-import { LANE_H, lanesFor, ORDINAL_W, PAD_L, placeLanes, scaleFor, timeSpan, VILLAGERS_LANE } from "./layout";
+import { LABEL_W, labelWidthFor, LANE_H, lanesFor, MIN_PX_PER_MIN, NARROW_LABEL_W, ORDINAL_W, PAD_L, placeLanes, scaleFor, timelineWidth, timeSpan, VILLAGERS_LANE } from "./layout";
 import type { EditorStep } from "./model";
 
 function step(id: string, extra: Partial<EditorStep> = {}): EditorStep {
@@ -40,9 +40,22 @@ describe("escala", () => {
     expect(timeSpan(analysis({ a: [0, 100] }, [{ step_id: "a", reason: "resources", from: 100, to: 1500, missing: "food" }]))).toBe(1560);
   });
 
+  it("en pantallas angostas la columna de nombres se achica y la línea se desplaza de costado", () => {
+    expect(labelWidthFor(1024)).toBe(LABEL_W);
+    expect(labelWidthFor(375)).toBe(NARROW_LABEL_W);
+    // En una pantalla grande, 10 minutos entran: el ancho es el que hay.
+    expect(timelineWidth(1016, 600)).toBe(1016);
+    // En un celular, 22 minutos no entran a 72 px por minuto: la línea mide más y se desplaza.
+    expect(timelineWidth(343, 22 * 60)).toBe(NARROW_LABEL_W + 8 + 22 * MIN_PX_PER_MIN + 8);
+    const scale = scaleFor(timelineWidth(343, 22 * 60), 22 * 60, NARROW_LABEL_W);
+    expect(scale.padL).toBe(NARROW_LABEL_W + 8);
+    expect(scale.x(60) - scale.x(0)).toBeCloseTo(MIN_PX_PER_MIN, 5);
+  });
+
   it("scaleFor pasa de segundos a píxeles y vuelve", () => {
     const scale = scaleFor(1016, 600);
     expect(scale.x(0)).toBe(PAD_L);
+    expect(scale.padL).toBe(PAD_L);
     expect(scale.x(600)).toBe(1016 - 8);
     expect(scale.t(scale.x(123))).toBeCloseTo(123);
   });
