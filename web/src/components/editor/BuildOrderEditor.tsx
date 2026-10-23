@@ -9,11 +9,12 @@ import { loadCoach } from "@/lib/coach/browser";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
-import { loadGameData, loadMaps, paletteTree, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
+import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { scaleFor, timeSpan, type PlacedItem } from "@/lib/editor/layout";
 import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, placeNew, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
+import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
 import { BoFields } from "./BoFields";
 import { EditorSummary } from "./EditorSummary";
 import { EditorTimeline } from "./EditorTimeline";
@@ -138,7 +139,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   const labels = useMemo(() => new Map(state.analysis?.steps.map((s) => [s.id, s.text]) ?? []), [state.analysis]);
   const label = useCallback((step: EditorStep) => labels.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do), [labels]);
   const map = maps.find((m) => m.key === state.bo.map) ?? null;
-  const palette = useMemo(() => (data ? paletteTree(data, state.bo.civ, map) : []), [data, state.bo.civ, map]);
+  const palette = useMemo(() => (data ? paletteBar(data, state.bo.civ, map) : null), [data, state.bo.civ, map]);
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
   const scale = useMemo(() => scaleFor(width, timeSpan(state.analysis)), [width, state.analysis]);
@@ -149,12 +150,18 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     const chain = state.selected ? blockOf(state.steps, state.selected) : null;
     return chain ? chain.to + 1 : state.steps.length;
   }, [state.selected, state.steps]);
+  // La paleta en ese lugar: solo lo que se puede agregar ahí.
+  const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data) : null), [palette, data, state.steps, insertIndex]);
+  const paletteAll = useMemo(() => (palette ? allItems(palette) : []), [palette]);
+  const insertAfter = useMemo(() => {
+    const chain = state.selected ? blockOf(state.steps, state.selected) : null;
+    return chain ? label(state.steps[chain.to]) : null;
+  }, [label, state.selected, state.steps]);
 
   // El arranque de la partida (con la civ) y lo que hacen los aldeanos iniciales: el primer paso de la BO.
   const start = state.analysis?.start ?? STANDARD_START;
   const opening = useMemo(() => detectOpening(state.steps, start), [state.steps, start]);
   const place = useCallback((step: EditorStep, before: EditorStep[]) => placeNew(step, before, start), [start]);
-  /** Agrega un paso sin arrastrar, con los aldeanos de donde haya en ese lugar. */
   /**
    * Agrega un paso sin arrastrar: en el lugar pedido si se puede, si no en el primero (o último) donde el juego lo
    * deja; si no hay ninguno, explica qué falta.
@@ -293,7 +300,17 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         onField={(field, value) => (field === "civ" ? changeCiv(value) : dispatch({ type: "setField", field, value }))}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
-      <Palette columns={palette} onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))} onPick={(item) => insertAt(newStep(item), insertIndex())} />
+      {paletteNow ? (
+        <Palette
+          bar={paletteNow.bar}
+          all={paletteAll}
+          hidden={paletteNow.hidden}
+          where={insertAfter}
+          onAtEnd={() => dispatch({ type: "select", id: null })}
+          onPointerDown={(e, item) => startPaletteDrag(e, newStep(item))}
+          onPick={(item) => insertAt(newStep(item), insertIndex())}
+        />
+      ) : null}
       <StartCard start={start} opening={opening} map={map} onOpening={changeOpening} />
       <EditorTimeline
         steps={state.steps}
