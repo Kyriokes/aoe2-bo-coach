@@ -30,8 +30,9 @@ export const metadata: Metadata = {
   openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title, description },
   twitter: { card: "summary_large_image", title, description },
   category: "games",
-  // Google Search Console: el código de la etiqueta HTML, si está configurado (pendientes 8c).
-  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
+  // Google Search Console: el código de la etiqueta HTML (es público: solo prueba que la web es nuestra). Una variable
+  // de entorno lo cambia sin tocar el código.
+  verification: { google: process.env.GOOGLE_SITE_VERIFICATION || "ttNIjtGlD8HzEqSy6SUGTQcYGl4m-4nOSF-XiqsP8qM" },
 };
 
 export const viewport: Viewport = { themeColor: "#1e1a16", colorScheme: "dark" };
