@@ -6,19 +6,27 @@ import type { Analysis } from "@/lib/coach/types";
 import { allowedRange, clampCandidate, indexFromTime, snapToBoundary, type GameDataLite, type Range } from "@/lib/editor/constraints";
 import { waitReason } from "@/lib/editor/explain";
 import { neverStartsReason } from "@/lib/editor/guard";
-import { ORDINAL_W, PAD_L, type Scale } from "@/lib/editor/layout";
+import { ORDINAL_W, type Scale } from "@/lib/editor/layout";
 import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
-import { DROP_OUTSIDE_TEXT, neverStartsText, notBeforeText, PINNED_TEXT } from "@/lib/editor/text";
+import { COUNT_HINT, DROP_OUTSIDE_TEXT, neverStartsText, notBeforeText, PINNED_TEXT } from "@/lib/editor/text";
 
 /** Más de esto por simulación y el arrastre deja de simular en cada cambio de lugar (simula al soltar). */
 export const SLOW_ANALYZE_MS = 150;
 /** Lo que hay que moverse para que un toque pase a ser un arrastre. */
 const DRAG_THRESHOLD_PX = 4;
+/** Deslizando una caja para arriba o para abajo, cada tanto cambia la cantidad en 1 (pedido del usuario: en el celular). */
+export const COUNT_STEP_PX = 18;
+const MAX_COUNT = 200;
 
-export type DragSource = { kind: "box"; from: number; to: number } | { kind: "palette"; step: EditorStep };
+/** Una caja de la línea (`countStepId`: el paso cuya cantidad cambia deslizando en vertical) o una de la paleta. */
+export type DragSource = { kind: "box"; from: number; to: number; countStepId?: string } | { kind: "palette"; step: EditorStep };
 
 export interface DragState {
   source: DragSource;
+  /** Mover la caja de lugar (horizontal) o cambiar su cantidad (vertical). */
+  kind: "move" | "count";
+  /** La cantidad que se está eligiendo, deslizando. */
+  count: number | null;
   others: EditorStep[];
   block: EditorStep[];
   /** El id del primer paso de la caja. */
@@ -69,6 +77,9 @@ interface Pending {
 
 /** Lo que se calcula una vez al empezar el arrastre. */
 interface Session {
+  kind: "move" | "count";
+  /** Deslizando en vertical: el paso, la cantidad con que empezó y la elegida. */
+  count: { id: string; base: number; value: number } | null;
   others: EditorStep[];
   block: EditorStep[];
   blockId: string;
@@ -132,6 +143,8 @@ export function useTimelineDrag(options: Options) {
     }
     const byId = new Map(state.analysis?.steps.map((s) => [s.id, s]) ?? []);
     sessionRef.current = {
+      kind: "move",
+      count: null,
       others,
       block,
       blockId: block[0].id,
@@ -149,6 +162,31 @@ export function useTimelineDrag(options: Options) {
     };
   }, []);
 
+  /** Deslizar en vertical sobre una caja: la cantidad del paso, sin moverla de lugar. */
+  const beginCount = useCallback((pending: Pending, stepId: string) => {
+    const { state, scale, mode } = optionsRef.current;
+    const step = state.steps.find((s) => s.id === stepId);
+    if (!step) return;
+    sessionRef.current = {
+      kind: "count",
+      count: { id: stepId, base: step.count, value: step.count },
+      others: state.steps,
+      block: [step],
+      blockId: stepId,
+      range: { lo: 0, hi: 0, loReason: null, hiReason: null },
+      pinned: 0,
+      starts: [],
+      ends: [],
+      candidate: -1,
+      previewSteps: state.steps,
+      preview: state.analysis,
+      previewEnabled: !slowRef.current,
+      outside: false,
+      scale,
+      mode,
+    };
+  }, []);
+
   const update = useCallback(() => {
     frameRef.current = null;
     const session = sessionRef.current;
@@ -156,6 +194,42 @@ export function useTimelineDrag(options: Options) {
     const { state, coach, data, timelineRef } = optionsRef.current;
     if (!session || !pending || !timelineRef.current) return;
     const { scale, mode } = session;
+
+    if (session.count) {
+      // Para arriba sube, para abajo baja; la vista previa muestra la BO con esa cantidad.
+      const value = Math.max(1, Math.min(MAX_COUNT, session.count.base + Math.round((pending.y0 - pointerRef.current.y) / COUNT_STEP_PX)));
+      if (value !== session.count.value) {
+        session.count.value = value;
+        session.previewSteps = state.steps.map((s) => (s.id === session.count!.id ? { ...s, count: value } : s));
+        session.preview = null;
+        if (session.previewEnabled && coach) {
+          const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })));
+          session.preview = result.ok ? result : null;
+        }
+      }
+      const text = session.preview?.steps.find((s) => s.id === session.count!.id)?.text ?? `${value}`;
+      setDrag({
+        source: pending.source,
+        kind: "count",
+        count: value,
+        others: session.others,
+        block: session.block,
+        blockId: session.blockId,
+        range: session.range,
+        candidate: -1,
+        previewSteps: session.previewSteps,
+        preview: session.preview,
+        reason: null,
+        label: `${text} ${COUNT_HINT}`,
+        outside: false,
+        pointer: { ...pointerRef.current },
+        ghostX: 0,
+        scale,
+        mode,
+      });
+      return;
+    }
+
     const rect = timelineRef.current.getBoundingClientRect();
     const pointer = pointerRef.current;
     const localX = pointer.x - rect.left + timelineRef.current.scrollLeft;
@@ -168,7 +242,7 @@ export function useTimelineDrag(options: Options) {
       raw = snapToBoundary(indexFromTime(t, session.starts), session.others, t, session.starts, session.ends);
     } else {
       // Sin tiempos, cada paso ocupa una columna en el orden de la BO.
-      raw = Math.max(0, Math.min(session.others.length, Math.round((localX - PAD_L) / ORDINAL_W)));
+      raw = Math.max(0, Math.min(session.others.length, Math.round((localX - scale.padL) / ORDINAL_W)));
     }
     const { index, reason } = clampCandidate(raw, session.range, session.pinned);
     session.outside = outside;
@@ -204,6 +278,8 @@ export function useTimelineDrag(options: Options) {
 
     setDrag({
       source: pending.source,
+      kind: "move",
+      count: null,
       others: session.others,
       block: session.block,
       blockId: session.blockId,
@@ -229,6 +305,9 @@ export function useTimelineDrag(options: Options) {
       // Un toque sin arrastre: elegir la caja, o agregar el paso de la paleta.
       if (pending.source.kind === "palette") onPaletteClick(pending.source.step);
       else onBoxClick(optionsRef.current.state.steps[pending.source.from].id);
+    } else if (session && pending && session.count) {
+      // La cantidad elegida deslizando (el editor la rechaza y explica si deja la BO rota).
+      if (session.count.value !== session.count.base) dispatch({ type: "setCount", id: session.count.id, count: session.count.value });
     } else if (session && pending) {
       if (session.outside) {
         // nada: soltar fuera de la línea cancela
@@ -265,8 +344,12 @@ export function useTimelineDrag(options: Options) {
       if (!pending || e.pointerId !== pending.pointerId) return;
       pointerRef.current = { x: e.clientX, y: e.clientY };
       if (!sessionRef.current) {
-        if (Math.abs(e.clientX - pending.x0) + Math.abs(e.clientY - pending.y0) <= DRAG_THRESHOLD_PX) return;
-        begin(pending);
+        const dx = e.clientX - pending.x0;
+        const dy = e.clientY - pending.y0;
+        if (Math.abs(dx) + Math.abs(dy) <= DRAG_THRESHOLD_PX) return;
+        // Más vertical que horizontal sobre una caja con cantidad: se cambia la cantidad, no el lugar.
+        if (pending.source.kind === "box" && pending.source.countStepId && Math.abs(dy) > Math.abs(dx)) beginCount(pending, pending.source.countStepId);
+        else begin(pending);
         if (!sessionRef.current) return;
       }
       frameRef.current ??= requestAnimationFrame(update);
@@ -293,7 +376,7 @@ export function useTimelineDrag(options: Options) {
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("keydown", onKey);
     };
-  }, [begin, update, finish, cleanup]);
+  }, [begin, beginCount, update, finish, cleanup]);
 
   const start = useCallback((e: ReactPointerEvent<HTMLElement>, source: DragSource) => {
     if (e.button !== 0 || pendingRef.current) return;
@@ -308,7 +391,7 @@ export function useTimelineDrag(options: Options) {
     attach();
   }, [attach]);
 
-  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, from: number, to: number) => start(e, { kind: "box", from, to }), [start]);
+  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, from: number, to: number, countStepId?: string) => start(e, { kind: "box", from, to, countStepId }), [start]);
   const startPaletteDrag = useCallback((e: ReactPointerEvent<HTMLElement>, step: EditorStep) => start(e, { kind: "palette", step }), [start]);
 
   return { drag, startBoxDrag, startPaletteDrag };

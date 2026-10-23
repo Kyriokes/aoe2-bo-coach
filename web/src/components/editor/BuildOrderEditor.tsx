@@ -10,7 +10,7 @@ import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
-import { scaleFor, timeSpan, type PlacedItem } from "@/lib/editor/layout";
+import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
 import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, placeNew, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
@@ -142,7 +142,12 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   const palette = useMemo(() => (data ? paletteBar(data, state.bo.civ, map) : null), [data, state.bo.civ, map]);
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
-  const scale = useMemo(() => scaleFor(width, timeSpan(state.analysis)), [width, state.analysis]);
+  // En el celular la columna de nombres es angosta y la línea se desplaza de costado si no entra.
+  const scale = useMemo(() => {
+    const span = timeSpan(state.analysis);
+    const labelWidth = labelWidthFor(width);
+    return scaleFor(timelineWidth(width, span, labelWidth), span, labelWidth);
+  }, [width, state.analysis]);
 
   const newStep = useCallback((item: PaletteItem): EditorStep => ({ ...item.step, id: nextId(state), after: [], withPrevious: false }), [state]);
   /** Dónde entra un paso agregado sin arrastrar: después de la caja elegida, o al final. */
@@ -317,13 +322,14 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         analysis={state.analysis}
         scale={scale}
         mode={mode}
+        viewportWidth={width}
         drag={drag}
         selected={state.selected}
         timelineRef={timelineRef}
         data={data}
         onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => {
           const chain = blockOf(state.steps, item.stepId);
-          if (chain) startBoxDrag(e, chain.from, chain.to);
+          if (chain) startBoxDrag(e, chain.from, chain.to, countEditable(item.stepId) && !item.construction ? item.stepId : undefined);
         }}
         onNudge={nudge}
         onRemove={(id) => dispatch({ type: "remove", id })}

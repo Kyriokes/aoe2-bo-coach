@@ -14,7 +14,8 @@ export const ACTION_COLORS: Record<string, string> = {
 
 /**
  * Una caja de la línea de tiempo: un paso (o un paso mixto) en su lugar simulado, con el tramo rayado de la espera
- * antes de arrancar. Se arrastra con el puntero, se selecciona con un clic y se mueve con Alt+flechas.
+ * antes de arrancar. Se arrastra con el puntero (de costado la mueve; para arriba o abajo cambia la cantidad), se
+ * selecciona con un clic, se mueve con Alt+← y Alt+→ y su cantidad cambia con Alt+↑ y Alt+↓.
  */
 export function StepBox({
   box,
@@ -44,12 +45,17 @@ export function StepBox({
   const width = Math.max(1, box.x1 - box.x0);
   const leadInWidth = box.leadIn && box.start !== null ? Math.max(0, Math.min(width, scale.x(box.leadIn.to) - box.x0)) : 0;
   const times = box.start !== null ? `de ${formatClock(box.start)} a ${formatClock(box.end ?? box.start)}` : box.neverStarts ? "no arranca" : "sin simular";
-  const title = [box.label, times, ...box.blocks.map((b) => `espera de ${formatClock(b.from)} a ${formatClock(b.to)}: ${blockReason(b)}`)].join("\n");
+  const title = [box.label, times, ...box.blocks.map((b) => `espera de ${formatClock(b.from)} a ${formatClock(b.to)}: ${blockReason(b)}`), countEditable ? "Deslizá para arriba o para abajo para cambiar la cantidad" : null]
+    .filter(Boolean)
+    .join("\n");
 
   function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
     if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
       e.preventDefault();
       onNudge(e.key === "ArrowLeft" ? -1 : 1);
+    } else if (e.altKey && countEditable && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      onCount(e.key === "ArrowUp" ? 1 : -1);
     } else if (e.key === "Delete" || e.key === "Backspace") {
       e.preventDefault();
       onRemove();

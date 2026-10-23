@@ -41,6 +41,8 @@ export function neverStartsText(reason: string | null) {
 }
 
 export const DROP_OUTSIDE_TEXT = "Soltá sobre la línea de tiempo";
+/** Deslizando una caja en vertical para cambiar la cantidad. */
+export const COUNT_HINT = "(↑ más · ↓ menos)";
 export const PINNED_TEXT = "Este paso no se puede mover";
 
 /** El nombre de una caja de la paleta. */
