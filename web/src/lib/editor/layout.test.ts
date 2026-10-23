@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "../coach/types";
-import { paletteItems, parseMaps } from "./gameData";
-import { boxesFor, GAP_PX, MIN_BOX_PX, ORDINAL_W, PAD_L, packLanes, scaleFor, timeSpan } from "./layout";
+import { paletteItems, paletteTree, parseMaps } from "./gameData";
+import { LANE_H, lanesFor, ORDINAL_W, PAD_L, placeLanes, scaleFor, timeSpan, VILLAGERS_LANE } from "./layout";
 import type { EditorStep } from "./model";
 
 function step(id: string, extra: Partial<EditorStep> = {}): EditorStep {
@@ -48,36 +48,115 @@ describe("escala", () => {
   });
 });
 
-describe("cajas y carriles", () => {
-  const steps = [step("a"), step("b"), step("c", { withPrevious: true }), step("d")];
+describe("una línea por edificio", () => {
+  const data = {
+    entities: {
+      villager: { kind: "unit" as const, age: "dark" as const, made_in: "town_center" },
+      house: { kind: "building" as const, age: "dark" as const },
+      farm: { kind: "building" as const, age: "dark" as const },
+      barracks: { kind: "building" as const, age: "dark" as const },
+      archery_range: { kind: "building" as const, age: "feudal" as const },
+      archer: { kind: "unit" as const, age: "feudal" as const, made_in: "archery_range" },
+      militia: { kind: "unit" as const, age: "dark" as const, made_in: "barracks" },
+      loom: { kind: "tech" as const, age: "dark" as const, made_in: "town_center" },
+      town_center: { kind: "building" as const, age: "castle" as const },
+    },
+  };
+  const steps: EditorStep[] = [
+    step("h", { do: "build", what: "house", count: 2, builders: 3 }),
+    step("v", { count: 3 }),
+    step("r", { do: "build", what: "archery_range", count: 2, assign: "wood" }),
+    step("l", { do: "research", what: "loom" }),
+    step("a", { do: "train", what: "archer", count: 4, assign: undefined }),
+    step("m", { do: "move", count: 2, from: "sheep", assign: "wood" }),
+  ];
+  const a: Analysis = {
+    ...analysis({ h: [0, 30], v: [0, 75], r: [80, 200], l: [75, 100], a: [140, 270], m: [90, 90] }),
+    buildings: [
+      { id: "town_center#1", key: "town_center", step_id: null, built: null },
+      { id: "h#1", key: "house", step_id: "h", built: 20 },
+      { id: "h#2", key: "house", step_id: "h", built: 30 },
+      { id: "r#1", key: "archery_range", step_id: "r", built: 140 },
+      { id: "r#2", key: "archery_range", step_id: "r", built: 200 },
+    ],
+    jobs: [
+      { step_id: "h", kind: "build", what: "house", building: "h#1", start: 0, end: 20 },
+      { step_id: "h", kind: "build", what: "house", building: "h#2", start: 20, end: 30 },
+      { step_id: "v", kind: "produce", what: "villager", building: "town_center#1", start: 0, end: 25 },
+      { step_id: "v", kind: "produce", what: "villager", building: "town_center#1", start: 25, end: 50 },
+      { step_id: "v", kind: "produce", what: "villager", building: "town_center#1", start: 50, end: 75 },
+      { step_id: "l", kind: "produce", what: "loom", building: "town_center#1", start: 75, end: 100 },
+      { step_id: "r", kind: "build", what: "archery_range", building: "r#1", start: 80, end: 140 },
+      { step_id: "r", kind: "build", what: "archery_range", building: "r#2", start: 140, end: 200 },
+      { step_id: "a", kind: "produce", what: "archer", building: "r#1", start: 140, end: 175 },
+      { step_id: "a", kind: "produce", what: "archer", building: "r#1", start: 175, end: 210 },
+      { step_id: "a", kind: "produce", what: "archer", building: "r#2", start: 200, end: 235 },
+      { step_id: "a", kind: "produce", what: "archer", building: "r#2", start: 235, end: 270 },
+    ],
+  };
 
-  it("una cadena es una sola caja con el tramo rayado del primer bloqueo", () => {
-    const a = analysis({ a: [0, 50], b: [60, 100], c: [80, 130], d: [null, null] }, [{ step_id: "c", reason: "resources", from: 40, to: 80, missing: "wood" }]);
-    const boxes = boxesFor(steps, a);
+  it("cada edificio que produce tiene su línea, con su construcción al principio y de a una cosa", () => {
+    const lanes = lanesFor(steps, a, data);
 
-    expect(boxes.map((b) => b.ids)).toEqual([["a"], ["b", "c"], ["d"]]);
-    expect(boxes[1]).toMatchObject({ label: "paso b + paso c", start: 60, end: 130, from: 1, to: 2 });
-    expect(boxes[1].leadIn).toMatchObject({ from: 40, to: 60 });
-    expect(boxes[2].neverStarts).toBe(true);
-    expect(boxesFor(steps, null)[2].neverStarts).toBe(false);
+    expect(lanes.map((l) => [l.id, l.label])).toEqual([
+      [VILLAGERS_LANE, "Aldeanos"],
+      ["town_center#1", "Centro urbano"],
+      ["r#1", "Galería de tiro 1"],
+      ["r#2", "Galería de tiro 2"],
+    ]);
+    // Las casas no producen: van a la línea de los aldeanos, una caja por paso; el movimiento también.
+    expect(lanes[0].items.map((i) => [i.stepId, i.start, i.end])).toEqual([
+      ["h", 0, 30],
+      ["m", 90, 90],
+    ]);
+    // El centro urbano: los 3 aldeanos seguidos en una caja, después el telar.
+    expect(lanes[1].items.map((i) => [i.stepId, i.label, i.start, i.end])).toEqual([
+      ["v", "paso v", 0, 75],
+      ["l", "paso l", 75, 100],
+    ]);
+    // Cada galería: su construcción y los arqueros que hizo ella (el paso se reparte entre las dos).
+    expect(lanes[2].items.map((i) => [i.label, i.construction, i.start, i.end])).toEqual([
+      ["Construir galería de tiro", true, 80, 140],
+      ["2 arqueros", false, 140, 210],
+    ]);
+    expect(lanes[3].items.map((i) => [i.label, i.start, i.end])).toEqual([
+      ["Construir galería de tiro", 140, 200],
+      ["2 arqueros", 200, 270],
+    ]);
   });
 
-  it("packLanes pone en otro carril lo que se pisa y respeta el ancho mínimo", () => {
-    const scale = scaleFor(616, 600); // 1 px por segundo
-    const a = analysis({ a: [0, 100], b: [50, 120], c: [50, 120], d: [130, 131] });
-    const { boxes, laneCount } = packLanes(boxesFor(steps, a), scale, "time");
+  it("la espera va en la primera caja del paso y un paso que no arranca va a la línea de los aldeanos", () => {
+    const waiting: Analysis = { ...a, blocks: [{ step_id: "l", reason: "resources", from: 60, to: 75, missing: "gold" }] };
+    expect(lanesFor(steps, waiting, data)[1].items[1].leadIn).toMatchObject({ from: 60, to: 75 });
 
-    expect(boxes.map((b) => b.lane)).toEqual([0, 1, 0]);
-    expect(laneCount).toBe(2);
-    expect(boxes[2].x1 - boxes[2].x0).toBe(MIN_BOX_PX);
-    expect(boxes[1].x0 - boxes[0].x0).toBe(50);
-    expect(boxes[2].x0).toBeGreaterThanOrEqual(boxes[0].x1 + GAP_PX);
+    const stuck: Analysis = { ...a, steps: a.steps.map((s) => (s.id === "m" ? { ...s, start: null, end: null } : s)) };
+    expect(lanesFor(steps, stuck, data)[0].items.find((i) => i.stepId === "m")).toMatchObject({ neverStarts: true, start: null });
   });
 
-  it("en modo ordinal van una al lado de la otra", () => {
-    const { boxes, laneCount } = packLanes(boxesFor(steps, null), scaleFor(600, 600), "ordinal");
-    expect(laneCount).toBe(1);
-    expect(boxes.map((b) => b.x0)).toEqual([PAD_L, PAD_L + ORDINAL_W, PAD_L + 2 * ORDINAL_W]);
+  it("sin simulación, cada paso va a la línea de su edificio en el orden de la BO", () => {
+    const lanes = lanesFor(steps, null, data);
+    expect(lanes.map((l) => l.label)).toEqual(["Aldeanos", "Centro urbano", "Galería de tiro"]);
+    expect(lanes[2].items.map((i) => [i.stepId, i.index])).toEqual([
+      ["r", 2],
+      ["a", 4],
+    ]);
+
+    const placed = placeLanes(lanes, scaleFor(800, 600), "ordinal", 24);
+    expect(placed.items.find((i) => i.stepId === "a")!.x0).toBe(PAD_L + 4 * ORDINAL_W);
+  });
+
+  it("las cajas de una línea van en filas solo si se pisan, y cada línea suma su alto", () => {
+    const overlapping: Analysis = {
+      ...a,
+      jobs: [...(a.jobs ?? []), { step_id: "f", kind: "build", what: "farm", building: "f#1", start: 10, end: 40 }],
+      buildings: [...(a.buildings ?? []), { id: "f#1", key: "farm", step_id: "f", built: 40 }],
+    };
+    const withFarm = [...steps, step("f", { do: "build", what: "farm", count: 1, assign: "farm" })];
+    const placed = placeLanes(lanesFor(withFarm, overlapping, data), scaleFor(PAD_L + 608, 600), "time", 100);
+    const villagers = placed.lanes[0];
+    expect(villagers.rows).toBe(2); // casas (0 a 30) y granja (10 a 40) a la vez
+    expect(placed.lanes[1].top).toBe(100 + 2 * LANE_H);
+    expect(placed.items.filter((i) => i.lane === 0).map((i) => i.row).sort()).toEqual([0, 0, 1]);
   });
 });
 
@@ -122,5 +201,29 @@ describe("paleta", () => {
     expect(maps.find((m) => m.key === "arabia")).toMatchObject({ name: "Arabia", water: false });
     expect(parseMaps("")).toHaveLength(1);
     expect(parseMaps("{ roto")).toHaveLength(1);
+  });
+
+  it("el árbol: edades, aldeanos, una columna por edificio con lo suyo por edad, y otros edificios", () => {
+    const tree = paletteTree(data, "any");
+    const keys = tree.map((c) => c.key);
+    expect(keys.slice(0, 3)).toEqual(["ages", "villagers", "town_center"]);
+    expect(keys.at(-1)).toBe("others");
+    expect(keys.indexOf("barracks")).toBeLessThan(keys.indexOf("archery_range"));
+    const column = (key: string) => tree.find((c) => c.key === key)!;
+    expect(column("ages").byAge.dark.map((i) => i.label)).toEqual(["Clic en Feudal"]);
+    expect(column("ages").byAge.feudal.map((i) => i.label)).toEqual(["Clic en Castillos"]);
+    expect(column("villagers").byAge.dark).toHaveLength(9); // 8 fuentes y mover
+    expect(column("archery_range").building?.key).toBe("archery_range");
+    expect(column("archery_range").byAge.feudal.map((i) => i.key)).toEqual(expect.arrayContaining(["archer", "skirmisher"]));
+    expect(column("town_center").byAge.dark.map((i) => i.key)).toContain("loom");
+    expect(column("others").byAge.dark.map((i) => i.key)).toEqual(expect.arrayContaining(["house", "farm"]));
+    // Cada caja tiene su ícono, y los íconos existen.
+    const icons = new Set(JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "public", "icons", "index.json"), "utf8")) as string[]);
+    for (const c of tree) for (const item of [c.building, ...Object.values(c.byAge).flat()]) if (item) expect(icons.has(item.icon), item.key).toBe(true);
+
+    const mapuche = paletteTree(data, "mapuche").map((c) => c.key);
+    expect(mapuche).not.toContain("stable");
+    const arabia = paletteTree(data, "any", maps.find((m) => m.key === "arabia")!).map((c) => c.key);
+    expect(arabia).not.toContain("dock");
   });
 });

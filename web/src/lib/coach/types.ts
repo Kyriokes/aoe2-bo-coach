@@ -77,6 +77,10 @@ export interface Analysis {
   imperial_click?: number | null;
   blocks?: PlanBlock[];
   timeline?: PlanSample[];
+  /** Los edificios de la partida: los del arranque y cada uno que construye la BO (D8). */
+  buildings?: PlanBuilding[];
+  /** Cada unidad, tecnología y construcción con su edificio y sus tiempos (D8). */
+  jobs?: PlanJob[];
 }
 
 export type AnalysisResult = Analysis | AnalysisFailure;
@@ -94,4 +98,23 @@ export interface GameStart {
   villagers: Partial<Record<"sheep" | "hunt" | "berries" | "fish" | "farm" | "wood" | "gold" | "stone", number>>;
   /** Si la civ hace casas (los hunos no). */
   houses: boolean;
+}
+
+/** Un edificio: "town_center#1" (el del arranque) o "<paso>#<n>" (el n-ésimo que construye ese paso). */
+export interface PlanBuilding {
+  id: string;
+  key: string;
+  step_id: string | null;
+  /** Cuándo se terminó; null si estaba al arrancar. */
+  built: number | null;
+}
+
+/** Un trabajo de la simulación: una unidad o tecnología en su edificio, o una construcción. */
+export interface PlanJob {
+  step_id: string;
+  kind: "produce" | "build";
+  what: string;
+  building: string | null;
+  start: number;
+  end: number;
 }
