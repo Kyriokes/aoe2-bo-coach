@@ -109,7 +109,7 @@ export function Palette({
           }}
           placeholder="Buscar: arquero, telar…"
           aria-label="Buscar en la paleta"
-          className="field ml-auto h-8 w-44 py-1"
+          className="field h-8 w-full py-1 sm:ml-auto sm:w-44"
         />
       </Row>
       {found ? (

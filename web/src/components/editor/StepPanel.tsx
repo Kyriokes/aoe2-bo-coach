@@ -38,7 +38,7 @@ export function StepPanel({
   if (!step) {
     return (
       <div className="rounded-md border border-line bg-panel p-3 text-sm text-faint">
-        Tocá una caja de la línea de tiempo para editarla. Alt+← y Alt+→ la mueven; Supr la borra.
+        Tocá una caja de la línea de tiempo para editarla. Arrastrala de costado para moverla y para arriba o abajo para cambiar la cantidad (con el teclado: Alt+← y Alt+→, Alt+↑ y Alt+↓; Supr la borra).
       </div>
     );
   }
@@ -66,6 +66,7 @@ export function StepPanel({
       <span className="w-28 text-muted">{label}</span>
       <input
         type="number"
+        inputMode="numeric"
         min={min}
         max={200}
         value={value ?? ""}

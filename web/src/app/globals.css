@@ -65,6 +65,7 @@ a {
   @apply sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-amber focus:px-3 focus:py-1.5 focus:text-sm focus:font-semibold focus:text-background;
 }
 
+/* max-w-full: una lista desplegable mide lo que su opción más larga, y en el celular se salía de la pantalla. */
 .field {
-  @apply rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm text-foreground placeholder:text-faint focus:border-amber focus:outline-none;
+  @apply max-w-full min-w-0 rounded-md border border-line bg-panel-2 px-3 py-1.5 text-sm text-foreground placeholder:text-faint focus:border-amber focus:outline-none;
 }

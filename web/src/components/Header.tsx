@@ -9,7 +9,8 @@ export function Header() {
         <Link href="/" className="text-base font-semibold tracking-tight text-foreground no-underline">
           AoE2 BO Coach
         </Link>
-        <nav aria-label="Principal" className="flex gap-4 text-sm text-muted">
+        {/* En el celular el menú va en su propio renglón, debajo del nombre y del botón de la cuenta. */}
+        <nav aria-label="Principal" className="order-last flex basis-full flex-wrap gap-x-4 gap-y-1 text-sm text-muted sm:order-none sm:basis-auto">
           <Link href="/biblioteca" className="hover:text-amber">
             Biblioteca
           </Link>

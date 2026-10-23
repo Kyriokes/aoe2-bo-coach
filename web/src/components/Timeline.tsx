@@ -41,9 +41,10 @@ export function Timeline({ analysis }: { analysis: Analysis }) {
 
   return (
     <figure className="flex flex-col gap-2">
-      <svg viewBox={`0 0 ${WIDTH} ${height}`} className="w-full rounded-md border border-line bg-panel" role="img"
-        aria-label="Línea de tiempo simulada de la build order">
-        {ticks.map((t) => (
+      {/* En el celular el dibujo no entra legible: mide lo mínimo y se desplaza de costado. */}
+      <div className="overflow-x-auto rounded-md border border-line bg-panel">
+        <svg viewBox={`0 0 ${WIDTH} ${height}`} className="w-full min-w-[56rem]" role="img" aria-label="Línea de tiempo simulada de la build order">
+          {ticks.map((t) => (
           <g key={t}>
             <line x1={x(t)} x2={x(t)} y1={0} y2={height - 18} stroke="var(--line)" strokeWidth={1} opacity={0.5} />
             <text x={x(t)} y={height - 5} fontSize={11} fill="var(--faint)" textAnchor="middle">
@@ -84,7 +85,8 @@ export function Timeline({ analysis }: { analysis: Analysis }) {
             </text>
           </g>
         ))}
-      </svg>
+        </svg>
+      </div>
       <figcaption className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-faint">
         {RESOURCES.map((r) => (
           <span key={r.key} className="flex items-center gap-1">
