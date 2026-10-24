@@ -7,6 +7,12 @@ La carpeta "data" tiene que quedar al lado del .exe.
 La primera vez Windows puede avisar "Windows protegió su PC" porque el programa no está firmado:
 tocá "Más información" y después "Ejecutar de todas formas".
 
+Con Avast, la primera vez que abrís cada versión la app puede cerrarse sola a los 10 o 20 segundos
+y volver a abrirse: Avast la corre aislada un rato para analizarla. No es un error, pero lo que
+cambies en esos segundos no se guarda, así que esperá a que se vuelva a abrir. Para que no pase:
+en Avast, menú > Configuración > General > Excepciones > Agregar excepción, y escribí la carpeta
+de la app terminada en \* (por ejemplo C:\Juegos\BoCoach\*).
+
 Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
 así que se conserva aunque reemplaces la carpeta por una versión nueva.
 
