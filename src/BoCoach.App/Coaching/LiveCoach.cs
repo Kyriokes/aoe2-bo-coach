@@ -134,6 +134,12 @@ public sealed class LiveCoach : IDisposable
     /// <summary>Cuánto se espera sin reloj antes de mirar la pantalla de carga (lo que tarda el overlay en bajar).</summary>
     public static readonly TimeSpan LoadingDelay = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// Sin reloj, cada cuánto se vuelve a calibrar: el coach automático arranca en el menú del juego, donde no hay HUD,
+    /// y con una calibración de otro panel nunca ve el reloj (20261024-224921).
+    /// </summary>
+    public const double RecalibrateEverySeconds = 5;
+
     private readonly object _gate = new();
     private readonly GameData _data;
     private readonly HudFonts _fonts;
@@ -154,6 +160,7 @@ public sealed class LiveCoach : IDisposable
     private PixelRect _area;
     private double? _lastLoadingTry;
     private double? _noClockSince;
+    private double? _lastRecalibrate;
     private bool _loadingDone;
     private LoadingReading? _loadingReading;
     private LoadingPlayer? _me;
@@ -273,6 +280,8 @@ public sealed class LiveCoach : IDisposable
                     _noClockSince = since + elapsed;
                 if (_lastLoadingTry is { } tried)
                     _lastLoadingTry = tried + elapsed;
+                if (_lastRecalibrate is { } recalibrated)
+                    _lastRecalibrate = recalibrated + elapsed;
                 (_now, _inFront, _error) = (frame.RealTime, false, null);
                 _frameMs = watch.Elapsed.TotalMilliseconds;
                 Publish();
@@ -282,6 +291,20 @@ public sealed class LiveCoach : IDisposable
             if (await LoadingScreenAsync(frame) is { } reading)
                 StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
+            if (!hud.ClockRead)
+            {
+                // Sin reloj: el coach arrancó en el menú (sin HUD que calibrar) o la calibración que había no es la del
+                // panel de ahora. Se vuelve a calibrar cada tanto; con regiones nuevas el lector arranca con su diseño.
+                _lastRecalibrate ??= frame.RealTime;
+                if (frame.RealTime - _lastRecalibrate >= RecalibrateEverySeconds)
+                {
+                    _lastRecalibrate = frame.RealTime;
+                    if (Frames.Recalibrate())
+                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud);
+                }
+            }
+            else
+                _lastRecalibrate = null;
             if (hud.ClockRead)
             {
                 _loadingDone = false;
