@@ -2,11 +2,14 @@
 // Todo en unidades del panel del juego: el ícono original mide 84 (36 px a 1080p con la escala de HUD del usuario).
 // De este archivo salen el mod (la app lo arma al tocar "Instalar mod del HUD"), la calibración sola, el lector y
 // el lugar donde el overlay dibuja la GD. Si cambiás medidas, volvé a instalar el mod.
+// La barra mide 4600 para cubrir la pantalla entera a cualquier escala del HUD (el juego la recorta en el borde).
+// El reloj va a `gap` del final de la última celda, sobre un campo negro largo que tapa todo su texto
+// ("hh:mm:ss (Normal - 1.7) (Estándar)"); el lector lo lee entero y se queda con el hh:mm:ss del principio.
 {
   "name": "bocoach-2026-10",
   "pixels_per_unit_at_1080p": 0.4286,
   "bar": {
-    "width": 2720,
+    "width": 4600,
     "height": 108,
     "background": [0.1, 0.1, 0.1],
     "border": { "width": 2, "color": [0.44, 0.44, 0.44] }
@@ -82,5 +85,5 @@
       }
     }
   },
-  "clock": { "gap": 14, "y": 12, "width": 230, "height": 84, "font": "mod_clock", "points": 56 }
+  "clock": { "gap": 22, "y": 12, "width": 800, "height": 84, "font": "mod_clock", "points": 56 }
 }

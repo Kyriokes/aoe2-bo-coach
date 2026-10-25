@@ -229,22 +229,29 @@ public sealed class HudModTests : IDisposable
         var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
         var collection = panel["Collection"]!["ViewPort"]!;
-        Assert.Equal((2720, 108), ((int)collection["width"]!, (int)collection["height"]!));
+        Assert.Equal((4600, 108), ((int)collection["width"]!, (int)collection["height"]!));
         var background = Widget(panel, "Background");
-        Assert.Equal((0, 0, 2720, 108), View(background));
+        Assert.Equal((0, 0, 4600, 108), View(background));
         Assert.Equal(9, (int)background["StateMaterials"]!["UserStates"]!);
         foreach (var state in new[] { "UserState0", "UserState8" })
             Assert.Equal("None", Material(background, state));
         var bar = Children(background)[0];
         Assert.Equal("BoCoachBar", (string?)bar["Name"]);
-        Assert.Equal((0, 0, 2720, 108), View(bar));
+        // La barra cubre la pantalla entera pero no pasa por debajo del campo negro del reloj (otro panel con el mismo
+        // plano 1: no se sabe cuál se dibuja arriba): un tramo hasta el reloj y otro desde su final hasta el borde. El
+        // menú del juego (plano 11) queda arriba de la barra.
+        Assert.Equal((0, 0, 2734, 108), View(bar));
         Assert.Equal("FlatColorWithAlpha", Material(bar));
+        var rest = Children(background)[1];
+        Assert.Equal("BoCoachBarAfterClock", (string?)rest["Name"]);
+        Assert.Equal((3534, 0, 1066, 108), View(rest));
+        Assert.Equal("FlatColorWithAlpha", Material(rest));
         Assert.Equal(0.1, (double)bar["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
         Assert.Null(bar["ZPlaneLocalOffset"]);
-        Assert.Equal((0, 0, 2720, 2), View(Widget(panel, "BoCoachBorderTop")));
-        Assert.Equal((0, 106, 2720, 2), View(Widget(panel, "BoCoachBorderBottom")));
+        Assert.Equal((0, 0, 4600, 2), View(Widget(panel, "BoCoachBorderTop")));
+        Assert.Equal((0, 106, 4600, 2), View(Widget(panel, "BoCoachBorderBottom")));
         Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
-        Assert.Equal((2718, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
+        Assert.Equal((4598, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
     }
 
     /// <summary>El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan, a 48 pt.</summary>
@@ -287,10 +294,11 @@ public sealed class HudModTests : IDisposable
         var anchor = Widget(panel, "WorldTimer")["Anchor"]!;
         Assert.Equal((2734, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
-        Assert.Equal((0, 12, 230, 84), View(Widget(panel, "BoCoachClockBackground")));
+        Assert.Equal((0, 12, 800, 84), View(Widget(panel, "BoCoachClockBackground")));
         var label = Widget(panel, "WorldTimerLabel");
         Assert.Equal(56, Points(label));
-        Assert.Equal((8, 12 + (84 - 56) / 2, 1000, 56), View(label));
+        Assert.Equal((HudMod.ClockTextX, 12 + (84 - 56) / 2, 1000, 56), View(label));
+        Assert.Equal(20, HudMod.ClockTextX);
         Assert.Equal(12 + 84 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
     }
 

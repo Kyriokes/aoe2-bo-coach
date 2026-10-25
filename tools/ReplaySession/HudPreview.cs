@@ -30,7 +30,9 @@ internal static class HudPreview
         var ppu = layout.PixelsPerUnitAt1080p * scale;
         int Px(double units) => (int)Math.Round(units * ppu);
         const int margin = 20;
-        var width = Px(layout.Bar.Width + layout.Clock.Gap + layout.Clock.Width + 2 * margin);
+        // La barra sigue hasta el borde de la pantalla: se dibuja hasta donde termina el reloj o la pantalla.
+        var clockUnits = layout.ClockRect();
+        var width = Px(Math.Min(Math.Max(layout.Bar.Width, clockUnits.X + clockUnits.Width), 1920 / ppu) + 2 * margin);
         var height = Px(layout.Bar.Height + 2 * margin);
         var canvas = new Canvas(width, height, Grass);
         var numbers = Optional(Path.Combine(fontsDir, "mod_numbers.json"));

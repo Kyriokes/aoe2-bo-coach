@@ -139,7 +139,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         [RegionNames.Population] = new(6 + 707, 4, 163, 46),
         [RegionNames.IdleVillagers] = new(6 + 870, 4, 81, 46),
         [RegionNames.Age] = new(6 + 996, 4 + 12, 162, 22),
-        [RegionNames.Clock] = new(6 + 1172, 4 + 5, 99, 36),
+        [RegionNames.Clock] = new(6 + 1172, 4 + 5, 343, 36),
     };
 
     [Fact]

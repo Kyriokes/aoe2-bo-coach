@@ -35,6 +35,9 @@ public static class HudMod
     private const string ResourcePanelFile = "resourcepanel.json";
     private const string ClockPanelFile = "worldtimerpanel.json";
 
+    /// <summary>Margen izquierdo del texto del reloj dentro de su campo negro, en unidades del panel.</summary>
+    public const int ClockTextX = 20;
+
     /// <summary>Lo que agrega el mod lleva este prefijo: se saca antes de volver a armar el panel.</summary>
     private const string Ours = "BoCoach";
 
@@ -131,16 +134,23 @@ public static class HudMod
         var fontIndex = Named("WoodStorage")["StateMaterials"]?["StateNormal"]?["Font"]?["FontIndex"]?.DeepClone() ?? JsonValue.Create(0);
         var white = new HudColor(1, 1, 1);
 
+        // La barra cubre la pantalla entera menos el campo negro del reloj: está en otro panel con el mismo plano (1) y
+        // no se sabe cuál se dibuja arriba, así que va en dos tramos, hasta el reloj y desde su final. El menú del juego
+        // (escudo y botones, plano 11) queda arriba de la barra.
+        var clockRect = layout.ClockRect();
+        JsonObject BarPart(string name, int x, int width) => Wrap(new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = $"{Ours}{name}",
+            ["ViewPort"] = View(x, 0, width, bar.Height),
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.Background) },
+            ["ChildWidgets"] = new JsonArray(),
+        });
+        var afterClock = clockRect.X + clockRect.Width;
         var children = new JsonArray
         {
-            Wrap(new JsonObject
-            {
-                ["Type"] = "Base",
-                ["Name"] = $"{Ours}Bar",
-                ["ViewPort"] = View(0, 0, bar.Width, bar.Height),
-                ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.Background) },
-                ["ChildWidgets"] = new JsonArray(),
-            }),
+            BarPart("Bar", 0, Math.Min(bar.Width, clockRect.X)),
+            BarPart("BarAfterClock", afterClock, Math.Max(0, bar.Width - afterClock)),
             Border("Top", 0, 0, bar.Width, bar.BorderWidth, bar),
             Border("Bottom", 0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth, bar),
             Border("Left", 0, 0, bar.BorderWidth, bar.Height, bar),
@@ -224,7 +234,7 @@ public static class HudMod
         var clock = collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         StripOurs(clock);
-        var anchorX = layout.Bar.Width + spec.Gap;
+        var anchorX = layout.ClockRect().X;
         if (clock["Anchor"] is JsonObject anchor)
             (anchor["xorigin"], anchor["yorigin"]) = (anchorX, 0);
         else
@@ -233,7 +243,7 @@ public static class HudMod
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
             font["PointSize"] = spec.Points;
-        label["ViewPort"] = View(8, spec.Y + (spec.Height - spec.Points) / 2, 1000, spec.Points);
+        label["ViewPort"] = View(ClockTextX, spec.Y + (spec.Height - spec.Points) / 2, 1000, spec.Points);
         label["ZPlaneLocalOffset"] = 1;
         // Espectadores e ID de partida van debajo del reloj: se bajan para que el reloj grande no los pise.
         foreach (var below in Children(clock).Where(c => Text(c, "Name") is "SpectatorsIcon" or "GameIDLabel"))

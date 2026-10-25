@@ -41,7 +41,7 @@ public sealed record HudCell(
 
 public sealed record HudBar(int Width, int Height, HudColor Background, int BorderWidth, HudColor BorderColor);
 
-/// <summary>El reloj va en otro panel del juego: a <see cref="Gap"/> unidades del final de la barra.</summary>
+/// <summary>El reloj va en otro panel del juego: a <see cref="Gap"/> unidades del final de la última celda de la barra.</summary>
 public sealed record HudClock(int Gap, int Y, int Width, int Height, string Font, int Points);
 
 /// <summary>
@@ -120,8 +120,15 @@ public sealed class HudLayout
         return new UnitRect(age.X + text.X, text.Y, text.Width, text.Height);
     }
 
-    /// <summary>El rectángulo negro del reloj, en coordenadas de la barra (sigue a la barra).</summary>
-    public UnitRect ClockRect() => new(Bar.Width + Clock.Gap, Clock.Y, Clock.Width, Clock.Height);
+    /// <summary>
+    /// El rectángulo negro del reloj, en coordenadas de la barra: a <see cref="HudClock.Gap"/> del final de la última
+    /// celda (la barra sigue hasta el borde de la pantalla).
+    /// </summary>
+    public UnitRect ClockRect()
+    {
+        var last = Cells[^1];
+        return new UnitRect(last.X + last.Width + Clock.Gap, Clock.Y, Clock.Width, Clock.Height);
+    }
 
     /// <summary>Dónde cae un campo dentro de la caja de su celda, en proporción.</summary>
     public PixelRect FieldRect(HudCell cell, string field, PixelRect box)
