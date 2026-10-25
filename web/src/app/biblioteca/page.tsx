@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BoCard } from "@/components/BoCard";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
-import { filterValue } from "@/lib/filters";
+import { filterValue, libraryHref, pageNumber } from "@/lib/filters";
 import { civLabel, SITE_NAME } from "@/lib/share";
 import { supabaseConfigured } from "@/lib/supabase/env";
 
@@ -28,7 +28,7 @@ export async function generateMetadata({ searchParams }: PageProps<"/biblioteca"
   const description = subject
     ? `Build orders de Age of Empires II ${subject}: cada paso, a qué minuto llegás a Feudal y Castillos, y para abrir en BO Coach.`
     : DESCRIPTION;
-  const canonical = civ ? `/biblioteca?civ=${encodeURIComponent(civ)}` : tag ? `/biblioteca?tag=${encodeURIComponent(tag)}` : "/biblioteca";
+  const canonical = libraryHref(civ ? { civ } : tag ? { tag } : {}, query.page);
   return {
     title,
     description,
@@ -51,6 +51,7 @@ async function readQuery(searchParams: SearchParams): Promise<LibraryQuery> {
     civ: first(params.civ),
     tag: first(params.tag),
     sort: first(params.orden) === "recientes" ? "recientes" : "votos",
+    page: pageNumber(first(params.pagina)),
   };
 }
 
@@ -125,15 +126,49 @@ async function Results({ searchParams }: { searchParams: SearchParams }) {
   if (!supabaseConfigured) {
     return <p className="text-sm text-faint">La web todavía no está conectada a la base de datos (falta configurar Supabase).</p>;
   }
-  const items = await listBuildOrders(query);
+  const { items, hasMore } = await listBuildOrders(query);
+  const page = query.page ?? 1;
   if (items.length === 0) {
-    return <p className="text-sm text-faint">No hay build orders con esos filtros.</p>;
+    return (
+      <p className="text-sm text-faint">
+        No hay build orders con esos filtros
+        {page > 1 ? (
+          <>
+            {" "}
+            en la página {page}. <Link href={libraryHref(query)} className="text-amber hover:underline">Ir a la primera</Link>.
+          </>
+        ) : (
+          "."
+        )}
+      </p>
+    );
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {items.map((bo) => (
-        <BoCard key={bo.code} bo={bo} />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((bo) => (
+          <BoCard key={bo.code} bo={bo} />
+        ))}
+      </div>
+      {page > 1 || hasMore ? (
+        <nav aria-label="Páginas de la biblioteca" className="flex items-center justify-between gap-3 text-sm">
+          {page > 1 ? (
+            <Link href={libraryHref(query, page - 1)} className="button" rel="prev">
+              ← Anteriores
+            </Link>
+          ) : (
+            <span />
+          )}
+          <span className="text-faint">Página {page}</span>
+          {hasMore ? (
+            <Link href={libraryHref(query, page + 1)} className="button" rel="next">
+              Siguientes →
+            </Link>
+          ) : (
+            <span />
+          )}
+        </nav>
+      ) : null}
+    </>
   );
 }

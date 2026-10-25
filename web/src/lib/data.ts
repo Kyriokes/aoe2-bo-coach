@@ -1,6 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
-import { filterValue } from "./filters";
+import { filterValue, pageNumber } from "./filters";
 import { publicClient } from "./supabase/server";
 
 /** Lo que se muestra de una BO en la biblioteca. */
@@ -34,6 +34,17 @@ export interface LibraryQuery {
   civ?: string;
   tag?: string;
   sort?: Sort;
+  /** Desde 1. */
+  page?: number;
+}
+
+/** BO por página de la biblioteca. */
+export const PAGE_SIZE = 60;
+
+export interface LibraryPage {
+  items: BuildOrderSummary[];
+  /** Si hay otra página después de esta. */
+  hasMore: boolean;
 }
 
 /** Etiqueta del caché de la biblioteca: publicar, editar, borrar o votar la invalida. */
@@ -63,24 +74,27 @@ function cleanSearch(text: string) {
  * La biblioteca con los filtros. La consulta se normaliza antes del caché: búsquedas equivalentes ("Scouts " y
  * "scouts") comparten la entrada y lo que no sirve como filtro no ocupa lugar en él.
  */
-export function listBuildOrders(query: LibraryQuery): Promise<BuildOrderSummary[]> {
+export function listBuildOrders(query: LibraryQuery): Promise<LibraryPage> {
   // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
   return cachedBuildOrders(
     cleanSearch(query.q ?? "").toLowerCase(),
     filterValue(query.civ) ?? "",
     filterValue(query.tag) ?? "",
     query.sort === "recientes" ? "recientes" : "votos",
+    pageNumber(String(query.page ?? 1)),
   );
 }
 
-async function cachedBuildOrders(search: string, civ: string, tag: string, sort: Sort): Promise<BuildOrderSummary[]> {
+async function cachedBuildOrders(search: string, civ: string, tag: string, sort: Sort, page: number): Promise<LibraryPage> {
   "use cache";
   cacheLife("minutes");
   cacheTag(LIBRARY_TAG);
 
   const db = publicClient();
-  if (!db) return [];
-  let request = db.from("build_orders").select(summaryColumns).limit(60);
+  if (!db) return { items: [], hasMore: false };
+  // Una de más: si llega, hay otra página.
+  const from = (page - 1) * PAGE_SIZE;
+  let request = db.from("build_orders").select(summaryColumns).range(from, from + PAGE_SIZE);
   if (search) request = request.or(`name.ilike.*${search}*,description.ilike.*${search}*`);
   if (civ) request = request.eq("civ", civ);
   if (tag) request = request.contains("tags", [tag]);
@@ -88,10 +102,13 @@ async function cachedBuildOrders(search: string, civ: string, tag: string, sort:
     sort === "recientes"
       ? request.order("created_at", { ascending: false })
       : request.order("votes", { ascending: false }).order("created_at", { ascending: false });
+  // Con un orden que no desempata, una BO podía salir en dos páginas o en ninguna.
+  request = request.order("code");
 
   const { data, error } = await request;
   if (error) throw new Error(`No se pudo leer la biblioteca: ${error.message}`);
-  return (data as unknown as Row[]).map(toSummary);
+  const rows = (data as unknown as Row[]).map(toSummary);
+  return { items: rows.slice(0, PAGE_SIZE), hasMore: rows.length > PAGE_SIZE };
 }
 
 /** Civs y tags que hay en la biblioteca, para los filtros. */
