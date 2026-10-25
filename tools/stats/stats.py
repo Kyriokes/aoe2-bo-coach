@@ -3,6 +3,7 @@ data/matchup_stats.json. Se corre una vez por parche, desde tools/stats con su v
 
     python stats.py bajar [--fuente aoe2guide] [--cache RUTA]
     python stats.py ajustar [--cache RUTA] [--salida RUTA] [--veces 20] [--apartar-dias 14]
+    python stats.py informe [--cache RUTA]
 
 La caché (por defecto tools/stats/.cache, fuera de git) junta las fotos que se van bajando sin repetir partidas.
 `ajustar` valida el modelo con los últimos días apartados y, si no pasa, no toca la salida.
@@ -63,18 +64,26 @@ def _resumen_validacion(v: validacion.Validacion) -> dict:
     return {"log_loss": perdidas, "calibration": [[round(a, 4), round(b, 4)] for a, b in v.calibracion]}
 
 
-def _entradas_1v1(d, dis, p, desde, hasta) -> dict[str, list[int]]:
-    n = contar(indice_par(d.a, d.b, len(d.civs)), d.mapa, d.elo, d.dur, dis.entidades)
-    i, j = np.triu_indices(len(d.civs), k=1)
-    return a_entradas([f"{d.civs[a]}|{d.civs[b]}" for a, b in zip(i, j)], p, desde, hasta, n)
+def _cuenta_1v1(d) -> np.ndarray:
+    c = len(d.civs)
+    return contar(indice_par(d.a, d.b, c), d.mapa, d.elo, d.dur, c * (c - 1) // 2)
 
 
-def _entradas_equipos(d, dis, p, desde, hasta) -> dict[str, list[int]]:
+def _cuenta_equipos(d) -> np.ndarray:
+    """Las apariciones de cada civ (cada jugador cuenta) por casillero."""
     coo = d.civ_equipo.tocoo()
     veces = np.abs(coo.data).astype(np.int64)
     fila, civ = np.repeat(coo.row, veces), np.repeat(coo.col, veces)
-    n = contar(civ, d.mapa[fila], d.elo[fila], d.dur[fila], dis.entidades)
-    return a_entradas(list(d.civs), p, desde, hasta, n)
+    return contar(civ, d.mapa[fila], d.elo[fila], d.dur[fila], len(d.civs))
+
+
+def _entradas_1v1(d, p, desde, hasta) -> dict[str, list[int]]:
+    i, j = np.triu_indices(len(d.civs), k=1)
+    return a_entradas([f"{d.civs[a]}|{d.civs[b]}" for a, b in zip(i, j)], p, desde, hasta, _cuenta_1v1(d))
+
+
+def _entradas_equipos(d, p, desde, hasta) -> dict[str, list[int]]:
+    return a_entradas(list(d.civs), p, desde, hasta, _cuenta_equipos(d))
 
 
 def _ajustar(args: argparse.Namespace) -> int:
@@ -110,7 +119,7 @@ def _ajustar(args: argparse.Namespace) -> int:
         print(f"{nombre}: {args.veces} remuestreos ...")
         muestras = [casilleros(eta(dis, m), pesos) for m in remuestrear(dis, frenos, w, args.veces)]
         desde, hasta = rango(p, muestras)
-        entradas[nombre] = armar(d, dis, p, desde, hasta)
+        entradas[nombre] = armar(d, p, desde, hasta)
 
     inicios = np.concatenate([d1.inicio, de.inicio])
     cabecera = {
@@ -131,6 +140,27 @@ def _ajustar(args: argparse.Namespace) -> int:
     return 0
 
 
+def _informe(args: argparse.Namespace) -> int:
+    d1, de = leer_1v1(args.cache), leer_equipos(args.cache)
+    inicios = np.concatenate([d1.inicio, de.inicio])
+    print(f"Partidas 1v1: {len(d1.gana_a)}, por equipos: {len(de.gana_1)} "
+          f"(del {_fecha(inicios.min())} al {_fecha(inicios.max())})")
+    print(f"Parche actual desde el {_fecha(d1.inicio_parche)}; "
+          f"{'con' if d1.previo_mezclado else 'sin'} el parche anterior")
+    mapas = ["todos", *MAPAS]
+    uno, equipos = _cuenta_1v1(d1), _cuenta_equipos(de)
+    print(f"1v1, partidas por pareja ({uno.shape[0]} parejas):")
+    for m, mapa in enumerate(mapas):
+        n = uno[:, m, 0, 0]
+        print(f"  {mapa:<13} parejas con partidas {int((n > 0).sum()):>5}   p10 {np.percentile(n, 10):>6.0f}"
+              f"   mediana {np.median(n):>6.0f}   p90 {np.percentile(n, 90):>6.0f}")
+    print(f"Equipos, apariciones por civ ({equipos.shape[0]} civs):")
+    for m, mapa in enumerate(mapas):
+        n = equipos[:, m, 0, 0]
+        print(f"  {mapa:<13} mínimo {int(n.min()):>7}   mediana {np.median(n):>7.0f}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -144,10 +174,12 @@ def main(argv: list[str] | None = None) -> int:
     ajuste.add_argument("--salida", type=Path, default=SALIDA_POR_DEFECTO)
     ajuste.add_argument("--veces", type=int, default=20)
     ajuste.add_argument("--apartar-dias", type=int, default=validacion.DIAS_APARTADOS)
+    informe = comandos.add_parser("informe", help="cuántas partidas hay en la caché por mapa, pareja y civ")
+    informe.add_argument("--cache", type=Path, default=CACHE_POR_DEFECTO)
     args = parser.parse_args(argv)
 
     try:
-        return {"bajar": _bajar, "ajustar": _ajustar}[args.comando](args)
+        return {"bajar": _bajar, "ajustar": _ajustar, "informe": _informe}[args.comando](args)
     except (FuenteCaida, CivDesconocida, TablaInvalida) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
