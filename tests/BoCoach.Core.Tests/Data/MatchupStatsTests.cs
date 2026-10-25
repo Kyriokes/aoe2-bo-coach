@@ -165,18 +165,21 @@ public class MatchupStatsTests
     [Fact]
     public void Lee_el_archivo_real()
     {
+        // La forma y no los números: el archivo se regenera con tools/stats en cada parche y los valores cambian.
         var stats = MatchupStats.Load(Path.Combine(AppContext.BaseDirectory, "matchup_stats.json"));
 
-        var celda = stats.OneVsOne("britons", "franks", 0, 0, 0)!;
-        Assert.Equal(0.497, celda.P, 3);
-        Assert.Equal(0.469, celda.From, 3);
-        Assert.Equal(0.525, celda.To, 3);
-        Assert.Equal(93, celda.N);
-        Assert.Equal(0.503, stats.OneVsOne("franks", "britons", 0, 0, 0)!.P, 3);
-        Assert.Equal(0.523, stats.Team("georgians", 0, 0, 0)!.P, 3);
+        Assert.False(stats.IsEmpty);
         var civs = new[] { "aztecs", "britons", "franks", "mayan", "mongols" };
-        Assert.All(civs.SelectMany(a => civs.Where(b => b != a).Select(b => (a, b))),
-            par => Assert.Equal(0, stats.OneVsOne(par.a, par.b, stats.MapIndex("nomad"), 0, 0)!.N));
+        foreach (var (a, b) in civs.SelectMany(a => civs.Where(b => b != a).Select(b => (a, b))))
+        {
+            var celda = stats.OneVsOne(a, b, 0, 0, 0)!;
+            Assert.InRange(celda.P, 0.3, 0.7);
+            Assert.True(celda.From <= celda.P && celda.P <= celda.To);
+            Assert.True(celda.N > 0);
+            Assert.Equal(1, celda.P + stats.OneVsOne(b, a, 0, 0, 0)!.P, 3);
+        }
+        Assert.All(civs, civ => Assert.InRange(stats.Team(civ, 0, 0, 0)!.P, 0.4, 0.6));
+        Assert.False(stats.HasCiv("spartans"));
     }
 
     /// <summary>britons|franks (y franks en equipos) con un casillero por franja de duración; el resto sin partidas.</summary>
