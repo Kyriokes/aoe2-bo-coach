@@ -183,4 +183,21 @@ public class MatchupTextTests
         Assert.Equal("el cruce se gana más en partidas cortas", MatchupText.DurationReason(new DurationTrend(1, corta, 5, larga)));
         Assert.Equal("el cruce se gana más en partidas largas", MatchupText.DurationReason(new DurationTrend(1, larga, 5, corta)));
     }
+
+    [Fact]
+    public void Con_solo_tu_civ_cargada_y_sin_datos_lo_dice()
+    {
+        // La app carga solo lo de tu civ: si no tiene partidas clasificatorias, el archivo igual se leyó.
+        var json = MatchupJson.Build(
+            new Dictionary<string, Func<int, int, int, int[]>> { ["britons|franks"] = MatchupJson.Same(470, 430, 490, 80) },
+            new Dictionary<string, Func<int, int, int, int[]>> { ["franks"] = MatchupJson.Same(510, 500, 520, 900) });
+        var stats = MatchupStats.Parse(json, onlyCiv: "spartans");
+
+        Assert.False(stats.IsEmpty);
+        Assert.False(stats.HasCiv("spartans"));
+        Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
+            MatchupText.Loading(stats, BritanosEnArabia with { Civ = "spartans" }, Civ, Mapa));
+        Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
+            MatchupText.Loading(stats, new MatchupQuery("spartans", null, "arabia", 1200, Team: true), Civ, Mapa));
+    }
 }

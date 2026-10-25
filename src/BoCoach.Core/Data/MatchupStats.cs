@@ -56,7 +56,13 @@ public sealed class MatchupStats
     public static MatchupStats Empty { get; } = new(new Dictionary<string, int[]>(), new Dictionary<string, int[]>(),
         DefaultEloLimits, DefaultGameMinuteLimits, DefaultMapKeys);
 
-    public bool IsEmpty => _oneVsOne.Count == 0 && _team.Count == 0;
+    /// <summary>
+    /// Sin datos: el archivo falta, está roto o no trae ninguna entrada. Con <c>onlyCiv</c>, una civ sin partidas
+    /// clasificatorias deja el resultado sin entradas pero no vacío, así se puede decir que no hay datos de ella.
+    /// </summary>
+    public bool IsEmpty => !_loaded;
+
+    private bool _loaded;
 
     public string? SourceName { get; private init; }
     public string? PatchLabel { get; private init; }
@@ -95,9 +101,10 @@ public sealed class MatchupStats
             if (root.ValueKind != JsonValueKind.Object)
                 return Empty;
             var civ = Key(onlyCiv);
-            var oneVsOne = Entries(root, "one_vs_one", key => civ is null || key.Split('|').Contains(civ), pairs: true);
-            var team = Entries(root, "team", key => civ is null || key == civ, pairs: false);
-            if (oneVsOne.Count == 0 && team.Count == 0)
+            var oneVsOne = Entries(root, "one_vs_one", key => civ is null || key.Split('|').Contains(civ), pairs: true,
+                out var validOneVsOne);
+            var team = Entries(root, "team", key => civ is null || key == civ, pairs: false, out var validTeam);
+            if (validOneVsOne == 0 && validTeam == 0)
                 return Empty;
             var bands = Property(root, "bands");
             var source = Property(root, "source");
@@ -107,6 +114,7 @@ public sealed class MatchupStats
                 Limits(bands, "game_minutes") ?? DefaultGameMinuteLimits,
                 MapList(bands) ?? DefaultMapKeys)
             {
+                _loaded = true,
                 SourceName = Text(source, "name"),
                 PatchLabel = Text(patch, "label"),
                 From = Date(source, "from"),
@@ -202,18 +210,27 @@ public sealed class MatchupStats
 
     private static string? Key(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim().ToLowerInvariant();
 
-    private static Dictionary<string, int[]> Entries(JsonElement root, string name, Func<string, bool> keep, bool pairs)
+    /// <param name="valid">Cuántas entradas válidas tenía la tabla, antes de quedarse con las de <paramref name="keep"/>.</param>
+    private static Dictionary<string, int[]> Entries(JsonElement root, string name, Func<string, bool> keep, bool pairs,
+        out int valid)
     {
         var entries = new Dictionary<string, int[]>();
+        valid = 0;
         if (Property(root, name) is not { ValueKind: JsonValueKind.Object } table)
             return entries;
         foreach (var entry in table.EnumerateObject())
         {
             var key = Key(entry.Name);
-            if (key is null || (pairs && key.Split('|').Length != 2) || !keep(key))
+            if (key is null || (pairs && key.Split('|').Length != 2))
                 continue;
             if (entry.Value.ValueKind != JsonValueKind.Array || entry.Value.GetArrayLength() != Values)
                 continue;
+            if (!keep(key))
+            {
+                // Para saber que el archivo se leyó alcanza con el largo: no hace falta leer los 720 números.
+                valid++;
+                continue;
+            }
             var cells = new int[Values];
             var ok = true;
             var i = 0;
@@ -225,8 +242,10 @@ public sealed class MatchupStats
                     break;
                 }
             }
-            if (ok)
-                entries[key] = cells;
+            if (!ok)
+                continue;
+            valid++;
+            entries[key] = cells;
         }
         return entries;
     }
