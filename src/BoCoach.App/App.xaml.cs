@@ -198,8 +198,8 @@ public partial class App : Application
     /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo nombre --at 8:20 [--debug].
     /// </summary>
     /// <param name="bands">
-    /// Simula la franja de color del mod en cada recurso (filas 2 a 16 y columnas 1 a 36 de la caja, como en las
-    /// grabaciones) y usa la calibración del usuario, para ver dónde cae la GD sin el juego abierto.
+    /// Simula el casillero del diseño nuevo en cada recurso (el de la celda a 1080p) y la celda entera de inactivos, y
+    /// usa la calibración del usuario, para ver dónde cae la GD y el marco de inactivos sin el juego abierto.
     /// </param>
     private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false)
     {
@@ -230,8 +230,13 @@ public partial class App : Application
         var layout = bands ? Vision.Regions.RegionLayout.LoadOrDefault(Vision.Regions.RegionLayout.DefaultPath) : Vision.Regions.RegionLayout.Default;
         if (bands)
         {
-            foreach (var target in overlay.Resources.Append(overlay.IdleAlert))
-                target.Band = new Vision.Capture.PixelRect(1, 2, 36, 15);
+            foreach (var target in overlay.Resources)
+            {
+                target.Band = new Vision.Capture.PixelRect(45, 5, 30, 36);
+                target.Chip = true;
+            }
+            overlay.IdleAlert.Band = new Vision.Capture.PixelRect(0, 0, 81, 46);
+            overlay.IdleAlert.Chip = true;
             overlay.IdleAlert.Alert = true;
         }
         var resources = new ResourceOverlay(overlay.Resources, layout, overlay.IdleAlert);

@@ -27,6 +27,12 @@ public sealed partial class ResourceTargetViewModel(string region) : ObservableO
     /// </summary>
     [ObservableProperty] public partial Vision.Capture.PixelRect? Band { get; set; }
 
+    /// <summary>
+    /// Con el diseño nuevo del mod, <see cref="Band"/> es el casillero del recurso (la GD va adentro, dejando su marco
+    /// de color a la vista) o, en inactivos, la celda entera (el aviso es un marco alrededor).
+    /// </summary>
+    [ObservableProperty] public partial bool Chip { get; set; }
+
     /// <summary>Aviso que parpadea en rojo y amarillo (el de inactivos, mientras haya aldeanos sin hacer nada).</summary>
     [ObservableProperty] public partial bool Alert { get; set; }
 

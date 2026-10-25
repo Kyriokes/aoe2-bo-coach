@@ -10,7 +10,8 @@ namespace BoCoach.App.Overlay;
 
 /// <summary>
 /// La segunda parte del overlay: la GD, un número por recurso del HUD con los aldeanos que tendría que haber ahí
-/// (verde si coincide, rojo si faltan, amarillo si sobran). Con el mod va chico dentro de la franja de color del
+/// (verde si coincide, rojo si faltan, amarillo si sobran). Con el diseño nuevo del mod va dentro del casillero de cada
+/// recurso, dejando su marco de color a la vista (la calibración lo reconoce por ahí); con el mod viejo, chico dentro de la franja de color del
 /// cuadrado de cada recurso (así no tapa la cola de producción del juego, que aparece debajo del panel); sin el mod,
 /// grande debajo de cada caja. Sigue a las cajas calibradas y a la ventana del juego. Click-through.
 /// </summary>
@@ -29,6 +30,17 @@ public sealed class ResourceOverlay : Window
     public static readonly Brush ShortBrush = Frozen(0xF0, 0x5A, 0x50);
     public static readonly Brush OverBrush = Frozen(0xF2, 0xD0, 0x4A);
     public static readonly Brush UnknownBrush = Frozen(0xF4, 0xF2, 0xEE);
+
+    /// <summary>Fondo de la GD fuera del casillero (medio transparente); adentro del casillero va negro opaco.</summary>
+    private static readonly Brush DefaultBoxBrush = FrozenArgb(0xD0, 0x1E, 0x1A, 0x16);
+
+    /// <summary>
+    /// Marco del casillero que la GD deja a la vista, en píxeles físicos a 1080p: la calibración necesita al menos 3
+    /// filas del color para reconocerlo.
+    /// </summary>
+    public const int MinChipMargin = 3;
+
+    public static int ChipMargin(PixelRect chip) => Math.Max(MinChipMargin, chip.Height / 12);
 
     /// <summary>Cada cuánto cambia de color el aviso de inactivos.</summary>
     public static readonly TimeSpan BlinkInterval = TimeSpan.FromMilliseconds(350);
@@ -63,7 +75,7 @@ public sealed class ResourceOverlay : Window
             };
             var box = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(0xD0, 0x1E, 0x1A, 0x16)),
+                Background = DefaultBoxBrush,
                 CornerRadius = new CornerRadius(5),
                 Width = BoxWidth,
                 Padding = new Thickness(8, 0, 8, 2),
@@ -77,7 +89,11 @@ public sealed class ResourceOverlay : Window
 
         // Inactivos: un rectángulo que alterna rojo y amarillo, molesto a propósito, mientras haya aldeanos parados.
         _blink = new System.Windows.Threading.DispatcherTimer { Interval = BlinkInterval };
-        _blink.Tick += (_, _) => _idleBox.Background = _idleBox.Background == ShortBrush ? OverBrush : ShortBrush;
+        _blink.Tick += (_, _) =>
+        {
+            _blinkOn = !_blinkOn;
+            Blink();
+        };
         _idle = idleAlert;
         if (_idle is not null)
         {
@@ -97,9 +113,27 @@ public sealed class ResourceOverlay : Window
 
     private void OnIdleChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ResourceTargetViewModel.Band))
+        if (e.PropertyName is nameof(ResourceTargetViewModel.Band) or nameof(ResourceTargetViewModel.Chip))
             PositionIdle();
         RefreshIdle();
+    }
+
+    private bool _blinkOn;
+
+    /// <summary>El aviso de inactivos en su color del momento: marco alrededor de la celda con el diseño nuevo, fondo lleno si no.</summary>
+    private void Blink()
+    {
+        var brush = _blinkOn ? ShortBrush : OverBrush;
+        if (_idle?.Chip == true)
+        {
+            _idleBox.BorderBrush = brush;
+            _idleBox.Background = Brushes.Transparent;
+        }
+        else
+        {
+            _idleBox.Background = brush;
+            _idleBox.BorderBrush = null;
+        }
     }
 
     private void RefreshIdle()
@@ -108,7 +142,8 @@ public sealed class ResourceOverlay : Window
         _idleBox.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
         if (on && !_blink.IsEnabled)
         {
-            _idleBox.Background = ShortBrush;
+            _blinkOn = true;
+            Blink();
             _blink.Start();
         }
         else if (!on)
@@ -127,11 +162,25 @@ public sealed class ResourceOverlay : Window
             return;
         var scale = Scale();
         var rect = _layout.PixelsOf(_idle.Region, area);
-        var band = _idle.Band ?? new PixelRect(0, rect.Height + Gap, rect.Width, 12 + BandMargin);
-        _idleBox.Width = band.Width * 0.8 / scale;
-        _idleBox.Height = Math.Max(6, band.Height - BandMargin) / scale;
-        Canvas.SetLeft(_idleBox, (rect.X - area.X + band.X + band.Width * 0.1) / scale);
-        Canvas.SetTop(_idleBox, (rect.Y - area.Y + band.Y) / scale);
+        if (_idle.Chip && _idle.Band is { } cell)
+        {
+            // Un marco alrededor de la celda entera de inactivos, sin fondo: no tapa el número.
+            _idleBox.BorderThickness = new Thickness(Math.Max(2, cell.Height / 15) / scale);
+            _idleBox.Width = cell.Width / scale;
+            _idleBox.Height = cell.Height / scale;
+            Canvas.SetLeft(_idleBox, (rect.X - area.X + cell.X) / scale);
+            Canvas.SetTop(_idleBox, (rect.Y - area.Y + cell.Y) / scale);
+        }
+        else
+        {
+            _idleBox.BorderThickness = new Thickness(0);
+            var band = _idle.Band ?? new PixelRect(0, rect.Height + Gap, rect.Width, 12 + BandMargin);
+            _idleBox.Width = band.Width * 0.8 / scale;
+            _idleBox.Height = Math.Max(6, band.Height - BandMargin) / scale;
+            Canvas.SetLeft(_idleBox, (rect.X - area.X + band.X + band.Width * 0.1) / scale);
+            Canvas.SetTop(_idleBox, (rect.Y - area.Y + band.Y) / scale);
+        }
+        Blink();
     }
 
     public static Brush BrushFor(TargetMatch? match) => match switch
@@ -181,9 +230,25 @@ public sealed class ResourceOverlay : Window
         }
         var scale = Scale();
         var rect = _layout.PixelsOf(target.Region, area);
-        if (target.Band is { } band)
+        if (target.Band is { } chip && target.Chip)
+        {
+            // Dentro del casillero del diseño, dejando su marco de color a la vista (la calibración lo reconoce por ahí).
+            var margin = ChipMargin(chip);
+            var (innerWidth, innerHeight) = (Math.Max(4, chip.Width - 2 * margin), Math.Max(6, chip.Height - 2 * margin));
+            box.Width = innerWidth / scale;
+            box.Height = innerHeight / scale;
+            box.Padding = new Thickness(0);
+            box.CornerRadius = new CornerRadius(2);
+            box.Background = Brushes.Black;
+            text.FontSize = Math.Max(7, innerHeight * 0.7) / scale;
+            text.VerticalAlignment = VerticalAlignment.Center;
+            Canvas.SetLeft(box, (rect.X - area.X + chip.X + margin) / scale);
+            Canvas.SetTop(box, (rect.Y - area.Y + chip.Y + margin) / scale);
+        }
+        else if (target.Band is { } band)
         {
             // Dentro de la franja, sin tocar sus últimas filas ni sus costados (el lector mide la franja por ahí).
+            box.Background = DefaultBoxBrush;
             var height = Math.Max(8, band.Height - BandMargin);
             box.Width = band.Width * 0.7 / scale;
             box.Height = height / scale;
@@ -197,6 +262,7 @@ public sealed class ResourceOverlay : Window
         else
         {
             var below = Boxes(area).Values.Max(b => b.Y + b.Height) + Gap;
+            box.Background = DefaultBoxBrush;
             box.Width = BoxWidth;
             box.Height = double.NaN;
             box.Padding = new Thickness(8, 0, 8, 2);
@@ -211,7 +277,7 @@ public sealed class ResourceOverlay : Window
     {
         if (sender is not ResourceTargetViewModel target)
             return;
-        if (e.PropertyName == nameof(ResourceTargetViewModel.Band))
+        if (e.PropertyName is nameof(ResourceTargetViewModel.Band) or nameof(ResourceTargetViewModel.Chip))
             Position(target);
         Refresh(target);
     }
@@ -222,6 +288,13 @@ public sealed class ResourceOverlay : Window
         text.Text = target.Target is null ? "" : target.Target + (target.Estimated ? "~" : "");
         text.Foreground = BrushFor(target.Match);
         box.Visibility = target.Target is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static SolidColorBrush FrozenArgb(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
     }
 
     private static SolidColorBrush Frozen(byte r, byte g, byte b)

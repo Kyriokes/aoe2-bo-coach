@@ -102,11 +102,17 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
             // Con el mod, los que hay salen del HUD; si no, de la estimación de la economía.
             target.Apply(view.Distribution?[resource], view.Actual?[resource], estimated: !view.ActualFromHud);
             if (frame.Hud?.ModBands is { } bands && bands.TryGetValue(target.Region, out var band))
+            {
                 target.Band = OnScreen(band, frame.HudScale);
+                target.Chip = frame.Hud.LayoutName is not null;
+            }
         }
         IdleAlert.Alert = frame.Hud?.IdleVillagers > 0;
         if (frame.Hud?.ModBands is { } modBands && modBands.TryGetValue(IdleAlert.Region, out var idleBand))
+        {
             IdleAlert.Band = OnScreen(idleBand, frame.HudScale);
+            IdleAlert.Chip = frame.Hud.LayoutName is not null;
+        }
         // Sin reloj (menú, pantalla de carga) no se recuerda nada: el estado puede ser viejo.
         var playing = frame is { Ended: false, Paused: false, InFront: true, Waiting: false, SecondsWithoutClock: < ClockWarningSeconds };
         HouseReminder = playing && view.NeedsHouse;
