@@ -483,3 +483,7 @@ $RECYCLE.BIN/
 
 # Python (tools/extractor)
 .venv/
+
+# Estadísticas de cruces (tools/stats): venv y caché de partidas bajadas
+tools/stats/.venv/
+tools/stats/.cache/
