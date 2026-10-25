@@ -33,12 +33,12 @@ del HUD" del juego y la calibración mide el factor.
 
 | Elemento | Posición y tamaño (unidades) |
 |---|---|
-| Barra | 2720 × 108, gris oscuro liso (0,1, 0,1, 0,1) en los 9 estados de civ, borde de 2 unidades gris (0,44). Alto igual al que hoy se ve del panel original: no pisa la cola de producción. |
+| Barra | 4600 × 108 (la pantalla entera a cualquier escala del HUD, el juego la recorta; hasta la v0.9.36 medía 2720), en dos tramos alrededor del campo negro del reloj, gris oscuro liso (0,1, 0,1, 0,1) en los 9 estados de civ, borde de 2 unidades gris (0,44). Alto igual al que hoy se ve del panel original: no pisa la cola de producción. |
 | Celda de recurso (madera, comida, oro, piedra) | 410 de ancho, desde x = 10, 420, 830, 1240. Ícono del juego 84×84 en (+10, 12). **Casillero del coach** 70×84 en (+104, 12), del color del recurso (entran dos cifras de GD con el marco). **Campo negro** 230×84 en (+180, 12) con los aldeanos (texto de 70 de ancho en +184, hasta 3 cifras) y el stock (132 de ancho en +274, entran 5 cifras), ambos blancos a 48 pt, separados por un "/" gris (20 de ancho en +254). |
 | Población | 380 de ancho desde x = 1650. Ícono en (+10, 12). **Casillero azul** 80×84 en (+104, 12) con el total de aldeanos en blanco a 48 pt. Campo negro 180×84 en (+190, 12) con "N/M" blanco a 48 pt. `PopulationFlash` (parpadeo amarillo al tope) sobre ese campo. |
 | Inactivos | 190 de ancho desde x = 2030. Botón del juego (ícono) 84×84 en (+10, 12), campo negro 80×84 en (+100, 12) con la cantidad a 48 pt. Sin casillero: el marco rojo lo dibuja la app. |
 | Edad | 492 de ancho desde x = 2220. Medallón (`AgeUp`) 84×84 en (+10, 12); barra de progreso (`AgeBar`) 378×52 en (+104, 28) con el texto a 44 pt, como el original. |
-| Reloj | Panel aparte (`worldtimerpanel.json`): rectángulo negro 230×84 a 14 unidades del final de la barra, reloj a 56 pt (sigue valiendo `mod_clock`). Espectadores e ID de partida debajo, como hoy. |
+| Reloj | Panel aparte (`worldtimerpanel.json`): rectángulo negro 800×84 a 22 unidades del final de la última celda (el texto entero, "hh:mm:ss (Normal - 1.7) (Estándar)", se salía del de 230), reloj a 56 pt (sigue valiendo `mod_clock`). Espectadores e ID de partida debajo, como hoy. |
 
 Colores de los casilleros (r, g, b de 0 a 1 en el JSON; entre paréntesis, lo que captura la pantalla): madera
 (0,53, 0,36, 0,16) → (135, 92, 41); comida (0,88, 0,41, 0,42) → (225, 104, 106); oro (0,94, 0,75, 0,10) → (240, 192,
@@ -60,7 +60,7 @@ su `x` y el color de su casillero.
 {
   "name": "bocoach-2026-10",
   "pixels_per_unit_at_1080p": 0.4286,
-  "bar": { "width": 2720, "height": 108, "background": [0.1, 0.1, 0.1], "border": { "width": 2, "color": [0.44, 0.44, 0.44] } },
+  "bar": { "width": 4600, "height": 108, "background": [0.1, 0.1, 0.1], "border": { "width": 2, "color": [0.44, 0.44, 0.44] } },
   "cells": {
     "wood": {
       "x": 10, "width": 410,
@@ -98,7 +98,7 @@ su `x` y el color de su casillero.
       "fields": { "text": { "x": 104, "y": 28, "width": 378, "height": 52, "font": "ocr", "points": 44 } }
     }
   },
-  "clock": { "gap": 14, "y": 12, "width": 230, "height": 84, "font": "mod_clock", "points": 56 }
+  "clock": { "gap": 22, "y": 12, "width": 800, "height": 84, "font": "mod_clock", "points": 56 }
 }
 ```
 
@@ -107,7 +107,7 @@ Reglas del formato:
 - `pixels_per_unit_at_1080p` es el factor de referencia (84 unidades = 36 px): con él las cajas y las letras quedan
   medidas "a 1080p" como hoy, y `hud_scale` sigue significando lo mismo.
 - Las coordenadas de ícono, casillero, campos, fondos y separador son **relativas a la celda**; `x` de la celda es
-  relativo a la barra. El reloj se ubica por `gap` después del final de la barra.
+  relativo a la barra. El reloj se ubica por `gap` después del final de la última celda.
 - Cada campo tiene `font` (qué letra lo lee: `hud_numbers`, `mod_clock` u `ocr` para el OCR de Windows) y `points`
   (tamaño con que el mod lo escribe). El casillero es opcional (inactivos no tiene); en población el casillero y el
   campo `total` ocupan el mismo rectángulo (el fondo del campo es el casillero).
@@ -141,7 +141,7 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   pressed) en la posición del ícono. `AgeUp` y `AgeBar` en la posición de la celda de edad. `PopulationFlash` sobre el
   campo "N/M". Los hijos nunca salen de los límites de su padre (si el juego recorta hijos, no se nota).
 - Reloj: el fondo negro (`BoCoachClockBackground`) y el `WorldTimerLabel` toman el tamaño y la letra del diseño; el
-  `Anchor` del original (1700) pasa a `bar.width + gap` (2734) y la colección queda en su origen (0, 0). Verificado en
+  `Anchor` del original (1700) pasa al final de la última celda más `gap` (2734) y la colección queda en su origen (0, 0). Verificado en
   el juego (2026-10-24 y 25): el ancla se mide en unidades del HUD, como la barra (1700 = 737 px con el HUD del
   usuario a 0,4348), pero el origen de la colección se mide en unidades de pantalla (3840 de ancho: 2734 = 1367 px),
   así que corriendo la colección el reloj quedaba 178 px a la derecha de la barra, y sumando las dos caía fuera de la
@@ -250,6 +250,11 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   planos se suman por jerarquía, así que los fondos negros van como hermanos del contenedor; la escala real del HUD
   del usuario es 0,4348 px por unidad y el detector la mide por las posiciones de los casilleros; con "Coach
   automático" el coach arranca en el menú del juego y vuelve a calibrar cada 5 s mientras no ve el reloj.
+- Lo que enseñó la tercera prueba (2026-10-25, grabación 20261025-024356): los planos son globales entre paneles
+  (el menú del juego, plano 11, queda arriba de la barra y tapaba el texto del reloj), así que la barra cubre la
+  pantalla en dos tramos alrededor del campo negro del reloj, que tiene el mismo plano que ella; los caracteres del
+  reloj se tocan y se separan por el valle de tinta o, si no hay valle, con la letra; la caja de la cola sale de la de
+  siempre escalada (saliendo de la referencia se agrandaba en cada recalibración).
 - Hijos fuera del padre: el diseño no los tiene; si el juego recortara igual, se ve en la primera captura.
 - Material `None` en el contenedor de la celda: se usa ya en `Population` (UserState1). Si el tooltip de la celda no
   apareciera, alternativa `FlatColorWithAlpha` con alfa 0.
