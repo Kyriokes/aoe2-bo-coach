@@ -506,6 +506,30 @@ public sealed class CoachSessionTests : IDisposable
     }
 
     [Fact]
+    public void El_Elo_acepta_el_punto_de_miles_y_avisa_si_no_vale()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var session = SesionConAjustes(new FakeHost(), path);
+
+        session.Elo1v1Text = "1.200";
+        session.EloTeamText = "1,250";
+        Assert.Equal(1200, session.Elo1v1);
+        Assert.Equal(1250, session.EloTeam);
+        Assert.Equal("", session.EloStatus);
+
+        session.Elo1v1Text = "1200,5";
+        Assert.Null(session.Elo1v1);
+        Assert.Equal("Elo no válido: un número de 1 a 4000.", session.EloStatus);
+        session.Elo1v1Text = "1100";
+        Assert.Equal("", session.EloStatus);
+
+        File.WriteAllText(path, """{ "elo_1v1": 5000, "elo_team": "x" }""");
+        var otra = SesionConAjustes(new FakeHost(), path);
+        Assert.Null(otra.Elo1v1);
+        Assert.Null(otra.EloTeam);
+    }
+
+    [Fact]
     public async Task Buscar_con_uno_completa_el_Elo()
     {
         var path = Path.Combine(_library.FullName, "settings.json");

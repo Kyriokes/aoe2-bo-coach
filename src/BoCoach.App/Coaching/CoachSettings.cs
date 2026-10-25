@@ -46,6 +46,9 @@ public sealed class CoachSettings
     /// <summary>D10: el perfil del juego que eligió con "Buscar" (para volver a buscarlo y comparar sus partidas).</summary>
     public long? ProfileId { get; set; }
 
+    /// <summary>D10: el Elo más alto que se acepta (el mismo tope que la ventana).</summary>
+    public const int MaxElo = 4000;
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -64,8 +67,8 @@ public sealed class CoachSettings
                     FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
                     AutoStart = json["auto_start"]?.GetValue<bool>() ?? true,
                     LastBuildOrder = json["last_build_order"]?.GetValue<string>()?.Trim() ?? "",
-                    Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= int.MaxValue ? (int)elo1v1 : null,
-                    EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= int.MaxValue ? (int)eloTeam : null,
+                    Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= MaxElo ? (int)elo1v1 : null,
+                    EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
                     ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
                 };
             }

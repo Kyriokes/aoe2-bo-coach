@@ -157,12 +157,31 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>D10: el Elo de 1v1 tal como se escribe; <see cref="Elo1v1"/> es el número si vale (de 1 a 4000).</summary>
     [ObservableProperty] public partial string Elo1v1Text { get; set; } = "";
 
-    partial void OnElo1v1TextChanged(string value) => SaveSettings();
+    partial void OnElo1v1TextChanged(string value)
+    {
+        CheckElo(value);
+        SaveSettings();
+    }
 
     /// <summary>D10: el Elo de equipos tal como se escribe; <see cref="EloTeam"/> es el número si vale.</summary>
     [ObservableProperty] public partial string EloTeamText { get; set; } = "";
 
-    partial void OnEloTeamTextChanged(string value) => SaveSettings();
+    partial void OnEloTeamTextChanged(string value)
+    {
+        CheckElo(value);
+        SaveSettings();
+    }
+
+    private const string InvalidElo = "Elo no válido: un número de 1 a 4000.";
+
+    /// <summary>Un Elo que no se entiende se avisa (si no, se descartaba sin decir nada y el coach quedaba "sin tu Elo").</summary>
+    private void CheckElo(string text)
+    {
+        if (text.Trim().Length > 0 && ParseElo(text) is null)
+            EloStatus = InvalidElo;
+        else if (EloStatus == InvalidElo)
+            EloStatus = "";
+    }
 
     public int? Elo1v1 => ParseElo(Elo1v1Text);
 
@@ -180,8 +199,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     private static readonly HttpClient EloHttp = new() { MaxResponseContentBufferSize = 1 << 20 };
 
-    private static int? ParseElo(string text) =>
-        int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var elo) && elo is >= 1 and <= 4000 ? elo : null;
+    /// <summary>De 1 a 4000; acepta el separador de miles ("1.200" o "1,200").</summary>
+    internal static int? ParseElo(string text)
+    {
+        var digits = text.Trim();
+        if (digits.Length is 5 or 6 && digits[^4] is '.' or ',')
+            digits = digits.Remove(digits.Length - 4, 1);
+        return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var elo) && elo is >= 1 and <= 4000 ? elo : null;
+    }
 
     /// <summary>
     /// D10: busca "Tu nombre" en la API del juego (solo al tocar el botón) y completa los Elo que tenga el jugador. Con
