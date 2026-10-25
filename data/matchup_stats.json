@@ -86,12 +86,22 @@
           0.6622,
           0.6722
         ]
-      ]
+      ],
+      "brakes": {
+        "civ": 0.025,
+        "civ_mapa": 0.05,
+        "civ_elo": 0.05,
+        "civ_dur": 0.2,
+        "cruce": 0.05,
+        "cruce_mapa": 0.05,
+        "cruce_dur": 0.05,
+        "cruce_elo": 0.00625
+      }
     },
     "team": {
       "log_loss": {
         "model": 0.64816,
-        "elo_only": 0.65952
+        "elo_only": 0.65172
       },
       "calibration": [
         [
@@ -134,7 +144,16 @@
           0.7399,
           0.733
         ]
-      ]
+      ],
+      "brakes": {
+        "civ": 0.1,
+        "civ_mapa": 0.0125,
+        "civ_elo": 0.025,
+        "civ_dur": 0.1,
+        "elo": 4.0
+      },
+      "elo_only_scale": 1.844,
+      "model_elo_scale": 1.842
     }
   },
   "one_vs_one": {
