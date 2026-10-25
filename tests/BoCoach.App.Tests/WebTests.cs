@@ -222,6 +222,23 @@ public sealed class WebTests : IDisposable
         Assert.Empty(dialogs.Errors);
     }
 
+    // BoCoach.exe --publish corre con la app abierta: la app no tiene que pisar los códigos que guardó.
+    [Fact]
+    public void Lo_que_guarda_otra_instancia_no_se_pisa()
+    {
+        var app = new WebAccount(new HttpClient(), SettingsPath);
+        app.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+        _ = app.Settings;
+
+        new WebAccount(new HttpClient(), SettingsPath).RememberPublished("bog-aztecs", "k7m2xq");
+        app.RememberPublished("scouts", "p3n4rd");
+
+        var saved = new WebAccount(new HttpClient(), SettingsPath).Settings.Published;
+        Assert.Equal("k7m2xq", saved["bog-aztecs"]);
+        Assert.Equal("p3n4rd", saved["scouts"]);
+        Assert.Equal("k7m2xq", app.Settings.Published["bog-aztecs"]);
+    }
+
     [Fact]
     public async Task Una_BO_con_errores_no_se_publica()
     {

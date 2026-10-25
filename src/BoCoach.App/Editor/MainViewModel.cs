@@ -241,24 +241,10 @@ public sealed partial class MainViewModel : ObservableObject
 
         var saved = SaveEditor()!;
         RefreshList();
-        var plan = _app.Planner.Simulate(saved);
-        var (feudal, castle) = (plan.ClickTime("feudal_age"), plan.ClickTime("castle_age"));
-        var code = _web.Settings.Published.GetValueOrDefault(saved.Id);
         Status = "Publicando en la web…";
         try
         {
-            PublishedBuildOrder published;
-            try
-            {
-                published = await _web.Client.PublishAsync(saved, _web.Settings.Token, feudal, castle, code);
-            }
-            catch (WebLibraryException e) when (code is not null && e.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
-            {
-                // La de la web se borró (o es de otra cuenta): se publica como nueva.
-                _web.ForgetPublished(saved.Id);
-                published = await _web.Client.PublishAsync(saved, _web.Settings.Token, feudal, castle);
-            }
-            _web.RememberPublished(saved.Id, published.Code);
+            var published = await _web.PublishAsync(saved, _app.Planner);
             Status = $"\"{saved.Name}\" publicada en la web con el código {published.Code}.";
             if (_dialogs.Confirm($"\"{saved.Name}\" quedó publicada con el código {published.Code}.\n\n¿Abrir su página en el navegador?"))
                 _dialogs.OpenUrl(published.Url);

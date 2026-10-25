@@ -1,9 +1,12 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Engine;
 using BoCoach.Core.Web;
 
 namespace BoCoach.App.Web;
@@ -39,7 +42,31 @@ public sealed class WebAccount(HttpClient http, string? path = null)
 
     public string FilePath { get; } = path ?? DefaultPath;
 
-    public WebSettings Settings { get; private set; } = Load(path ?? DefaultPath);
+    // La versión del archivo se toma antes de leerlo: si cambia en el medio, la próxima vez se relee.
+    private (DateTime, long) _loadedWrite = Version(path ?? DefaultPath);
+    private WebSettings _settings = Load(path ?? DefaultPath);
+
+    /// <summary>Hora y tamaño: dos escrituras seguidas pueden caer en la misma hora del disco.</summary>
+    private static (DateTime, long) Version(string path)
+    {
+        var file = new FileInfo(path);
+        return file.Exists ? (file.LastWriteTimeUtc, file.Length) : default;
+    }
+
+    /// <summary>
+    /// Lo guardado. Si otra instancia cambió el archivo (BoCoach.exe --publish con la app abierta), se relee: si no,
+    /// la app pisaría los códigos nuevos al guardar y volvería a publicar como nuevas las BO ya publicadas.
+    /// </summary>
+    public WebSettings Settings
+    {
+        get
+        {
+            var write = Version(FilePath);
+            if (write != _loadedWrite)
+                (_loadedWrite, _settings) = (write, Load(FilePath));
+            return _settings;
+        }
+    }
 
     public WebLibraryClient Client => new(http, Settings.BaseUri);
 
@@ -53,7 +80,30 @@ public sealed class WebAccount(HttpClient http, string? path = null)
         };
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
         File.WriteAllText(FilePath, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
-        Settings = settings;
+        (_loadedWrite, _settings) = (Version(FilePath), settings);
+    }
+
+    /// <summary>
+    /// Publica la BO en la web, o la reemplaza si ya se publicó desde esta PC (mantiene su código y sus votos). Si la
+    /// de la web se borró o es de otra cuenta, la publica como nueva. Los clics de edad los estima el Planner.
+    /// </summary>
+    public async Task<PublishedBuildOrder> PublishAsync(BuildOrder bo, Planner planner, CancellationToken cancel = default)
+    {
+        var plan = planner.Simulate(bo);
+        var (feudal, castle) = (plan.ClickTime("feudal_age"), plan.ClickTime("castle_age"));
+        var code = Settings.Published.GetValueOrDefault(bo.Id);
+        PublishedBuildOrder published;
+        try
+        {
+            published = await Client.PublishAsync(bo, Settings.Token, feudal, castle, code, cancel);
+        }
+        catch (WebLibraryException e) when (code is not null && e.Status is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            ForgetPublished(bo.Id);
+            published = await Client.PublishAsync(bo, Settings.Token, feudal, castle, cancel: cancel);
+        }
+        RememberPublished(bo.Id, published.Code);
+        return published;
     }
 
     /// <summary>Recuerda el código con que se publicó una BO local.</summary>
