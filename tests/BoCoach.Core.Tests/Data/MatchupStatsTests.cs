@@ -240,4 +240,15 @@ public class MatchupStatsTests
         Assert.False(tendencia.FavorsShort);
         Assert.Equal(0.46, tendencia.Short.P, 3);
     }
+
+    [Fact]
+    public void El_mapa_se_compara_sin_espacios_ni_mayusculas()
+    {
+        // La pantalla de carga lee el mapa como texto ("Black Forest"); en el archivo es la clave de data/maps.json.
+        var stats = MatchupStats.Parse(MatchupJson.Build(UnaPareja, UnaCiv));
+        Assert.Equal(3, stats.MapIndex("Black Forest"));
+        Assert.Equal(3, stats.MapIndex("BLACK-FOREST"));
+        Assert.Equal(2, stats.MapIndex("ARENA"));
+        Assert.Equal(0, stats.MapIndex("  "));
+    }
 }

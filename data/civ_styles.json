@@ -9,7 +9,17 @@
 //     piden algo distinto (manda sobre el del estilo).
 //   positions: qué estilos convienen en las puntas del equipo (flank) y en el medio (pocket), con 3 o más por
 //     equipo (suma 1).
+//   windows (D10): en qué duración de partida suele definirse cada estilo, en franjas de minutos de juego: 1 = menos
+//     de 20, 2 = de 20 a 30, 3 = de 30 a 40, 4 = de 40 a 55, 5 = 55 o más. Con las estadísticas reales de cruces, una
+//     BO suma hasta 2 puntos si su civ gana más que en general en esas franjas contra el rival de enfrente (y resta
+//     si gana menos).
 {
+  "windows": {
+    "archers": [1, 2],
+    "scouts": [1, 2],
+    "maa": [1, 2],
+    "fast_castle": [3, 4]
+  },
   "counters": {
     "scouts": ["archers", "fast_castle"],
     "archers": ["maa", "scouts"],

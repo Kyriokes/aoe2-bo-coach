@@ -139,12 +139,17 @@ public sealed class MatchupStats
     /// <summary>1 (menos de 20 minutos de juego) a 5 (55 o más). El borde va a la de arriba.</summary>
     public int DurationBand(TimeSpan gameTime) => 1 + GameMinuteLimits.Count(limit => gameTime.TotalMinutes >= limit);
 
-    /// <summary>1..4 para los mapas de <see cref="MapKeys"/>; 0 (todos los mapas) para los demás o sin mapa.</summary>
+    /// <summary>
+    /// 1..4 para los mapas de <see cref="MapKeys"/>; 0 (todos los mapas) para los demás o sin mapa. Compara solo letras
+    /// y dígitos: la pantalla de carga lee "Black Forest" y en el archivo es "black_forest".
+    /// </summary>
     public int MapIndex(string? map)
     {
-        var key = Key(map);
-        return key is null ? 0 : MapKeys.ToList().IndexOf(key) + 1;
+        var key = Flat(map);
+        return key.Length == 0 ? 0 : MapKeys.Select(Flat).ToList().IndexOf(key) + 1;
     }
+
+    private static string Flat(string? text) => new((text ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
 
     /// <summary>"antes de los 20 min", "de 20 a 30 min", ..., "después de los 55 min".</summary>
     public string DurationLabel(int band)

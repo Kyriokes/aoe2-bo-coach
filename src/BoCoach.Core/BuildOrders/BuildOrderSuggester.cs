@@ -25,18 +25,33 @@ public sealed class CivStyles
     private readonly IReadOnlyDictionary<string, string> _advice;
     private readonly IReadOnlyDictionary<string, string> _civAdvice;
     private readonly IReadOnlyDictionary<string, List<string>> _positions;
+    private readonly IReadOnlyDictionary<string, List<int>> _windows;
+
+    /// <summary>
+    /// D10: las franjas de duración típicas de cada estilo (1 = menos de 20 minutos de juego, 2 = de 20 a 30, 3 = de
+    /// 30 a 40, 4 = de 40 a 55, 5 = 55 o más), si el archivo no las dice.
+    /// </summary>
+    private static readonly Dictionary<string, List<int>> DefaultWindows = new()
+    {
+        ["archers"] = [1, 2],
+        ["scouts"] = [1, 2],
+        ["maa"] = [1, 2],
+        ["fast_castle"] = [3, 4],
+    };
 
     public CivStyles(IReadOnlyDictionary<string, List<string>> civs,
         IReadOnlyDictionary<string, List<string>>? counters = null,
         IReadOnlyDictionary<string, string>? advice = null,
         IReadOnlyDictionary<string, string>? civAdvice = null,
-        IReadOnlyDictionary<string, List<string>>? positions = null)
+        IReadOnlyDictionary<string, List<string>>? positions = null,
+        IReadOnlyDictionary<string, List<int>>? windows = null)
     {
         _civs = civs;
         _counters = counters ?? DefaultCounters;
         _advice = advice ?? new Dictionary<string, string>();
         _civAdvice = civAdvice ?? new Dictionary<string, string>();
         _positions = positions ?? new Dictionary<string, List<string>>();
+        _windows = windows ?? new Dictionary<string, List<int>>();
     }
 
     public static CivStyles Empty { get; } = new(new Dictionary<string, List<string>>());
@@ -61,8 +76,15 @@ public sealed class CivStyles
         if (root["civs"] is not JsonObject civs)
             return new(Lists(root)); // formato viejo: solo las civs
         return new(Lists(civs), root["counters"] is JsonObject c ? Lists(c) : null, Texts(root["advice"]), Texts(root["civ_advice"]),
-            root["positions"] is JsonObject p ? Lists(p) : null);
+            root["positions"] is JsonObject p ? Lists(p) : null, root["windows"] is JsonObject w ? Windows(w) : null);
     }
+
+    /// <summary>Las ventanas del archivo: listas de franjas de 1 a 5 (lo que no es un número de 1 a 5 se ignora).</summary>
+    private static Dictionary<string, List<int>> Windows(JsonObject json) => json
+        .Where(kv => kv.Value is JsonArray)
+        .ToDictionary(kv => kv.Key, kv => kv.Value!.AsArray()
+            .Select(n => n is JsonValue v && v.GetValueKind() == JsonValueKind.Number && v.TryGetValue<int>(out var band) ? band : 0)
+            .Where(band => band is >= 1 and <= 5).ToList());
 
     private static Dictionary<string, List<string>> Lists(JsonObject json) => json
         .Where(kv => kv.Value is JsonArray)
@@ -81,6 +103,10 @@ public sealed class CivStyles
 
     /// <summary>Si el estilo <paramref name="style"/> le gana a <paramref name="other"/> al principio.</summary>
     public bool Beats(string style, string other) => _counters.TryGetValue(style, out var beaten) && beaten.Contains(other);
+
+    /// <summary>D10: las franjas de duración típicas del estilo (vacío si no se conoce).</summary>
+    public IReadOnlyList<int> Window(string style) =>
+        _windows.TryGetValue(style, out var bands) ? bands : DefaultWindows.TryGetValue(style, out var fallback) ? fallback : [];
 
     /// <summary>Los estilos que convienen en esa posición del equipo.</summary>
     public IReadOnlyList<string> ForPosition(TeamPosition position) =>

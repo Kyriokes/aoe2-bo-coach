@@ -235,4 +235,35 @@ public class BuildOrderSuggesterTests
         Assert.True(suggestion.Score > BuildOrderSuggester.Score(Scouts, match, Small));
         Assert.Equal(0, BuildOrderSuggester.Score(Archers with { Civ = "otra" }, match, Small));
     }
+
+    [Fact]
+    public void Ventanas_por_defecto_y_del_archivo()
+    {
+        Assert.Equal([1, 2], CivStyles.Empty.Window("archers"));
+        Assert.Equal([1, 2], CivStyles.Empty.Window("maa"));
+        Assert.Equal([3, 4], CivStyles.Empty.Window("fast_castle"));
+        Assert.Empty(CivStyles.Empty.Window("dragones"));
+
+        var path = Path.Combine(Path.GetTempPath(), $"civ_styles_{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """{ "civs": { "franks": ["scouts"] }, "windows": { "archers": [2, 9, "x"], "scouts": "mal" } }""");
+        try
+        {
+            var styles = CivStyles.Load(path);
+            Assert.Equal([2], styles.Window("archers"));
+            Assert.Equal([1, 2], styles.Window("scouts"));
+            Assert.Equal([3, 4], styles.Window("fast_castle"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void El_archivo_del_repo_tiene_las_ventanas()
+    {
+        Assert.Equal([1, 2], Styles.Window("scouts"));
+        Assert.Equal([1, 2], Styles.Window("archers"));
+        Assert.Equal([3, 4], Styles.Window("fast_castle"));
+    }
 }
