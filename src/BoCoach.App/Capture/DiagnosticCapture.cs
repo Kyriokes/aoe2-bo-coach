@@ -31,7 +31,7 @@ public static class DiagnosticCapture
     /// <param name="playerName">El nombre puesto en la app, para marcar su renglón en la pantalla de carga.</param>
     public static async Task<DiagnosticFiles> SaveAsync(
         IScreenSource screen, RegionLayout saved, string savedPath, HudFonts fonts, GameLanguage language,
-        string folder, Func<string?> findGame, string profilesRoot, DateTime now, GameData? data = null, string? playerName = null)
+        string folder, Func<string?> findGame, string profilesRoot, DateTime now, GameData? data = null, string? playerName = null, HudLayout? hud = null)
     {
         var area = screen.CaptureArea;
         var image = screen.Capture(area);
@@ -62,10 +62,12 @@ public static class DiagnosticCapture
             ? $"Calibración guardada: {File.GetLastWriteTime(savedPath):yyyy-MM-dd HH:mm}, para {saved.ReferenceWidth}×{saved.ReferenceHeight}, HUD a escala {saved.HudScale:0.00}"
             : "Calibración guardada: ninguna (posiciones aproximadas)");
         RegionLayout layout;
-        if (AutoCalibration.Detect(image, saved) is { } found)
+        if (AutoCalibration.Detect(image, saved, hud) is { } found)
         {
-            Line($"Calibración sola: {found.Squares.Count} cuadrados y el reloj, HUD a escala {found.Scale:0.00}");
-            Line($"  cuadrados: {string.Join(" ", found.Squares.Select(Rect))}");
+            Line(found.Hud is { } design
+                ? $"Calibración sola: diseño {design.Name}, {found.Squares.Count} casilleros y el reloj, HUD a escala {found.Scale:0.00}"
+                : $"Calibración sola: {found.Squares.Count} cuadrados y el reloj, HUD a escala {found.Scale:0.00}");
+            Line($"  anclas: {string.Join(" ", found.Squares.Select(Rect))}");
             layout = found.Layout;
         }
         else

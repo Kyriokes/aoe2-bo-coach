@@ -179,7 +179,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         try
         {
             var files = await DiagnosticCapture.SaveAsync(_screen, Layout, _regionsPath, _fonts(), _language(), _diagnosticsFolder,
-                _findGame, _gameProfiles, DateTime.Now, _gameData(), _playerName());
+                _findGame, _gameProfiles, DateTime.Now, _gameData(), _playerName(), LayoutOrNull());
             DiagnosticStatus = $"Captura de diagnóstico guardada en {Path.GetDirectoryName(files.Image)} ({Path.GetFileNameWithoutExtension(files.Image)}): mandá esa carpeta.";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or InvalidDataException)
@@ -209,7 +209,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
             CalibrationStatus = $"No se pudo capturar la pantalla para calibrar sola: {e.Message}";
             return false;
         }
-        if (AutoCalibration.Detect(screen, Layout) is not { } found)
+        if (AutoCalibration.Detect(screen, Layout, LayoutOrNull()) is not { } found)
         {
             CalibrationStatus = IsCalibrated
                 ? $"No encontré el HUD del mod en la pantalla: sigue la calibración manual ({File.GetLastWriteTime(_regionsPath):d/M HH:mm})."
@@ -220,9 +220,24 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
             File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
         found.Layout.Save(_regionsPath);
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
-        CalibrationStatus = $"Calibrada sola para {area.Width}×{area.Height}: {found.Squares.Count} cuadrados y el reloj"
+        CalibrationStatus = (found.Hud is { } hud
+                ? $"Calibrada sola con el diseño {hud.Name} para {area.Width}×{area.Height}: {found.Squares.Count} casilleros y el reloj"
+                : $"Calibrada sola para {area.Width}×{area.Height}: {found.Squares.Count} cuadrados y el reloj")
             + (CapturedImage.NeedsResample(found.Scale) ? $", HUD a escala {found.Scale:0.00}" : "") + ".";
         return true;
+    }
+
+    /// <summary>El diseño del mod (data/hud_layout.json), o null si falta o está roto: la calibración sigue con el mod viejo.</summary>
+    private HudLayout? LayoutOrNull()
+    {
+        try
+        {
+            return _layout();
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>La vista lo llama cada segundo para actualizar el estado de la grabación.</summary>

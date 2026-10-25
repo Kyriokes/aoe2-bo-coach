@@ -1,4 +1,5 @@
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 
 namespace BoCoach.Vision.Regions;
 
@@ -6,7 +7,8 @@ namespace BoCoach.Vision.Regions;
 /// <param name="Scale">Tamaño del HUD respecto de 1920×1080 (1 = igual; las letras y los íconos están medidos a 1080p).</param>
 /// <param name="Squares">Los cuadrados del mod (madera, comida, oro, piedra, población, inactivos), de izquierda a derecha.</param>
 /// <param name="Clock">La caja del reloj.</param>
-public sealed record AutoCalibrationResult(RegionLayout Layout, double Scale, IReadOnlyList<PixelRect> Squares, PixelRect Clock);
+/// <param name="Hud">El diseño del mod con que se calibró (los casilleros son las anclas), o null con el mod viejo.</param>
+public sealed record AutoCalibrationResult(RegionLayout Layout, double Scale, IReadOnlyList<PixelRect> Squares, PixelRect Clock, HudLayout? Hud = null);
 
 /// <summary>
 /// Calibración sola, con el mod BoCoach HUD. Las anclas son las seis franjas de color de los cuadrados (marrón de la
@@ -22,8 +24,17 @@ public static class AutoCalibration
     /// <summary>Parte de arriba de la pantalla donde está el panel de recursos (a 1080p, 108 px: los cuadrados van de la fila 7 a la 43).</summary>
     private const double TopBand = 0.10;
 
-    /// <summary>Parte de la pantalla, desde la izquierda, donde entran los cuadrados, la edad y el reloj.</summary>
+    /// <summary>Parte de la pantalla, desde la izquierda, donde entran los cuadrados, la edad y el reloj (mod viejo).</summary>
     private const double LeftPart = 0.6;
+
+    /// <summary>Con el diseño la barra es más ancha: a escala 100 % los casilleros llegan al 40 % y el reloj al 75 %.</summary>
+    private const double LayoutLeftPart = 0.8;
+
+    /// <summary>Tolerancia de la calibración con el diseño, en píxeles a 1080p: cada casillero medido contra donde el diseño lo pone.</summary>
+    private const int LayoutTolerance = 3;
+
+    /// <summary>Hasta dónde se busca el rectángulo negro del reloj alrededor de donde el diseño lo predice, en píxeles a 1080p.</summary>
+    private const int ClockSearch = 40;
 
     /// <summary>Ancho de un cuadrado (y de su franja) a 1920×1080, medido en la grabación 20261018-132830.</summary>
     public const double ReferenceSquareWidth = 36;
@@ -59,9 +70,18 @@ public static class AutoCalibration
     private const int BottomMargin = 3;
     private const int Gap = 4;
 
-    public static AutoCalibrationResult? Detect(CapturedImage screen, RegionLayout reference)
+    /// <param name="layout">El diseño del mod nuevo: con él se prueban primero los casilleros; si no están, las seis franjas del mod viejo.</param>
+    public static AutoCalibrationResult? Detect(CapturedImage screen, RegionLayout reference, HudLayout? layout = null)
     {
-        var strip = Strip(screen);
+        if (layout is not null && DetectLayout(screen, reference, layout) is { } withLayout)
+            return withLayout;
+        return DetectBands(screen, reference);
+    }
+
+    /// <summary>El mod viejo: seis franjas de color sobre cuadrados negros.</summary>
+    private static AutoCalibrationResult? DetectBands(CapturedImage screen, RegionLayout reference)
+    {
+        var strip = Strip(screen, LeftPart);
         var bands = FindBands(strip);
         if (bands is null)
             return null;
@@ -90,6 +110,95 @@ public static class AutoCalibration
         }
         boxes[RegionNames.Clock] = new PixelRect(clockText.X - topMargin, clockText.Y - topMargin, Scaled((int)ReferenceClockWidth, scale), clockText.Height + 2 * topMargin);
         boxes[RegionNames.Age] = new PixelRect(age.X - 3 * topMargin, age.Y - 2 * topMargin, age.Width + 6 * topMargin, age.Height + 4 * topMargin);
+        return Finish(screen, reference, boxes, scale, squares, null);
+    }
+
+    /// <summary>
+    /// El mod nuevo: los casilleros de color del diseño son las anclas. Factor píxeles por unidad = mediana de los
+    /// anchos medidos sobre los del diseño; origen de la barra = mediana de lo que cada casillero dista de su lugar.
+    /// Si un casillero no cae donde el diseño lo pone (a 3 px a 1080p, o con otro ancho), no hay detección.
+    /// </summary>
+    private static AutoCalibrationResult? DetectLayout(CapturedImage screen, RegionLayout reference, HudLayout layout)
+    {
+        var strip = Strip(screen, LayoutLeftPart);
+        var rects = EvenRects(strip);
+        var anchors = new List<(HudCell Cell, PixelRect Rect)>();
+        foreach (var cell in layout.Anchors)
+        {
+            var color = cell.Chip!.Color.Captured;
+            var candidates = rects.Where(r => Within(r.Color, color, ColorTolerance)).ToList();
+            if (candidates.Count == 0)
+                return null;
+            // El más ancho es el casillero (o su parte libre: la GD de la app lo parte en varios rectángulos del mismo ancho).
+            var widest = candidates.MaxBy(r => r.Rect.Width);
+            var same = candidates.Where(r => Math.Abs(r.Rect.X - widest.Rect.X) <= 2 && Math.Abs(r.Rect.X + r.Rect.Width - widest.Rect.X - widest.Rect.Width) <= 2).ToList();
+            var top = same.Min(r => r.Rect.Y);
+            var bottom = same.Max(r => r.Rect.Y + r.Rect.Height);
+            (top, bottom) = Extend(strip, widest.Rect.X + 1, widest.Rect.X + widest.Rect.Width - 2, top, bottom, widest.Color);
+            anchors.Add((cell, new PixelRect(widest.Rect.X, top, widest.Rect.Width, bottom - top)));
+        }
+        var factor = Median(anchors.Select(a => (double)a.Rect.Width / a.Cell.Chip!.Width));
+        if (factor <= 0)
+            return null;
+        var originX = Median(anchors.Select(a => a.Rect.X - (a.Cell.X + a.Cell.Chip!.X) * factor));
+        var originY = Median(anchors.Select(a => a.Rect.Y - a.Cell.Chip!.Y * factor));
+        var scale = factor / layout.PixelsPerUnitAt1080p;
+        var tolerance = Math.Max(1, Scaled(LayoutTolerance, scale));
+        foreach (var (cell, rect) in anchors)
+        {
+            var chip = cell.Chip!;
+            if (Math.Abs(rect.X - (originX + (cell.X + chip.X) * factor)) > tolerance
+                || Math.Abs(rect.Y - (originY + chip.Y * factor)) > tolerance
+                || Math.Abs(rect.Width - chip.Width * factor) > 0.1 * chip.Width * factor)
+                return null;
+        }
+
+        PixelRect Box(UnitRect r) => new(
+            (int)Math.Round(originX + r.X * factor), (int)Math.Round(originY + r.Y * factor), (int)Math.Round(r.Width * factor), (int)Math.Round(r.Height * factor));
+        var boxes = new Dictionary<string, PixelRect>();
+        foreach (var cell in layout.Cells)
+            boxes[HudLayout.RegionOf(cell.Name)] = cell.Name == "age" ? Box(layout.AgeTextRect()) : Box(layout.CellRect(cell));
+        boxes[RegionNames.Clock] = ClockBox(screen, Box(layout.ClockRect()), Scaled(ClockSearch, scale));
+        return Finish(screen, reference, boxes, scale, anchors.Select(a => a.Rect).ToList(), layout);
+    }
+
+    /// <summary>
+    /// El reloj está en otro panel del juego y su ancla puede no caer exactamente donde el diseño lo predice: se busca
+    /// la primera columna con el 80 % de negro puro en las filas del reloj, hasta <paramref name="search"/> px a cada lado.
+    /// </summary>
+    private static PixelRect ClockBox(CapturedImage screen, PixelRect predicted, int search)
+    {
+        var top = predicted.Y + 2;
+        var height = predicted.Height - 4;
+        if (height <= 0 || top < 0 || top + height > screen.Height)
+            return predicted;
+        for (var x = Math.Max(0, predicted.X - search); x <= Math.Min(screen.Width - 1, predicted.X + search); x++)
+        {
+            var black = 0;
+            for (var y = top; y < top + height; y++)
+            {
+                var (r, g, b) = screen.Pixel(x, y);
+                if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
+                    black++;
+            }
+            if (black >= height * 0.8)
+                return predicted with { X = x };
+        }
+        return predicted;
+    }
+
+    private static double Median(IEnumerable<double> values)
+    {
+        var sorted = values.Order().ToList();
+        return sorted.Count == 0 ? 0 : sorted[sorted.Count / 2];
+    }
+
+    private static bool Within((int R, int G, int B) a, (int R, int G, int B) b, int tolerance) =>
+        Math.Abs(a.R - b.R) <= tolerance && Math.Abs(a.G - b.G) <= tolerance && Math.Abs(a.B - b.B) <= tolerance;
+
+    /// <summary>Lo común a los dos caminos: cola de producción, log y puntajes, y el RegionLayout.</summary>
+    private static AutoCalibrationResult Finish(CapturedImage screen, RegionLayout reference, Dictionary<string, PixelRect> boxes, double scale, IReadOnlyList<PixelRect> squares, HudLayout? hud)
+    {
         var referenceQueue = reference.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
         boxes[RegionNames.ProductionQueue] = new PixelRect(
             Scaled(referenceQueue.X, scale), Scaled(referenceQueue.Y, scale), Scaled(referenceQueue.Width, scale), Scaled(referenceQueue.Height, scale));
@@ -109,15 +218,15 @@ public static class AutoCalibration
                 ? new RegionRect((double)box.X / screen.Width, (double)box.Y / screen.Height, (double)box.Width / screen.Width, (double)box.Height / screen.Height).Clamped()
                 : reference.Regions[name];
         }
-        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions, scale), scale, squares, boxes[RegionNames.Clock]);
+        return new AutoCalibrationResult(new RegionLayout(screen.Width, screen.Height, regions, scale, hud), scale, squares, boxes[RegionNames.Clock], hud);
     }
 
     /// <summary>Para diagnosticar: cada rectángulo de color parejo de la franja de arriba y a qué franja del mod se parece (o null).</summary>
     public static IReadOnlyList<(PixelRect Rect, string? Band, (int R, int G, int B) Color)> Candidates(CapturedImage screen) =>
-        [.. EvenRects(Strip(screen)).Select(r => (r.Rect, BandOf(r.Color)?.Region, r.Color))];
+        [.. EvenRects(Strip(screen, LayoutLeftPart)).Select(r => (r.Rect, BandOf(r.Color)?.Region, r.Color))];
 
-    private static CapturedImage Strip(CapturedImage screen) =>
-        screen.Crop(new PixelRect(0, 0, Math.Max(1, (int)(screen.Width * LeftPart)), Math.Max(1, (int)(screen.Height * TopBand))));
+    private static CapturedImage Strip(CapturedImage screen, double leftPart) =>
+        screen.Crop(new PixelRect(0, 0, Math.Max(1, (int)(screen.Width * leftPart)), Math.Max(1, (int)(screen.Height * TopBand))));
 
     /// <summary>
     /// Las seis franjas, de izquierda a derecha, o null si no están. La GD del overlay se dibuja dentro de la franja y

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 using BoCoach.Vision.Regions;
 
 namespace BoCoach.Vision.Tests;
@@ -126,5 +127,105 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         var screen = Composite(boxes.Where(b => b.Key == RegionNames.Clock).ToDictionary());
 
         Assert.Null(AutoCalibration.Detect(screen, RegionLayout.Default));
+    }
+
+    // ---- Con el diseño (data/hud_layout.json): las anclas son los cinco casilleros de color ----
+
+    private static readonly HudLayout Layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
+
+    private static readonly Dictionary<string, PixelRect> LayoutBoxes = new()
+    {
+        [RegionNames.Wood] = new(6 + 4, 4, 176, 46),
+        [RegionNames.Population] = new(6 + 707, 4, 163, 46),
+        [RegionNames.IdleVillagers] = new(6 + 870, 4, 81, 46),
+        [RegionNames.Age] = new(6 + 996, 4 + 12, 162, 22),
+        [RegionNames.Clock] = new(6 + 1172, 4 + 5, 99, 36),
+    };
+
+    [Fact]
+    public void Con_el_diseno_encuentra_los_cinco_casilleros_y_arma_las_cajas_desde_el_diseno()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal("bocoach-2026-10", found.Hud!.Name);
+        Assert.Equal(5, found.Squares.Count);
+        Assert.Equal(1.0, found.Scale, 0.03);
+        foreach (var (name, expected) in LayoutBoxes)
+        {
+            var actual = found.Layout.PixelsOf(name, screen.Width, screen.Height);
+            output.WriteLine($"{name,-15} esperado {expected}  sola {actual}");
+            AssertClose(expected, actual, name == RegionNames.Clock ? 3 : 2, name);
+        }
+        Assert.Equal("bocoach-2026-10", found.Layout.Hud!.Name);
+        Assert.Equal(found.Scale, found.Layout.HudScale);
+    }
+
+    [Fact]
+    public void A_escala_1_5_lo_mismo_al_1_5()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.6429, 2880, 1620, originX: 9, originY: 6);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal(1.5, found.Scale, 0.05);
+        foreach (var (name, box) in LayoutBoxes)
+        {
+            var expected = new PixelRect((int)Math.Round(box.X * 1.5), (int)Math.Round(box.Y * 1.5), (int)Math.Round(box.Width * 1.5), (int)Math.Round(box.Height * 1.5));
+            AssertClose(expected, found.Layout.PixelsOf(name, screen.Width, screen.Height), 3, name);
+        }
+    }
+
+    [Fact]
+    public void Con_la_GD_dibujada_adentro_de_los_casilleros_encuentra_lo_mismo()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4, gdInside: true);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal(5, found.Squares.Count);
+        foreach (var (name, expected) in LayoutBoxes)
+            AssertClose(expected, found.Layout.PixelsOf(name, screen.Width, screen.Height), name == RegionNames.Clock ? 3 : 2, name);
+    }
+
+    [Fact]
+    public void Sin_los_casilleros_del_diseno_cae_a_la_deteccion_del_mod_viejo()
+    {
+        var boxes = RecordedBoxes();
+        var screen = Composite(boxes);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Null(found.Hud);
+        Assert.Null(found.Layout.Hud);
+        Assert.Equal(6, found.Squares.Count);
+        foreach (var name in Anchored)
+            AssertClose(boxes[name], found.Layout.PixelsOf(name, screen.Width, screen.Height), 3, name);
+    }
+
+    [Fact]
+    public void Un_casillero_corrido_no_calibra()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4);
+        // El casillero de piedra pintado 12 px más a la derecha (el original, tapado con el gris de la barra).
+        var stone = Layout.Cell("stone");
+        var chip = Layout.ChipRect(stone, new PixelRect(6 + (int)Math.Round(stone.X * 0.4286), 4, 176, 46));
+        var color = stone.Chip!.Color.Captured;
+        for (var y = chip.Y; y < chip.Y + chip.Height; y++)
+        {
+            for (var x = chip.X; x < chip.X + chip.Width + 12; x++)
+            {
+                var i = (y * screen.Width + x) * 4;
+                var moved = x >= chip.X + 12;
+                (screen.Bgra[i], screen.Bgra[i + 1], screen.Bgra[i + 2]) = moved ? ((byte)color.B, (byte)color.G, (byte)color.R) : ((byte)26, (byte)26, (byte)26);
+            }
+        }
+
+        Assert.Null(AutoCalibration.Detect(screen, RegionLayout.Default, Layout));
     }
 }

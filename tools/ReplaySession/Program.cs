@@ -554,14 +554,16 @@ static async Task<int> Loading(string screenshot, string[] args)
 static int AutoCalibrate(string screenshot, string[] args)
 {
     var screen = Png.Read(screenshot);
-    if (AutoCalibration.Detect(screen, RegionLayout.Default) is not { } found)
+    var layoutPath = Text(args, "--layout", Path.Combine("data", HudLayout.FileName));
+    var layout = File.Exists(layoutPath) ? HudLayout.Load(layoutPath) : null;
+    if (AutoCalibration.Detect(screen, RegionLayout.Default, layout) is not { } found)
     {
         Console.WriteLine($"No encontré el HUD del mod en {screenshot} ({screen.Width}×{screen.Height}). Rectángulos de color parejo de la franja de arriba:");
         foreach (var (rect, band, color) in AutoCalibration.Candidates(screen))
             Console.WriteLine($"  x {rect.X,5} y {rect.Y,4} {rect.Width,4}×{rect.Height,-4} color {color.R},{color.G},{color.B} franja {band ?? "-"}");
         return 1;
     }
-    Console.WriteLine($"{screen.Width}×{screen.Height}: {found.Squares.Count} cuadrados y el reloj; HUD a escala {found.Scale:0.00} respecto de 1080p.");
+    Console.WriteLine($"{screen.Width}×{screen.Height}: {(found.Hud is { } hud ? $"diseño {hud.Name}, {found.Squares.Count} casilleros" : $"mod viejo, {found.Squares.Count} cuadrados")} y el reloj; HUD a escala {found.Scale:0.00} respecto de 1080p.");
     foreach (var name in RegionNames.All)
     {
         var r = found.Layout.PixelsOf(name, screen.Width, screen.Height);
