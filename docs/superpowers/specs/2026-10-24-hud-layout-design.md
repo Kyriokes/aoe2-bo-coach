@@ -140,10 +140,12 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   barra; `PopulationCount` conserva sus tres estados de color (blanco, rojo al tope, amarillo) a 48 pt. `Idle` (botón) queda con sus materiales originales (ícono, hover,
   pressed) en la posición del ícono. `AgeUp` y `AgeBar` en la posición de la celda de edad. `PopulationFlash` sobre el
   campo "N/M". Los hijos nunca salen de los límites de su padre (si el juego recorta hijos, no se nota).
-- Reloj: el fondo negro (`BoCoachClockBackground`) y el `WorldTimerLabel` toman el tamaño y la letra del diseño; la
-  colección se corre para que el reloj quede a `gap` del final de la barra y el `Anchor` del original (1700) se pone
-  en 0: el ancla se suma a la colección (verificado el 2026-10-24: con las dos el reloj caía fuera de la pantalla;
-  XavilUI hace lo mismo).
+- Reloj: el fondo negro (`BoCoachClockBackground`) y el `WorldTimerLabel` toman el tamaño y la letra del diseño; el
+  `Anchor` del original (1700) pasa a `bar.width + gap` (2734) y la colección queda en su origen (0, 0). Verificado en
+  el juego (2026-10-24 y 25): el ancla se mide en unidades del HUD, como la barra (1700 = 737 px con el HUD del
+  usuario a 0,4348), pero el origen de la colección se mide en unidades de pantalla (3840 de ancho: 2734 = 1367 px),
+  así que corriendo la colección el reloj quedaba 178 px a la derecha de la barra, y sumando las dos caía fuera de la
+  pantalla. XavilUI y Custom UI corren sus colecciones con valores de pantalla porque ubican el reloj en un lugar fijo.
 - Sigue instalando en todos los perfiles con carpeta `mods`, avisando de mods activos con más prioridad que toquen
   los dos paneles, y es idempotente por construcción (siempre parte del original).
 - `ReplaySession hud-preview <salida.png> [--layout archivo] [--scale 1]` dibuja el diseño como imagen (barra,
@@ -211,7 +213,8 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   - `HudLayoutTests` (Vision.Tests): carga de `data/hud_layout.json`, celdas sin solaparse y dentro de la barra, campos
     dentro de su celda, `FieldRect` a escala 1 y 1,5, errores claros ante un JSON roto.
   - `HudModTests` (App.Tests, reescritos): widgets originales conservados con sus `Help`, posiciones según el diseño,
-    estados del fondo en `None` y la barra lisa como primer hijo, fondos negros hermanos, ancla del reloj en 0, los
+    estados del fondo en `None` y la barra lisa como primer hijo, fondos negros hermanos, ancla del reloj al final de
+    la barra con la colección en su origen, los
     tres estados del "N/M", `PopulationFlash` sobre "N/M", aplicarlo dos veces da lo mismo, instala en cada perfil.
   - `AutoCalibrationTests`: una pantalla sintética dibujada desde el diseño (casilleros y fondos exactos, números
     cualquiera) a escala 1 y 1,5 → cajas a ±2 px; sigue el test del mod viejo con `hud-20261018-132830` y la pantalla
@@ -239,7 +242,9 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
 
 - ~~El "/" como `Label` con texto fijo~~ Verificado el 2026-10-24: el juego lo dibuja. (Si hiciera falta, el
   separador puede ser una barrita gris vertical: `separator.text` null → `Base` de 4 unidades.)
-- ~~El ancla del reloj~~ Verificado: se suma a la colección; queda en 0 (sección 4).
+- ~~El ancla del reloj~~ Verificado: ancla en unidades del HUD, origen de la colección en unidades de pantalla; el
+  reloj se ubica con el ancla (sección 4). El detector igual busca su negro en toda la franja a la derecha de la
+  barra (sección 5), por si otro mod o escala lo corre.
 - Lo que enseñó la primera prueba (2026-10-24, grabación 20261024-224921): un `FlatColorWithAlpha` en los
   `UserState` por civ no se dibuja (los estados van en `None` y la barra lisa es un hijo con `StateNormal`); los
   planos se suman por jerarquía, así que los fondos negros van como hermanos del contenedor; la escala real del HUD
