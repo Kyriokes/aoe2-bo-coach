@@ -83,9 +83,12 @@ public class GameReportTests
         var report = Simple with { Matchup = cruce };
 
         var summary = GameReportText.Summary(report);
-        Assert.Equal(cruce, summary.TakeLast(2));
+        Assert.Equal(["El cruce: " + cruce[0], cruce[1]], summary.TakeLast(2));
+        // En la página, su propia sección "El cruce" (spec D10, 5.4), no repetido en el resumen.
         var html = GameReportText.Html(report, new DateTime(2026, 10, 25, 21, 0, 0));
+        Assert.Contains("<h2>El cruce</h2>", html);
         Assert.Contains($"<li>{System.Net.WebUtility.HtmlEncode(cruce[0])}</li>", html); // la "á" va como entidad
+        Assert.DoesNotContain(System.Net.WebUtility.HtmlEncode("El cruce: "), html);
     }
 
     [Fact]
