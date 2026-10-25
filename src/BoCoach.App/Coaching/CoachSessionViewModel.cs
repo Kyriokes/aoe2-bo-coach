@@ -321,8 +321,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>Segundos sin reloj para bajar el overlay (la pantalla de carga se lee después: ver LiveCoach).</summary>
-    public const double LoweredAfterSeconds = 0.5;
+    /// <summary>
+    /// Segundos sin reloj para bajar el overlay (la pantalla de carga se lee antes: ver LiveCoach). Con medio segundo,
+    /// una captura sin leer cada tanto lo hacía saltar de arriba a abajo (tercera prueba del HUD propio, 2026-10-25).
+    /// </summary>
+    public const double LoweredAfterSeconds = 2;
 
     /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
     public const double SuggestionSeconds = 60;

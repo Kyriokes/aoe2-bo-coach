@@ -152,7 +152,12 @@ public sealed class CoachSessionTests : IDisposable
             PlayerName = "Kyriokes",
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < 2; i++)
+            await session.LiveCoach!.StepAsync();
+        // Un segundo sin reloj no mueve el overlay: una captura sin leer cada tanto lo hacía saltar de arriba a abajo
+        // (tercera prueba del HUD propio, 2026-10-25, con la caja del reloj justa).
+        Assert.False(host.Lowered);
+        for (var i = 0; i < 4; i++)
             await session.LiveCoach!.StepAsync();
 
         Assert.True(host.Lowered); // sin reloj, el overlay baja
