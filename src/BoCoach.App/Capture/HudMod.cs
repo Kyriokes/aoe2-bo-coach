@@ -117,9 +117,11 @@ public static class HudMod
         var background = collection["Widgets"]!.AsArray()[0]!["Widget"]!.AsObject();
         StripOurs(background);
         background["ViewPort"] = View(0, 0, bar.Width, bar.Height);
+        // La textura de la civ se apaga en sus nueve estados; la barra lisa es un hijo con material normal: un color
+        // liso puesto en los estados por civ no se dibujó en el juego y se veía la textura (20261024-224921).
         var states = new JsonObject { ["UserStates"] = 9 };
         for (var i = 0; i < 9; i++)
-            states[$"UserState{i}"] = Flat(bar.Background);
+            states[$"UserState{i}"] = None();
         background["StateMaterials"] = states;
 
         var entries = Detach(background);
@@ -131,6 +133,14 @@ public static class HudMod
 
         var children = new JsonArray
         {
+            Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = $"{Ours}Bar",
+                ["ViewPort"] = View(0, 0, bar.Width, bar.Height),
+                ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.Background) },
+                ["ChildWidgets"] = new JsonArray(),
+            }),
             Border("Top", 0, 0, bar.Width, bar.BorderWidth, bar),
             Border("Bottom", 0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth, bar),
             Border("Left", 0, 0, bar.BorderWidth, bar.Height, bar),

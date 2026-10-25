@@ -197,8 +197,13 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(44, Points(ageText));
     }
 
+    /// <summary>
+    /// El fondo del juego (la textura de la civ) se apaga en sus nueve estados y la barra lisa es un hijo propio con
+    /// material normal: en el juego, un color liso puesto en los estados por civ no se dibujó y se vio la textura
+    /// (20261024-224921). Los colores lisos con StateNormal (casilleros, bordes) sí se dibujan.
+    /// </summary>
     [Fact]
-    public void El_fondo_es_liso_en_los_nueve_estados_y_la_barra_mide_lo_del_diseno()
+    public void El_fondo_del_juego_se_apaga_y_la_barra_lisa_es_el_primer_hijo()
     {
         var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
@@ -208,10 +213,13 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((0, 0, 2720, 108), View(background));
         Assert.Equal(9, (int)background["StateMaterials"]!["UserStates"]!);
         foreach (var state in new[] { "UserState0", "UserState8" })
-        {
-            Assert.Equal("FlatColorWithAlpha", Material(background, state));
-            Assert.Equal(0.1, (double)background["StateMaterials"]![state]!["Color"]!["r"]!, 2);
-        }
+            Assert.Equal("None", Material(background, state));
+        var bar = Children(background)[0];
+        Assert.Equal("BoCoachBar", (string?)bar["Name"]);
+        Assert.Equal((0, 0, 2720, 108), View(bar));
+        Assert.Equal("FlatColorWithAlpha", Material(bar));
+        Assert.Equal(0.1, (double)bar["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
+        Assert.Null(bar["ZPlaneLocalOffset"]);
         Assert.Equal((0, 0, 2720, 2), View(Widget(panel, "BoCoachBorderTop")));
         Assert.Equal((0, 106, 2720, 2), View(Widget(panel, "BoCoachBorderBottom")));
         Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
