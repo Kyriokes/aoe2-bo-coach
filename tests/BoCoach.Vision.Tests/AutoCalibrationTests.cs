@@ -258,6 +258,26 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     /// <summary>
+    /// El reloj está en otro panel del juego y puede no caer donde el diseño lo predice: en la segunda prueba del
+    /// 2026-10-24 cayó 178 px a la derecha (el origen de su colección se mide en unidades de pantalla, no del HUD).
+    /// Su rectángulo negro se busca en toda la franja a la derecha de la barra, no solo a 40 px.
+    /// </summary>
+    [Fact]
+    public void Con_el_reloj_lejos_de_donde_el_diseno_lo_predice_lo_encuentra_igual()
+    {
+        const double ppu = 0.4348;
+        const int shift = 178;
+        var screen = HudLayoutScreens.Render(Layout, ppu, clockShift: shift);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        var clock = Layout.ClockRect();
+        var expected = new PixelRect((int)Math.Round(clock.X * ppu) + shift, (int)Math.Round(clock.Y * ppu), (int)Math.Round(clock.Width * ppu), (int)Math.Round(clock.Height * ppu));
+        AssertClose(expected, found.Clock, 2, "clock");
+    }
+
+    /// <summary>
     /// El aviso de inactivos del overlay es un marco rojo alrededor de la celda de inactivos, de un rojo a menos de 45
     /// por canal del casillero de comida y más ancho que él: no puede ganarle el lugar de ancla (su alto no es el de
     /// un casillero).

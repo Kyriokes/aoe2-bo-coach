@@ -26,9 +26,10 @@ internal static class HudLayoutScreens
     /// verde, barra, borde, casilleros, fondos negros, cuadrados grises por ícono, tres rayas blancas en cada campo
     /// (números cualquiera) y el rectángulo negro del reloj. Con <paramref name="gdInside"/>, la GD de la app tapa el
     /// medio de cada casillero (negro, dejando <see cref="GdMargin"/> px de borde). Con <paramref name="idleFrame"/>, el
-    /// aviso de inactivos del overlay: un marco rojo de 3 px alrededor de la celda de inactivos.
+    /// aviso de inactivos del overlay: un marco rojo de 3 px alrededor de la celda de inactivos. <paramref name="clockShift"/>
+    /// corre el reloj esa cantidad de píxeles respecto de donde el diseño lo pone (está en otro panel del juego).
     /// </summary>
-    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false)
+    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0)
     {
         var canvas = new Canvas(width, height, Grass);
         PixelRect Rect(int x, int y, int w, int h) => new(originX + Px(x, pixelsPerUnit), originY + Px(y, pixelsPerUnit), Px(w, pixelsPerUnit), Px(h, pixelsPerUnit));
@@ -46,7 +47,8 @@ internal static class HudLayoutScreens
             canvas.Fill(new PixelRect(r.X + r.Width - thick, r.Y, thick, r.Height), IdleFrameRed);
         }
         var clock = layout.ClockRect();
-        canvas.Fill(Rect(clock.X, clock.Y, clock.Width, clock.Height), Black);
+        var clockRect = Rect(clock.X, clock.Y, clock.Width, clock.Height);
+        canvas.Fill(clockRect with { X = clockRect.X + clockShift }, Black);
         return canvas.Image;
     }
 

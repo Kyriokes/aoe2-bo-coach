@@ -178,8 +178,11 @@ public static class AutoCalibration
     }
 
     /// <summary>
-    /// El reloj está en otro panel del juego y su ancla puede no caer exactamente donde el diseño lo predice: se busca
-    /// la primera columna con el 80 % de negro puro en las filas del reloj, hasta <paramref name="search"/> px a cada lado.
+    /// El reloj está en otro panel del juego y puede no caer donde el diseño lo predice (el origen de su colección se
+    /// mide en unidades de pantalla; en la segunda prueba del 2026-10-24 cayó 178 px a la derecha): se busca la primera
+    /// columna con el 80 % de negro puro en las filas del reloj, desde <paramref name="search"/> px a la izquierda de lo
+    /// predicho hasta el borde derecho de la pantalla, y la mitad izquierda del rectángulo tiene que ser negra en su
+    /// mayor parte (el texto del reloj tapa una parte; una raya negra suelta no alcanza).
     /// </summary>
     private static PixelRect ClockBox(CapturedImage screen, PixelRect predicted, int search)
     {
@@ -187,7 +190,7 @@ public static class AutoCalibration
         var height = predicted.Height - 4;
         if (height <= 0 || top < 0 || top + height > screen.Height)
             return predicted;
-        for (var x = Math.Max(0, predicted.X - search); x <= Math.Min(screen.Width - 1, predicted.X + search); x++)
+        int BlackRows(int x)
         {
             var black = 0;
             for (var y = top; y < top + height; y++)
@@ -196,11 +199,24 @@ public static class AutoCalibration
                 if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
                     black++;
             }
-            if (black >= height * 0.8)
+            return black;
+        }
+        var half = Math.Max(1, predicted.Width / 2);
+        for (var x = Math.Max(0, predicted.X - search); x <= screen.Width - half; x++)
+        {
+            if (BlackRows(x) < height * 0.8)
+                continue;
+            var total = 0;
+            for (var dx = 0; dx < half; dx++)
+                total += BlackRows(x + dx);
+            if (total >= ClockRectBlack * half * height)
                 return predicted with { X = x };
         }
         return predicted;
     }
+
+    /// <summary>Parte de la mitad izquierda del rectángulo del reloj que tiene que ser negro puro.</summary>
+    private const double ClockRectBlack = 0.4;
 
     /// <summary>Alto sobre ancho a un cuarto del del casillero del diseño.</summary>
     private static bool ChipShaped(PixelRect rect, HudChip chip) =>
