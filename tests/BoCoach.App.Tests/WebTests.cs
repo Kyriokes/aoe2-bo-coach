@@ -240,6 +240,49 @@ public sealed class WebTests : IDisposable
     }
 
     [Fact]
+    public async Task Publicar_una_carpeta_publica_cada_BO_y_la_segunda_vez_las_reemplaza()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_dir.FullName, "civs")).FullName;
+        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
+        File.WriteAllText(Path.Combine(folder, "a.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-a", Name = "A" }));
+        File.WriteAllText(Path.Combine(folder, "b.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-b", Name = "B" }));
+        File.WriteAllText(Path.Combine(folder, "rota.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-rota", Name = "Rota", Steps = [] }));
+        var web = new FakeWeb();
+        var codes = new Queue<string>(["aaaaaa", "bbbbbb"]);
+        web.Respond = r => r.Method == HttpMethod.Post
+            ? (HttpStatusCode.Created, $$"""{ "code": "{{codes.Peek()}}", "url": "https://bo.example/bo/{{codes.Dequeue()}}" }""")
+            : (HttpStatusCode.OK, $$"""{ "code": "{{r.RequestUri!.Segments[^1]}}", "url": "https://bo.example/bo/{{r.RequestUri!.Segments[^1]}}" }""");
+        var account = new WebAccount(new HttpClient(web), SettingsPath);
+        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+
+        var first = new StringWriter();
+        Assert.Equal(1, await BulkPublish.RunAsync(_data, account, folder, dryRun: false, first));
+        var second = new StringWriter();
+        Assert.Equal(1, await BulkPublish.RunAsync(_data, new WebAccount(new HttpClient(web), SettingsPath), folder, dryRun: false, second));
+
+        Assert.Equal([(HttpMethod.Post, "/api/bo"), (HttpMethod.Post, "/api/bo"), (HttpMethod.Put, "/api/bo/aaaaaa"), (HttpMethod.Put, "/api/bo/bbbbbb")],
+            web.Requests.Select(r => (r.Method, r.Path)));
+        Assert.Equal("aaaaaa", account.Settings.Published["bog-a"]);
+        Assert.Contains("✗ rota.json: tiene errores", first.ToString());
+        Assert.Contains("2 nuevas, 0 reemplazadas, 1 con problemas.", first.ToString());
+        Assert.Contains("0 nuevas, 2 reemplazadas, 1 con problemas.", second.ToString());
+    }
+
+    [Fact]
+    public async Task Publicar_una_carpeta_sin_cuenta_no_manda_nada()
+    {
+        var web = new FakeWeb();
+        var output = new StringWriter();
+
+        var result = await BulkPublish.RunAsync(_data, new WebAccount(new HttpClient(web), SettingsPath),
+            Path.Combine(CoachData.DataDir, "build_orders"), dryRun: false, output);
+
+        Assert.Equal(2, result);
+        Assert.Empty(web.Requests);
+        Assert.Contains("Cuenta de la web", output.ToString());
+    }
+
+    [Fact]
     public async Task Una_BO_con_errores_no_se_publica()
     {
         var (vm, web, dialogs, account) = Editor();

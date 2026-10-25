@@ -27,6 +27,13 @@ public partial class App : Application
         var screenshot = Argument(args, "--screenshot") ?? Argument(args, "--overlay-screenshot");
         var importLink = Argument(args, "--import");
 
+        // Publicar una carpeta de BO no abre ventanas: puede correr con la app abierta (ver BulkPublish).
+        if (Argument(args, "--publish") is { } publish)
+        {
+            Shutdown(PublishFolder(publish, args.Contains("--dry-run")));
+            return;
+        }
+
         // Una sola app por usuario: si ya hay una abierta, se le pasa el enlace bocoach:// (o que se muestre) y esta cierra.
         if (screenshot is null)
         {
@@ -91,6 +98,31 @@ public partial class App : Application
             return;
         }
         CaptureAndExit(window, data, screenshot, Argument(args, "--bo"), Argument(args, "--open"), Argument(args, "--select"));
+    }
+
+    /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>
+    private static int PublishFolder(string source, bool dryRun)
+    {
+        // Biblioteca temporal: los datos del juego hacen falta para validar y simular, la biblioteca del usuario no.
+        var library = Directory.CreateTempSubdirectory("bocoach-publish-");
+        // Sin consola, Console.Out escribe con la página de códigos de Windows y rompe los acentos.
+        using var output = new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true };
+        try
+        {
+            var data = CoachData.Load(library.FullName);
+            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+            // Task.Run: sin el contexto de WPF, esperar acá el resultado no traba las respuestas de la web.
+            return Task.Run(() => BulkPublish.RunAsync(data, new WebAccount(http), source, dryRun, output)).GetAwaiter().GetResult();
+        }
+        catch (Exception e)
+        {
+            output.WriteLine($"No se pudo publicar: {e.Message}");
+            return 2;
+        }
+        finally
+        {
+            library.Delete(recursive: true);
+        }
     }
 
     /// <summary>
