@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Events;
 
@@ -63,6 +64,19 @@ public sealed record LoadingReading(IReadOnlyList<LoadingPlayer> Players, string
     }
 
     private bool HasTeams => Players.Any(p => p.Team is not null);
+
+    /// <summary>
+    /// D10: lo que se le pregunta a las estadísticas de cruces. Con 2 jugadores, el 1v1 contra el otro con tu Elo de
+    /// 1v1; con más, tu civ por equipos con tu Elo de equipos. null si no se entendió tu civ.
+    /// </summary>
+    public MatchupQuery? Matchup(LoadingPlayer me, int? elo1v1, int? eloTeam)
+    {
+        if (me.Civ is null)
+            return null;
+        return Players.Count == 2
+            ? new MatchupQuery(me.Civ, Facing(me)?.Civ, Map, elo1v1, Team: false)
+            : new MatchupQuery(me.Civ, null, Map, eloTeam, Team: true);
+    }
 
     /// <summary>
     /// El rival de enfrente (D4): con encabezados, el del mismo lugar en la lista del primer equipo rival (contra la

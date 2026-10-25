@@ -218,4 +218,42 @@ public class LoadingScreenTests
             return;
         Assert.Null(await new LoadingScreenReader(ocr, Data).ReadAsync(Screen("amigo-20261020-1080p-panel-negro.png")));
     }
+
+    private static LoadingReading ConCivs(string? map, params (int Slot, string Name, string? Civ, int? Team)[] players) =>
+        new(players.Select(p => new LoadingPlayer(p.Slot, p.Name, "", p.Civ, p.Team, Black)).ToList(), map);
+
+    [Fact]
+    public void El_cruce_de_un_uno_contra_uno()
+    {
+        var reading = ConCivs("Arabia", (1, "Kyriokes", "franks", null), (2, "Rival", "britons", null));
+        var query = reading.Matchup(reading.Players[0], elo1v1: 1050, eloTeam: 1200);
+
+        Assert.NotNull(query);
+        Assert.False(query.Team);
+        Assert.Equal("franks", query.Civ);
+        Assert.Equal("britons", query.Rival);
+        Assert.Equal("Arabia", query.Map);
+        Assert.Equal(1050, query.Elo);
+    }
+
+    [Fact]
+    public void El_cruce_por_equipos()
+    {
+        var reading = ConCivs(null, (1, "Kyriokes", "japanese", 1), (2, "A", "franks", 1), (3, "B", "celts", 1), (4, "C", "goths", 1),
+            (5, "D", "cumans", 2), (6, "E", "huns", 2), (7, "F", "mayan", 2), (8, "G", "aztecs", 2));
+        var query = reading.Matchup(reading.Players[0], elo1v1: 1050, eloTeam: 1200)!;
+
+        Assert.True(query.Team);
+        Assert.Null(query.Rival);
+        Assert.Equal("japanese", query.Civ);
+        Assert.Equal(1200, query.Elo);
+        Assert.Null(query.Map);
+    }
+
+    [Fact]
+    public void Sin_tu_civ_no_hay_cruce()
+    {
+        var reading = ConCivs("Arabia", (1, "Kyriokes", null, null), (2, "Rival", "britons", null));
+        Assert.Null(reading.Matchup(reading.Players[0], 1050, null));
+    }
 }
