@@ -450,10 +450,12 @@ static int Read(string recording, string region, string fontPath, string[] args)
 static CapturedImage? Part(RecordedSession session, int frame, string spec)
 {
     var parts = spec.Split(':');
-    var image = session.Image(frame, parts[0]);
+    // La celda del diseño ("idle:count") o la región de la grabación ("idle_villagers:count"): las dos valen.
+    var region = parts.Length > 1 && session.Hud is { } layout && layout.Cells.Any(c => c.Name == parts[0]) ? HudLayout.RegionOf(parts[0]) : parts[0];
+    var image = session.Image(frame, region);
     if (parts.Length == 1)
         return image;
-    if (session.Hud is { } hud && parts[1] != "square" && HudLayout.CellOf(parts[0]) is { } cellName)
+    if (session.Hud is { } hud && parts[1] != "square" && HudLayout.CellOf(region) is { } cellName)
     {
         var cell = hud.Cell(cellName);
         if (!cell.Fields.ContainsKey(parts[1]))
