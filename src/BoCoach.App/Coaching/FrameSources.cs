@@ -31,6 +31,9 @@ public interface IFrameSource
     /// del mod) hay que multiplicarlo por esto para dibujarlo en la pantalla.
     /// </summary>
     double HudScale => 1;
+
+    /// <summary>El diseño del mod nuevo con que se calibró o grabó (cada campo se recorta por él), o null.</summary>
+    Vision.Hud.HudLayout? Hud => null;
 }
 
 /// <summary>La pantalla en vivo: cada región se captura una sola vez por captura, recién cuando se la pide.</summary>
@@ -43,6 +46,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
     public PixelRect Area => screen.CaptureArea;
 
     public double HudScale => layout.HudScale;
+
+    public Vision.Hud.HudLayout? Hud => layout.Hud;
 
     private PixelRect? _lastArea;
 
@@ -84,6 +89,8 @@ public sealed class RecordedFrames(RecordedSession session, double speed = 1) : 
     public PixelRect Area { get; init; } = GameWindow.PrimaryScreen;
 
     public double HudScale => session.HudScale;
+
+    public Vision.Hud.HudLayout? Hud => session.Hud;
 
     /// <summary>Número de la última captura entregada.</summary>
     public int Current { get; private set; } = -1;

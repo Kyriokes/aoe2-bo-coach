@@ -59,8 +59,9 @@
 //
 // <tinta> es "white" (números blancos), "white-auto" (blancos con umbral por imagen), "white-on-black" (blancos sobre
 // el negro del mod) o "blue" (números azules).
-// Con el HUD del mod BoCoach HUD, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
-// (lo que está a la derecha del cuadrado).
+// Con el HUD del mod BoCoach HUD viejo, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
+// (lo que está a la derecha del cuadrado). Con el diseño nuevo (grabación con hud_layout), "celda:campo":
+// wood:villagers, wood:stock, population:total, population:cap, idle:count.
 //
 //   ReplaySession hud-preview <salida.png> [--layout data/hud_layout.json] [--fonts data/fonts] [--scale 1]
 // Dibuja el diseño del panel del mod (data/hud_layout.json) como imagen, con números de muestra, para retocar medidas
@@ -444,13 +445,21 @@ static int Read(string recording, string region, string fontPath, string[] args)
     return 0;
 }
 
-// "región", o con el HUD del mod "región:square" (el número del cuadrado) y "región:stock" (lo que está a su derecha).
+// "región", o con el HUD del mod viejo "región:square" (el número del cuadrado) y "región:stock" (lo que está a su
+// derecha); con el diseño nuevo (grabación con hud_layout), "celda:campo" (wood:stock, population:cap, idle:count...).
 static CapturedImage? Part(RecordedSession session, int frame, string spec)
 {
     var parts = spec.Split(':');
     var image = session.Image(frame, parts[0]);
     if (parts.Length == 1)
         return image;
+    if (session.Hud is { } hud && parts[1] != "square" && HudLayout.CellOf(parts[0]) is { } cellName)
+    {
+        var cell = hud.Cell(cellName);
+        if (!cell.Fields.ContainsKey(parts[1]))
+            throw new ArgumentException($"Campo desconocido: {parts[1]} (en {cellName} valen {string.Join(", ", cell.Fields.Keys)})");
+        return LayoutPanel.Chip(hud, cell, image) is null ? null : LayoutPanel.Crop(hud, cell, parts[1], image);
+    }
     return ModPanel.Split(image) is { } split
         ? parts[1] switch
         {
@@ -595,7 +604,7 @@ static int AutoCalibrate(string screenshot, string[] args)
             }
         }
         var fonts = HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts")));
-        var reading = new HudReader(fonts).Read(boxes.GetValueOrDefault);
+        var reading = new HudReader(fonts).Read(boxes.GetValueOrDefault, found.Hud);
         Console.WriteLine($"Lectura (reescalada por 1/{found.Scale:0.00}):");
         Console.WriteLine($"  reloj      {(reading.Clock is { } c ? BoCoach.Core.GameClock.Format(c) : "-")}");
         foreach (var resource in new[] { Resource.Wood, Resource.Food, Resource.Gold, Resource.Stone })
@@ -758,7 +767,7 @@ static string Text(string[] args, string name, string fallback)
 static ScreenReader Reader(RecordedSession session, string[] args)
 {
     var ocr = args.Contains("--no-log") ? null : Language(args).CreateOcr();
-    return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr, Catalog(args));
+    return new ScreenReader(HudFonts.Load(Text(args, "--fonts", Path.Combine("data", "fonts"))), ocr, Catalog(args), session.Hud);
 }
 
 // Frases del log, prefiriendo (ante una lectura dudosa) los eventos de las entidades de game_data, como la app.

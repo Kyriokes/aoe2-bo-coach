@@ -102,7 +102,8 @@ public sealed record CoachFrame(
     LoadingPlayer? Me = null,
     string Civ = "any",
     bool InFront = true,
-    bool Waiting = false);
+    bool Waiting = false,
+    string? Notice = null);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -410,7 +411,7 @@ public sealed class LiveCoach : IDisposable
     private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (
         new Coach(bo, _data, Events, economy: _economy),
         new SnapshotBuilder(_data, _data.Civ(bo.Civ)),
-        new ScreenReader(_fonts, _ocr, Events));
+        new ScreenReader(_fonts, _ocr, Events, Frames.Hud));
 
     private async Task RunAsync(CancellationToken token)
     {
@@ -448,6 +449,11 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice));
     }
+
+    /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>
+    private string? FontNotice => Frames.Hud is not null && _fonts.HudNumbers is null
+        ? "Falta data/fonts/hud_numbers.json: con el diseño nuevo del HUD no se leen los números"
+        : null;
 }

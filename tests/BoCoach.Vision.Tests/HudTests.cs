@@ -130,4 +130,20 @@ public class HudTests
 
     private static double GameClockSeconds(string text) =>
         Core.GameClock.TryParse(text, out var s) ? s : throw new FormatException(text);
+
+    // Una grabación sin el mod nuevo leída con el diseño a mano: ninguna caja tiene el casillero, así que da lo mismo.
+    [Fact]
+    public void Una_grabacion_del_mod_viejo_se_lee_igual_con_el_diseno()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
+        foreach (var (frame, _, _) in Golden())
+        {
+            var plain = Reader.Read(region => session.Has(frame, region) ? session.Image(frame, region) : null);
+            var withLayout = Reader.Read(region => session.Has(frame, region) ? session.Image(frame, region) : null, layout);
+
+            Assert.Null(withLayout.LayoutName);
+            Assert.Equal(plain with { LayoutName = null }, withLayout);
+        }
+    }
 }

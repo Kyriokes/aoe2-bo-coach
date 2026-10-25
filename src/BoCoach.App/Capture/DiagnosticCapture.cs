@@ -56,6 +56,7 @@ public static class DiagnosticCapture
         Line($"Mod {HudMod.Name}:");
         foreach (var profile in HudMod.Describe(profilesRoot))
             Line($"  {profile}");
+        Line($"Letra hud_numbers (diseño nuevo): {(fonts.HudNumbers is null ? "falta" : "presente")}");
         Line();
 
         Line(File.Exists(savedPath)
@@ -84,7 +85,7 @@ public static class DiagnosticCapture
 
         // Lo mismo que en vivo: cada caja recortada y llevada a los píxeles de 1080p de las letras.
         var boxes = RegionNames.All.ToDictionary(r => r, r => image.Crop(layout.PixelsOf(r, area.Width, area.Height)).AtHudScale(layout.HudScale));
-        var reading = new HudReader(fonts).Read(boxes.GetValueOrDefault);
+        var reading = new HudReader(fonts).Read(boxes.GetValueOrDefault, layout.Hud);
         Line("Lectura:");
         Line($"  reloj       {(reading.Clock is { } clock ? GameClock.Format(clock) : "-")}");
         foreach (var resource in new[] { Resource.Wood, Resource.Food, Resource.Gold, Resource.Stone })

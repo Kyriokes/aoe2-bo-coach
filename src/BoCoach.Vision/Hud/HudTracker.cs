@@ -15,6 +15,7 @@ namespace BoCoach.Vision.Hud;
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD (solo con el mod BoCoach HUD).</param>
 /// <param name="ModBands">Franja de color del cuadrado de cada recurso en su caja (con el mod), para dibujar la GD.</param>
 /// <param name="ClockReading">El reloj tal cual se leyó en esta captura, sin suavizar (el suavizado nunca acepta que vuelva para atrás: así se ve una partida nueva).</param>
+/// <param name="LayoutName">El diseño del mod nuevo con que se leyó (data/hud_layout.json), o null con el mod viejo o sin mod: el overlay dibuja distinto.</param>
 public sealed record HudState(
     double RealTime,
     double? Clock,
@@ -32,7 +33,8 @@ public sealed record HudState(
     int? PopulationCap = null,
     IReadOnlyDictionary<Resource, int>? VillagersOn = null,
     IReadOnlyDictionary<string, Capture.PixelRect>? ModBands = null,
-    double? ClockReading = null)
+    double? ClockReading = null,
+    string? LayoutName = null)
 {
     /// <summary>
     /// Lo que hay en la cola de producción, de izquierda a derecha (claves de game_data, "housed" o "?"), o null si
@@ -112,7 +114,8 @@ public sealed class HudTracker
             cap,
             villagersOn.Count > 0 ? villagersOn : null,
             reading.ModBands,
-            reading.Clock);
+            reading.Clock,
+            reading.LayoutName);
     }
 
     private void UpdateAge(Age? read)

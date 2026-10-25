@@ -19,12 +19,15 @@ public sealed class ScreenReader
     private readonly OcrReader? _ocr;
     private readonly EventLogReader? _log;
     private readonly ScoresPanelReader? _scores;
+    private readonly HudLayout? _layout;
     private double _lastAgeRead = double.NegativeInfinity;
     private double _lastScoresRead = double.NegativeInfinity;
 
     /// <param name="ocr">OCR de Windows en inglés; sin él no se leen el log ni la edad.</param>
-    public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog)
+    /// <param name="layout">El diseño del mod nuevo con que se calibró o grabó (cada campo se recorta por él), o null.</param>
+    public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog, HudLayout? layout = null)
     {
+        _layout = layout;
         _hud = new HudReader(fonts);
         _queueIcons = fonts.QueueIcons;
         _ocr = ocr;
@@ -42,7 +45,7 @@ public sealed class ScreenReader
     /// <param name="realTime">Segundos reales desde que se empezó a leer.</param>
     public async Task<HudState> ReadAsync(Func<string, CapturedImage?> regions, double realTime)
     {
-        var reading = _hud.Read(regions);
+        var reading = _hud.Read(regions, _layout);
 
         IReadOnlyList<string> events = _log is not null && regions(RegionNames.EventLog) is { } log
             ? await _log.ReadAsync(log)

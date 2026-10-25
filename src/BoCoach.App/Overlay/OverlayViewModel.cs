@@ -139,6 +139,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         { InFront: false } => "El juego no está al frente.",
         { Waiting: true } => "Esperando una partida…",
         { SecondsWithoutClock: >= ClockWarningSeconds } => "No veo el reloj del juego: ¿menú, pantalla de carga o hay que calibrar?",
+        { Notice: { } notice } => notice,
         { Hud.Clipped.Count: > 0 } => $"No entra el número de {string.Join(", ", frame.Hud!.Clipped.Select(RegionNames.Label).Select(l => l.ToLowerInvariant()))}: agrandá la caja al calibrar.",
         _ => null,
     };

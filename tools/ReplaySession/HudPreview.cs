@@ -120,17 +120,34 @@ internal static class HudPreview
         public void Text(string text, PixelRect field, GlyphFont font, int points, double ppu, (byte R, byte G, byte B) color)
         {
             var glyphHeight = Math.Max(2, (int)Math.Round(0.73 * points * ppu));
-            var glyphWidth = Math.Max(1, (int)Math.Round(glyphHeight * font.TypicalWidthRatio));
+            // La celda de la plantilla guarda el glifo con su proporción real (centrado, con columnas vacías a los
+            // costados): se pinta entera a la proporción de la celda, y el ancho verdadero sale solo.
+            var glyphWidth = Math.Max(1, (int)Math.Round(glyphHeight * GlyphFont.CellWidth / (double)GlyphFont.CellHeight));
             var spacing = Math.Max(1, glyphHeight / 8);
-            var total = text.Length * glyphWidth + (text.Length - 1) * spacing;
+            // Cada glifo avanza lo que mide su tinta (no la celda con sus columnas vacías), como la letra del juego.
+            var glyphs = text.Select(c => font.Templates.FirstOrDefault(t => t.Char == c)).ToList();
+            var inks = glyphs.Select(g => g is null ? (First: 0, Last: GlyphFont.CellWidth - 1) : InkColumns(g)).ToList();
+            int Width(int i) => (int)Math.Round((inks[i].Last - inks[i].First + 1) * glyphWidth / (double)GlyphFont.CellWidth);
+            var total = Enumerable.Range(0, text.Length).Sum(Width) + (text.Length - 1) * spacing;
             var x = field.X + (field.Width - total) / 2;
             var y = field.Y + (field.Height - glyphHeight) / 2;
-            foreach (var c in text)
+            for (var i = 0; i < text.Length; i++)
             {
-                if (font.Templates.FirstOrDefault(t => t.Char == c) is { } template)
-                    Glyph(template, x, y, glyphWidth, glyphHeight, color);
-                x += glyphWidth + spacing;
+                if (glyphs[i] is { } template)
+                    Glyph(template, x - (int)Math.Round(inks[i].First * glyphWidth / (double)GlyphFont.CellWidth), y, glyphWidth, glyphHeight, color);
+                x += Width(i) + spacing;
             }
+        }
+
+        /// <summary>Primera y última columna de la celda con tinta.</summary>
+        private static (int First, int Last) InkColumns(GlyphTemplate template)
+        {
+            int first = GlyphFont.CellWidth, last = -1;
+            for (var cy = 0; cy < GlyphFont.CellHeight; cy++)
+                for (var cx = 0; cx < GlyphFont.CellWidth; cx++)
+                    if (template.Cell[cy * GlyphFont.CellWidth + cx] > 0.5f)
+                        (first, last) = (Math.Min(first, cx), Math.Max(last, cx));
+            return last < 0 ? (0, GlyphFont.CellWidth - 1) : (first, last);
         }
 
         private void Glyph(GlyphTemplate template, int left, int top, int width, int height, (byte R, byte G, byte B) color)
