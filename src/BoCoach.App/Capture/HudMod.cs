@@ -358,7 +358,17 @@ public static class HudMod
     {
         var field = cell.Fields[fieldName];
         label["ViewPort"] = Absolute(layout, cell, field);
-        label["StateMaterials"] = Font(fontIndex, field.Points, white);
+        // El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan con el tamaño nuevo.
+        if (label["StateMaterials"] is JsonObject states && states["UserStates"] is not null)
+        {
+            foreach (var (_, state) in states)
+            {
+                if (state is JsonObject { } s && s["Font"] is JsonObject font)
+                    font["PointSize"] = field.Points;
+            }
+        }
+        else
+            label["StateMaterials"] = Font(fontIndex, field.Points, white);
         label["TextAnchor"] = "CentreCentre";
         label["ZPlaneLocalOffset"] = 2;
     }

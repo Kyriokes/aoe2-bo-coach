@@ -28,6 +28,8 @@ public sealed class HudModTests : IDisposable
 
     private static JsonObject Wrap(JsonObject widget) => new() { ["Widget"] = widget };
 
+    private static JsonObject Rgb(int r, int g, int b) => new() { ["r"] = r, ["g"] = g, ["b"] = b, ["a"] = 1 };
+
     private static JsonObject Label(string name, int x, int y, int w, int h, int? help = null)
     {
         var label = new JsonObject
@@ -74,7 +76,15 @@ public sealed class HudModTests : IDisposable
         var population = Icon("Population", 856);
         population["StateMaterials"] = new JsonObject { ["UserStates"] = 2, ["UserState0"] = new JsonObject { ["Material"] = "Population" }, ["UserState1"] = new JsonObject { ["Material"] = "None" } };
         children.Add(Wrap(population));
-        children.Add(Wrap(Label("PopulationCount", 910, 60, 130, 34)));
+        var populationCount = Label("PopulationCount", 910, 60, 130, 34);
+        populationCount["StateMaterials"] = new JsonObject
+        {
+            ["UserStates"] = 3,
+            ["UserState0"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 1, 1) } },
+            ["UserState1"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 0, 0) } },
+            ["UserState2"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 1, 0) } },
+        };
+        children.Add(Wrap(populationCount));
         children.Add(Wrap(new JsonObject { ["Type"] = "Base", ["Name"] = "PopulationFlash", ["ViewPort"] = View(900, 60, 140, 72) }));
         children.Add(Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Idle", ["ViewPort"] = View(1080, 57, 70, 70), ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Material"] = "IdleVillagerNormal" } } }));
         var idleWorkers = Label("IdleWorkers", 1060, 70, 40, 30);
@@ -235,6 +245,21 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((0, 106, 2720, 2), View(Widget(panel, "BoCoachBorderBottom")));
         Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
         Assert.Equal((2718, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
+    }
+
+    /// <summary>El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan, a 48 pt.</summary>
+    [Fact]
+    public void El_N_M_conserva_sus_tres_colores_a_48_pt()
+    {
+        var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
+
+        var states = Widget(panel, "PopulationCount")["StateMaterials"]!;
+        Assert.Equal(3, (int)states["UserStates"]!);
+        Assert.Null(states["StateNormal"]);
+        foreach (var state in new[] { "UserState0", "UserState1", "UserState2" })
+            Assert.Equal(48, (int)states[state]!["Font"]!["PointSize"]!);
+        Assert.Equal(0, (int)states["UserState1"]!["Font"]!["TextColor"]!["g"]!);
+        Assert.Equal(1, (int)states["UserState2"]!["Font"]!["TextColor"]!["g"]!);
     }
 
     [Fact]
