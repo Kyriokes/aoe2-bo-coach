@@ -127,21 +127,23 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   del mod propio anterior): así conserva cada widget con su nombre, su tipo y su tooltip (`Help`) y la salida depende
   solo del diseño. Se quita el parámetro `regenerate` (ya no hace falta) y la descripción de `info.json` dice el
   nombre del diseño en vez de los mods de origen.
-- Panel de recursos: la colección y el `Background` toman el tamaño de la barra; el `Background` pasa a
-  `FlatColorWithAlpha` con el color de la barra en los 9 `UserState`, y se le agregan cuatro rectángulos finos como
-  borde (`BoCoachBorder*`). Cada contenedor de recurso (`Wood`, etc.) queda **transparente y del tamaño de la celda**
+- Panel de recursos: la colección y el `Background` toman el tamaño de la barra; el `Background` pasa a material
+  `None` en los 9 `UserState` (un color liso ahí no se dibuja en el juego: se veía la textura original, verificado el
+  2026-10-24) y recibe como primer hijo la barra lisa (`BoCoachBar`, `FlatColorWithAlpha` con `StateNormal`) y cuatro
+  rectángulos finos como borde (`BoCoachBorder*`). Cada contenedor de recurso (`Wood`, etc.) queda **transparente y del tamaño de la celda**
   (material `None`, como el `UserState1` de `Population`), y como hijos, en coordenadas relativas a la celda: un
-  `Base` con el material del ícono del juego (`ResourceWood`...), el casillero (`BoCoachChip`, color liso), los fondos
-  negros (`BoCoachBack*`), el separador (`BoCoachSeparator`, un `Label` con texto fijo "/") y el `Workers` original
-  reubicado y con la letra del campo. Las etiquetas hermanas (`WoodStorage`, `PopulationCount`, `IdleWorkers`) se
-  reubican en coordenadas absolutas de la barra. `Idle` (botón) queda con sus materiales originales (ícono, hover,
+  `Base` con el material del ícono del juego (`ResourceWood`...), el casillero (`BoCoachChip`, color liso), el
+  separador (`BoCoachSeparator`, un `Label` con texto fijo "/") y el `Workers` original reubicado y con la letra del
+  campo. Los fondos negros (`BoCoachBack_<celda>_N`) son **hermanos del contenedor**, antes de él y de las etiquetas,
+  con plano 1: los planos se suman por jerarquía y adentro del contenedor (1 + 1) tapaban al stock (plano 2, hermano).
+  Las etiquetas hermanas (`WoodStorage`, `PopulationCount`, `IdleWorkers`) se reubican en coordenadas absolutas de la
+  barra; `PopulationCount` conserva sus tres estados de color (blanco, rojo al tope, amarillo) a 48 pt. `Idle` (botón) queda con sus materiales originales (ícono, hover,
   pressed) en la posición del ícono. `AgeUp` y `AgeBar` en la posición de la celda de edad. `PopulationFlash` sobre el
   campo "N/M". Los hijos nunca salen de los límites de su padre (si el juego recorta hijos, no se nota).
 - Reloj: el fondo negro (`BoCoachClockBackground`) y el `WorldTimerLabel` toman el tamaño y la letra del diseño; la
-  colección se corre para que el reloj quede a `gap` del final de la barra. **Riesgo:** no se sabe si el ancla del
-  reloj suma su propio corrimiento al origen de la colección (XavilUI y Custom UI mueven la colección y el reloj cae en
-  el origen; el original cae a 1730 unidades con la colección en 0). Se verifica en la primera prueba del usuario y se
-  ajusta `clock.gap` o el origen; si el ancla es relativa al panel, no hace falta mover nada.
+  colección se corre para que el reloj quede a `gap` del final de la barra y el `Anchor` del original (1700) se pone
+  en 0: el ancla se suma a la colección (verificado el 2026-10-24: con las dos el reloj caía fuera de la pantalla;
+  XavilUI hace lo mismo).
 - Sigue instalando en todos los perfiles con carpeta `mods`, avisando de mods activos con más prioridad que toquen
   los dos paneles, y es idempotente por construcción (siempre parte del original).
 - `ReplaySession hud-preview <salida.png> [--layout archivo] [--scale 1]` dibuja el diseño como imagen (barra,
@@ -209,7 +211,8 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
   - `HudLayoutTests` (Vision.Tests): carga de `data/hud_layout.json`, celdas sin solaparse y dentro de la barra, campos
     dentro de su celda, `FieldRect` a escala 1 y 1,5, errores claros ante un JSON roto.
   - `HudModTests` (App.Tests, reescritos): widgets originales conservados con sus `Help`, posiciones según el diseño,
-    fondo liso en los 9 estados, `PopulationFlash` sobre "N/M", aplicarlo dos veces da lo mismo, instala en cada perfil.
+    estados del fondo en `None` y la barra lisa como primer hijo, fondos negros hermanos, ancla del reloj en 0, los
+    tres estados del "N/M", `PopulationFlash` sobre "N/M", aplicarlo dos veces da lo mismo, instala en cada perfil.
   - `AutoCalibrationTests`: una pantalla sintética dibujada desde el diseño (casilleros y fondos exactos, números
     cualquiera) a escala 1 y 1,5 → cajas a ±2 px; sigue el test del mod viejo con `hud-20261018-132830` y la pantalla
     del amigo.
@@ -234,9 +237,14 @@ y en el otro panel `WorldTimer` (+ `WorldTimerLabel`, `SpectatorsIcon`, `GameIDL
 
 ## 10. Riesgos y qué verificar en el juego
 
-- El "/" como `Label` con texto fijo: si el juego no muestra textos que no son suyos, el separador pasa a ser una
-  barrita gris vertical (`Base` de 4 unidades) sin cambiar el formato (`separator.text` null → barrita).
-- El ancla del reloj (sección 4).
+- ~~El "/" como `Label` con texto fijo~~ Verificado el 2026-10-24: el juego lo dibuja. (Si hiciera falta, el
+  separador puede ser una barrita gris vertical: `separator.text` null → `Base` de 4 unidades.)
+- ~~El ancla del reloj~~ Verificado: se suma a la colección; queda en 0 (sección 4).
+- Lo que enseñó la primera prueba (2026-10-24, grabación 20261024-224921): un `FlatColorWithAlpha` en los
+  `UserState` por civ no se dibuja (los estados van en `None` y la barra lisa es un hijo con `StateNormal`); los
+  planos se suman por jerarquía, así que los fondos negros van como hermanos del contenedor; la escala real del HUD
+  del usuario es 0,4348 px por unidad y el detector la mide por las posiciones de los casilleros; con "Coach
+  automático" el coach arranca en el menú del juego y vuelve a calibrar cada 5 s mientras no ve el reloj.
 - Hijos fuera del padre: el diseño no los tiene; si el juego recortara igual, se ve en la primera captura.
 - Material `None` en el contenedor de la celda: se usa ya en `Population` (UserState1). Si el tooltip de la celda no
   apareciera, alternativa `FlatColorWithAlpha` con alfa 0.
