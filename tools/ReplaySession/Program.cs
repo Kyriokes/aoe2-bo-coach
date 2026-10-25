@@ -552,12 +552,20 @@ static async Task<int> Loading(string screenshot, string[] args)
         var facing = reading.Facing(me);
         var position = reading.PositionOf(me);
         Console.WriteLine($"Enfrente: {(facing is null ? "-" : $"{facing.Name} ({facing.Civ ?? "?"})")} · posición: {position switch { TeamPosition.Flank => "flanco", TeamPosition.Pocket => "bolsillo", _ => "-" }}");
-        var match = new MatchSetup(me.Civ, facing?.Civ, reading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(), position, reading.Map);
+        int? Elo(string option) => int.TryParse(Text(args, option, ""), out var elo) && elo > 0 ? elo : null;
+        var (elo1v1, eloTeam) = (Elo("--elo"), Elo("--elo-equipos"));
+        var match = new MatchSetup(me.Civ, facing?.Civ, reading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(), position, reading.Map, elo1v1);
         var styles = CivStyles.Load(Path.Combine("data", "civ_styles.json"));
+        // D10: las estadísticas reales de cruces, con el Elo de --elo (1v1) y --elo-equipos.
+        var matchups = me.Civ is { } myCiv ? MatchupStats.Load(Path.Combine("data", "matchup_stats.json"), onlyCiv: myCiv) : MatchupStats.Empty;
+        var maps = Maps.Load(Path.Combine("data", "maps.json"));
+        string CivName(string civ) => (data.Civ(civ).Names.TryGetValue("mx", out var name) ? name : civ).ToLowerInvariant();
         var library = Directory.Exists("build_orders") ? Directory.GetFiles("build_orders", "*.json").Select(BuildOrderSerializer.Load).ToList() : [];
-        var suggestion = BuildOrderSuggester.Suggest(library, match, styles);
+        var suggestion = BuildOrderSuggester.Suggest(library, match, styles, matchups);
         Console.WriteLine($"Sugerida: {(suggestion is null ? "-" : $"{suggestion.BuildOrder.Name} ({suggestion.Reason})")}");
         Console.WriteLine($"Consejo: {BuildOrderSuggester.Advice(match, styles) ?? "-"}");
+        var query = reading.Matchup(me, elo1v1, eloTeam);
+        Console.WriteLine($"Cruce: {(query is null ? "-" : MatchupText.Loading(matchups, query, CivName, key => maps.Get(key)?.Name) ?? "-")}");
     }
     return 0;
 }
