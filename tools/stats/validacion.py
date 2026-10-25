@@ -2,7 +2,8 @@
 
 Con las partidas de los últimos 14 días apartadas, el modelo ajustado con el resto tiene que predecirlas mejor que
 "solo el Elo" y (en 1v1) que el % crudo de cada casillero, y estar calibrado: por deciles de lo que predice, lo que
-pasó queda a 2 puntos o menos.
+pasó queda a 2 puntos o menos. En equipos, "solo el Elo" usa la escala del Elo ajustada con el entrenamiento: el
+modelo también la ajusta, y contra la fórmula sola le ganaría aunque las civs no aportaran nada.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.optimize import minimize_scalar
 
 from lectura import Datos1v1
 from modelo import FRANJAS, Diseno, indice_par, perdida
@@ -24,10 +26,15 @@ def particion(inicio: np.ndarray, dias: int = DIAS_APARTADOS) -> tuple[np.ndarra
     return entrenamiento, ~entrenamiento
 
 
-def perdida_solo_elo(dis: Diseno, filas: np.ndarray) -> float:
-    """La pérdida logarítmica media de esas partidas prediciendo solo con la diferencia de Elo."""
-    z = dis.offset[filas]
+def perdida_solo_elo(dis: Diseno, filas: np.ndarray, escala: float = 1.0) -> float:
+    """La pérdida logarítmica media de esas partidas prediciendo solo con la diferencia de Elo (por la escala)."""
+    z = escala * dis.offset[filas]
     return float(np.mean(np.logaddexp(0, z) - dis.y[filas] * z))
+
+
+def escala_elo(dis: Diseno, filas: np.ndarray) -> float:
+    """La escala de la diferencia de Elo que mejor predice esas partidas sin nada más."""
+    return float(minimize_scalar(lambda k: perdida_solo_elo(dis, filas, k), bounds=(0.1, 10), method="bounded").x)
 
 
 def perdida_crudo_1v1(d: Datos1v1, entrenamiento: np.ndarray, apartadas: np.ndarray) -> float:
@@ -54,6 +61,7 @@ class Validacion:
     perdida_solo_elo: float
     perdida_crudo: float | None
     calibracion: list[tuple[float, float]]
+    escala_elo: float = 1.0
 
     @property
     def motivos(self) -> list[str]:
@@ -72,9 +80,10 @@ class Validacion:
         return not self.motivos
 
 
-def validar(dis: Diseno, w: np.ndarray, apartadas: np.ndarray, perdida_crudo: float | None = None) -> Validacion:
-    """La validación de un ajuste hecho sin las partidas apartadas."""
+def validar(dis: Diseno, w: np.ndarray, apartadas: np.ndarray, perdida_crudo: float | None = None,
+            escala_elo: float = 1.0) -> Validacion:
+    """La validación de un ajuste hecho sin las partidas apartadas; escala_elo es la de "solo el Elo"."""
     z = dis.matriz[apartadas] @ w + dis.offset[apartadas]
     p = 0.5 * (1 + np.tanh(0.5 * z))
-    return Validacion(perdida(dis, w, apartadas), perdida_solo_elo(dis, apartadas), perdida_crudo,
-                      calibracion(p, dis.y[apartadas]))
+    return Validacion(perdida(dis, w, apartadas), perdida_solo_elo(dis, apartadas, escala_elo), perdida_crudo,
+                      calibracion(p, dis.y[apartadas]), escala_elo)

@@ -59,3 +59,27 @@ def test_validar_descalibrado(ajustado):
     v = validar(dis, w * 4, apartadas)
     assert not v.pasa
     assert any(m.startswith("descalibrado en el decil") for m in v.motivos)
+
+
+def test_validar_equipos_sin_civs_no_le_gana_al_elo_con_su_escala(tmp_path, monkeypatch):
+    # Con la escala del Elo ajustada, el modelo de equipos le ganaba a la fórmula aunque las civs no aportaran nada.
+    import sinteticos
+    from lectura import leer_equipos
+    from modelo import diseno_equipos
+    from sinteticos import generar_equipos
+    from validacion import escala_elo
+
+    monkeypatch.setitem(sinteticos.EFECTOS, "civ", 0.0)
+    monkeypatch.setitem(sinteticos.EFECTOS, "civ_mapa", 0.0)
+    partidas, jugadores, _ = generar_equipos(20_000, CIVS, semilla=12, escala_elo=1.85)
+    escribir_tablas(tmp_path / "nuevas", partidas, jugadores)
+    sumar(tmp_path / "cache", tmp_path / "nuevas")
+    d = leer_equipos(tmp_path / "cache")
+    dis = diseno_equipos(d)
+    entrenamiento, apartadas = particion(d.inicio)
+    w = ajustar(dis, FRENOS_INICIALES, entrenamiento.astype(float))
+
+    escala = escala_elo(dis, entrenamiento)
+    assert escala == pytest.approx(1.85, abs=0.15)
+    v = validar(dis, w, apartadas, escala_elo=escala)
+    assert "no predice mejor que solo el Elo" in v.motivos

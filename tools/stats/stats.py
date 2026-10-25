@@ -57,11 +57,16 @@ def _fecha(segundos: int) -> str:
     return datetime.fromtimestamp(int(segundos), tz=timezone.utc).date().isoformat()
 
 
-def _resumen_validacion(v: validacion.Validacion) -> dict:
+def _resumen_validacion(v: validacion.Validacion, frenos: dict[str, float], w, dis) -> dict:
     perdidas = {"model": round(v.perdida_modelo, 5), "elo_only": round(v.perdida_solo_elo, 5)}
     if v.perdida_crudo is not None:
         perdidas["raw_cell"] = round(v.perdida_crudo, 5)
-    return {"log_loss": perdidas, "calibration": [[round(a, 4), round(b, 4)] for a, b in v.calibracion]}
+    resumen = {"log_loss": perdidas, "calibration": [[round(a, 4), round(b, 4)] for a, b in v.calibracion],
+               "brakes": {g: f for g, f in frenos.items()}}
+    if "elo" in dis.grupos:
+        resumen["elo_only_scale"] = round(v.escala_elo, 3)
+        resumen["model_elo_scale"] = round(1 + float(w[dis.grupos["elo"][0]]), 3)
+    return resumen
 
 
 def _cuenta_1v1(d) -> np.ndarray:
@@ -101,9 +106,12 @@ def _ajustar(args: argparse.Namespace) -> int:
         print("  frenos: " + ", ".join(f"{g} {f:g}" for g, f in frenos.items()))
         w = ajustar(dis, frenos, entrenamiento.astype(float))
         crudo = validacion.perdida_crudo_1v1(d, entrenamiento, apartadas) if nombre == "one_vs_one" else None
-        v = validacion.validar(dis, w, apartadas, crudo)
+        # En equipos el modelo ajusta la escala del Elo: "solo el Elo" también, si no le gana sin las civs.
+        escala = validacion.escala_elo(dis, entrenamiento) if "elo" in dis.grupos else 1.0
+        v = validacion.validar(dis, w, apartadas, crudo, escala)
         print(f"  pérdida en los últimos {args.apartar_dias} días: modelo {v.perdida_modelo:.5f}, "
-              f"solo el Elo {v.perdida_solo_elo:.5f}" + (f", % crudo {crudo:.5f}" if crudo is not None else ""))
+              f"solo el Elo {v.perdida_solo_elo:.5f}" + (f" (escala {escala:.3f})" if escala != 1.0 else "")
+              + (f", % crudo {crudo:.5f}" if crudo is not None else ""))
         if not v.pasa:
             print(f"No pasa la validación ({nombre}): " + "; ".join(v.motivos) + ". No se toca la salida.",
                   file=sys.stderr)
@@ -133,7 +141,8 @@ def _ajustar(args: argparse.Namespace) -> int:
         "bands": {"elo": list(LIMITES_ELO), "game_minutes": list(LIMITES_JUEGO_MIN), "maps": list(MAPAS)},
         "interval": INTERVALO,
         "validation": {"held_out_days": args.apartar_dias,
-                       **{nombre: _resumen_validacion(v) for nombre, (_, _, v) in validadas.items()}},
+                       **{nombre: _resumen_validacion(v, frenos, w, tablas[nombre][1])
+                          for nombre, (frenos, w, v) in validadas.items()}},
     }
     escribir(args.salida, cabecera, entradas["one_vs_one"], entradas["team"])
     print(f"Escrito {args.salida}")

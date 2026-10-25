@@ -63,6 +63,10 @@ def test_ajustar_escribe_el_json(normal):
     assert datos["bands"]["maps"] == ["arabia", "arena", "black_forest", "nomad"]
     assert datos["interval"] == 0.9
     assert len(datos["validation"]["one_vs_one"]["calibration"]) == 10
+    assert sorted(datos["validation"]["one_vs_one"]["brakes"]) == sorted(
+        ["civ", "civ_mapa", "civ_elo", "civ_dur", "cruce", "cruce_mapa", "cruce_dur", "cruce_elo"])
+    assert datos["validation"]["team"]["elo_only_scale"] == pytest.approx(1.0, abs=0.2)  # los inventados, escala 1
+    assert "elo_only_scale" not in datos["validation"]["one_vs_one"]
 
 
 def test_pareja_sin_partidas_sale_con_n_cero(con_huecos):
