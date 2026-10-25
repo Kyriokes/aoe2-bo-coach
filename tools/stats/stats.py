@@ -2,8 +2,10 @@
 data/matchup_stats.json. Se corre una vez por parche, desde tools/stats con su venv:
 
     python stats.py bajar [--fuente aoe2guide] [--cache RUTA]
+    python stats.py ajustar [--cache RUTA] [--salida RUTA] [--veces 20] [--apartar-dias 14]
 
 La caché (por defecto tools/stats/.cache, fuera de git) junta las fotos que se van bajando sin repetir partidas.
+`ajustar` valida el modelo con los últimos días apartados y, si no pasa, no toca la salida.
 """
 
 from __future__ import annotations
@@ -11,17 +13,27 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import duckdb
+import numpy as np
 
+import validacion
 from cache import TablaInvalida, sumar
+from franjas import LIMITES_ELO, LIMITES_JUEGO_MIN, MAPAS
 from fuentes import aoe2guide
 from fuentes.aoe2guide import CivDesconocida, FuenteCaida
+from lectura import leer_1v1, leer_equipos
+from modelo import (FRENOS_INICIALES, ajustar, casilleros, contar, diseno_1v1, diseno_equipos, elegir_frenos, eta,
+                    indice_par, pesos_globales, rango, remuestrear)
+from salida import a_entradas, escribir
 
 AQUI = Path(__file__).resolve().parent
 REPO = AQUI.parents[1]
 CACHE_POR_DEFECTO = AQUI / ".cache"
+SALIDA_POR_DEFECTO = REPO / "data" / "matchup_stats.json"
+INTERVALO = 0.9
 
 
 def _bajar(args: argparse.Namespace) -> int:
@@ -40,6 +52,85 @@ def _bajar(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fecha(segundos: int) -> str:
+    return datetime.fromtimestamp(int(segundos), tz=timezone.utc).date().isoformat()
+
+
+def _resumen_validacion(v: validacion.Validacion) -> dict:
+    perdidas = {"model": round(v.perdida_modelo, 5), "elo_only": round(v.perdida_solo_elo, 5)}
+    if v.perdida_crudo is not None:
+        perdidas["raw_cell"] = round(v.perdida_crudo, 5)
+    return {"log_loss": perdidas, "calibration": [[round(a, 4), round(b, 4)] for a, b in v.calibracion]}
+
+
+def _entradas_1v1(d, dis, p, desde, hasta) -> dict[str, list[int]]:
+    n = contar(indice_par(d.a, d.b, len(d.civs)), d.mapa, d.elo, d.dur, dis.entidades)
+    i, j = np.triu_indices(len(d.civs), k=1)
+    return a_entradas([f"{d.civs[a]}|{d.civs[b]}" for a, b in zip(i, j)], p, desde, hasta, n)
+
+
+def _entradas_equipos(d, dis, p, desde, hasta) -> dict[str, list[int]]:
+    coo = d.civ_equipo.tocoo()
+    veces = np.abs(coo.data).astype(np.int64)
+    fila, civ = np.repeat(coo.row, veces), np.repeat(coo.col, veces)
+    n = contar(civ, d.mapa[fila], d.elo[fila], d.dur[fila], dis.entidades)
+    return a_entradas(list(d.civs), p, desde, hasta, n)
+
+
+def _ajustar(args: argparse.Namespace) -> int:
+    cache: Path = args.cache
+    archivo_fuente = cache / "fuente.json"
+    fuente = json.loads(archivo_fuente.read_text(encoding="utf-8")) if archivo_fuente.exists() else {}
+
+    d1, de = leer_1v1(cache), leer_equipos(cache)
+    tablas = {"one_vs_one": (d1, diseno_1v1(d1), _entradas_1v1), "team": (de, diseno_equipos(de), _entradas_equipos)}
+    validadas = {}
+    for nombre, (d, dis, _) in tablas.items():
+        print(f"{nombre}: {len(dis.y)} partidas, {len(d.civs)} civs")
+        entrenamiento, apartadas = validacion.particion(d.inicio, args.apartar_dias)
+        frenos = elegir_frenos(dis, entrenamiento, apartadas, FRENOS_INICIALES)
+        print("  frenos: " + ", ".join(f"{g} {f:g}" for g, f in frenos.items()))
+        w = ajustar(dis, frenos, entrenamiento.astype(float))
+        crudo = validacion.perdida_crudo_1v1(d, entrenamiento, apartadas) if nombre == "one_vs_one" else None
+        v = validacion.validar(dis, w, apartadas, crudo)
+        print(f"  pérdida en los últimos {args.apartar_dias} días: modelo {v.perdida_modelo:.5f}, "
+              f"solo el Elo {v.perdida_solo_elo:.5f}" + (f", % crudo {crudo:.5f}" if crudo is not None else ""))
+        if not v.pasa:
+            print(f"No pasa la validación ({nombre}): " + "; ".join(v.motivos) + ". No se toca la salida.",
+                  file=sys.stderr)
+            return 1
+        validadas[nombre] = (frenos, w, v)
+
+    entradas = {}
+    for nombre, (d, dis, armar) in tablas.items():
+        frenos, w_entrenamiento, _ = validadas[nombre]
+        w = ajustar(dis, frenos, inicial=w_entrenamiento)
+        pesos = pesos_globales(d.mapa, d.elo, d.dur)
+        p = casilleros(eta(dis, w), pesos)
+        print(f"{nombre}: {args.veces} remuestreos ...")
+        muestras = [casilleros(eta(dis, m), pesos) for m in remuestrear(dis, frenos, w, args.veces)]
+        desde, hasta = rango(p, muestras)
+        entradas[nombre] = armar(d, dis, p, desde, hasta)
+
+    inicios = np.concatenate([d1.inicio, de.inicio])
+    cabecera = {
+        "schema_version": 1,
+        "generated": date.today().isoformat(),
+        "source": {"name": fuente.get("name"), "url": fuente.get("url"),
+                   "from": _fecha(inicios.min()), "to": _fecha(inicios.max())},
+        "patch": {"label": fuente.get("patch_label"), "start": _fecha(d1.inicio_parche),
+                  "previous_mixed": d1.previo_mezclado},
+        "matches": {"1v1": len(d1.gana_a), "team": len(de.gana_1)},
+        "bands": {"elo": list(LIMITES_ELO), "game_minutes": list(LIMITES_JUEGO_MIN), "maps": list(MAPAS)},
+        "interval": INTERVALO,
+        "validation": {"held_out_days": args.apartar_dias,
+                       **{nombre: _resumen_validacion(v) for nombre, (_, _, v) in validadas.items()}},
+    }
+    escribir(args.salida, cabecera, entradas["one_vs_one"], entradas["team"])
+    print(f"Escrito {args.salida}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -48,10 +139,15 @@ def main(argv: list[str] | None = None) -> int:
     bajar = comandos.add_parser("bajar", help="baja una foto de partidas y la suma a la caché")
     bajar.add_argument("--fuente", choices=["aoe2guide"], default="aoe2guide")
     bajar.add_argument("--cache", type=Path, default=CACHE_POR_DEFECTO)
+    ajuste = comandos.add_parser("ajustar", help="ajusta el modelo, lo valida y escribe la salida")
+    ajuste.add_argument("--cache", type=Path, default=CACHE_POR_DEFECTO)
+    ajuste.add_argument("--salida", type=Path, default=SALIDA_POR_DEFECTO)
+    ajuste.add_argument("--veces", type=int, default=20)
+    ajuste.add_argument("--apartar-dias", type=int, default=validacion.DIAS_APARTADOS)
     args = parser.parse_args(argv)
 
     try:
-        return _bajar(args)
+        return {"bajar": _bajar, "ajustar": _ajustar}[args.comando](args)
     except (FuenteCaida, CivDesconocida, TablaInvalida) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
