@@ -72,13 +72,26 @@
                         </TextBlock>
                     </StackPanel>
                 </DockPanel>
-                <!-- Ajustes de la partida: se aplican al empezar el coach -->
-                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <!-- Ajustes de la partida: se aplican al empezar el coach (pasan al renglón de abajo si no entran) -->
+                <WrapPanel Margin="0,6,0,0">
                     <StackPanel x:Name="PlayerNameBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Tu nombre en el juego, como sale en la lista de jugadores de la pantalla de carga. Ahí el coach lee con qué civ jugás (manda sobre la de acá al lado en esa partida), y contra quién, y empieza la partida de cero">
                         <TextBlock Text="Tu nombre" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=LostFocus}" Width="120" VerticalContentAlignment="Center"
                                  AutomationProperties.Name="Tu nombre en el juego" />
+                    </StackPanel>
+                    <StackPanel x:Name="EloBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
+                                ToolTip="Tu Elo de mapa aleatorio, para las estadísticas reales de cruces de la pantalla de carga y la BO sugerida. Buscar trae el de &quot;Tu nombre&quot; de la API del juego: el nombre se manda solo al tocar el botón">
+                        <TextBlock Text="Elo 1v1" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBox Text="{Binding Elo1v1Text, UpdateSourceTrigger=LostFocus}" Width="50" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Elo 1v1" />
+                        <TextBlock Text="Elo equipos" Foreground="#A39A8F" VerticalAlignment="Center" Margin="8,0,6,0" />
+                        <TextBox Text="{Binding EloTeamText, UpdateSourceTrigger=LostFocus}" Width="50" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Elo de equipos" />
+                        <Button Content="Buscar" Command="{Binding SearchEloCommand}" Padding="8,1" Margin="6,0,0,0"
+                                AutomationProperties.Name="Buscar mi Elo en la API del juego" />
+                        <TextBlock Text="{Binding EloStatus}" Foreground="#8CD17D" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"
+                                   MaxWidth="280" TextTrimming="CharacterEllipsis" ToolTip="{Binding EloStatus}" />
                     </StackPanel>
                     <StackPanel x:Name="GameCivBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
                                 ToolTip="Con qué civ jugás esta partida: el coach usa sus bonificaciones (costos, población de las casas, recursos iniciales). Por defecto, la civ que dice la BO. Se aplica al empezar el coach">
@@ -109,7 +122,7 @@
                     <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0"
                             ToolTip="Si algo no se lee bien: a los 2 s guarda la pantalla entera sin pérdida y un .txt con lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico, para mandar esa carpeta. También con Ctrl+Alt+X desde el juego" />
                     <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+                </WrapPanel>
             </StackPanel>
         </Border>
 

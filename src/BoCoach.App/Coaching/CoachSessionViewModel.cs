@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.IO;
+using System.Net.Http;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Engine;
 using BoCoach.Core.Economy;
+using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,6 +32,9 @@ public interface ICoachHost
 
     /// <summary>D5: el resumen de la partida terminada, con el informe completo guardado en <paramref name="path"/>.</summary>
     void ShowReport(IReadOnlyList<string> summary, string path);
+
+    /// <summary>D10: elegir entre los jugadores con el mismo nombre que devolvió "Buscar"; null si cancela.</summary>
+    EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates);
 }
 
 /// <summary>Empezar y detener el coach con la BO elegida, y los atajos que lo corrigen durante la partida.</summary>
@@ -67,6 +73,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         LastBuildOrderId = settings.LastBuildOrder;
+        Elo1v1Text = settings.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "";
+        EloTeamText = settings.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "";
+        ProfileId = settings.ProfileId;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -143,6 +152,76 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnPlayerNameChanged(string value) => SaveSettings();
 
+    /// <summary>D10: el Elo de 1v1 tal como se escribe; <see cref="Elo1v1"/> es el número si vale (de 1 a 4000).</summary>
+    [ObservableProperty] public partial string Elo1v1Text { get; set; } = "";
+
+    partial void OnElo1v1TextChanged(string value) => SaveSettings();
+
+    /// <summary>D10: el Elo de equipos tal como se escribe; <see cref="EloTeam"/> es el número si vale.</summary>
+    [ObservableProperty] public partial string EloTeamText { get; set; } = "";
+
+    partial void OnEloTeamTextChanged(string value) => SaveSettings();
+
+    public int? Elo1v1 => ParseElo(Elo1v1Text);
+
+    public int? EloTeam => ParseElo(EloTeamText);
+
+    /// <summary>D10: el perfil del juego elegido con "Buscar".</summary>
+    public long? ProfileId { get; private set; }
+
+    /// <summary>D10: lo que pasó con "Buscar" (al lado del botón).</summary>
+    [ObservableProperty] public partial string EloStatus { get; set; } = "";
+
+    /// <summary>D10: cómo se busca un nombre en la API del juego (los tests la cambian).</summary>
+    public Func<string, CancellationToken, Task<EloSearch>> SearchElo { get; set; } =
+        (name, cancel) => EloLookup.SearchAsync(EloHttp, name, cancel);
+
+    private static readonly HttpClient EloHttp = new() { MaxResponseContentBufferSize = 1 << 20 };
+
+    private static int? ParseElo(string text) =>
+        int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var elo) && elo is >= 1 and <= 4000 ? elo : null;
+
+    /// <summary>
+    /// D10: busca "Tu nombre" en la API del juego (solo al tocar el botón) y completa los Elo que tenga el jugador. Con
+    /// homónimos, el usuario elige de una lista ordenada por la última partida.
+    /// </summary>
+    [RelayCommand]
+    private async Task SearchEloAsync()
+    {
+        var name = PlayerName.Trim();
+        if (name.Length == 0)
+        {
+            EloStatus = "Poné tu nombre primero.";
+            return;
+        }
+        EloStatus = "Buscando...";
+        var search = await SearchElo(name, CancellationToken.None);
+        if (search.Error is { } error)
+        {
+            EloStatus = error;
+            return;
+        }
+        var chosen = search.Candidates.Count switch
+        {
+            0 => null,
+            1 => search.Candidates[0],
+            _ => _host.ChooseElo(search.Candidates),
+        };
+        if (chosen is null)
+        {
+            EloStatus = search.Candidates.Count == 0 ? $"No encontré a {name} en el juego." : "";
+            return;
+        }
+        ProfileId = chosen.ProfileId;
+        if (chosen.Elo1v1 is { } elo1v1)
+            Elo1v1Text = elo1v1.ToString(CultureInfo.InvariantCulture);
+        if (chosen.EloTeam is { } eloTeam)
+            EloTeamText = eloTeam.ToString(CultureInfo.InvariantCulture);
+        SaveSettings();
+        EloStatus = $"Elo de {chosen.Alias}: 1v1 {chosen.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "-"}, "
+                    + $"equipos {chosen.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "-"}.";
+    }
+
     /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso (hoja de ruta C4).</summary>
     [ObservableProperty] public partial bool FirstRunDone { get; set; }
 
@@ -178,6 +257,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 FirstRunDone = FirstRunDone,
                 AutoStart = AutoStart,
                 LastBuildOrder = LastBuildOrderId,
+                Elo1v1 = Elo1v1,
+                EloTeam = EloTeam,
+                ProfileId = ProfileId,
             }.Save(_settingsPath);
         }
         catch (IOException)

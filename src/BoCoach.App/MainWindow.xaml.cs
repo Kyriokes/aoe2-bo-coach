@@ -210,6 +210,12 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     public void ShowReport(IReadOnlyList<string> summary, string path) =>
         new Coaching.ReportWindow(summary, () => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })) { Owner = this }.Show();
 
+    public Core.Web.EloCandidate? ChooseElo(IReadOnlyList<Core.Web.EloCandidate> candidates)
+    {
+        var window = new Coaching.EloChoiceWindow(candidates) { Owner = this };
+        return window.ShowDialog() == true ? window.Selected : null;
+    }
+
     // ---- Calibración y carpetas ----
 
     public RegionLayout? Calibrate(RegionLayout current)

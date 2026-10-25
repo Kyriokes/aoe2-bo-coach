@@ -37,6 +37,15 @@ public sealed class CoachSettings
     /// <summary>D6: id de la última BO con que corrió el coach, para arrancar solo con ella.</summary>
     public string LastBuildOrder { get; set; } = "";
 
+    /// <summary>D10: el Elo de 1v1 de mapa aleatorio del jugador (para las estadísticas de cruces), si lo puso.</summary>
+    public int? Elo1v1 { get; set; }
+
+    /// <summary>D10: el Elo de equipos de mapa aleatorio del jugador, si lo puso.</summary>
+    public int? EloTeam { get; set; }
+
+    /// <summary>D10: el perfil del juego que eligió con "Buscar" (para volver a buscarlo y comparar sus partidas).</summary>
+    public long? ProfileId { get; set; }
+
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
     public static CoachSettings Load(string path)
@@ -55,6 +64,9 @@ public sealed class CoachSettings
                     FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
                     AutoStart = json["auto_start"]?.GetValue<bool>() ?? true,
                     LastBuildOrder = json["last_build_order"]?.GetValue<string>()?.Trim() ?? "",
+                    Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= int.MaxValue ? (int)elo1v1 : null,
+                    EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= int.MaxValue ? (int)eloTeam : null,
+                    ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
                 };
             }
         }
@@ -65,11 +77,20 @@ public sealed class CoachSettings
         return new CoachSettings();
     }
 
+    /// <summary>Un número entero, o null si falta o es de otro tipo (un valor raro no tiene que tirar abajo los ajustes).</summary>
+    private static long? Number(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var number) ? number : null;
+
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder };
+        if (Elo1v1 is { } elo1v1)
+            json["elo_1v1"] = elo1v1;
+        if (EloTeam is { } eloTeam)
+            json["elo_team"] = eloTeam;
+        if (ProfileId is { } profile)
+            json["profile_id"] = profile;
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }
