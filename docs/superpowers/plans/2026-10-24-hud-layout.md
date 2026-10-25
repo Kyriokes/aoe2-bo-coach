@@ -30,7 +30,7 @@
 
 ---
 
-### Tarea 1: El archivo de diseño y su modelo (`HudLayout`)
+### Task 1: El archivo de diseño y su modelo (`HudLayout`)
 
 **Files:**
 - Create: `data/hud_layout.json`
@@ -98,7 +98,7 @@ private static HudLayout Repo() => HudLayout.Load(Path.Combine(AppContext.BaseDi
 
 ---
 
-### Tarea 2: El diseño viaja con la calibración y con las grabaciones
+### Task 2: El diseño viaja con la calibración y con las grabaciones
 
 **Files:**
 - Modify: `src/BoCoach.Vision/Regions/RegionLayout.cs` (clase `RegionLayout`, `Dto`, `Save`, `LoadOrDefault`, `With*`)
@@ -139,7 +139,7 @@ private static HudLayout Repo() => HudLayout.Load(Path.Combine(AppContext.BaseDi
 
 ---
 
-### Tarea 3: El generador del mod arma el panel desde el original y el diseño
+### Task 3: El generador del mod arma el panel desde el original y el diseño
 
 **Files:**
 - Modify: `src/BoCoach.App/Capture/HudMod.cs` (reescritura de `ResourcePanel`, `ClockPanel`, `Install`; se quita `regenerate`)
@@ -217,7 +217,7 @@ Reglas del reloj: `Collection.ViewPort.xorigin` = bar.Width + clock.Gap, `yorigi
 
 ---
 
-### Tarea 4: `ReplaySession hud-preview` dibuja el diseño
+### Task 4: `ReplaySession hud-preview` dibuja el diseño
 
 **Files:**
 - Create: `tools/ReplaySession/HudPreview.cs`
@@ -237,7 +237,7 @@ Qué dibuja (píxeles por unidad = `layout.PixelsPerUnitAt1080p × scale`, image
 
 ---
 
-### Tarea 5: `LayoutPanel`: el casillero y los campos dentro de una caja
+### Task 5: `LayoutPanel`: el casillero y los campos dentro de una caja
 
 **Files:**
 - Create: `src/BoCoach.Vision/Hud/LayoutPanel.cs`
@@ -266,7 +266,7 @@ Qué dibuja (píxeles por unidad = `layout.PixelsPerUnitAt1080p × scale`, image
 
 ---
 
-### Tarea 6: Calibración sola con el diseño
+### Task 6: Calibración sola con el diseño
 
 **Files:**
 - Modify: `src/BoCoach.Vision/Regions/AutoCalibration.cs` (`Detect` con `HudLayout?`, `LeftPart` 0,8, nuevo camino `DetectLayout`, `AutoCalibrationResult` con `HudLayout? Hud`)
@@ -315,7 +315,7 @@ Camino del diseño: franja = 10 % de arriba × 80 % de la izquierda. Para cada `
 
 ---
 
-### Tarea 7: El lector lee cada campo por el diseño
+### Task 7: El lector lee cada campo por el diseño
 
 **Files:**
 - Modify: `src/BoCoach.Vision/Hud/HudReader.cs` (`HudFonts.HudNumbers`, `HudReading.LayoutName`, `Read(..., HudLayout?)`), `src/BoCoach.Vision/Hud/HudTracker.cs` (`HudState.LayoutName`), `src/BoCoach.Vision/Hud/ScreenReader.cs` (constructor con `HudLayout? layout = null`)
@@ -361,7 +361,7 @@ Camino del diseño en `HudReader.Read`: solo si `layout` y `_hudNumbers` no son 
 
 ---
 
-### Tarea 8: El overlay dibuja en el casillero y enmarca los inactivos
+### Task 8: El overlay dibuja en el casillero y enmarca los inactivos
 
 **Files:**
 - Modify: `src/BoCoach.App/Overlay/ResourceTargetViewModel.cs` (`[ObservableProperty] public partial bool Chip { get; set; }`: "la franja es un casillero del diseño nuevo"), `src/BoCoach.App/Overlay/OverlayViewModel.cs:102-110` (`target.Chip = frame.Hud?.LayoutName is not null`, `IdleAlert.Chip` igual), `src/BoCoach.App/Overlay/ResourceOverlay.cs` (`Position`, `PositionIdle`, `RefreshIdle`, `OnTargetChanged`/`OnIdleChanged` reaccionan a `Chip`), `src/BoCoach.App/App.xaml.cs:226-236` (`--bands` arma el caso nuevo)
@@ -378,7 +378,7 @@ Camino del diseño en `HudReader.Read`: solo si `layout` y `_hudNumbers` no son 
 
 ---
 
-### Tarea 9: `ReplaySession glyphs` por campo, docs y versión para que el usuario pruebe
+### Task 9: `ReplaySession glyphs` por campo, docs y versión para que el usuario pruebe
 
 **Files:**
 - Modify: `tools/ReplaySession/Program.cs:60-64` (comentario de uso: `celda:campo`), `tools/mod/instalar-mod.ps1:1-5` (nota: "Desde la v0.9.34 el mod lo arma la app desde data/hud_layout.json; este script arma el diseño viejo (cuadrados con franja) y queda de respaldo")
@@ -396,7 +396,7 @@ Camino del diseño en `HudReader.Read`: solo si `layout` y `_hudNumbers` no son 
 
 ---
 
-### Tarea 10: Con la grabación del usuario: letra `hud_numbers`, golden y tests de lectura
+### Task 10: Con la grabación del usuario: letra `hud_numbers`, golden y tests de lectura
 
 Espera la grabación y la captura de diagnóstico del usuario (Tarea 9). Antes de empezar, leer la skill `armar-letras-e-iconos` y `docs/superpowers/specs/2026-10-24-hud-layout-design.md` sección 8.
 
