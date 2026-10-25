@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatClock } from "@/lib/buildOrder";
 import type { BuildOrderSummary } from "@/lib/data";
-import { civLabel } from "@/lib/share";
+import { byline, civLabel } from "@/lib/share";
 import { Votes } from "./VoteButton";
 
 export function BoCard({ bo }: { bo: BuildOrderSummary }) {
@@ -18,7 +18,7 @@ export function BoCard({ bo }: { bo: BuildOrderSummary }) {
         </span>
       </div>
       <p className="mt-1 text-xs text-faint">
-        {civLabel(bo.civ)} · por {bo.author}
+        {civLabel(bo.civ)} · por {byline(bo)}
         {bo.feudal_click !== null ? ` · Feudal ${formatClock(bo.feudal_click)}` : ""}
         {bo.castle_click !== null ? ` · Castillos ${formatClock(bo.castle_click)}` : ""}
       </p>

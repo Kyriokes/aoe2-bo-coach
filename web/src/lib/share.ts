@@ -13,10 +13,22 @@ export function civLabel(civ: string) {
 export interface ShareInfo {
   name: string;
   civ: string;
+  /** Quien armó la guía (el autor del JSON, o la cuenta que la subió si no dice). */
   author: string;
+  /** La cuenta que la subió a la web. */
+  uploader?: string;
   description: string | null;
   feudal_click: number | null;
   castle_click: number | null;
+}
+
+/**
+ * "Hera, subida por Ana" si la guía es de otro (una importada de buildorderguide.com), o solo "Ana". La cuenta
+ * siempre se ve: el autor del JSON lo escribe cualquiera.
+ */
+export function byline(bo: Pick<ShareInfo, "author" | "uploader">) {
+  const same = !bo.uploader || bo.author.trim().toLowerCase() === bo.uploader.trim().toLowerCase();
+  return same ? bo.author : `${bo.author}, subida por ${bo.uploader}`;
 }
 
 /** "Cualquier civ · Feudal 8:10 · Castillos 16:00 · por Ana": lo que se ve de una BO sin abrirla. */
@@ -25,7 +37,7 @@ export function shareFacts(bo: ShareInfo) {
     civLabel(bo.civ),
     bo.feudal_click !== null ? `Feudal ${formatClock(bo.feudal_click)}` : null,
     bo.castle_click !== null ? `Castillos ${formatClock(bo.castle_click)}` : null,
-    `por ${bo.author}`,
+    `por ${byline(bo)}`,
   ]
     .filter((part) => part !== null)
     .join(" · ");

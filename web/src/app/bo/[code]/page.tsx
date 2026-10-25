@@ -11,7 +11,7 @@ import { StepList, stepsOf, type ListedStep } from "@/components/StepList";
 import { getBuildOrder } from "@/lib/data";
 import { GAME } from "@/lib/jsonLd";
 import { getCurrentUser } from "@/lib/session";
-import { civLabel, shareDescription, SITE_NAME } from "@/lib/share";
+import { byline, civLabel, shareDescription, SITE_NAME } from "@/lib/share";
 import { siteUrl } from "@/lib/site";
 import { describeStep } from "@/lib/stepText";
 import { sessionClient } from "@/lib/supabase/server";
@@ -124,7 +124,7 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
           <div>
             <h1 className="text-2xl font-semibold">{bo.name}</h1>
             <p className="text-sm text-faint">
-              {civLabel(bo.civ)} · por {bo.author} · actualizada el{" "}
+              {civLabel(bo.civ)} · por {byline(bo)} · actualizada el{" "}
               {new Date(bo.updated_at).toLocaleDateString("es-AR")}
             </p>
           </div>

@@ -12,7 +12,9 @@ export async function GET(_request: NextRequest, context: RouteContext<"/api/bo/
     name: bo.name,
     civ: bo.civ,
     tags: bo.tags,
-    author: bo.author,
+    // "author" es la cuenta que la subió: la app la muestra al pedir confirmación y el autor del JSON lo escribe cualquiera.
+    author: bo.uploader,
+    guide_author: bo.author,
     votes: bo.votes,
     feudal_click: bo.feudal_click,
     castle_click: bo.castle_click,

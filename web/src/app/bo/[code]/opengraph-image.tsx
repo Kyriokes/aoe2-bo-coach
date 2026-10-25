@@ -1,7 +1,7 @@
 import { formatClock } from "@/lib/buildOrder";
 import { getBuildOrder } from "@/lib/data";
 import { OG_SIZE, ogCard } from "@/lib/ogImage";
-import { civLabel } from "@/lib/share";
+import { byline, civLabel } from "@/lib/share";
 
 export const alt = "Vista previa de la build order";
 export const size = OG_SIZE;
@@ -26,7 +26,7 @@ export default async function Image({ params }: { params: Promise<{ code: string
   return ogCard({
     kicker: `AoE2 BO Coach · código ${bo.code}`,
     title: bo.name,
-    facts: `${civLabel(bo.civ)} · por ${bo.author}`,
+    facts: `${civLabel(bo.civ)} · por ${byline(bo)}`,
     badges,
   });
 }

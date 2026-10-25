@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CIV_NAMES } from "./civNames";
-import { civLabel, shareDescription, shareFacts, type ShareInfo } from "./share";
+import { byline, civLabel, shareDescription, shareFacts, type ShareInfo } from "./share";
 import { siteUrl } from "./site";
 
 const scouts: ShareInfo = {
@@ -19,6 +19,14 @@ describe("vista previa al compartir", () => {
     expect(shareFacts(scouts)).toBe("Cualquier civ · Feudal 8:10 · por Ana");
     expect(shareFacts({ ...scouts, civ: "britons", castle_click: 960 })).toBe("Britanos · Feudal 8:10 · Castillos 16:00 · por Ana");
     expect(shareFacts({ ...scouts, feudal_click: null })).toBe("Cualquier civ · por Ana");
+  });
+
+  it("si la guía es de otro, dice también quién la subió", () => {
+    expect(byline({ author: "Hera", uploader: "Ana" })).toBe("Hera, subida por Ana");
+    expect(byline({ author: "Ana", uploader: "Ana" })).toBe("Ana");
+    expect(byline({ author: "ana ", uploader: "Ana" })).toBe("ana ");
+    expect(byline({ author: "Ana" })).toBe("Ana");
+    expect(shareFacts({ ...scouts, author: "Hera", uploader: "Ana" })).toBe("Cualquier civ · Feudal 8:10 · por Hera, subida por Ana");
   });
 
   it("suma la descripción en un renglón y la corta si es larga", () => {
