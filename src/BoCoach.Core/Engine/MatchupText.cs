@@ -49,7 +49,9 @@ public static class MatchupText
     public static string DurationReason(DurationTrend trend) =>
         trend.FavorsShort ? "el cruce se gana más en partidas cortas" : "el cruce se gana más en partidas largas";
 
-    private sealed record Resumen(string Headline, MatchupCell General, int Map, int EloBand, string Place, string? MapLabel);
+    /// <param name="AllEloN">Las partidas del mismo mapa con todas las franjas de Elo (para saber si el cero es del mapa).</param>
+    private sealed record Resumen(string Headline, MatchupCell General, int Map, int EloBand, string Place, string? MapLabel,
+        int AllEloN);
 
     private static Resumen? Summary(MatchupStats stats, MatchupQuery query, Func<string, string> civName, Func<string, string?> mapName)
     {
@@ -60,6 +62,8 @@ public static class MatchupText
         var general = query.Team ? stats.Team(query.Civ, map, eloBand, 0) : stats.OneVsOne(query.Civ, query.Rival!, map, eloBand, 0);
         if (general is null)
             return null;
+        var allElo = eloBand == 0 ? general
+            : query.Team ? stats.Team(query.Civ, map, 0, 0) : stats.OneVsOne(query.Civ, query.Rival!, map, 0, 0);
         var mapLabel = map > 0 ? mapName(stats.MapKeys[map - 1]) ?? stats.MapKeys[map - 1] : null;
         var place = mapLabel is null ? "en todos los mapas" : $"en {mapLabel}";
         var elo = query.Elo is > 0 ? $"Elo {query.Elo}" : "sin tu Elo";
@@ -67,7 +71,7 @@ public static class MatchupText
         var headline = query.Team
             ? $"{Capitalized(civName(query.Civ))} {place} por equipos ({elo}): {chance}."
             : $"{Capitalized(civName(query.Civ))} contra {civName(query.Rival!)} {place} ({elo}): {chance}.";
-        return new Resumen(headline, general, map, eloBand, place, mapLabel);
+        return new Resumen(headline, general, map, eloBand, place, mapLabel, allElo?.N ?? 0);
     }
 
     private static string? Missing(MatchupStats stats, MatchupQuery query, Func<string, string> civName)
@@ -83,7 +87,8 @@ public static class MatchupText
     {
         if (resumen.General.N > 0)
             return "";
-        var donde = resumen.MapLabel is null ? "" : $" en {resumen.MapLabel}";
+        // El cero puede venir de la franja de Elo y no del mapa: en Bosque Negro con 1600 o más falta en la mitad de las parejas.
+        var donde = (resumen.MapLabel is null ? "" : $" en {resumen.MapLabel}") + (resumen.AllEloN > 0 ? " con tu Elo" : "");
         return query.Team ? $" Estimado: no hay partidas de esta civ{donde}." : $" Estimado: no hay partidas de este cruce{donde}.";
     }
 

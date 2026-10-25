@@ -200,4 +200,23 @@ public class MatchupTextTests
         Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
             MatchupText.Loading(stats, new MatchupQuery("spartans", null, "arabia", 1200, Team: true), Civ, Mapa));
     }
+
+    [Fact]
+    public void Sin_partidas_con_tu_Elo_lo_dice_asi()
+    {
+        // Con 1600 o más no hay partidas de este cruce en Arabia, pero sí con otros Elo: no es que no haya en el mapa.
+        int[] Celda(int m, int e, int d) => MatchupJson.Cell(470, 430, 490, e == 5 || d > 0 ? 0 : 80);
+        var stats = MatchupStats.Parse(MatchupJson.Build(
+            new Dictionary<string, Func<int, int, int, int[]>> { ["britons|franks"] = Celda },
+            new Dictionary<string, Func<int, int, int, int[]>> { ["franks"] = Celda }));
+
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1700): ganás 47 % (43 a 49). "
+                     + "Estimado: no hay partidas de este cruce en Arabia con tu Elo.",
+            MatchupText.Loading(stats, BritanosEnArabia with { Elo = 1700 }, Civ, Mapa));
+        Assert.Equal("Britanos contra francos en todos los mapas (Elo 1700): ganás 47 % (43 a 49). "
+                     + "Estimado: no hay partidas de este cruce con tu Elo.",
+            MatchupText.Loading(stats, BritanosEnArabia with { Elo = 1700, Map = null }, Civ, Mapa));
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49).",
+            MatchupText.Loading(stats, BritanosEnArabia, Civ, Mapa));
+    }
 }
