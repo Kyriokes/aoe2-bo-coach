@@ -1,3 +1,6 @@
+﻿# OJO: desde la v0.9.34 el mod lo arma la app desde data/hud_layout.json (panel propio: barra lisa, íconos del juego,
+# casillero del coach y campos negros). Este script arma el diseño VIEJO (cuadrados negros con franja de color) y
+# queda solo de respaldo: el lector actual lee los dos, pero la calibración sola y la GD están pensadas para el nuevo.
 # Respaldo: la app hace lo mismo con el botón "Instalar mod del HUD" (Capture/HudMod.cs), que además instala en los
 # perfiles sin lista de mods y avisa si otro mod con más prioridad pisa el panel.
 # Genera el mod local "BoCoach HUD" a partir de los paneles que el juego usa hoy (los del mod activo con el
