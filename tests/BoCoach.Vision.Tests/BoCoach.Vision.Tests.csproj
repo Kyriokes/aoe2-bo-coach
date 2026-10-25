@@ -25,6 +25,7 @@
   <!-- Letras del HUD y grabación de prueba con valores verificados a ojo -->
   <ItemGroup>
     <None Include="..\..\data\fonts\*.json" Link="fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\data\hud_layout.json" Link="hud_layout.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\icons\*.json" Link="icons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\events*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\data\game_data\*.json" Link="game_data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

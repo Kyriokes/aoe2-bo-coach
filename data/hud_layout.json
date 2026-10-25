@@ -1,0 +1,86 @@
+// Diseño del panel de recursos del mod "BoCoach HUD" (ver docs/superpowers/specs/2026-10-24-hud-layout-design.md).
+// Todo en unidades del panel del juego: el ícono original mide 84 (36 px a 1080p con la escala de HUD del usuario).
+// De este archivo salen el mod (la app lo arma al tocar "Instalar mod del HUD"), la calibración sola, el lector y
+// el lugar donde el overlay dibuja la GD. Si cambiás medidas, volvé a instalar el mod.
+{
+  "name": "bocoach-2026-10",
+  "pixels_per_unit_at_1080p": 0.4286,
+  "bar": {
+    "width": 2720,
+    "height": 108,
+    "background": [0.1, 0.1, 0.1],
+    "border": { "width": 2, "color": [0.44, 0.44, 0.44] }
+  },
+  "cells": {
+    "wood": {
+      "x": 10, "width": 410,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "chip": { "x": 104, "y": 12, "width": 70, "height": 84, "color": [0.53, 0.36, 0.16] },
+      "fields": {
+        "villagers": { "x": 184, "y": 12, "width": 70, "height": 84, "font": "hud_numbers", "points": 48 },
+        "stock": { "x": 274, "y": 12, "width": 132, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 180, "y": 12, "width": 230, "height": 84 } ],
+      "separator": { "x": 254, "y": 12, "width": 20, "height": 84, "text": "/", "points": 44, "color": [0.55, 0.55, 0.55] }
+    },
+    "food": {
+      "x": 420, "width": 410,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "chip": { "x": 104, "y": 12, "width": 70, "height": 84, "color": [0.88, 0.41, 0.42] },
+      "fields": {
+        "villagers": { "x": 184, "y": 12, "width": 70, "height": 84, "font": "hud_numbers", "points": 48 },
+        "stock": { "x": 274, "y": 12, "width": 132, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 180, "y": 12, "width": 230, "height": 84 } ],
+      "separator": { "x": 254, "y": 12, "width": 20, "height": 84, "text": "/", "points": 44, "color": [0.55, 0.55, 0.55] }
+    },
+    "gold": {
+      "x": 830, "width": 410,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "chip": { "x": 104, "y": 12, "width": 70, "height": 84, "color": [0.94, 0.75, 0.10] },
+      "fields": {
+        "villagers": { "x": 184, "y": 12, "width": 70, "height": 84, "font": "hud_numbers", "points": 48 },
+        "stock": { "x": 274, "y": 12, "width": 132, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 180, "y": 12, "width": 230, "height": 84 } ],
+      "separator": { "x": 254, "y": 12, "width": 20, "height": 84, "text": "/", "points": 44, "color": [0.55, 0.55, 0.55] }
+    },
+    "stone": {
+      "x": 1240, "width": 410,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "chip": { "x": 104, "y": 12, "width": 70, "height": 84, "color": [0.62, 0.62, 0.65] },
+      "fields": {
+        "villagers": { "x": 184, "y": 12, "width": 70, "height": 84, "font": "hud_numbers", "points": 48 },
+        "stock": { "x": 274, "y": 12, "width": 132, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 180, "y": 12, "width": 230, "height": 84 } ],
+      "separator": { "x": 254, "y": 12, "width": 20, "height": 84, "text": "/", "points": 44, "color": [0.55, 0.55, 0.55] }
+    },
+    "population": {
+      "x": 1650, "width": 380,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "chip": { "x": 104, "y": 12, "width": 80, "height": 84, "color": [0.16, 0.39, 0.90] },
+      "fields": {
+        "total": { "x": 104, "y": 12, "width": 80, "height": 84, "font": "hud_numbers", "points": 48 },
+        "cap": { "x": 190, "y": 12, "width": 180, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 190, "y": 12, "width": 180, "height": 84 } ]
+    },
+    "idle": {
+      "x": 2030, "width": 190,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "fields": {
+        "count": { "x": 100, "y": 12, "width": 80, "height": 84, "font": "hud_numbers", "points": 48 }
+      },
+      "backgrounds": [ { "x": 100, "y": 12, "width": 80, "height": 84 } ]
+    },
+    "age": {
+      "x": 2220, "width": 492,
+      "icon": { "x": 10, "y": 12, "size": 84 },
+      "fields": {
+        "text": { "x": 104, "y": 28, "width": 378, "height": 52, "font": "ocr", "points": 44 }
+      }
+    }
+  },
+  "clock": { "gap": 14, "y": 12, "width": 230, "height": 84, "font": "mod_clock", "points": 56 }
+}
