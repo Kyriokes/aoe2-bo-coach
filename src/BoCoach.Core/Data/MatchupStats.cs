@@ -36,6 +36,7 @@ public sealed record DurationTrend(int ShortBand, MatchupCell Short, int LongBan
 public sealed class MatchupStats
 {
     private const int Values = 5 * 6 * 6 * 4;
+    private const int SchemaVersion = 1;
     private static readonly int[] DefaultEloLimits = [850, 1050, 1300, 1600];
     private static readonly int[] DefaultGameMinuteLimits = [20, 30, 40, 55];
     private static readonly string[] DefaultMapKeys = ["arabia", "arena", "black_forest", "nomad"];
@@ -99,6 +100,10 @@ public sealed class MatchupStats
             using var document = JsonDocument.Parse(json, options);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
+                return Empty;
+            // Otra versión cambia el significado de algo que ya está: mejor sin datos que con números falsos.
+            if (Property(root, "schema_version") is { } version
+                && !(version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var v) && v == SchemaVersion))
                 return Empty;
             var civ = Key(onlyCiv);
             var oneVsOne = Entries(root, "one_vs_one", key => civ is null || key.Split('|').Contains(civ), pairs: true,

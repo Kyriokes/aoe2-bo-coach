@@ -65,6 +65,17 @@ public class MatchupStatsTests
         Assert.True(MatchupStats.Empty.IsEmpty);
     }
 
+    [Fact]
+    public void Otra_version_del_formato_da_vacio()
+    {
+        // schema_version sube cuando cambia el significado de algo que ya está: leerlo como el 1 daría números falsos.
+        var json = MatchupJson.Build(UnaPareja, UnaCiv);
+        Assert.False(MatchupStats.Parse(json).IsEmpty);
+        Assert.True(MatchupStats.Parse(json.Replace("\"schema_version\": 1", "\"schema_version\": 2")).IsEmpty);
+        Assert.True(MatchupStats.Parse(json.Replace("\"schema_version\": 1", "\"schema_version\": \"1\"")).IsEmpty);
+        Assert.False(MatchupStats.Parse(json.Replace("\"schema_version\": 1,", "")).IsEmpty);
+    }
+
     private static Dictionary<string, Func<int, int, int, int[]>> TresCivs(Func<int, int, int, int[]> celda) => new()
     {
         ["britons|franks"] = celda,
