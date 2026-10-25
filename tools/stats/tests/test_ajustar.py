@@ -98,3 +98,11 @@ def test_ajustar_que_no_valida_no_toca_la_salida(normal, tmp_path, monkeypatch):
 
     assert stats.main(["ajustar", "--cache", str(cache), "--salida", str(salida), "--veces", "3"]) == 1
     assert salida.read_text(encoding="utf-8") == "viejo"
+
+
+def test_ajustar_pide_al_menos_dos_remuestreos(tmp_path):
+    # Con una sola muestra el desvío es NaN y los rangos salían como -9223372036854775808 sin aviso.
+    with pytest.raises(SystemExit) as salida:
+        stats.main(["ajustar", "--cache", str(tmp_path), "--salida", str(tmp_path / "x.json"), "--veces", "1"])
+    assert salida.value.code == 2
+    assert not (tmp_path / "x.json").exists()

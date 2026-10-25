@@ -170,6 +170,14 @@ def _informe(args: argparse.Namespace) -> int:
     return 0
 
 
+def _al_menos_dos(texto: str) -> int:
+    """El rango sale del desvío de las muestras: con menos de 2 no hay desvío."""
+    valor = int(texto)
+    if valor < 2:
+        raise argparse.ArgumentTypeError("hacen falta al menos 2 remuestreos")
+    return valor
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -181,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     ajuste = comandos.add_parser("ajustar", help="ajusta el modelo, lo valida y escribe la salida")
     ajuste.add_argument("--cache", type=Path, default=CACHE_POR_DEFECTO)
     ajuste.add_argument("--salida", type=Path, default=SALIDA_POR_DEFECTO)
-    ajuste.add_argument("--veces", type=int, default=20)
+    ajuste.add_argument("--veces", type=_al_menos_dos, default=20)
     ajuste.add_argument("--apartar-dias", type=int, default=validacion.DIAS_APARTADOS)
     informe = comandos.add_parser("informe", help="cuántas partidas hay en la caché por mapa, pareja y civ")
     informe.add_argument("--cache", type=Path, default=CACHE_POR_DEFECTO)
