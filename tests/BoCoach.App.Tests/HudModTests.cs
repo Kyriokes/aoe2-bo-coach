@@ -1,8 +1,13 @@
 using System.Text.Json.Nodes;
 using BoCoach.App.Capture;
+using BoCoach.Vision.Hud;
 
 namespace BoCoach.App.Tests;
 
+/// <summary>
+/// El mod "BoCoach HUD" se arma desde los paneles originales del juego y el diseño (data/hud_layout.json): cada widget
+/// del juego se conserva con su nombre y su tooltip y se reubica según el diseño.
+/// </summary>
 public sealed class HudModTests : IDisposable
 {
     private readonly DirectoryInfo _dir = Directory.CreateTempSubdirectory("bocoach-mod-");
@@ -11,25 +16,46 @@ public sealed class HudModTests : IDisposable
 
     private string Profiles => Path.Combine(_dir.FullName, "perfiles");
 
+    public static HudLayout Layout() => HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.FileName));
+
     private static JsonObject View(int x, int y, int w, int h) => new() { ["xorigin"] = x, ["yorigin"] = y, ["width"] = w, ["height"] = h, ["alignment"] = "CentreCentre" };
+
+    private static (int X, int Y, int W, int H) View(JsonObject widget)
+    {
+        var v = widget["ViewPort"]!;
+        return ((int)v["xorigin"]!, (int)v["yorigin"]!, (int)v["width"]!, (int)v["height"]!);
+    }
 
     private static JsonObject Wrap(JsonObject widget) => new() { ["Widget"] = widget };
 
-    private static JsonObject Label(string name, int x, int y, int w, int h) => new()
+    private static JsonObject Label(string name, int x, int y, int w, int h, int? help = null)
     {
-        ["Type"] = "Label",
-        ["Name"] = name,
-        ["ViewPort"] = View(x, y, w, h),
-        ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = h } } },
-    };
+        var label = new JsonObject
+        {
+            ["Type"] = "Label",
+            ["Name"] = name,
+            ["ViewPort"] = View(x, y, w, h),
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = h } } },
+        };
+        if (help is { } h2)
+            label["Help"] = h2;
+        return label;
+    }
 
-    private static JsonObject Icon(string name, int x) => new()
+    private static JsonObject Icon(string name, int x, int? help = null)
     {
-        ["Type"] = "Base",
-        ["Name"] = name,
-        ["ViewPort"] = View(x, 57, 84, 84),
-        ["ChildWidgets"] = new JsonArray(Wrap(Label("Workers", 16, 55, 60, 32))),
-    };
+        var icon = new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = name,
+            ["ViewPort"] = View(x, 57, 84, 84),
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Material"] = $"Resource{name}" } },
+            ["ChildWidgets"] = new JsonArray(Wrap(Label("Workers", 16, 55, 60, 32))),
+        };
+        if (help is { } h)
+            icon["Help"] = h;
+        return icon;
+    }
 
     /// <summary>
     /// Un panel de recursos con la forma del original del juego (mismas posiciones, sin texturas): el del juego no se
@@ -41,19 +67,43 @@ public sealed class HudModTests : IDisposable
         var x = 57;
         foreach (var resource in new[] { "Wood", "Food", "Gold", "Stone" })
         {
-            children.Add(Wrap(Icon(resource, x)));
-            children.Add(Wrap(Label($"{resource}Storage", x + 51, 60, 100, 34)));
+            children.Add(Wrap(Icon(resource, x, resource == "Wood" ? 42011 : null)));
+            children.Add(Wrap(Label($"{resource}Storage", x + 51, 60, 100, 34, resource == "Wood" ? 42202 : null)));
             x += 200;
         }
-        children.Add(Wrap(Icon("Population", 856)));
+        var population = Icon("Population", 856);
+        population["StateMaterials"] = new JsonObject { ["UserStates"] = 2, ["UserState0"] = new JsonObject { ["Material"] = "Population" }, ["UserState1"] = new JsonObject { ["Material"] = "None" } };
+        children.Add(Wrap(population));
         children.Add(Wrap(Label("PopulationCount", 910, 60, 130, 34)));
-        children.Add(Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Idle", ["ViewPort"] = View(1080, 57, 70, 70) }));
-        children.Add(Wrap(Label("IdleWorkers", 1060, 70, 40, 30)));
+        children.Add(Wrap(new JsonObject { ["Type"] = "Base", ["Name"] = "PopulationFlash", ["ViewPort"] = View(900, 60, 140, 72) }));
+        children.Add(Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Idle", ["ViewPort"] = View(1080, 57, 70, 70), ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Material"] = "IdleVillagerNormal" } } }));
+        var idleWorkers = Label("IdleWorkers", 1060, 70, 40, 30);
+        idleWorkers["ZPlane"] = 10;
+        children.Add(Wrap(idleWorkers));
+        children.Add(Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "AgeUp", ["ViewPort"] = View(1200, 62, 141, 122) }));
+        children.Add(Wrap(new JsonObject
+        {
+            ["Type"] = "ProgressBar",
+            ["Name"] = "AgeBar",
+            ["ViewPort"] = View(1250, 57, 378, 52),
+            ["ChildWidgets"] = new JsonArray(Wrap(Label("AgeTextLabel", 0, 0, 380, 50))),
+        }));
+        var background = new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = "Background",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 1750, ["height"] = 276, ["alignment"] = "TopLeft" },
+            ["ZPlane"] = 1,
+            ["StateMaterials"] = new JsonObject { ["UserStates"] = 9, ["UserState0"] = new JsonObject { ["Material"] = "CivAfriResourcePanel" } },
+            ["ChildWidgets"] = children,
+        };
         return new JsonObject
         {
             ["Collection"] = new JsonObject
             {
-                ["Widgets"] = new JsonArray(Wrap(new JsonObject { ["Type"] = "Base", ["Name"] = "ResourcePanel", ["ChildWidgets"] = children })),
+                ["Name"] = "ResourcePanel",
+                ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 1935, ["height"] = 228, ["alignment"] = "TopLeft" },
+                ["Widgets"] = new JsonArray(Wrap(background)),
             },
         };
     }
@@ -62,13 +112,15 @@ public sealed class HudModTests : IDisposable
     {
         ["Collection"] = new JsonObject
         {
+            ["Name"] = "WorldTimerPanel",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 3840, ["height"] = 2160, ["alignment"] = "TopLeft" },
             ["Widgets"] = new JsonArray(Wrap(new JsonObject
             {
-                ["Type"] = "Base",
+                ["Type"] = "Anchor",
                 ["Name"] = "WorldTimer",
                 ["ChildWidgets"] = new JsonArray(
-                    Wrap(Label("WorldTimerLabel", 0, 10, 160, 40)),
-                    Wrap(Label("GameIDLabel", 0, 60, 160, 20))),
+                    Wrap(Label("WorldTimerLabel", 0, 12, 1000, 40)),
+                    Wrap(Label("GameIDLabel", 0, 64, 512, 49))),
             })),
         },
     };
@@ -84,54 +136,111 @@ public sealed class HudModTests : IDisposable
     }
 
     private static IEnumerable<JsonObject> All(JsonObject widget) =>
-        [widget, .. (widget["ChildWidgets"] as JsonArray ?? []).OfType<JsonObject>().Select(c => c["Widget"]!.AsObject()).SelectMany(All)];
+        [widget, .. Children(widget).SelectMany(All)];
+
+    private static List<JsonObject> Children(JsonObject widget) =>
+        (widget["ChildWidgets"] as JsonArray ?? []).OfType<JsonObject>().Select(c => c["Widget"]!.AsObject()).ToList();
 
     private static JsonObject Widget(JsonObject panel, string name) =>
         panel["Collection"]!["Widgets"]!.AsArray().SelectMany(w => All(w!["Widget"]!.AsObject())).First(w => (string?)w["Name"] == name);
 
+    private static string? Material(JsonObject widget, string state = "StateNormal") => (string?)widget["StateMaterials"]?[state]?["Material"];
+
+    private static int Points(JsonObject label) => (int)label["StateMaterials"]!["StateNormal"]!["Font"]!["PointSize"]!;
+
     [Fact]
-    public void Cada_recurso_es_un_cuadrado_negro_con_franja_y_los_aldeanos_grandes()
+    public void Arma_cada_celda_desde_el_original_segun_el_diseno()
     {
-        var panel = HudMod.ResourcePanel(ResourcePanel());
+        var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
         var wood = Widget(panel, "Wood");
-        Assert.Equal(0, (double)wood["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!);
-        var band = wood["ChildWidgets"]![0]!["Widget"]!;
-        Assert.Equal("BoCoachBand", (string?)band["Name"]);
-        Assert.Equal(36, (int)band["ViewPort"]!["height"]!); // 84 × 0,43
-        var workers = All(wood).First(w => (string?)w["Name"] == "Workers");
-        Assert.Equal(48, (int)workers["StateMaterials"]!["StateNormal"]!["Font"]!["PointSize"]!);
-        Assert.Equal("CentreCentre", (string?)workers["TextAnchor"]);
-        // Detrás del stock, un rectángulo negro que empieza después del cuadrado.
-        var back = Widget(panel, "BoCoachBackWoodStorage");
-        Assert.Equal(57 + 42 + 5, (int)back["ViewPort"]!["xorigin"]!);
-        Assert.Equal(48, (int)Widget(panel, "WoodStorage")["StateMaterials"]!["StateNormal"]!["Font"]!["PointSize"]!);
-        // Inactivos: el mismo cuadrado, con la franja roja.
-        var idle = Widget(panel, "Idle");
-        Assert.Equal(84, (int)idle["ViewPort"]!["width"]!);
-        Assert.Equal(0.9, (double)idle["ChildWidgets"]![0]!["Widget"]!["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!);
+        Assert.Equal((10, 0, 410, 108), View(wood));
+        Assert.Equal("TopLeft", (string?)wood["ViewPort"]!["alignment"]);
+        Assert.Equal("None", Material(wood));
+        Assert.Equal(42011, (int)wood["Help"]!);
+        var children = Children(wood);
+        Assert.Equal(["BoCoachIcon", "BoCoachChip", "BoCoachBack0", "BoCoachSeparator", "Workers"], children.Select(c => (string?)c["Name"]));
+        Assert.Equal("ResourceWood", Material(children[0]));
+        Assert.Equal((10, 12, 84, 84), View(children[0]));
+        Assert.Equal((104, 12, 70, 84), View(children[1]));
+        Assert.Equal(0.53, (double)children[1]["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
+        Assert.Equal((180, 12, 230, 84), View(children[2]));
+        Assert.Equal("/", (string?)children[3]["Text"]);
+        Assert.Equal(44, Points(children[3]));
+        Assert.Equal((184, 12, 70, 84), View(children[4]));
+        Assert.Equal(48, Points(children[4]));
+        Assert.Equal("CentreCentre", (string?)children[4]["TextAnchor"]);
+
+        var storage = Widget(panel, "WoodStorage");
+        Assert.Equal((284, 12, 132, 84), View(storage));
+        Assert.Equal(48, Points(storage));
+        Assert.Equal(42202, (int)storage["Help"]!);
+        Assert.Equal("CentreCentre", (string?)storage["TextAnchor"]);
+
+        var population = Widget(panel, "Population");
+        Assert.Equal("None", Material(population, "UserState0"));
+        Assert.Equal("Population", Material(Children(population)[0]));
+        Assert.Equal((104, 12, 80, 84), View(Children(population).First(c => (string?)c["Name"] == "Workers")));
+        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationCount")));
+        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
+
+        Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
+        Assert.Equal("IdleVillagerNormal", Material(Widget(panel, "Idle")));
+        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "BoCoachBack_idle_0")));
+        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "IdleWorkers")));
+        Assert.Equal(10, (int)Widget(panel, "IdleWorkers")["ZPlane"]!);
+
+        Assert.Equal((2230, 12, 84, 84), View(Widget(panel, "AgeUp")));
+        Assert.Equal((2324, 28, 378, 52), View(Widget(panel, "AgeBar")));
+        var ageText = Widget(panel, "AgeTextLabel");
+        Assert.Equal((0, 0, 378, 52), View(ageText));
+        Assert.Equal(44, Points(ageText));
     }
 
     [Fact]
-    public void Aplicarlo_dos_veces_da_lo_mismo()
+    public void El_fondo_es_liso_en_los_nueve_estados_y_la_barra_mide_lo_del_diseno()
     {
-        // El mod parte de sus propios paneles si ya existe: no tiene que agregar otra franja ni otro fondo.
-        var once = HudMod.ResourcePanel(ResourcePanel());
-        var twice = HudMod.ResourcePanel(once.DeepClone().AsObject());
+        var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
+
+        var collection = panel["Collection"]!["ViewPort"]!;
+        Assert.Equal((2720, 108), ((int)collection["width"]!, (int)collection["height"]!));
+        var background = Widget(panel, "Background");
+        Assert.Equal((0, 0, 2720, 108), View(background));
+        Assert.Equal(9, (int)background["StateMaterials"]!["UserStates"]!);
+        foreach (var state in new[] { "UserState0", "UserState8" })
+        {
+            Assert.Equal("FlatColorWithAlpha", Material(background, state));
+            Assert.Equal(0.1, (double)background["StateMaterials"]![state]!["Color"]!["r"]!, 2);
+        }
+        Assert.Equal((0, 0, 2720, 2), View(Widget(panel, "BoCoachBorderTop")));
+        Assert.Equal((0, 106, 2720, 2), View(Widget(panel, "BoCoachBorderBottom")));
+        Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
+        Assert.Equal((2718, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
+    }
+
+    [Fact]
+    public void Un_panel_ya_modificado_vuelve_a_salir_igual()
+    {
+        var layout = Layout();
+        var once = HudMod.ResourcePanel(ResourcePanel(), layout);
+
+        var twice = HudMod.ResourcePanel(once.DeepClone().AsObject(), layout);
+
         Assert.True(JsonNode.DeepEquals(once, twice));
-
-        var clock = HudMod.ClockPanel(ClockPanel());
-        Assert.True(JsonNode.DeepEquals(clock, HudMod.ClockPanel(clock.DeepClone().AsObject())));
     }
 
     [Fact]
-    public void El_reloj_crece_con_un_fondo_negro_y_el_id_de_partida_baja()
+    public void El_reloj_toma_el_diseno_y_la_coleccion_se_corre_al_final_de_la_barra()
     {
-        var panel = HudMod.ClockPanel(ClockPanel());
+        var panel = HudMod.ClockPanel(ClockPanel(), Layout());
 
-        Assert.Equal(56, (int)Widget(panel, "WorldTimerLabel")["StateMaterials"]!["StateNormal"]!["Font"]!["PointSize"]!);
-        Assert.Equal("BoCoachClockBackground", (string?)Widget(panel, "WorldTimer")["ChildWidgets"]![0]!["Widget"]!["Name"]);
-        Assert.Equal(10 + 56 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
+        Assert.Equal(2734, (int)panel["Collection"]!["ViewPort"]!["xorigin"]!);
+        Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
+        Assert.Equal((0, 12, 230, 84), View(Widget(panel, "BoCoachClockBackground")));
+        var label = Widget(panel, "WorldTimerLabel");
+        Assert.Equal(56, Points(label));
+        Assert.Equal((8, 12 + (84 - 56) / 2, 1000, 56), View(label));
+        Assert.Equal(12 + 84 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
     }
 
     [Fact]
@@ -141,18 +250,33 @@ public sealed class HudModTests : IDisposable
         Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
         Directory.CreateDirectory(Path.Combine(Profiles, "logs"));
 
-        var result = HudMod.Install(game, Profiles);
+        var result = HudMod.Install(game, Layout(), Profiles);
 
-        Assert.Equal(["Perfil 111: recursos de original, reloj de original."], result.Installed);
+        Assert.Equal(["Perfil 111: diseño bocoach-2026-10."], result.Installed);
         Assert.Empty(result.Warnings);
         var mod = Path.Combine(Profiles, "111", "mods", "local", HudMod.Name);
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "resourcepanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "worldtimerpanel.json")));
-        Assert.Contains("detrás", File.ReadAllText(Path.Combine(mod, "info.json")));
+        Assert.Contains("bocoach-2026-10", File.ReadAllText(Path.Combine(mod, "info.json")));
     }
 
     [Fact]
-    public void Parte_del_panel_del_mod_activo_y_avisa_si_le_gana_al_nuestro()
+    public void Instalar_dos_veces_deja_los_mismos_archivos()
+    {
+        var game = FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
+        var mod = Path.Combine(Profiles, "111", "mods", "local", HudMod.Name, "widgetui");
+
+        HudMod.Install(game, Layout(), Profiles);
+        var first = (File.ReadAllBytes(Path.Combine(mod, "resourcepanel.json")), File.ReadAllBytes(Path.Combine(mod, "worldtimerpanel.json")));
+        HudMod.Install(game, Layout(), Profiles);
+
+        Assert.Equal(first.Item1, File.ReadAllBytes(Path.Combine(mod, "resourcepanel.json")));
+        Assert.Equal(first.Item2, File.ReadAllBytes(Path.Combine(mod, "worldtimerpanel.json")));
+    }
+
+    [Fact]
+    public void Avisa_si_otro_mod_activo_le_gana()
     {
         var game = FakeGame(_dir.FullName);
         var mods = Path.Combine(Profiles, "111", "mods");
@@ -166,9 +290,9 @@ public sealed class HudModTests : IDisposable
             ] }
             """);
 
-        var result = HudMod.Install(game, Profiles);
+        var result = HudMod.Install(game, Layout(), Profiles);
 
-        Assert.Equal(["Perfil 111: recursos de 17306_Otro panel, reloj de original."], result.Installed);
+        Assert.Equal(["Perfil 111: diseño bocoach-2026-10."], result.Installed);
         var warning = Assert.Single(result.Warnings);
         Assert.Contains("\"Otro panel\" también cambia el panel de recursos", warning);
         Assert.Contains("(1 contra 2)", warning);
@@ -177,7 +301,7 @@ public sealed class HudModTests : IDisposable
     [Fact]
     public void Sin_perfiles_avisa_que_abra_el_juego()
     {
-        var result = HudMod.Install(FakeGame(_dir.FullName), Profiles);
+        var result = HudMod.Install(FakeGame(_dir.FullName), Layout(), Profiles);
 
         Assert.False(result.Ok);
         Assert.Contains("abrí el juego", Assert.Single(result.Warnings));

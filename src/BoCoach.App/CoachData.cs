@@ -33,6 +33,11 @@ public sealed class CoachData
     /// <summary>Letras del HUD (data/fonts); se cargan recién cuando se usa el coach.</summary>
     public HudFonts Fonts => _fonts ??= HudFonts.Load(Path.Combine(DataDir, "fonts"));
 
+    /// <summary>El diseño del panel del mod (data/hud_layout.json): de él salen el mod, la calibración sola y el lector.</summary>
+    public HudLayout Layout => _layout ??= HudLayout.Load(Path.Combine(DataDir, HudLayout.FileName));
+
+    private HudLayout? _layout;
+
     /// <summary>Las aperturas típicas de cada civ (data/civ_styles.json), para sugerir la BO (D4).</summary>
     public CivStyles CivStyles => _civStyles ??= CivStyles.Load(Path.Combine(DataDir, "civ_styles.json"));
 

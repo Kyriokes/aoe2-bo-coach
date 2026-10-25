@@ -35,6 +35,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     private readonly Func<string?> _findGame;
     private readonly string _gameProfiles;
     private readonly Func<HudFonts> _fonts;
+    private readonly Func<HudLayout> _layout;
     private readonly Func<GameLanguage> _language;
     private readonly Func<GameData?> _gameData;
     private readonly Func<string?> _playerName;
@@ -44,7 +45,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
         Func<string?>? findGame = null, string? gameProfiles = null,
         Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null,
-        Func<GameData?>? gameData = null, Func<string?>? playerName = null)
+        Func<GameData?>? gameData = null, Func<string?>? playerName = null, Func<HudLayout>? layout = null)
     {
         _screen = screen;
         _host = host;
@@ -53,6 +54,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         _findGame = findGame ?? GameIcons.FindGame;
         _gameProfiles = gameProfiles ?? HudMod.DefaultProfilesRoot;
         _fonts = fonts ?? (() => HudFonts.Load(Path.Combine(CoachData.DataDir, "fonts")));
+        _layout = layout ?? (() => HudLayout.Load(Path.Combine(CoachData.DataDir, HudLayout.FileName)));
         _language = language ?? (() => GameLanguage.English);
         _gameData = gameData ?? (() => null);
         _playerName = playerName ?? (() => null);
@@ -112,8 +114,8 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>
-    /// Arma el mod "BoCoach HUD" en los perfiles del juego (cuadrados negros con los aldeanos de cada recurso y el
-    /// reloj grande, que es lo que mejor lee el coach) y cuenta cómo quedó.
+    /// Arma el mod "BoCoach HUD" en los perfiles del juego (el panel de recursos del diseño data/hud_layout.json, con
+    /// los números blancos sobre negro que mejor lee el coach) y cuenta cómo quedó.
     /// </summary>
     [RelayCommand]
     private void InstallMod()
@@ -127,7 +129,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
         HudModResult result;
         try
         {
-            result = HudMod.Install(game, _gameProfiles);
+            result = HudMod.Install(game, _layout(), _gameProfiles);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
         {

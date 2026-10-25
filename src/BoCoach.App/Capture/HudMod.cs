@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BoCoach.Vision.Hud;
 
 namespace BoCoach.App.Capture;
 
@@ -12,18 +13,16 @@ public sealed record HudModResult(IReadOnlyList<string> Installed, IReadOnlyList
 }
 
 /// <summary>
-/// El mod local "BoCoach HUD" (antes tools/mod/instalar-mod.ps1): parte de los paneles que el juego usa hoy (los del
-/// mod activo con el número de prioridad más bajo, o los originales) y cambia dos cosas para leer mejor:
+/// El mod local "BoCoach HUD": el panel de recursos y el del reloj armados desde los originales del juego y el diseño
+/// (data/hud_layout.json). Cada widget del juego se conserva con su nombre, su tipo y su tooltip (así el juego sigue
+/// escribiendo los números donde corresponde) y solo se reubica según el diseño:
 /// <list type="bullet">
-/// <item>resourcepanel.json: el ícono de cada recurso y el de inactivos pasan a ser un cuadrado negro con una franja
-/// arriba del color del recurso (azul en población, rojo en inactivos) y abajo la cantidad de aldeanos grande, en
-/// blanco. Los stocks con la misma letra y tamaño, y detrás de cada stock y del "N/M" de población, un rectángulo
-/// negro. La edad no cambia.</item>
-/// <item>worldtimerpanel.json: el reloj más grande con un rectángulo negro liso detrás.</item>
+/// <item>resourcepanel.json: la barra lisa del color del diseño en los 9 estados de civ, con un borde fino; cada celda de
+/// recurso es un contenedor transparente con el ícono del juego, el casillero de color (la GD de la app), los fondos
+/// negros y los números blancos grandes; población, inactivos y edad igual.</item>
+/// <item>worldtimerpanel.json: el reloj a continuación de la barra, grande y con un rectángulo negro detrás.</item>
 /// </list>
-/// Si el mod ya existe, parte de sus propios paneles: así no cambian las posiciones ni la calibración aunque se hayan
-/// apagado los mods de los que salió. Los paneles se arman en la PC del jugador: no se redistribuye el JSON del juego
-/// ni el de otros mods.
+/// Los paneles se arman en la PC del jugador: no se redistribuye el JSON del juego.
 /// </summary>
 public static class HudMod
 {
@@ -36,37 +35,25 @@ public static class HudMod
     private const string ResourcePanelFile = "resourcepanel.json";
     private const string ClockPanelFile = "worldtimerpanel.json";
 
-    private const int NumberPoints = 48;
-    private const int ClockPoints = 56;
-    // Rectángulo negro que tapa "00:00:00" (medido en una captura: a 40 pt el texto ocupa unas 121 unidades del panel).
-    private const int ClockBackX = -10, ClockBackY = 4, ClockBackWidth = 200, ClockBackHeight = 74;
+    /// <summary>Lo que agrega el mod lleva este prefijo: se saca antes de volver a armar el panel.</summary>
+    private const string Ours = "BoCoach";
 
-    private static readonly string[] Resources = ["Wood", "Food", "Gold", "Stone", "Population"];
-
-    private static readonly Dictionary<string, (double R, double G, double B)> Colors = new()
-    {
-        ["Wood"] = (0.55, 0.35, 0.15),
-        ["Food"] = (0.9, 0.4, 0.4),
-        ["Gold"] = (0.95, 0.75, 0.1),
-        ["Stone"] = (0.6, 0.6, 0.65),
-        ["Population"] = (0.25, 0.5, 1),
-        ["Idle"] = (0.9, 0, 0),
-    };
+    private static readonly string[] Containers = ["Wood", "Food", "Gold", "Stone", "Population"];
 
     private static readonly JsonDocumentOptions ReadOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
     private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     /// <summary>
-    /// Arma el mod en cada perfil del juego que tenga carpeta mods. <paramref name="game"/> es la carpeta del juego
-    /// (de ahí salen los paneles originales); <paramref name="regenerate"/> vuelve a partir de los mods activos aunque
-    /// el mod ya exista.
+    /// Arma el mod en cada perfil del juego que tenga carpeta mods. <paramref name="game"/> es la carpeta del juego (de
+    /// ahí salen los paneles originales).
     /// </summary>
-    public static HudModResult Install(string game, string? profilesRoot = null, bool regenerate = false)
+    public static HudModResult Install(string game, HudLayout layout, string? profilesRoot = null)
     {
         var installed = new List<string>();
         var warnings = new List<string>();
         profilesRoot ??= DefaultProfilesRoot;
-        if (!File.Exists(Path.Combine(game, "widgetui", ResourcePanelFile)))
+        var originals = Path.Combine(game, "widgetui");
+        if (!File.Exists(Path.Combine(originals, ResourcePanelFile)) || !File.Exists(Path.Combine(originals, ClockPanelFile)))
         {
             warnings.Add($"No encontré los paneles del juego en {game}.");
             return new HudModResult(installed, warnings);
@@ -87,13 +74,8 @@ public static class HudMod
 
             var target = Path.Combine(mods, "local", Name);
             var own = Path.Combine(target, "widgetui");
-            string Base(string file) =>
-                !regenerate && File.Exists(Path.Combine(own, file)) ? Path.Combine(own, file) : ActivePanel(game, mods, active, file);
-            var resourceBase = Base(ResourcePanelFile);
-            var clockBase = Base(ClockPanelFile);
-
-            var resources = ResourcePanel(Read(resourceBase));
-            var clock = ClockPanel(Read(clockBase));
+            var resources = ResourcePanel(Read(Path.Combine(originals, ResourcePanelFile)), layout);
+            var clock = ClockPanel(Read(Path.Combine(originals, ClockPanelFile)), layout);
             Directory.CreateDirectory(own);
             Write(Path.Combine(own, ResourcePanelFile), resources);
             Write(Path.Combine(own, ClockPanelFile), clock);
@@ -101,14 +83,13 @@ public static class HudMod
             {
                 ["Author"] = "BoCoach",
                 ["CacheStatus"] = 0,
-                ["Description"] = "Aldeanos de cada recurso e inactivos en grande sobre fondo negro y fondo liso detrás del reloj, para que BoCoach los lea. "
-                    + $"Basado en: {Origin(game, resourceBase)} (recursos), {Origin(game, clockBase)} (reloj)",
+                ["Description"] = $"Panel de recursos propio ({layout.Name}): fondo liso, íconos del juego, casillero del coach y campos negros para que BoCoach los lea.",
                 ["Title"] = Name,
             };
             Write(Path.Combine(target, "info.json"), info);
 
             var name = Path.GetFileName(profile);
-            installed.Add($"Perfil {name}: recursos de {Origin(game, resourceBase)}, reloj de {Origin(game, clockBase)}.");
+            installed.Add($"Perfil {name}: diseño {layout.Name}.");
 
             // Otro mod activo que cambia los mismos paneles y tiene más prioridad (número más bajo) le gana al nuestro.
             var ours = status.FirstOrDefault(IsOurs);
@@ -127,131 +108,118 @@ public static class HudMod
         return new HudModResult(installed, warnings);
     }
 
-    /// <summary>El panel de recursos con los cuadrados negros, las franjas de color y los números grandes.</summary>
-    public static JsonObject ResourcePanel(JsonObject panel)
+    /// <summary>El panel de recursos armado según el diseño a partir del original del juego (se modifica y se devuelve).</summary>
+    public static JsonObject ResourcePanel(JsonObject original, HudLayout layout)
     {
-        var widgets = panel["Collection"]!["Widgets"]!.AsArray().SelectMany(w => All(w!["Widget"]!.AsObject())).ToList();
-        JsonObject Find(Func<JsonObject, bool> match, string what) =>
-            widgets.FirstOrDefault(match) ?? throw new InvalidDataException($"No encontré {what} en el panel de recursos.");
-        JsonObject Named(string name) => Find(w => Text(w, "Name") == name, name);
+        var bar = layout.Bar;
+        var collection = original["Collection"]!.AsObject();
+        collection["ViewPort"] = View(0, 0, bar.Width, bar.Height);
+        var background = collection["Widgets"]!.AsArray()[0]!["Widget"]!.AsObject();
+        StripOurs(background);
+        background["ViewPort"] = View(0, 0, bar.Width, bar.Height);
+        var states = new JsonObject { ["UserStates"] = 9 };
+        for (var i = 0; i < 9; i++)
+            states[$"UserState{i}"] = Flat(bar.Background);
+        background["StateMaterials"] = states;
 
+        var entries = Detach(background);
+        var widgets = entries.Select(e => e["Widget"]!.AsObject()).SelectMany(All).ToList();
+        JsonObject Named(string name) =>
+            widgets.FirstOrDefault(w => Text(w, "Name") == name) ?? throw new InvalidDataException($"No encontré {name} en el panel de recursos.");
         var fontIndex = Named("WoodStorage")["StateMaterials"]?["StateNormal"]?["Font"]?["FontIndex"]?.DeepClone() ?? JsonValue.Create(0);
-        // Rectángulo negro detrás de cada stock y del "N/M" de población, del alto de los cuadrados y separado de ellos
-        // por un poco de panel: así el lector distingue el cuadrado del stock y nunca lee la textura del panel.
-        var backs = new Dictionary<string, JsonObject>();
-        foreach (var resource in Resources)
+        var white = new HudColor(1, 1, 1);
+
+        var children = new JsonArray
         {
-            var icon = Find(w => Text(w, "Name") == resource && Text(w, "Type") == "Base", resource);
-            var villagers = Children(icon).FirstOrDefault(c => Text(c, "Name") == "Workers")
-                ?? throw new InvalidDataException($"No encontré los aldeanos de {resource} en el panel de recursos.");
-            var (width, height) = (Number(icon["ViewPort"]!, "width"), Number(icon["ViewPort"]!, "height"));
-            var band = Round(height * 0.43);
-            var iconX = Number(icon["ViewPort"]!, "xorigin");
-            JsonObject stock, next;
-            if (resource == "Population")
-            {
-                // La población tiene dos estados (con ícono y sin él): los dos en negro.
-                icon["StateMaterials"] = new JsonObject { ["UserStates"] = 2, ["UserState0"] = Flat(0, 0, 0), ["UserState1"] = Flat(0, 0, 0) };
-                stock = Named("PopulationCount");
-                next = Named("Idle");
-            }
-            else
-            {
-                icon["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(0, 0, 0) };
-                stock = Named($"{resource}Storage");
-                next = widgets.Where(w => Text(w, "Type") == "Base" && Resources.Contains(Text(w, "Name")) && Number(w["ViewPort"]!, "xorigin") > iconX)
-                    .OrderBy(w => Number(w["ViewPort"]!, "xorigin")).First();
-            }
-            var limit = Number(next["ViewPort"]!, "xorigin") - Round(width / 2.0) - 4;
-            // El fondo arranca un poco después del cuadrado y el texto un poco más adentro, para que no toque el borde.
-            var x0 = iconX + Round(width / 2.0) + 5;
-            var textX = Math.Max(Number(stock["ViewPort"]!, "xorigin"), x0 + 8);
-            if (resource == "Population")
-            {
-                stock["ViewPort"]!["xorigin"] = textX;
-            }
-            else
-            {
-                stock["ViewPort"] = View(textX, Number(stock["ViewPort"]!, "yorigin"), limit - textX, NumberPoints, "CentreLeft");
-                stock["StateMaterials"] = NumberFont(fontIndex);
-            }
-            stock["ZPlaneLocalOffset"] = 2;
-            var stockName = Text(stock, "Name")!;
-            backs[stockName] = Wrap(new JsonObject
-            {
-                ["Type"] = "Base",
-                ["Name"] = $"BoCoachBack{stockName}",
-                ["ViewPort"] = View(x0, Number(icon["ViewPort"]!, "yorigin") - Round(height / 2.0), limit - x0, height, "TopLeft"),
-                ["ZPlaneLocalOffset"] = 1,
-                ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(0, 0, 0) },
-                ["ChildWidgets"] = new JsonArray(),
-            });
-            villagers["ViewPort"] = View(0, band, width, height - band, "TopLeft");
-            villagers["StateMaterials"] = NumberFont(fontIndex);
-            villagers["TextAnchor"] = "CentreCentre";
-            villagers["ZPlaneLocalOffset"] = 2;
-            icon["ChildWidgets"] = new JsonArray([Band(width, band, Colors[resource]),
-                .. Detach(icon).Where(c => Text(c["Widget"]!.AsObject(), "Name") != "BoCoachBand")]);
-        }
-        var background = panel["Collection"]!["Widgets"]![0]!["Widget"]!.AsObject();
-        var children = new JsonArray();
-        foreach (var child in Detach(background))
+            Border("Top", 0, 0, bar.Width, bar.BorderWidth, bar),
+            Border("Bottom", 0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth, bar),
+            Border("Left", 0, 0, bar.BorderWidth, bar.Height, bar),
+            Border("Right", bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height, bar),
+        };
+        var idle = layout.Cell("idle");
+        var age = layout.Cell("age");
+        var population = layout.Cell("population");
+        foreach (var entry in entries)
         {
-            var name = Text(child["Widget"]!.AsObject(), "Name") ?? "";
-            if (name.StartsWith("BoCoachBack", StringComparison.Ordinal))
-                continue;
-            if (backs.TryGetValue(name, out var back))
-                children.Add(back);
-            children.Add(child);
+            var widget = entry["Widget"]!.AsObject();
+            var name = Text(widget, "Name") ?? "";
+            switch (name)
+            {
+                case "Wood" or "Food" or "Gold" or "Stone" or "Population":
+                    BuildContainer(widget, layout.Cell(name.ToLowerInvariant()), bar.Height, name == "Population" ? "total" : "villagers", fontIndex, white);
+                    break;
+                case "WoodStorage" or "FoodStorage" or "GoldStorage" or "StoneStorage":
+                    PlaceLabel(widget, layout, layout.Cell(name[..^"Storage".Length].ToLowerInvariant()), "stock", fontIndex, white);
+                    break;
+                case "PopulationCount":
+                    PlaceLabel(widget, layout, population, "cap", fontIndex, white);
+                    break;
+                case "PopulationFlash":
+                    widget["ViewPort"] = Absolute(layout, population, population.Fields["cap"]);
+                    break;
+                case "Idle":
+                    for (var i = 0; i < idle.Backgrounds.Count; i++)
+                    {
+                        var b = idle.Backgrounds[i];
+                        children.Add(Back($"{Ours}Back_idle_{i}", idle.X + b.X, b.Y, b.Width, b.Height));
+                    }
+                    widget["ViewPort"] = View(idle.X + idle.Icon.X, idle.Icon.Y, idle.Icon.Size, idle.Icon.Size);
+                    break;
+                case "IdleWorkers":
+                    PlaceLabel(widget, layout, idle, "count", fontIndex, white);
+                    break;
+                case "AgeUp":
+                    widget["ViewPort"] = View(age.X + age.Icon.X, age.Icon.Y, age.Icon.Size, age.Icon.Size);
+                    break;
+                case "AgeBar":
+                    var text = age.Fields["text"];
+                    widget["ViewPort"] = Absolute(layout, age, text);
+                    foreach (var label in Children(widget).Where(c => Text(c, "Name") == "AgeTextLabel"))
+                    {
+                        label["ViewPort"] = View(0, 0, text.Width, text.Height);
+                        if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
+                            font["PointSize"] = text.Points;
+                        label["TextAnchor"] = "CentreCentre";
+                    }
+                    break;
+            }
+            children.Add(entry);
         }
         background["ChildWidgets"] = children;
-
-        // Inactivos: el mismo cuadrado que los recursos, a su altura (el botón de KoBHV era alto para la flecha y sin
-        // sus texturas el juego estira el ícono original).
-        var wood = Find(w => Text(w, "Name") == "Wood" && Text(w, "Type") == "Base", "Wood")["ViewPort"]!;
-        var button = Named("Idle");
-        var idleNumber = Named("IdleWorkers");
-        var (w, h) = (Number(wood, "width"), Number(wood, "height"));
-        var idleBand = Round(h * 0.43);
-        var (x, y) = (Number(button["ViewPort"]!, "xorigin"), Number(wood, "yorigin"));
-        button["ViewPort"] = View(x, y, w, h, "CentreCentre");
-        button["StateMaterials"] = new JsonObject
-        {
-            ["StateNormal"] = Flat(0, 0, 0),
-            ["StateHover"] = Flat(0.25, 0.25, 0.25),
-            ["StatePressed"] = Flat(0.25, 0.25, 0.25),
-            ["StateDisabled"] = Flat(0, 0, 0),
-        };
-        button["ChildWidgets"] = new JsonArray(Band(w, idleBand, Colors["Idle"]));
-        idleNumber["ViewPort"] = View(x - Round(w / 2.0), y - Round(h / 2.0) + idleBand, w, h - idleBand, "TopLeft");
-        idleNumber["StateMaterials"] = NumberFont(fontIndex);
-        idleNumber["TextAnchor"] = "CentreCentre";
-        return panel;
+        return original;
     }
 
-    /// <summary>El panel del reloj con la letra más grande y un rectángulo negro detrás.</summary>
-    public static JsonObject ClockPanel(JsonObject panel)
+    /// <summary>El panel del reloj: la colección corrida al final de la barra, el reloj grande y un rectángulo negro detrás.</summary>
+    public static JsonObject ClockPanel(JsonObject original, HudLayout layout)
     {
-        var clock = panel["Collection"]!["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
+        var spec = layout.Clock;
+        var collection = original["Collection"]!.AsObject();
+        if (collection["ViewPort"] is not JsonObject viewport)
+            collection["ViewPort"] = viewport = View(0, 0, 3840, 2160);
+        viewport["xorigin"] = layout.Bar.Width + spec.Gap;
+        viewport["yorigin"] = 0;
+        var clock = collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
+        StripOurs(clock);
         var label = Children(clock).FirstOrDefault(c => Text(c, "Name") == "WorldTimerLabel")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
-        label["StateMaterials"]!["StateNormal"]!["Font"]!["PointSize"] = ClockPoints;
-        label["ViewPort"]!["height"] = ClockPoints;
+        if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
+            font["PointSize"] = spec.Points;
+        label["ViewPort"] = View(8, spec.Y + (spec.Height - spec.Points) / 2, 1000, spec.Points);
+        label["ZPlaneLocalOffset"] = 1;
         // Espectadores e ID de partida van debajo del reloj: se bajan para que el reloj grande no los pise.
         foreach (var below in Children(clock).Where(c => Text(c, "Name") is "SpectatorsIcon" or "GameIDLabel"))
-            below["ViewPort"]!["yorigin"] = Number(label["ViewPort"]!, "yorigin") + ClockPoints + 12;
-        label["ZPlaneLocalOffset"] = 1;
+            below["ViewPort"]!["yorigin"] = spec.Y + spec.Height + 12;
         var back = Wrap(new JsonObject
         {
             ["Type"] = "Base",
-            ["Name"] = "BoCoachClockBackground",
-            ["ViewPort"] = View(ClockBackX, ClockBackY, ClockBackWidth, ClockBackHeight, "TopLeft"),
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(0, 0, 0) },
+            ["Name"] = $"{Ours}ClockBackground",
+            ["ViewPort"] = View(0, spec.Y, spec.Width, spec.Height),
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
             ["ChildWidgets"] = new JsonArray(),
         });
-        clock["ChildWidgets"] = new JsonArray([back, .. Detach(clock).Where(c => Text(c["Widget"]!.AsObject(), "Name") != "BoCoachClockBackground")]);
-        return panel;
+        clock["ChildWidgets"] = new JsonArray([back, .. Detach(clock)]);
+        return original;
     }
 
     /// <summary>Cómo está el mod en cada perfil del juego (para la captura de diagnóstico), un renglón por perfil.</summary>
@@ -282,6 +250,137 @@ public static class HudMod
         }
         return lines.Count > 0 ? lines : ["Ningún perfil del juego tiene carpeta de mods."];
     }
+
+    /// <summary>
+    /// Un contenedor de celda (Wood, Food, Gold, Stone, Population): transparente y del tamaño de la celda, con el
+    /// ícono del juego, el casillero, los fondos, el separador y el número de aldeanos del juego como hijos.
+    /// </summary>
+    private static void BuildContainer(JsonObject widget, HudCell cell, int barHeight, string workersField, JsonNode fontIndex, HudColor white)
+    {
+        // El material del ícono del juego; en un panel ya armado el contenedor dice "None" y vale el nombre original.
+        var iconMaterial = new[] { Text(widget["StateMaterials"]?["StateNormal"], "Material"), Text(widget["StateMaterials"]?["UserState0"], "Material") }
+            .FirstOrDefault(m => m is { Length: > 0 } and not "None")
+            ?? (cell.Name == "population" ? "Population" : $"Resource{Capital(cell.Name)}");
+        // El envoltorio original del número de aldeanos ({ Widget: ... }): un nodo tiene un solo padre, así que se reutiliza.
+        var workersEntry = ChildEntries(widget).FirstOrDefault(e => Text(e["Widget"], "Name") == "Workers")
+            ?? throw new InvalidDataException($"No encontré los aldeanos de {Capital(cell.Name)} en el panel de recursos.");
+        var workers = workersEntry["Widget"]!.AsObject();
+        Detach(widget);
+        widget["ViewPort"] = View(cell.X, 0, cell.Width, barHeight);
+        widget["StateMaterials"] = cell.Name == "population"
+            ? new JsonObject { ["UserStates"] = 2, ["UserState0"] = None(), ["UserState1"] = None() }
+            : new JsonObject { ["StateNormal"] = None() };
+        var children = new JsonArray
+        {
+            Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = $"{Ours}Icon",
+                ["ViewPort"] = View(cell.Icon.X, cell.Icon.Y, cell.Icon.Size, cell.Icon.Size),
+                ["ZPlaneLocalOffset"] = 1,
+                ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Material"] = iconMaterial } },
+                ["ChildWidgets"] = new JsonArray(),
+            }),
+        };
+        if (cell.Chip is { } chip)
+        {
+            children.Add(Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = $"{Ours}Chip",
+                ["ViewPort"] = View(chip.X, chip.Y, chip.Width, chip.Height),
+                ["ZPlaneLocalOffset"] = 1,
+                ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(chip.Color) },
+                ["ChildWidgets"] = new JsonArray(),
+            }));
+        }
+        for (var i = 0; i < cell.Backgrounds.Count; i++)
+        {
+            var b = cell.Backgrounds[i];
+            children.Add(Back($"{Ours}Back{i}", b.X, b.Y, b.Width, b.Height));
+        }
+        if (cell.Separator is { } s)
+        {
+            children.Add(s.Text is { Length: > 0 } text
+                ? Wrap(new JsonObject
+                {
+                    ["Type"] = "Label",
+                    ["Name"] = $"{Ours}Separator",
+                    ["ViewPort"] = View(s.X, s.Y, s.Width, s.Height),
+                    ["StateMaterials"] = Font(fontIndex, s.Points, s.Color),
+                    ["Text"] = text,
+                    ["TextAnchor"] = "CentreCentre",
+                    ["ZPlaneLocalOffset"] = 2,
+                    ["ChildWidgets"] = new JsonArray(),
+                })
+                : Wrap(new JsonObject
+                {
+                    ["Type"] = "Base",
+                    ["Name"] = $"{Ours}Separator",
+                    ["ViewPort"] = View(s.X + (s.Width - 4) / 2, s.Y, 4, s.Height),
+                    ["ZPlaneLocalOffset"] = 1,
+                    ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(s.Color) },
+                    ["ChildWidgets"] = new JsonArray(),
+                }));
+        }
+        var field = cell.Fields[workersField];
+        workers["ViewPort"] = View(field.X, field.Y, field.Width, field.Height);
+        workers["StateMaterials"] = Font(fontIndex, field.Points, white);
+        workers["TextAnchor"] = "CentreCentre";
+        workers["ZPlaneLocalOffset"] = 2;
+        children.Add(workersEntry);
+        widget["ChildWidgets"] = children;
+    }
+
+    /// <summary>Una etiqueta hermana del contenedor (stock, "N/M", inactivos) en coordenadas de la barra.</summary>
+    private static void PlaceLabel(JsonObject label, HudLayout layout, HudCell cell, string fieldName, JsonNode fontIndex, HudColor white)
+    {
+        var field = cell.Fields[fieldName];
+        label["ViewPort"] = Absolute(layout, cell, field);
+        label["StateMaterials"] = Font(fontIndex, field.Points, white);
+        label["TextAnchor"] = "CentreCentre";
+        label["ZPlaneLocalOffset"] = 2;
+    }
+
+    private static JsonObject Absolute(HudLayout layout, HudCell cell, HudField field) => View(cell.X + field.X, field.Y, field.Width, field.Height);
+
+    private static JsonObject Border(string side, int x, int y, int w, int h, HudBar bar) => Wrap(new JsonObject
+    {
+        ["Type"] = "Base",
+        ["Name"] = $"{Ours}Border{side}",
+        ["ViewPort"] = View(x, y, w, h),
+        ["ZPlaneLocalOffset"] = 1,
+        ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.BorderColor) },
+        ["ChildWidgets"] = new JsonArray(),
+    });
+
+    private static JsonObject Back(string name, int x, int y, int w, int h) => Wrap(new JsonObject
+    {
+        ["Type"] = "Base",
+        ["Name"] = name,
+        ["ViewPort"] = View(x, y, w, h),
+        ["ZPlaneLocalOffset"] = 1,
+        ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+        ["ChildWidgets"] = new JsonArray(),
+    });
+
+    /// <summary>Saca de un widget (y de sus hijos) todo lo que agregó el mod, por si el panel ya estaba armado.</summary>
+    private static void StripOurs(JsonObject widget)
+    {
+        if (widget["ChildWidgets"] is not JsonArray children)
+            return;
+        for (var i = children.Count - 1; i >= 0; i--)
+        {
+            if (children[i] is not JsonObject entry || entry["Widget"] is not JsonObject child)
+                continue;
+            if ((Text(child, "Name") ?? "").StartsWith(Ours, StringComparison.Ordinal))
+                children.RemoveAt(i);
+            else
+                StripOurs(child);
+        }
+    }
+
+    private static string Capital(string name) => char.ToUpperInvariant(name[0]) + name[1..];
 
     private sealed record ModEntry(string Path, string Title, bool Enabled, int Priority);
 
@@ -315,15 +414,6 @@ public static class HudMod
     private static bool TouchesPanels(string mods, ModEntry mod) =>
         File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", ResourcePanelFile)) || File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", ClockPanelFile));
 
-    /// <summary>El panel que el juego usa hoy: el del primer mod activo que lo tenga, o el original.</summary>
-    private static string ActivePanel(string game, string mods, IEnumerable<ModEntry> active, string file) =>
-        active.Select(m => Path.Combine(ModFolder(mods, m), "widgetui", file)).FirstOrDefault(File.Exists)
-        ?? Path.Combine(game, "widgetui", file);
-
-    /// <summary>De dónde salió un panel: "original" o el nombre de la carpeta del mod.</summary>
-    private static string Origin(string game, string panel) =>
-        panel.StartsWith(game, StringComparison.OrdinalIgnoreCase) ? "original" : Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(panel))) ?? panel;
-
     private static JsonObject Read(string path) =>
         JsonNode.Parse(File.ReadAllText(path), documentOptions: ReadOptions)?.AsObject() ?? throw new InvalidDataException($"{path} está vacío.");
 
@@ -345,42 +435,26 @@ public static class HudMod
 
     private static IEnumerable<JsonObject> All(JsonObject widget) => [widget, .. Children(widget).SelectMany(All)];
 
-    private static string? Text(JsonObject node, string name) => node[name] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+    private static string? Text(JsonNode? node, string name) => node?[name] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
-    private static int Number(JsonNode node, string name) => node[name] switch
-    {
-        JsonValue v when v.TryGetValue<int>(out var i) => i,
-        JsonValue v when v.TryGetValue<double>(out var d) => (int)Math.Round(d),
-        _ => 0,
-    };
+    private static JsonObject Color(HudColor color) => new() { ["r"] = Round(color.R), ["g"] = Round(color.G), ["b"] = Round(color.B), ["a"] = 1 };
 
-    // Como el [int] de PowerShell del script original: redondea al par (42,5 → 42).
-    private static int Round(double value) => (int)Math.Round(value, MidpointRounding.ToEven);
+    private static double Round(double value) => Math.Round(value, 3);
 
-    private static JsonObject Color(double r, double g, double b) => new() { ["r"] = r, ["g"] = g, ["b"] = b, ["a"] = 1 };
+    private static JsonObject Flat(HudColor color) => new() { ["Material"] = "FlatColorWithAlpha", ["Color"] = Color(color) };
 
-    private static JsonObject Flat(double r, double g, double b) => new() { ["Material"] = "FlatColorWithAlpha", ["Color"] = Color(r, g, b) };
+    private static JsonObject None() => new() { ["Material"] = "None" };
 
-    private static JsonObject View(int x, int y, int width, int height, string alignment) =>
-        new() { ["xorigin"] = x, ["yorigin"] = y, ["width"] = width, ["height"] = height, ["alignment"] = alignment };
+    private static JsonObject View(int x, int y, int width, int height) =>
+        new() { ["xorigin"] = x, ["yorigin"] = y, ["width"] = width, ["height"] = height, ["alignment"] = "TopLeft" };
 
     private static JsonObject Wrap(JsonObject widget) => new() { ["Widget"] = widget };
 
-    private static JsonObject NumberFont(JsonNode fontIndex) => new()
+    private static JsonObject Font(JsonNode fontIndex, int points, HudColor color) => new()
     {
         ["StateNormal"] = new JsonObject
         {
-            ["Font"] = new JsonObject { ["FontIndex"] = fontIndex.DeepClone(), ["PointSize"] = NumberPoints, ["Style"] = "Normal", ["TextColor"] = Color(1, 1, 1) },
+            ["Font"] = new JsonObject { ["FontIndex"] = fontIndex.DeepClone(), ["PointSize"] = points, ["Style"] = "Normal", ["TextColor"] = Color(color) },
         },
     };
-
-    private static JsonObject Band(int width, int height, (double R, double G, double B) color) => Wrap(new JsonObject
-    {
-        ["Type"] = "Base",
-        ["Name"] = "BoCoachBand",
-        ["ViewPort"] = View(0, 0, width, height, "TopLeft"),
-        ["ZPlaneLocalOffset"] = 1,
-        ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(color.R, color.G, color.B) },
-        ["ChildWidgets"] = new JsonArray(),
-    });
 }

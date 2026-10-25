@@ -211,7 +211,7 @@ public sealed class CaptureToolsTests : IDisposable
 
         Assert.False(host.Message?.Warning, host.Message?.Text);
         Assert.Contains("quedó instalado", host.Message?.Text);
-        Assert.Contains("Perfil 76561198000000000: recursos de original", host.Message?.Text);
+        Assert.Contains("Perfil 76561198000000000: diseño bocoach-2026-10", host.Message?.Text);
     }
 
     [Fact]
