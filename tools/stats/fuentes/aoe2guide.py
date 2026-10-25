@@ -11,6 +11,7 @@ import json
 import re
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -24,10 +25,16 @@ USER_AGENT = "aoe2-bo-coach-stats (+https://github.com/Kyriokes/aoe2-bo-coach)"
 CIVS = {"mayans": "mayan"}
 # Civs que se descartan con sus partidas (por ejemplo, una de broma o de un modo especial).
 IGNORADAS: frozenset[str] = frozenset()
+# patchStart es una fecha sin hora: la primera partida de la foto real empezó 2 horas antes de las 0 UTC de ese día.
+TOLERANCIA_PARCHE_S = 86_400
 
 
 class FuenteCaida(Exception):
     """No se pudo bajar un archivo de la fuente."""
+
+
+class FuenteInvalida(Exception):
+    """La foto no tiene la forma que se espera (otro formato, un archivo roto o datos que no cierran)."""
 
 
 class CivDesconocida(Exception):
@@ -76,14 +83,33 @@ def etiqueta_de_parche(origen: Path) -> str | None:
     return etiqueta if isinstance(etiqueta, str) else None
 
 
+def inicio_del_parche(origen: Path) -> int:
+    """El inicio del parche de la foto (meta.patchStart de ranked_data.json) en segundos unix, a las 0 UTC.
+
+    El "patch" de matches.parquet no sirve para separar parches: es relativo a cada foto (vale 0 en todas).
+    """
+    try:
+        meta = json.loads((origen / "ranked_data.json").read_text(encoding="utf-8"))["meta"]
+        fecha = datetime.fromisoformat(meta["patchStart"]).replace(tzinfo=timezone.utc)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise FuenteInvalida(f"ranked_data.json no dice cuándo empezó el parche (meta.patchStart): {error}") from error
+    return int(fecha.timestamp())
+
+
 def _ruta(path: Path) -> str:
     return path.as_posix().replace("'", "''")
 
 
 def normalizar(origen: Path, destino: Path, civs_validas: set[str]) -> None:
     """Traduce la foto de origen a la tabla de partidas de la caché (cache.COLUMNAS_*) y la escribe en destino."""
+    parche = inicio_del_parche(origen)
     con = duckdb.connect()
     partidas, jugadores = _ruta(origen / "matches.parquet"), _ruta(origen / "players.parquet")
+    primera = con.execute(f"SELECT min(start_time) FROM '{partidas}'").fetchone()[0]
+    if primera is not None and primera < parche - TOLERANCIA_PARCHE_S:
+        raise FuenteInvalida(f"la foto trae partidas de antes del parche que dice ranked_data.json "
+                             f"(la primera, {datetime.fromtimestamp(primera, tz=timezone.utc):%Y-%m-%d}): "
+                             f"¿matches.parquet viejo con un ranked_data.json nuevo?")
     traduccion = " ".join(f"WHEN '{viejo}' THEN '{nuevo}'" for viejo, nuevo in CIVS.items())
     civ = f"CASE civ {traduccion} ELSE civ END" if CIVS else "civ"
     con.execute(f"CREATE TEMP TABLE j AS SELECT match_id, civ_id, {civ} AS civ, team, old_rating, won FROM '{jugadores}'")
@@ -100,7 +126,7 @@ def normalizar(origen: Path, destino: Path, civs_validas: set[str]) -> None:
     con.execute(f"CREATE TEMP TABLE fuera AS SELECT DISTINCT match_id FROM j WHERE civ IN ({ignoradas})")
     destino.mkdir(parents=True, exist_ok=True)
     con.execute(f"""COPY (SELECT match_id::BIGINT AS id, ladder, "map" AS mapa, start_time::BIGINT AS inicio,
-                (completion_time - start_time)::DOUBLE AS duracion_real_s, patch::BIGINT AS parche,
+                (completion_time - start_time)::DOUBLE AS duracion_real_s, {parche}::BIGINT AS parche,
                 avg_elo::DOUBLE AS elo_medio, '{NOMBRE}' AS fuente
                 FROM '{partidas}' WHERE match_id NOT IN (SELECT match_id FROM fuera))
                 TO '{_ruta(destino / 'partidas.parquet')}' (FORMAT parquet)""")

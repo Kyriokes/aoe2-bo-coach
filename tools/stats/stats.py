@@ -24,7 +24,7 @@ import validacion
 from cache import TablaInvalida, sumar
 from franjas import LIMITES_ELO, LIMITES_JUEGO_MIN, MAPAS
 from fuentes import aoe2guide
-from fuentes.aoe2guide import CivDesconocida, FuenteCaida
+from fuentes.aoe2guide import CivDesconocida, FuenteCaida, FuenteInvalida
 from lectura import leer_1v1, leer_equipos
 from modelo import (FRENOS_INICIALES, ajustar, casilleros, contar, diseno_1v1, diseno_equipos, elegir_frenos, eta,
                     indice_par, pesos_globales, rango, remuestrear)
@@ -189,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return {"bajar": _bajar, "ajustar": _ajustar, "informe": _informe}[args.comando](args)
-    except (FuenteCaida, CivDesconocida, TablaInvalida) as error:
+    except (FuenteCaida, FuenteInvalida, CivDesconocida, TablaInvalida) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
 
