@@ -10,15 +10,15 @@
    "type": 1,
    "members": [
     {
-     "profile_id": 21118127,
-     "name": "/steam/76561198831585008",
+     "profile_id": 3001,
+     "name": "/steam/0",
      "alias": "TheViper",
      "personal_statgroup_id": 11675149,
      "xp": 90,
      "level": 1,
      "leaderboardregion_id": 2,
      "country": "tw",
-     "clanlist_name": "Ysoft"
+     "clanlist_name": ""
     }
    ]
   },
@@ -28,15 +28,15 @@
    "type": 1,
    "members": [
     {
-     "profile_id": 289006,
-     "name": "/steam/76561198412740994",
+     "profile_id": 3002,
+     "name": "/steam/0",
      "alias": "TheViper",
      "personal_statgroup_id": 102580,
      "xp": 1382,
      "level": 1,
      "leaderboardregion_id": 4,
      "country": "ar",
-     "clanlist_name": "gggg8"
+     "clanlist_name": ""
     }
    ]
   },
@@ -46,15 +46,15 @@
    "type": 1,
    "members": [
     {
-     "profile_id": 4341787,
-     "name": "/steam/76561199080146673",
+     "profile_id": 3003,
+     "name": "/steam/0",
      "alias": "TheViper",
      "personal_statgroup_id": 3606283,
      "xp": 290,
      "level": 1,
      "leaderboardregion_id": 2,
      "country": "vn",
-     "clanlist_name": "QLG"
+     "clanlist_name": ""
     }
    ]
   }

@@ -30,7 +30,7 @@ public class EloLookupTests
         var candidatos = EloLookup.Parse(Fixture);
 
         // Ordenados por la última partida (en 1v1 o por equipos), la más nueva primero.
-        Assert.Equal([4341787L, 21118127L, 289006L], candidatos.Select(c => c.ProfileId));
+        Assert.Equal([3003L, 3001L, 3002L], candidatos.Select(c => c.ProfileId)); // perfiles inventados en el fixture
         var primero = candidatos[0];
         Assert.Equal("TheViper", primero.Alias);
         Assert.Equal("vn", primero.Country);
