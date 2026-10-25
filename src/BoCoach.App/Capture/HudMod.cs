@@ -156,8 +156,18 @@ public static class HudMod
             switch (name)
             {
                 case "Wood" or "Food" or "Gold" or "Stone" or "Population":
-                    BuildContainer(widget, layout.Cell(name.ToLowerInvariant()), bar.Height, name == "Population" ? "total" : "villagers", fontIndex, white);
+                {
+                    var cell = layout.Cell(name.ToLowerInvariant());
+                    // Los fondos negros van como hermanos, antes del contenedor y de la etiqueta del stock y un plano
+                    // más abajo: adentro del contenedor (plano 1 + 1) tapaban al stock (plano 2, hermano) en el juego.
+                    for (var i = 0; i < cell.Backgrounds.Count; i++)
+                    {
+                        var b = cell.Backgrounds[i];
+                        children.Add(Back($"{Ours}Back_{cell.Name}_{i}", cell.X + b.X, b.Y, b.Width, b.Height));
+                    }
+                    BuildContainer(widget, cell, bar.Height, name == "Population" ? "total" : "villagers", fontIndex, white);
                     break;
+                }
                 case "WoodStorage" or "FoodStorage" or "GoldStorage" or "StoneStorage":
                     PlaceLabel(widget, layout, layout.Cell(name[..^"Storage".Length].ToLowerInvariant()), "stock", fontIndex, white);
                     break;
@@ -303,11 +313,6 @@ public static class HudMod
                 ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(chip.Color) },
                 ["ChildWidgets"] = new JsonArray(),
             }));
-        }
-        for (var i = 0; i < cell.Backgrounds.Count; i++)
-        {
-            var b = cell.Backgrounds[i];
-            children.Add(Back($"{Ours}Back{i}", b.X, b.Y, b.Width, b.Height));
         }
         if (cell.Separator is { } s)
         {

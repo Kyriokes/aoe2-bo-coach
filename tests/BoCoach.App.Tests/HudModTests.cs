@@ -159,21 +159,30 @@ public sealed class HudModTests : IDisposable
         Assert.Equal("None", Material(wood));
         Assert.Equal(42011, (int)wood["Help"]!);
         var children = Children(wood);
-        Assert.Equal(["BoCoachIcon", "BoCoachChip", "BoCoachBack0", "BoCoachSeparator", "Workers"], children.Select(c => (string?)c["Name"]));
+        Assert.Equal(["BoCoachIcon", "BoCoachChip", "BoCoachSeparator", "Workers"], children.Select(c => (string?)c["Name"]));
         Assert.Equal("ResourceWood", Material(children[0]));
         Assert.Equal((10, 12, 84, 84), View(children[0]));
         Assert.Equal((104, 12, 70, 84), View(children[1]));
         Assert.Equal(0.53, (double)children[1]["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
-        Assert.Equal((180, 12, 230, 84), View(children[2]));
-        Assert.Equal("/", (string?)children[3]["Text"]);
-        Assert.Equal(44, Points(children[3]));
-        Assert.Equal((184, 12, 70, 84), View(children[4]));
-        Assert.Equal(48, Points(children[4]));
-        Assert.Equal("CentreCentre", (string?)children[4]["TextAnchor"]);
+        Assert.Equal("/", (string?)children[2]["Text"]);
+        Assert.Equal(44, Points(children[2]));
+        Assert.Equal((184, 12, 70, 84), View(children[3]));
+        Assert.Equal(48, Points(children[3]));
+        Assert.Equal("CentreCentre", (string?)children[3]["TextAnchor"]);
+
+        // El fondo negro de "aldeanos / stock" es hermano del contenedor, antes que él y que el stock y un plano más
+        // abajo: adentro del contenedor (plano 1 + 1) tapaba al stock (plano 2, hermano) en el juego (20261024-224921).
+        var siblings = Children(Widget(panel, "Background")).Select(c => (string?)c["Name"]).ToList();
+        var back = Widget(panel, "BoCoachBack_wood_0");
+        Assert.Equal((190, 12, 230, 84), View(back));
+        Assert.Equal(1, (int)back["ZPlaneLocalOffset"]!);
+        Assert.True(siblings.IndexOf("BoCoachBack_wood_0") < siblings.IndexOf("Wood"), "el fondo va antes que el contenedor");
+        Assert.True(siblings.IndexOf("Wood") < siblings.IndexOf("WoodStorage"), "el stock va después del contenedor");
 
         var storage = Widget(panel, "WoodStorage");
         Assert.Equal((284, 12, 132, 84), View(storage));
         Assert.Equal(48, Points(storage));
+        Assert.Equal(2, (int)storage["ZPlaneLocalOffset"]!);
         Assert.Equal(42202, (int)storage["Help"]!);
         Assert.Equal("CentreCentre", (string?)storage["TextAnchor"]);
 
@@ -183,6 +192,7 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((104, 12, 80, 84), View(Children(population).First(c => (string?)c["Name"] == "Workers")));
         Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationCount")));
         Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
+        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
 
         Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
         Assert.Equal("IdleVillagerNormal", Material(Widget(panel, "Idle")));
