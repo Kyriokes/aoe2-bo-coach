@@ -208,6 +208,73 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
             AssertClose(boxes[name], found.Layout.PixelsOf(name, screen.Width, screen.Height), 3, name);
     }
 
+    /// <summary>
+    /// La primera captura real del panel nuevo (el usuario, 2026-10-24, 1920×1080, recortada a la franja del HUD sobre
+    /// fondo verde): los casilleros caen a 178 px cada 410 unidades, o sea 0,4348 px por unidad, un 1,5 % más que el
+    /// 0,4286 del diseño. La escala se mide por las posiciones, no por el ancho de 30 px de los casilleros, que no
+    /// distingue una de otra. El "5" de aldeanos parte el casillero azul en dos y el aviso amarillo del overlay quedó
+    /// abajo de la barra: nada de eso molesta.
+    /// </summary>
+    [Fact]
+    public void Con_la_captura_real_del_usuario_calibra_con_la_escala_real()
+    {
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "hud-layout-20261024-1080p.png"));
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal("bocoach-2026-10", found.Hud!.Name);
+        Assert.Equal(5, found.Squares.Count);
+        Assert.Equal(1.0145, found.Scale, 0.01);
+        AssertClose(new PixelRect(50, 5, 30, 37), found.Squares[0], 1, "casillero de madera");
+        AssertClose(new PixelRect(763, 5, 35, 37), found.Squares[4], 1, "casillero de población");
+        const double ppu = 0.4348;
+        foreach (var cell in Layout.Cells)
+        {
+            var rect = cell.Name == "age" ? Layout.AgeTextRect() : Layout.CellRect(cell);
+            var expected = new PixelRect((int)Math.Round(rect.X * ppu), (int)Math.Round(rect.Y * ppu), (int)Math.Round(rect.Width * ppu), (int)Math.Round(rect.Height * ppu));
+            var actual = found.Layout.PixelsOf(HudLayout.RegionOf(cell.Name), screen.Width, screen.Height);
+            output.WriteLine($"{cell.Name,-12} esperado {expected}  sola {actual}");
+            AssertClose(expected, actual, 2, cell.Name);
+        }
+    }
+
+    [Fact]
+    public void Con_el_HUD_un_poco_mas_grande_que_el_diseno_calibra_igual()
+    {
+        const double ppu = 0.4348;
+        var screen = HudLayoutScreens.Render(Layout, ppu);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal(ppu / Layout.PixelsPerUnitAt1080p, found.Scale, 0.01);
+        foreach (var cell in Layout.Cells)
+        {
+            var rect = cell.Name == "age" ? Layout.AgeTextRect() : Layout.CellRect(cell);
+            var expected = new PixelRect((int)Math.Round(rect.X * ppu), (int)Math.Round(rect.Y * ppu), (int)Math.Round(rect.Width * ppu), (int)Math.Round(rect.Height * ppu));
+            AssertClose(expected, found.Layout.PixelsOf(HudLayout.RegionOf(cell.Name), screen.Width, screen.Height), 2, cell.Name);
+        }
+    }
+
+    /// <summary>
+    /// El aviso de inactivos del overlay es un marco rojo alrededor de la celda de inactivos, de un rojo a menos de 45
+    /// por canal del casillero de comida y más ancho que él: no puede ganarle el lugar de ancla (su alto no es el de
+    /// un casillero).
+    /// </summary>
+    [Fact]
+    public void Con_el_marco_de_inactivos_del_overlay_a_la_vista_calibra_igual()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4, gdInside: true, idleFrame: true);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.NotNull(found.Hud);
+        foreach (var (name, expected) in LayoutBoxes)
+            AssertClose(expected, found.Layout.PixelsOf(name, screen.Width, screen.Height), name == RegionNames.Clock ? 3 : 2, name);
+    }
+
     [Fact]
     public void Un_casillero_corrido_no_calibra()
     {

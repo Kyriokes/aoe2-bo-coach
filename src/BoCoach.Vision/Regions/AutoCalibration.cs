@@ -114,9 +114,11 @@ public static class AutoCalibration
     }
 
     /// <summary>
-    /// El mod nuevo: los casilleros de color del diseño son las anclas. Factor píxeles por unidad = mediana de los
-    /// anchos medidos sobre los del diseño; origen de la barra = mediana de lo que cada casillero dista de su lugar.
-    /// Si un casillero no cae donde el diseño lo pone (a 3 px a 1080p, o con otro ancho), no hay detección.
+    /// El mod nuevo: los casilleros de color del diseño son las anclas. Factor píxeles por unidad = pendiente de las
+    /// posiciones medidas sobre las del diseño (el ancho, de unos 30 px, no distingue 0,4286 de 0,4348: con la escala
+    /// real del usuario la piedra caía 8 px lejos y se rechazaba todo); origen de la barra = mediana de lo que cada
+    /// casillero dista de su lugar. Si un casillero no cae donde el diseño lo pone (a 3 px a 1080p, o con otro ancho),
+    /// no hay detección.
     /// </summary>
     private static AutoCalibrationResult? DetectLayout(CapturedImage screen, RegionLayout reference, HudLayout layout)
     {
@@ -125,19 +127,32 @@ public static class AutoCalibration
         var anchors = new List<(HudCell Cell, PixelRect Rect)>();
         foreach (var cell in layout.Anchors)
         {
-            var color = cell.Chip!.Color.Captured;
-            var candidates = rects.Where(r => Within(r.Color, color, ColorTolerance)).ToList();
-            if (candidates.Count == 0)
+            var chip = cell.Chip!;
+            var candidates = rects.Where(r => Within(r.Color, chip.Color.Captured, ColorTolerance)).OrderByDescending(r => r.Rect.Width).ToList();
+            // Del más ancho al más angosto: el casillero entero, o su parte libre (la GD de la app lo parte en varios
+            // rectángulos del mismo ancho, que se juntan y se estiran por los costados). Lo que estirado no tiene la
+            // proporción de un casillero no sirve: el marco de inactivos del overlay es de un rojo parecido al de
+            // comida y más ancho, pero estirado mide la celda entera de alto.
+            PixelRect? anchor = null;
+            foreach (var candidate in candidates)
+            {
+                var same = candidates.Where(r => Math.Abs(r.Rect.X - candidate.Rect.X) <= 2 && Math.Abs(r.Rect.X + r.Rect.Width - candidate.Rect.X - candidate.Rect.Width) <= 2).ToList();
+                var top = same.Min(r => r.Rect.Y);
+                var bottom = same.Max(r => r.Rect.Y + r.Rect.Height);
+                (top, bottom) = Extend(strip, candidate.Rect.X + 1, candidate.Rect.X + candidate.Rect.Width - 2, top, bottom, candidate.Color);
+                var rect = new PixelRect(candidate.Rect.X, top, candidate.Rect.Width, bottom - top);
+                if (ChipShaped(rect, chip))
+                {
+                    anchor = rect;
+                    break;
+                }
+            }
+            if (anchor is not { } found)
                 return null;
-            // El más ancho es el casillero (o su parte libre: la GD de la app lo parte en varios rectángulos del mismo ancho).
-            var widest = candidates.MaxBy(r => r.Rect.Width);
-            var same = candidates.Where(r => Math.Abs(r.Rect.X - widest.Rect.X) <= 2 && Math.Abs(r.Rect.X + r.Rect.Width - widest.Rect.X - widest.Rect.Width) <= 2).ToList();
-            var top = same.Min(r => r.Rect.Y);
-            var bottom = same.Max(r => r.Rect.Y + r.Rect.Height);
-            (top, bottom) = Extend(strip, widest.Rect.X + 1, widest.Rect.X + widest.Rect.Width - 2, top, bottom, widest.Color);
-            anchors.Add((cell, new PixelRect(widest.Rect.X, top, widest.Rect.Width, bottom - top)));
+            anchors.Add((cell, found));
         }
-        var factor = Median(anchors.Select(a => (double)a.Rect.Width / a.Cell.Chip!.Width));
+        var factor = Slope([.. anchors.Select(a => ((double)(a.Cell.X + a.Cell.Chip!.X), (double)a.Rect.X))])
+            ?? Median(anchors.Select(a => (double)a.Rect.Width / a.Cell.Chip!.Width));
         if (factor <= 0)
             return null;
         var originX = Median(anchors.Select(a => a.Rect.X - (a.Cell.X + a.Cell.Chip!.X) * factor));
@@ -185,6 +200,25 @@ public static class AutoCalibration
                 return predicted with { X = x };
         }
         return predicted;
+    }
+
+    /// <summary>Alto sobre ancho a un cuarto del del casillero del diseño.</summary>
+    private static bool ChipShaped(PixelRect rect, HudChip chip) =>
+        rect.Width > 0 && Math.Abs((double)rect.Height / rect.Width - (double)chip.Height / chip.Width) <= ShapeTolerance * chip.Height / chip.Width;
+
+    private const double ShapeTolerance = 0.25;
+
+    /// <summary>Pendiente de mínimos cuadrados de Y sobre X (píxeles por unidad), o null sin dos puntos distintos o con pendiente nula.</summary>
+    private static double? Slope(IReadOnlyList<(double X, double Y)> points)
+    {
+        if (points.Count < 2)
+            return null;
+        var (mx, my) = (points.Average(p => p.X), points.Average(p => p.Y));
+        var sxx = points.Sum(p => (p.X - mx) * (p.X - mx));
+        if (sxx <= 0)
+            return null;
+        var slope = points.Sum(p => (p.X - mx) * (p.Y - my)) / sxx;
+        return slope > 0 ? slope : null;
     }
 
     private static double Median(IEnumerable<double> values)
