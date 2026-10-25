@@ -278,6 +278,33 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     /// <summary>
+    /// La cola de producción no es parte del diseño: su caja salía de la calibración de referencia escalada, y la
+    /// referencia era la calibración sola anterior, ya escalada, así que cada recalibración (cada 5 s sin reloj) la
+    /// agrandaba un 1,5 %: en la tercera prueba del 2026-10-25 quedó en y 121 con la cola real en y 50, y el centro
+    /// urbano parecía parado toda la partida. Sale del lugar de siempre a 1080p escalado, como el panel de puntajes.
+    /// </summary>
+    [Fact]
+    public void La_caja_de_la_cola_no_se_agranda_al_volver_a_calibrar()
+    {
+        const double ppu = 0.4348;
+        var screen = HudLayoutScreens.Render(Layout, ppu);
+        var regions = RegionLayout.Default.Regions.ToDictionary(kv => kv.Key, kv => kv.Value);
+        regions[RegionNames.ProductionQueue] = new RegionRect(0, 0.112, 0.616, 0.119);
+        var reference = new RegionLayout(1920, 1080, regions, 1.0146, null);
+
+        var found = AutoCalibration.Detect(screen, reference, Layout);
+
+        Assert.NotNull(found);
+        var scale = ppu / Layout.PixelsPerUnitAt1080p;
+        var usual = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
+        var expected = new PixelRect((int)Math.Round(usual.X * scale), (int)Math.Round(usual.Y * scale), (int)Math.Round(usual.Width * scale), (int)Math.Round(usual.Height * scale));
+        AssertClose(expected, found.Layout.PixelsOf(RegionNames.ProductionQueue, 1920, 1080), 2, "cola");
+        var again = AutoCalibration.Detect(screen, found.Layout, Layout);
+        Assert.NotNull(again);
+        Assert.Equal(found.Layout.PixelsOf(RegionNames.ProductionQueue, 1920, 1080), again.Layout.PixelsOf(RegionNames.ProductionQueue, 1920, 1080));
+    }
+
+    /// <summary>
     /// El aviso de inactivos del overlay es un marco rojo alrededor de la celda de inactivos, de un rojo a menos de 45
     /// por canal del casillero de comida y más ancho que él: no puede ganarle el lugar de ancla (su alto no es el de
     /// un casillero).

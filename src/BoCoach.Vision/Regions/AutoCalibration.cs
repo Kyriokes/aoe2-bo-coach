@@ -249,9 +249,12 @@ public static class AutoCalibration
     /// <summary>Lo común a los dos caminos: cola de producción, log y puntajes, y el RegionLayout.</summary>
     private static AutoCalibrationResult Finish(CapturedImage screen, RegionLayout reference, Dictionary<string, PixelRect> boxes, double scale, IReadOnlyList<PixelRect> squares, HudLayout? hud)
     {
-        var referenceQueue = reference.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
-        boxes[RegionNames.ProductionQueue] = new PixelRect(
-            Scaled(referenceQueue.X, scale), Scaled(referenceQueue.Y, scale), Scaled(referenceQueue.Width, scale), Scaled(referenceQueue.Height, scale));
+        // La cola de producción no es parte del diseño ni de las franjas: su caja es la de siempre a 1080p escalada como
+        // el HUD. No la de la referencia: era la calibración sola anterior, ya escalada, y cada recalibración (cada 5 s
+        // sin reloj) la agrandaba un 1,5 %; en la tercera prueba del HUD propio (2026-10-25) quedó en y 121 con la
+        // cola en y 50 y el centro urbano parecía parado toda la partida.
+        var queue = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
+        boxes[RegionNames.ProductionQueue] = new PixelRect(Scaled(queue.X, scale), Scaled(queue.Y, scale), Scaled(queue.Width, scale), Scaled(queue.Height, scale));
 
         // El panel de puntajes, anclado abajo a la derecha de la pantalla y escalado como el HUD (la caja guardada podía
         // ser la vieja, de 2 renglones).
