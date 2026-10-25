@@ -79,3 +79,14 @@ def test_equipos_recupera_las_chances_contra_la_civ_promedio(tmp_path):
     ajustado = casilleros(eta(dis, w), pesos)[:, 0, 0, 0]
     verdadero = casilleros(eta(dis, centrado), pesos)[:, 0, 0, 0]
     assert np.abs(ajustado - verdadero).max() < 0.03
+
+
+def test_equipos_ajusta_la_escala_del_elo(tmp_path):
+    # En los datos reales por equipos la diferencia de Elo medio pesa 1,85 veces la fórmula del Elo.
+    partidas, jugadores, _ = generar_equipos(20_000, CIVS, semilla=9, escala_elo=1.85)
+    d = leer_equipos(cache_de(tmp_path, partidas, jugadores))
+    dis = diseno_equipos(d)
+    w = ajustar(dis, FRENOS_INICIALES)
+    inicio, tamano = dis.grupos["elo"]
+    assert tamano == 1
+    assert 1 + w[inicio] == pytest.approx(1.85, abs=0.15)

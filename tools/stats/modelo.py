@@ -9,7 +9,9 @@ por mapa, por duración y por Elo. Todas las parejas tienen columnas aunque no h
 en 0).
 
 Equipos: cada jugador suma su civ (+1 en su equipo, -1 en el otro); la chance de una civ es la de un equipo que la
-tiene en lugar de una civ promedio. Sin piezas de cruce.
+tiene en lugar de una civ promedio. Sin piezas de cruce. La diferencia de Elo medio de los equipos pesa más que en la
+fórmula del Elo (en las partidas de aoe2-guide, 1,85 veces, parecido con cualquier tamaño de equipo; con la fórmula
+sola el modelo quedaba descalibrado): el grupo "elo" ajusta esa escala (1 + su coeficiente).
 """
 
 from __future__ import annotations
@@ -23,10 +25,10 @@ from scipy.optimize import minimize
 from lectura import Datos1v1, DatosEquipos
 
 GRUPOS_1V1 = ("civ", "civ_mapa", "civ_elo", "civ_dur", "cruce", "cruce_mapa", "cruce_dur", "cruce_elo")
-GRUPOS_EQUIPOS = ("civ", "civ_mapa", "civ_elo", "civ_dur")
+GRUPOS_EQUIPOS = ("civ", "civ_mapa", "civ_elo", "civ_dur", "elo")
 # Del prototipo del 2026-10-25 con los datos reales de aoe2-guide.
 FRENOS_INICIALES = {"civ": 0.1, "civ_mapa": 0.05, "civ_elo": 0.05, "civ_dur": 0.1,
-                    "cruce": 0.05, "cruce_mapa": 0.025, "cruce_dur": 0.05, "cruce_elo": 0.025}
+                    "cruce": 0.05, "cruce_mapa": 0.025, "cruce_dur": 0.05, "cruce_elo": 0.025, "elo": 1.0}
 FRANJAS = 5  # mapas del modelo (con "otros"), franjas de Elo y de duración
 
 
@@ -48,7 +50,7 @@ def indice_par(i: np.ndarray, j: np.ndarray, n_civs: int) -> np.ndarray:
 
 def _grupos(nombres: tuple[str, ...], c: int, p: int) -> dict[str, tuple[int, int]]:
     tamanos = {"civ": c, "civ_mapa": c * FRANJAS, "civ_elo": c * FRANJAS, "civ_dur": c * FRANJAS,
-               "cruce": p, "cruce_mapa": p * FRANJAS, "cruce_dur": p * FRANJAS, "cruce_elo": p * FRANJAS}
+               "cruce": p, "cruce_mapa": p * FRANJAS, "cruce_dur": p * FRANJAS, "cruce_elo": p * FRANJAS, "elo": 1}
     grupos, inicio = {}, 0
     for nombre in nombres:
         grupos[nombre] = (inicio, tamanos[nombre])
@@ -92,11 +94,14 @@ def diseno_equipos(d: DatosEquipos) -> Diseno:
     grupos = _grupos(GRUPOS_EQUIPOS, c, 0)
     coo = d.civ_equipo.tocoo()
     fila, civ = coo.row, coo.col
-    columnas = np.concatenate(_columnas_de_civ(grupos, civ, d.mapa[fila], d.elo[fila], d.dur[fila]))
+    n = d.civ_equipo.shape[0]
+    offset = _offset(d.dif_elo)
+    columnas = np.concatenate(_columnas_de_civ(grupos, civ, d.mapa[fila], d.elo[fila], d.dur[fila])
+                              + [np.full(n, grupos["elo"][0])])
+    filas = np.concatenate([np.tile(fila, 4), np.arange(n)])
     total = sum(tamano for _, tamano in grupos.values())
-    matriz = sparse.csr_matrix((np.tile(coo.data, 4), (np.tile(fila, 4), columnas)),
-                               shape=(d.civ_equipo.shape[0], total))
-    return Diseno(matriz, grupos, _offset(d.dif_elo), np.asarray(d.gana_1, dtype=float), c, c)
+    matriz = sparse.csr_matrix((np.concatenate([np.tile(coo.data, 4), offset]), (filas, columnas)), shape=(n, total))
+    return Diseno(matriz, grupos, offset, np.asarray(d.gana_1, dtype=float), c, c)
 
 
 def _precision(dis: Diseno, frenos: dict[str, float]) -> np.ndarray:

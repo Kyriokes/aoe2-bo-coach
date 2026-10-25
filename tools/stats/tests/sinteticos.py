@@ -98,14 +98,18 @@ def generar_1v1(n: int, civs: list[str], semilla: int, sin_jugar: frozenset[tupl
     return partidas, jugadores, w
 
 
-def generar_equipos(n: int, civs: list[str], semilla: int) -> tuple[list[dict], list[dict], np.ndarray]:
-    """Partidas 2 contra 2 con fuerzas de civ conocidas; w verdadero con las columnas de modelo.GRUPOS_EQUIPOS."""
+def generar_equipos(n: int, civs: list[str], semilla: int,
+                    escala_elo: float = 1.0) -> tuple[list[dict], list[dict], np.ndarray]:
+    """Partidas 2 contra 2 con fuerzas de civ conocidas; w verdadero con las columnas de modelo.GRUPOS_EQUIPOS.
+
+    escala_elo: cuánto pesa la diferencia de Elo medio contra la fórmula del Elo (en los datos reales, unas 1,85).
+    """
     rng = np.random.default_rng(semilla)
     civs = sorted(civs)
     c = len(civs)
     civ = rng.normal(0, EFECTOS["civ"], c)
     civ_mapa = rng.normal(0, EFECTOS["civ_mapa"], (c, 5))
-    w = np.concatenate([civ, civ_mapa.ravel(), np.zeros(10 * c)])
+    w = np.concatenate([civ, civ_mapa.ravel(), np.zeros(10 * c), [escala_elo - 1]])
 
     mapa, lugar, elo_medio, duracion, inicio, dif = _contexto(rng, n, MAPAS_POR_DEFECTO)
     partidas, jugadores = [], []
@@ -113,7 +117,7 @@ def generar_equipos(n: int, civs: list[str], semilla: int) -> tuple[list[dict], 
         cuatro = rng.integers(0, c, 4)
         e1, e2 = int(round(elo_medio[fila] + dif[fila] / 2)), int(round(elo_medio[fila] - dif[fila] / 2))
         m = lugar[fila]
-        z = ((e1 - e2) * np.log(10) / 400 + civ[cuatro[:2]].sum() + civ_mapa[cuatro[:2], m].sum()
+        z = (escala_elo * (e1 - e2) * np.log(10) / 400 + civ[cuatro[:2]].sum() + civ_mapa[cuatro[:2], m].sum()
              - civ[cuatro[2:]].sum() - civ_mapa[cuatro[2:], m].sum())
         gana_1 = bool(rng.random() < _sigmoide(z))
         id = fila + 1
