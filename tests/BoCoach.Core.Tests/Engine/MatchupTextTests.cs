@@ -74,7 +74,7 @@ public class MatchupTextTests
         };
         var texto = MatchupText.Loading(Datos(MatchupJson.Cell(490, 460, 520, 80), franjas), BritanosEnArabia, Civ, Mapa);
         Assert.Equal("Britanos contra francos en Arabia (Elo 1050): parejo, ganás 49 % (46 a 52). "
-                     + "Parejo en cualquier duración.", texto);
+                     + "Sin diferencia clara por duración.", texto);
     }
 
     [Fact]
@@ -218,5 +218,17 @@ public class MatchupTextTests
             MatchupText.Loading(stats, BritanosEnArabia with { Elo = 1700, Map = null }, Civ, Mapa));
         Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49).",
             MatchupText.Loading(stats, BritanosEnArabia, Civ, Mapa));
+    }
+
+    [Fact]
+    public void Sin_diferencia_clara_no_contradice_un_cruce_desparejo()
+    {
+        // "Parejo en cualquier duración" después de "ganás 45 %" se leía como una contradicción.
+        var franjas = new Dictionary<int, int[]>
+        {
+            [1] = MatchupJson.Cell(460, 400, 520, 50), [5] = MatchupJson.Cell(440, 380, 500, 40),
+        };
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(450, 400, 490, 80), franjas), BritanosEnArabia, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 45 % (40 a 49). Sin diferencia clara por duración.", texto);
     }
 }

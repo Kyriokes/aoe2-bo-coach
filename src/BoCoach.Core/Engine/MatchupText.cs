@@ -107,7 +107,9 @@ public static class MatchupText
         var conPartidas = Enumerable.Range(1, 5).Count(band => (query.Team
             ? stats.Team(query.Civ, resumen.Map, resumen.EloBand, band)
             : stats.OneVsOne(query.Civ, query.Rival!, resumen.Map, resumen.EloBand, band)) is { N: > 0 });
-        return conPartidas >= 2 ? " Parejo en cualquier duración." : "";
+        // "Sin diferencia clara", no "parejo": que los rangos se toquen no prueba que no haya diferencia (spec 4.5), y
+        // "parejo" después de "ganás 45 %" se leía como una contradicción.
+        return conPartidas >= 2 ? " Sin diferencia clara por duración." : "";
     }
 
     private static string Range(MatchupCell cell) => $"{Percent(cell.P)} % ({Percent(cell.From)} a {Percent(cell.To)})";
