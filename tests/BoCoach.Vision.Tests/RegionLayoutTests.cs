@@ -1,3 +1,4 @@
+using BoCoach.Vision.Hud;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
 
@@ -97,5 +98,38 @@ public sealed class RegionLayoutTests : IDisposable
 
         var e = Assert.Throws<InvalidDataException>(() => RegionLayout.LoadOrDefault(_path));
         Assert.Contains("food", e.Message);
+    }
+
+    private static HudLayout Hud() => HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
+
+    [Fact]
+    public void Guarda_y_carga_el_diseno_del_HUD()
+    {
+        var hud = Hud();
+        RegionLayout.Default.WithHud(hud).WithHudScale(1.5).Save(_path);
+
+        var loaded = RegionLayout.LoadOrDefault(_path);
+
+        Assert.Equal("bocoach-2026-10", loaded.Hud!.Name);
+        Assert.Equal(hud.ToJson(), loaded.Hud.ToJson());
+        Assert.Equal(1.5, loaded.HudScale);
+    }
+
+    [Fact]
+    public void La_calibracion_manual_conserva_el_diseno()
+    {
+        var layout = RegionLayout.Default.WithHud(Hud()).WithReference(2560, 1440).With(RegionNames.Food, new RegionRect(0.1, 0.2, 0.03, 0.02));
+
+        Assert.NotNull(layout.Hud);
+        Assert.Equal(2560, layout.ReferenceWidth);
+    }
+
+    [Fact]
+    public void Sin_diseno_el_archivo_no_lo_trae()
+    {
+        RegionLayout.Default.Save(_path);
+
+        Assert.DoesNotContain("\"name\"", File.ReadAllText(_path));
+        Assert.Null(RegionLayout.LoadOrDefault(_path).Hud);
     }
 }

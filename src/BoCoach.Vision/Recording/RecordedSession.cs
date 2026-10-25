@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 
 namespace BoCoach.Vision.Recording;
 
@@ -10,12 +11,13 @@ public sealed record RecordedFrame(int Index, long TimeMs);
 /// <summary>Lee una grabación hecha por <see cref="SessionRecorder"/> para correr el pipeline sin el juego.</summary>
 public sealed class RecordedSession
 {
-    private RecordedSession(string folder, IReadOnlyList<RecordedFrame> frames, IReadOnlyList<string> regions, double hudScale)
+    private RecordedSession(string folder, IReadOnlyList<RecordedFrame> frames, IReadOnlyList<string> regions, double hudScale, HudLayout? hud)
     {
         Folder = folder;
         Frames = frames;
         Regions = regions;
         HudScale = hudScale;
+        Hud = hud;
     }
 
     public string Folder { get; }
@@ -26,6 +28,9 @@ public sealed class RecordedSession
 
     /// <summary>Tamaño del HUD con que se grabó respecto de 1080p (session.json, hud_scale; 1 en las grabaciones viejas).</summary>
     public double HudScale { get; }
+
+    /// <summary>El diseño del mod con que se grabó (session.json, hud_layout), o null: mod viejo, sin mod o grabación de antes del diseño.</summary>
+    public HudLayout? Hud { get; }
 
     public static RecordedSession Load(string folder)
     {
@@ -43,7 +48,19 @@ public sealed class RecordedSession
         using var session = JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, "session.json")));
         var regions = session.RootElement.GetProperty("regions").EnumerateObject().Select(p => p.Name).ToList();
         var hudScale = session.RootElement.TryGetProperty("hud_scale", out var scale) && scale.TryGetDouble(out var s) && s > 0 ? s : 1;
-        return new RecordedSession(folder, frames, regions, hudScale);
+        HudLayout? hud = null;
+        if (session.RootElement.TryGetProperty("hud_layout", out var layout) && layout.ValueKind == JsonValueKind.Object)
+        {
+            try
+            {
+                hud = HudLayout.Parse(layout.GetRawText(), "session.json");
+            }
+            catch (InvalidDataException)
+            {
+                hud = null; // una grabación nunca deja de abrirse por su diseño
+            }
+        }
+        return new RecordedSession(folder, frames, regions, hudScale, hud);
     }
 
     public bool Has(int frame, string region) => File.Exists(PathOf(frame, region));

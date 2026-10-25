@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 
 namespace BoCoach.Vision.Regions;
 
@@ -82,12 +83,13 @@ public readonly record struct RegionRect(double X, double Y, double Width, doubl
 /// </summary>
 public sealed class RegionLayout
 {
-    public RegionLayout(int referenceWidth, int referenceHeight, IReadOnlyDictionary<string, RegionRect> regions, double hudScale = 1)
+    public RegionLayout(int referenceWidth, int referenceHeight, IReadOnlyDictionary<string, RegionRect> regions, double hudScale = 1, HudLayout? hud = null)
     {
         ReferenceWidth = referenceWidth;
         ReferenceHeight = referenceHeight;
         Regions = regions;
         HudScale = hudScale;
+        Hud = hud;
     }
 
     /// <summary>Resolución con la que se calibró (solo informativa: las regiones son relativas).</summary>
@@ -102,6 +104,12 @@ public sealed class RegionLayout
     /// manual no lo mide y lo deja en 1.
     /// </summary>
     public double HudScale { get; }
+
+    /// <summary>
+    /// El diseño del mod con que se calibró (la calibración sola con el mod nuevo), guardado entero en regions.json: el
+    /// lector recorta cada campo según él. null con el mod viejo, sin mod o con una calibración de antes del diseño.
+    /// </summary>
+    public HudLayout? Hud { get; }
 
 
     public static string DefaultPath => Path.Combine(
@@ -138,13 +146,15 @@ public sealed class RegionLayout
     public RegionLayout With(string region, RegionRect rect)
     {
         var regions = new Dictionary<string, RegionRect>(Regions) { [region] = rect.Clamped() };
-        return new RegionLayout(ReferenceWidth, ReferenceHeight, regions, HudScale);
+        return new RegionLayout(ReferenceWidth, ReferenceHeight, regions, HudScale, Hud);
     }
 
-    /// <summary>La calibración manual: fija la resolución y deja la escala del HUD en 1 (no la mide).</summary>
-    public RegionLayout WithReference(int width, int height) => new(width, height, Regions);
+    /// <summary>La calibración manual: fija la resolución y deja la escala del HUD en 1 (no la mide). Conserva el diseño: el lector verifica el casillero antes de usarlo.</summary>
+    public RegionLayout WithReference(int width, int height) => new(width, height, Regions, 1, Hud);
 
-    public RegionLayout WithHudScale(double scale) => new(ReferenceWidth, ReferenceHeight, Regions, scale);
+    public RegionLayout WithHudScale(double scale) => new(ReferenceWidth, ReferenceHeight, Regions, scale, Hud);
+
+    public RegionLayout WithHud(HudLayout? hud) => new(ReferenceWidth, ReferenceHeight, Regions, HudScale, hud);
 
     /// <summary>Carga regions.json; si no existe, devuelve <see cref="Default"/>. Las regiones que falten salen del default.</summary>
     public static RegionLayout LoadOrDefault(string path)
@@ -170,7 +180,8 @@ public sealed class RegionLayout
             regions[name] = new RegionRect(values[0], values[1], values[2], values[3]).Clamped();
         }
         var reference = dto?.ReferenceResolution is { Length: 2 } r ? r : [Default.ReferenceWidth, Default.ReferenceHeight];
-        return new RegionLayout(reference[0], reference[1], regions, dto?.HudScale is double scale && scale > 0 ? scale : 1);
+        var hud = dto?.HudLayout is { ValueKind: JsonValueKind.Object } element ? HudLayout.Parse(element.GetRawText(), Path.GetFileName(path)) : null;
+        return new RegionLayout(reference[0], reference[1], regions, dto?.HudScale is double scale && scale > 0 ? scale : 1, hud);
     }
 
     public void Save(string path)
@@ -179,7 +190,8 @@ public sealed class RegionLayout
         var dto = new Dto(
             [ReferenceWidth, ReferenceHeight],
             Regions.ToDictionary(r => r.Key, r => new[] { Round(r.Value.X), Round(r.Value.Y), Round(r.Value.Width), Round(r.Value.Height) }),
-            Math.Round(HudScale, 4));
+            Math.Round(HudScale, 4),
+            Hud is null ? null : JsonSerializer.Deserialize<JsonElement>(Hud.ToJson()));
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOptions) + "\n");
     }
 
@@ -193,5 +205,5 @@ public sealed class RegionLayout
         AllowTrailingCommas = true,
     };
 
-    private sealed record Dto(int[]? ReferenceResolution, Dictionary<string, double[]>? Regions, double? HudScale = null);
+    private sealed record Dto(int[]? ReferenceResolution, Dictionary<string, double[]>? Regions, double? HudScale = null, JsonElement? HudLayout = null);
 }

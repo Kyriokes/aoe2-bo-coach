@@ -81,6 +81,8 @@ public sealed class SessionRecorder : IDisposable
             interval_ms = (int)_interval.TotalMilliseconds,
             // Tamaño del HUD respecto de 1080p (calibración sola): las capturas se graban tal cual y se reescalan al leerlas.
             hud_scale = _layout.HudScale,
+            // El diseño del mod entero (si la calibración lo tiene): la grabación se lee con el suyo aunque el de la app cambie.
+            hud_layout = _layout.Hud is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(_layout.Hud.ToJson()),
             regions = _layout.Regions.ToDictionary(
                 r => r.Key,
                 r =>

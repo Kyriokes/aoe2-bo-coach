@@ -1,3 +1,4 @@
+using BoCoach.Vision.Hud;
 using System.Text.Json;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Recording;
@@ -141,5 +142,21 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Equal(frames, recorder.Frames);
         Assert.False(recorder.IsRecording);
         Assert.Null(recorder.LastError);
+    }
+
+    [Fact]
+    public void session_json_lleva_el_diseno_del_HUD_y_la_grabacion_lo_devuelve()
+    {
+        var hud = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default.WithHud(hud), _root.FullName);
+        recorder.Open();
+        recorder.Stop();
+
+        Assert.Equal("bocoach-2026-10", RecordedSession.Load(recorder.Folder!).Hud!.Name);
+
+        using var plain = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
+        plain.Open();
+        plain.Stop();
+        Assert.Null(RecordedSession.Load(plain.Folder!).Hud);
     }
 }
