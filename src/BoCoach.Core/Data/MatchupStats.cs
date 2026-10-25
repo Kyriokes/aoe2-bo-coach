@@ -135,6 +135,42 @@ public sealed class MatchupStats
         return $"de {limits[band - 2]} a {limits[band - 1]} min";
     }
 
+    /// <summary>Si hay datos de esa civ (en 1v1 o en equipos). Las civs de Crónicas no juegan clasificatorias.</summary>
+    public bool HasCiv(string civ)
+    {
+        var key = Key(civ);
+        return key is not null && (_team.ContainsKey(key) || _oneVsOne.Keys.Any(k => k.Split('|').Contains(key)));
+    }
+
+    /// <summary>
+    /// La chance de que <paramref name="civ"/> le gane a <paramref name="rival"/> en 1v1, a Elo parejo; null en un
+    /// espejo o si falta la pareja (una civ sin partidas clasificatorias).
+    /// </summary>
+    public MatchupCell? OneVsOne(string civ, string rival, int map, int eloBand, int durationBand)
+    {
+        var (a, b) = (Key(civ), Key(rival));
+        if (a is null || b is null || a == b)
+            return null;
+        var first = string.CompareOrdinal(a, b) < 0;
+        if (!_oneVsOne.TryGetValue(first ? $"{a}|{b}" : $"{b}|{a}", out var cells))
+            return null;
+        var cell = Cell(cells, map, eloBand, durationBand);
+        return first ? cell : cell.Inverted;
+    }
+
+    /// <summary>
+    /// La chance de que gane un equipo con esa civ en lugar de una civ promedio, a Elo parejo. En equipos, N no son
+    /// partidas sino apariciones de la civ (cada jugador cuenta).
+    /// </summary>
+    public MatchupCell? Team(string civ, int map, int eloBand, int durationBand) =>
+        Key(civ) is { } key && _team.TryGetValue(key, out var cells) ? Cell(cells, map, eloBand, durationBand) : null;
+
+    private static MatchupCell Cell(int[] cells, int map, int eloBand, int durationBand)
+    {
+        var i = ((Math.Clamp(map, 0, 4) * 6 + Math.Clamp(eloBand, 0, 5)) * 6 + Math.Clamp(durationBand, 0, 5)) * 4;
+        return new MatchupCell(cells[i] / 1000.0, cells[i + 1] / 1000.0, cells[i + 2] / 1000.0, cells[i + 3]);
+    }
+
     private static string? Key(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim().ToLowerInvariant();
 
     private static Dictionary<string, int[]> Entries(JsonElement root, string name, Func<string, bool> keep, bool pairs)

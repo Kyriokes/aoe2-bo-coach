@@ -64,4 +64,107 @@ public class MatchupStatsTests
         Assert.True(MatchupStats.Parse("[1, 2]").IsEmpty);
         Assert.True(MatchupStats.Empty.IsEmpty);
     }
+
+    private static Dictionary<string, Func<int, int, int, int[]>> TresCivs(Func<int, int, int, int[]> celda) => new()
+    {
+        ["britons|franks"] = celda,
+        ["britons|mayan"] = celda,
+        ["franks|mayan"] = celda,
+    };
+
+    private static Dictionary<string, Func<int, int, int, int[]>> TresCivsEnEquipos => new()
+    {
+        ["britons"] = MatchupJson.Same(480, 470, 490, 500),
+        ["franks"] = MatchupJson.Same(510, 500, 520, 900),
+        ["mayan"] = MatchupJson.Same(505, 495, 515, 700),
+    };
+
+    [Fact]
+    public void Lee_cada_casillero_en_su_lugar()
+    {
+        var stats = MatchupStats.Parse(MatchupJson.Build(
+            TresCivs((m, e, d) => MatchupJson.Cell(100 * m + 10 * e + d, 0, 999, 7)), TresCivsEnEquipos));
+
+        var celda = stats.OneVsOne("britons", "franks", 2, 3, 4);
+        Assert.NotNull(celda);
+        Assert.Equal(0.234, celda.P, 3);
+        Assert.Equal(7, celda.N);
+        Assert.Equal(0.0, stats.OneVsOne("britons", "franks", 0, 0, 0)!.P, 3);
+        Assert.Equal(0.455, stats.OneVsOne("BRITONS ", "franks", 4, 5, 5)!.P, 3);
+        Assert.Equal(0.505, stats.Team("mayan", 3, 2, 1)!.P, 3);
+        Assert.Equal(700, stats.Team("mayan", 3, 2, 1)!.N);
+    }
+
+    [Fact]
+    public void Al_reves_invierte_la_chance_y_el_rango()
+    {
+        var stats = MatchupStats.Parse(MatchupJson.Build(TresCivs(MatchupJson.Same(600, 550, 650, 40)), TresCivsEnEquipos));
+
+        var derecho = stats.OneVsOne("britons", "franks", 1, 0, 0)!;
+        var reves = stats.OneVsOne("franks", "britons", 1, 0, 0)!;
+        Assert.Equal(0.6, derecho.P, 3);
+        Assert.Equal(0.4, reves.P, 3);
+        Assert.Equal(0.35, reves.From, 3);
+        Assert.Equal(0.45, reves.To, 3);
+        Assert.Equal(40, reves.N);
+        Assert.False(reves.Even);
+    }
+
+    [Fact]
+    public void Espejo_y_civ_sin_datos_dan_null()
+    {
+        var stats = MatchupStats.Parse(MatchupJson.Build(TresCivs(MatchupJson.Same(600, 550, 650, 40)), TresCivsEnEquipos));
+
+        Assert.Null(stats.OneVsOne("franks", "franks", 0, 0, 0));
+        Assert.Null(stats.OneVsOne("franks", "spartans", 0, 0, 0));
+        Assert.Null(stats.Team("spartans", 0, 0, 0));
+        Assert.True(stats.HasCiv("franks"));
+        Assert.False(stats.HasCiv("spartans"));
+        Assert.Null(MatchupStats.Empty.OneVsOne("britons", "franks", 0, 0, 0));
+    }
+
+    [Fact]
+    public void Con_una_civ_guarda_solo_lo_suyo()
+    {
+        var stats = MatchupStats.Parse(MatchupJson.Build(TresCivs(MatchupJson.Same(600, 550, 650, 40)), TresCivsEnEquipos),
+            onlyCiv: "Franks");
+
+        Assert.NotNull(stats.OneVsOne("britons", "franks", 0, 0, 0));
+        Assert.NotNull(stats.OneVsOne("franks", "mayan", 0, 0, 0));
+        Assert.Null(stats.OneVsOne("britons", "mayan", 0, 0, 0));
+        Assert.NotNull(stats.Team("franks", 0, 0, 0));
+        Assert.Null(stats.Team("britons", 0, 0, 0));
+    }
+
+    [Fact]
+    public void Ignora_una_entrada_con_otro_largo()
+    {
+        var json = MatchupJson.Build(new Dictionary<string, Func<int, int, int, int[]>>
+        {
+            ["britons|franks"] = MatchupJson.Same(497, 469, 525, 93),
+            ["britons|mayan"] = MatchupJson.Same(400, 350, 450, 10),
+        }, TresCivsEnEquipos);
+        // Le saca el último número a la entrada de britons|mayan: queda con 719.
+        var stats = MatchupStats.Parse(json.Replace(",10]", "]", StringComparison.Ordinal));
+
+        Assert.NotNull(stats.OneVsOne("britons", "franks", 0, 0, 0));
+        Assert.Null(stats.OneVsOne("britons", "mayan", 0, 0, 0));
+    }
+
+    [Fact]
+    public void Lee_el_archivo_real()
+    {
+        var stats = MatchupStats.Load(Path.Combine(AppContext.BaseDirectory, "matchup_stats.json"));
+
+        var celda = stats.OneVsOne("britons", "franks", 0, 0, 0)!;
+        Assert.Equal(0.497, celda.P, 3);
+        Assert.Equal(0.469, celda.From, 3);
+        Assert.Equal(0.525, celda.To, 3);
+        Assert.Equal(93, celda.N);
+        Assert.Equal(0.503, stats.OneVsOne("franks", "britons", 0, 0, 0)!.P, 3);
+        Assert.Equal(0.523, stats.Team("georgians", 0, 0, 0)!.P, 3);
+        var civs = new[] { "aztecs", "britons", "franks", "mayan", "mongols" };
+        Assert.All(civs.SelectMany(a => civs.Where(b => b != a).Select(b => (a, b))),
+            par => Assert.Equal(0, stats.OneVsOne(par.a, par.b, stats.MapIndex("nomad"), 0, 0)!.N));
+    }
 }
