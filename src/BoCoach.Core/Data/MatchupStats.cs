@@ -17,6 +17,15 @@ public sealed record MatchupCell(double P, double From, double To, int N)
 }
 
 /// <summary>
+/// Cómo cambia la chance con la duración: la franja más corta y la más larga con partidas, cuando sus rangos no se
+/// tocan (regla de honestidad de la spec D10, 4.5). Es lo que pasó, no una receta: la duración es un resultado.
+/// </summary>
+public sealed record DurationTrend(int ShortBand, MatchupCell Short, int LongBand, MatchupCell Long)
+{
+    public bool FavorsShort => Short.P > Long.P;
+}
+
+/// <summary>
 /// Las estadísticas reales de cruces de data/matchup_stats.json, que escribe tools/stats (spec D10, 3.2 y 3.3).
 /// <para>Cada entrada (una pareja "a|b" en 1v1, con la chance de la primera; una civ en equipos) tiene 180 casilleros
 /// [p, desde, hasta, n] en milésimas y partidas, en el orden mapa (todos y los de <see cref="MapKeys"/>) × franja de
@@ -164,6 +173,26 @@ public sealed class MatchupStats
     /// </summary>
     public MatchupCell? Team(string civ, int map, int eloBand, int durationBand) =>
         Key(civ) is { } key && _team.TryGetValue(key, out var cells) ? Cell(cells, map, eloBand, durationBand) : null;
+
+    /// <summary>La tendencia por duración del cruce (null si no hay o no se distingue del ruido).</summary>
+    public DurationTrend? OneVsOneTrend(string civ, string rival, int map, int eloBand) =>
+        Trend(band => OneVsOne(civ, rival, map, eloBand, band));
+
+    /// <summary>La tendencia por duración de la civ en equipos (null si no hay o no se distingue del ruido).</summary>
+    public DurationTrend? TeamTrend(string civ, int map, int eloBand) => Trend(band => Team(civ, map, eloBand, band));
+
+    private static DurationTrend? Trend(Func<int, MatchupCell?> cellOf)
+    {
+        var withGames = Enumerable.Range(1, 5).Select(band => (band, cell: cellOf(band)))
+            .Where(x => x.cell is { N: > 0 }).ToList();
+        if (withGames.Count < 2)
+            return null;
+        var (shortBand, shortCell) = withGames[0];
+        var (longBand, longCell) = withGames[^1];
+        if (shortCell!.From <= longCell!.To && longCell.From <= shortCell.To)
+            return null;
+        return new DurationTrend(shortBand, shortCell, longBand, longCell);
+    }
 
     private static MatchupCell Cell(int[] cells, int map, int eloBand, int durationBand)
     {

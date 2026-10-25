@@ -167,4 +167,63 @@ public class MatchupStatsTests
         Assert.All(civs.SelectMany(a => civs.Where(b => b != a).Select(b => (a, b))),
             par => Assert.Equal(0, stats.OneVsOne(par.a, par.b, stats.MapIndex("nomad"), 0, 0)!.N));
     }
+
+    /// <summary>britons|franks (y franks en equipos) con un casillero por franja de duración; el resto sin partidas.</summary>
+    private static MatchupStats PorDuracion(params (int Band, int P, int From, int To, int N)[] franjas)
+    {
+        int[] Celda(int m, int e, int d) =>
+            franjas.FirstOrDefault(f => f.Band == d) is { N: > 0 } f ? MatchupJson.Cell(f.P, f.From, f.To, f.N) : MatchupJson.Cell(480, 470, 490, 0);
+        return MatchupStats.Parse(MatchupJson.Build(
+            new Dictionary<string, Func<int, int, int, int[]>> { ["britons|franks"] = Celda },
+            new Dictionary<string, Func<int, int, int, int[]>> { ["franks"] = Celda }));
+    }
+
+    [Fact]
+    public void Tendencia_a_partidas_cortas()
+    {
+        var stats = PorDuracion((1, 540, 491, 587, 50), (5, 420, 380, 460, 40));
+
+        var tendencia = stats.OneVsOneTrend("britons", "franks", 1, 0);
+        Assert.NotNull(tendencia);
+        Assert.Equal(1, tendencia.ShortBand);
+        Assert.Equal(5, tendencia.LongBand);
+        Assert.Equal(0.54, tendencia.Short.P, 3);
+        Assert.Equal(0.42, tendencia.Long.P, 3);
+        Assert.True(tendencia.FavorsShort);
+        Assert.True(stats.TeamTrend("franks", 1, 0)!.FavorsShort);
+    }
+
+    [Fact]
+    public void Sin_tendencia_si_los_rangos_se_tocan()
+    {
+        var stats = PorDuracion((1, 540, 491, 587, 50), (5, 450, 400, 495, 40));
+        Assert.Null(stats.OneVsOneTrend("britons", "franks", 1, 0));
+        Assert.Null(stats.TeamTrend("franks", 1, 0));
+    }
+
+    [Fact]
+    public void Usa_las_franjas_con_partidas()
+    {
+        var stats = PorDuracion((2, 540, 491, 587, 50), (4, 420, 380, 460, 30));
+
+        var tendencia = stats.OneVsOneTrend("britons", "franks", 1, 0)!;
+        Assert.Equal(2, tendencia.ShortBand);
+        Assert.Equal(4, tendencia.LongBand);
+    }
+
+    [Fact]
+    public void Sin_partidas_no_hay_tendencia()
+    {
+        Assert.Null(PorDuracion().OneVsOneTrend("britons", "franks", 1, 0));
+        Assert.Null(PorDuracion((3, 540, 491, 587, 50)).OneVsOneTrend("britons", "franks", 1, 0));
+        Assert.Null(PorDuracion((1, 540, 491, 587, 50), (5, 420, 380, 460, 40)).OneVsOneTrend("britons", "mayan", 1, 0));
+    }
+
+    [Fact]
+    public void Al_reves_la_tendencia_se_da_vuelta()
+    {
+        var tendencia = PorDuracion((1, 540, 491, 587, 50), (5, 420, 380, 460, 40)).OneVsOneTrend("franks", "britons", 1, 0)!;
+        Assert.False(tendencia.FavorsShort);
+        Assert.Equal(0.46, tendencia.Short.P, 3);
+    }
 }
