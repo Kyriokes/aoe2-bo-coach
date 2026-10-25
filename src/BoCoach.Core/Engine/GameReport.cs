@@ -35,7 +35,11 @@ public sealed record GameReport(
     double IdleVillagersTime,
     double HousedTime,
     int HousedTimes,
-    IReadOnlyList<FloatingResource> Floating);
+    IReadOnlyList<FloatingResource> Floating)
+{
+    /// <summary>D10: el cruce de la pantalla de carga (<see cref="MatchupText.Report"/>); vacío si no se vio.</summary>
+    public IReadOnlyList<string> Matchup { get; init; } = [];
+}
 
 /// <summary>
 /// Junta el informe captura por captura (lo llama el <see cref="Coach"/> en cada snapshot). Los tiempos del plan salen
@@ -187,6 +191,7 @@ public static class GameReportText
         lines.Add($"Aldeanos inactivos: {Span(report.IdleVillagersTime)}. Sin lugar por población: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "vez" : "veces")}).");
         foreach (var f in report.Floating.OrderByDescending(f => f.Duration).Take(3))
             lines.Add($"Acumulaste {Resource(f.Resource)}: {Span(f.Duration)} con más de {GameReportBuilder.FloatingAmount} desde las {Clock(f.Start)} (hasta {f.Peak}).");
+        lines.AddRange(report.Matchup);
         return lines;
     }
 
