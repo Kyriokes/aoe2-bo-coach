@@ -107,16 +107,21 @@ def _precision(dis: Diseno, frenos: dict[str, float]) -> np.ndarray:
 
 
 def ajustar(dis: Diseno, frenos: dict[str, float], pesos: np.ndarray | None = None,
-            inicial: np.ndarray | None = None) -> np.ndarray:
-    """Los parámetros que minimizan la pérdida logarítmica (con pesos por partida) más la penalización de cada grupo."""
+            inicial: np.ndarray | None = None, centro: np.ndarray | None = None) -> np.ndarray:
+    """Los parámetros que minimizan la pérdida logarítmica (con pesos por partida) más la penalización de cada grupo.
+
+    La penalización tira hacia `centro` (0 si no se da); `remuestrear` lo sortea.
+    """
     x, y, offset = dis.matriz, dis.y, dis.offset
     pesos = np.ones(len(y)) if pesos is None else np.asarray(pesos, dtype=float)
     precision = _precision(dis, frenos)
+    centro = np.zeros(x.shape[1]) if centro is None else centro
 
     def objetivo(w: np.ndarray) -> tuple[float, np.ndarray]:
         z = x @ w + offset
-        perdida = np.sum(pesos * (np.logaddexp(0, z) - y * z)) + 0.5 * np.sum(precision * w * w)
-        gradiente = x.T @ (pesos * (_sigmoide(z) - y)) + precision * w
+        desvio = w - centro
+        perdida = np.sum(pesos * (np.logaddexp(0, z) - y * z)) + 0.5 * np.sum(precision * desvio * desvio)
+        gradiente = x.T @ (pesos * (_sigmoide(z) - y)) + precision * desvio
         return perdida, gradiente
 
     w0 = np.zeros(x.shape[1]) if inicial is None else inicial
@@ -189,3 +194,61 @@ def contar(entidad: np.ndarray, mapa: np.ndarray, elo: np.ndarray, dur: np.ndarr
     cuenta = np.zeros((entidades, FRANJAS, FRANJAS, FRANJAS), dtype=np.int64)
     np.add.at(cuenta, (entidad, mapa, elo, dur), 1)
     return _sumas(cuenta)
+
+
+FACTORES_FRENO = (0.25, 0.5, 2, 4)
+
+
+def elegir_frenos(dis: Diseno, entrenamiento: np.ndarray, apartadas: np.ndarray,
+                  iniciales: dict[str, float]) -> dict[str, float]:
+    """Una pasada por los grupos: para cada uno se queda con el freno que mejor predice las partidas apartadas."""
+    frenos = {nombre: iniciales[nombre] for nombre in dis.grupos}
+    pesos = np.asarray(entrenamiento, dtype=float)
+    w = ajustar(dis, frenos, pesos)
+    mejor = perdida(dis, w, apartadas)
+    for nombre in dis.grupos:
+        actual = frenos[nombre]
+        for factor in FACTORES_FRENO:
+            prueba = {**frenos, nombre: actual * factor}
+            w_prueba = ajustar(dis, prueba, pesos, inicial=w)
+            perdida_prueba = perdida(dis, w_prueba, apartadas)
+            if perdida_prueba < mejor:
+                mejor, frenos, w_nuevo = perdida_prueba, prueba, w_prueba
+        if frenos[nombre] != actual:
+            w = w_nuevo
+    return frenos
+
+
+def remuestrear(dis: Diseno, frenos: dict[str, float], w: np.ndarray, veces: int = 20,
+                semilla: int = 1) -> list[np.ndarray]:
+    """Ajustes con las partidas sorteadas con reposición (cada partida pesa las veces que salió) y el centro de cada
+    freno sorteado con su mismo desvío. Solo con las partidas, el rango no incluye lo que los frenos encogen hacia el
+    50 % y queda angosto (con datos inventados cubría entre el 72 y el 87 %; con el centro sorteado, entre el 87 y el
+    93 %).
+    """
+    rng = np.random.default_rng(semilla)
+    n = len(dis.y)
+    desvio = 1 / np.sqrt(_precision(dis, frenos))
+    muestras = []
+    for _ in range(veces):
+        pesos = np.bincount(rng.integers(0, n, n), minlength=n)
+        muestras.append(ajustar(dis, frenos, pesos, inicial=w, centro=rng.normal(0, desvio)))
+    return muestras
+
+
+Z_90 = 1.645
+
+
+def rango(p: np.ndarray, muestras: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+    """El rango probable del 90 % alrededor de p: ±1,645 desvíos de las muestras, en escala logit.
+
+    Con 20 muestras, los percentiles 5 y 95 caen casi en la segunda y la anteúltima y el rango cubre en promedio un
+    81 %; el desvío aprovecha las 20.
+    """
+    def logit(x: np.ndarray) -> np.ndarray:
+        x = np.clip(x, 1e-6, 1 - 1e-6)
+        return np.log(x / (1 - x))
+
+    desvio = logit(np.stack(muestras)).std(axis=0, ddof=1)
+    centro = logit(p)
+    return _sigmoide(centro - Z_90 * desvio), _sigmoide(centro + Z_90 * desvio)

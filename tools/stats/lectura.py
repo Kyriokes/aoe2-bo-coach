@@ -91,6 +91,7 @@ def leer_1v1(cache: Path) -> Datos1v1:
         FROM m JOIN dos ON dos.id_partida = m.id
              JOIN j x ON x.id_partida = m.id
              JOIN j y ON y.id_partida = m.id AND x.civ < y.civ
+        ORDER BY m.id
     """).fetchnumpy()
     ca, cb = [str(c) for c in f["ca"]], [str(c) for c in f["cb"]]
     civs = sorted(set(ca) | set(cb))
@@ -133,6 +134,7 @@ def leer_equipos(cache: Path) -> DatosEquipos:
         SELECT j.id_partida, j.civ, sum(CASE WHEN j.equipo = eq.e1 THEN 1 ELSE -1 END)::INTEGER AS v
         FROM j JOIN eq ON eq.id_partida = j.id_partida
         GROUP BY j.id_partida, j.civ
+        ORDER BY j.id_partida, j.civ
     """).fetchnumpy()
     ids = np.asarray(f["id"])
     civs = sorted({str(x) for x in c["civ"]})
