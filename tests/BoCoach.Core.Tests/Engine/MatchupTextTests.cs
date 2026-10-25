@@ -1,0 +1,141 @@
+using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
+using BoCoach.Core.Tests.Data;
+
+namespace BoCoach.Core.Tests.Engine;
+
+/// <summary>D10: los textos de las estadísticas de cruces (pantalla de carga, informe y sugerencia).</summary>
+public class MatchupTextTests
+{
+    private static readonly Dictionary<string, string> Nombres = new()
+    {
+        ["britons"] = "britanos", ["franks"] = "francos", ["mayan"] = "mayas", ["spartans"] = "espartanos",
+    };
+
+    private static readonly Dictionary<string, string> Mapas = new()
+    {
+        ["arabia"] = "Arabia", ["arena"] = "Arena", ["black_forest"] = "Bosque Negro", ["nomad"] = "Nómada",
+    };
+
+    private static string Civ(string clave) => Nombres[clave];
+
+    private static string? Mapa(string clave) => Mapas.GetValueOrDefault(clave);
+
+    /// <summary>
+    /// britons|franks y franks en equipos: en cada mapa, el casillero general (duración "todas") y por franja de
+    /// duración los que se pasan; las demás franjas sin partidas.
+    /// </summary>
+    private static MatchupStats Datos(int[] general, Dictionary<int, int[]>? franjas = null, int[]? nomad = null,
+        bool previousMixed = false)
+    {
+        int[] Celda(int m, int e, int d)
+        {
+            if (m == 4 && nomad is not null)
+                return d == 0 ? nomad : MatchupJson.Cell(nomad[0], nomad[1], nomad[2], 0);
+            if (d == 0)
+                return general;
+            return franjas is not null && franjas.TryGetValue(d, out var franja) ? franja : MatchupJson.Cell(480, 470, 490, 0);
+        }
+        var celdas = new Dictionary<string, Func<int, int, int, int[]>> { ["britons|franks"] = Celda };
+        var equipos = new Dictionary<string, Func<int, int, int, int[]>> { ["franks"] = Celda, ["britons"] = Celda };
+        return MatchupStats.Parse(MatchupJson.Build(celdas, equipos, previousMixed));
+    }
+
+    private static readonly Dictionary<int, int[]> CortasMejor = new()
+    {
+        [1] = MatchupJson.Cell(540, 491, 587, 50), [5] = MatchupJson.Cell(420, 380, 460, 40),
+    };
+
+    private static readonly MatchupQuery BritanosEnArabia = new("britons", "franks", "arabia", 1050, Team: false);
+
+    [Fact]
+    public void Uno_contra_uno_con_tendencia()
+    {
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80), CortasMejor), BritanosEnArabia, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49). "
+                     + "Mejor si dura poco: 54 % antes de los 20 min, 42 % después de los 55 min.", texto);
+    }
+
+    [Fact]
+    public void Al_reves_la_tendencia_es_la_del_rival()
+    {
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80), CortasMejor),
+            BritanosEnArabia with { Civ = "franks", Rival = "britons" }, Civ, Mapa);
+        Assert.Equal("Francos contra britanos en Arabia (Elo 1050): ganás 53 % (51 a 57). "
+                     + "Mejor si dura mucho: 46 % antes de los 20 min, 58 % después de los 55 min.", texto);
+    }
+
+    [Fact]
+    public void Parejo_y_sin_tendencia()
+    {
+        var franjas = new Dictionary<int, int[]>
+        {
+            [1] = MatchupJson.Cell(500, 450, 550, 50), [5] = MatchupJson.Cell(480, 430, 530, 40),
+        };
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(490, 460, 520, 80), franjas), BritanosEnArabia, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1050): parejo, ganás 49 % (46 a 52). "
+                     + "Parejo en cualquier duración.", texto);
+    }
+
+    [Fact]
+    public void En_todos_los_mapas()
+    {
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80)),
+            BritanosEnArabia with { Map = "megarandom" }, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en todos los mapas (Elo 1050): ganás 47 % (43 a 49).", texto);
+    }
+
+    [Fact]
+    public void Sin_tu_Elo_lo_aclara()
+    {
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80)), BritanosEnArabia with { Elo = null }, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Arabia (sin tu Elo): ganás 47 % (43 a 49).", texto);
+    }
+
+    [Fact]
+    public void Sin_partidas_en_el_mapa_dice_que_es_estimado()
+    {
+        var stats = Datos(MatchupJson.Cell(470, 430, 490, 80), CortasMejor, nomad: MatchupJson.Cell(470, 400, 540, 0));
+        var texto = MatchupText.Loading(stats, BritanosEnArabia with { Map = "nomad" }, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Nómada (Elo 1050): parejo, ganás 47 % (40 a 54). "
+                     + "Estimado: no hay partidas de este cruce en Nómada.", texto);
+    }
+
+    [Fact]
+    public void Por_equipos()
+    {
+        var franjas = new Dictionary<int, int[]>
+        {
+            [1] = MatchupJson.Cell(500, 480, 520, 300), [5] = MatchupJson.Cell(560, 540, 580, 200),
+        };
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(520, 506, 540, 900), franjas),
+            new MatchupQuery("franks", null, "nomad", 1200, Team: true), Civ, Mapa);
+        Assert.Equal("Francos en Nómada por equipos (Elo 1200): 52 % (51 a 54). Mejor en partidas largas.", texto);
+    }
+
+    [Fact]
+    public void Civ_sin_datos()
+    {
+        var stats = Datos(MatchupJson.Cell(470, 430, 490, 80));
+        Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
+            MatchupText.Loading(stats, BritanosEnArabia with { Civ = "spartans" }, Civ, Mapa));
+        Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
+            MatchupText.Loading(stats, BritanosEnArabia with { Rival = "spartans" }, Civ, Mapa));
+        Assert.Equal("Sin datos de partidas clasificatorias de espartanos.",
+            MatchupText.Loading(stats, new MatchupQuery("spartans", null, "arabia", 1200, Team: true), Civ, Mapa));
+    }
+
+    [Fact]
+    public void Sin_rival_o_sin_datos_no_hay_renglon()
+    {
+        Assert.Null(MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80)), BritanosEnArabia with { Rival = null }, Civ, Mapa));
+        Assert.Null(MatchupText.Loading(MatchupStats.Empty, BritanosEnArabia, Civ, Mapa));
+    }
+
+    [Fact]
+    public void Con_el_parche_anterior()
+    {
+        var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80), previousMixed: true), BritanosEnArabia, Civ, Mapa);
+        Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49). (Con datos del parche anterior.)", texto);
+    }
+}
