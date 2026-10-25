@@ -274,15 +274,18 @@ public sealed class HudModTests : IDisposable
     }
 
     [Fact]
-    public void El_reloj_toma_el_diseno_y_la_coleccion_se_corre_al_final_de_la_barra()
+    public void El_reloj_se_ubica_con_el_ancla_del_panel_y_la_coleccion_queda_en_su_origen()
     {
         var panel = HudMod.ClockPanel(ClockPanel(), Layout());
 
-        Assert.Equal(2734, (int)panel["Collection"]!["ViewPort"]!["xorigin"]!);
-        // El ancla del original (1700) se suma a la colección: con ella el reloj caía fuera de la pantalla
-        // (20261024-224921). XavilUI, que también corre la colección, la deja en 0.
+        // El origen de la colección se mide en unidades de pantalla (3840 de ancho) y el ancla en las del HUD, como la
+        // barra: con la colección corrida a 2734 el reloj caía en 1367 px (2734 × 0,5) con el HUD del usuario al 87 %,
+        // 178 px a la derecha de la barra (segunda prueba del 2026-10-24). Con el ancla cae al final de la barra a
+        // cualquier escala del HUD (en el mod viejo, ancla 1700 = 737 px = 1700 × 0,4348).
+        var viewport = panel["Collection"]!["ViewPort"]!;
+        Assert.Equal((0, 0), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
         var anchor = Widget(panel, "WorldTimer")["Anchor"]!;
-        Assert.Equal((0, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
+        Assert.Equal((2734, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
         Assert.Equal((0, 12, 230, 84), View(Widget(panel, "BoCoachClockBackground")));
         var label = Widget(panel, "WorldTimerLabel");

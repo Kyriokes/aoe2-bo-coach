@@ -209,24 +209,26 @@ public static class HudMod
         return original;
     }
 
-    /// <summary>El panel del reloj: la colección corrida al final de la barra, el reloj grande y un rectángulo negro detrás.</summary>
+    /// <summary>El panel del reloj: el ancla corrida al final de la barra, el reloj grande y un rectángulo negro detrás.</summary>
     public static JsonObject ClockPanel(JsonObject original, HudLayout layout)
     {
         var spec = layout.Clock;
         var collection = original["Collection"]!.AsObject();
+        // El origen de la colección se mide en unidades de pantalla (3840 de ancho): corrida a 2734, el reloj caía en
+        // 1367 px (2734 × 0,5) con el HUD del usuario al 87 %, 178 px a la derecha de la barra (segunda prueba del
+        // 2026-10-24). El ancla se mide en las unidades del HUD, como la barra (en el original, 1700 = 737 px a
+        // 0,4348): el reloj se ubica con ella y la colección queda donde la trae el juego.
         if (collection["ViewPort"] is not JsonObject viewport)
             collection["ViewPort"] = viewport = View(0, 0, 3840, 2160);
-        viewport["xorigin"] = layout.Bar.Width + spec.Gap;
-        viewport["yorigin"] = 0;
+        (viewport["xorigin"], viewport["yorigin"]) = (0, 0);
         var clock = collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         StripOurs(clock);
-        // El ancla del original (1700) se suma a la colección: con las dos el reloj caía fuera de la pantalla
-        // (20261024-224921). XavilUI, que también corre la colección, la deja en 0.
+        var anchorX = layout.Bar.Width + spec.Gap;
         if (clock["Anchor"] is JsonObject anchor)
-            (anchor["xorigin"], anchor["yorigin"]) = (0, 0);
+            (anchor["xorigin"], anchor["yorigin"]) = (anchorX, 0);
         else
-            clock["Anchor"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["alignment"] = "TopLeft" };
+            clock["Anchor"] = new JsonObject { ["xorigin"] = anchorX, ["yorigin"] = 0, ["alignment"] = "TopLeft" };
         var label = Children(clock).FirstOrDefault(c => Text(c, "Name") == "WorldTimerLabel")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
