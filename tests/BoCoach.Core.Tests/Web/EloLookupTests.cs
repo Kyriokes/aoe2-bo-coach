@@ -61,9 +61,10 @@ public class EloLookupTests
         Assert.Empty(caida.Candidates);
         Assert.StartsWith("La API del juego", caida.Error);
 
-        var sinRed = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => throw new HttpRequestException("sin red"))), "TheViper");
+        var sinRed = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => throw new HttpRequestException("No such host is known"))), "TheViper");
         Assert.Empty(sinRed.Candidates);
-        Assert.StartsWith("No se pudo consultar", sinRed.Error);
+        // Sin el mensaje de .NET, que viene en inglés.
+        Assert.Equal("No se pudo consultar la API del juego: revisá la conexión.", sinRed.Error);
 
         var bien = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => Json(Fixture))), "TheViper");
         Assert.Equal(3, bien.Candidates.Count);
@@ -80,5 +81,32 @@ public class EloLookupTests
         var aliases = direccion.Query.TrimStart('?').Split('&')
             .Select(p => p.Split('=', 2)).Single(p => p[0] == "aliases")[1];
         Assert.Equal("[\"Juan Pérez \\\"x\\\"&y\"]", Uri.UnescapeDataString(aliases));
+    }
+
+    [Fact]
+    public async Task Otra_respuesta_de_error_no_es_un_nombre_que_no_existe()
+    {
+        // Con 200 pero otro código (límite de pedidos, mantenimiento) o algo que no es JSON: no es "no encontré".
+        var otroCodigo = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => Json("""{"result":{"code":5,"message":"BUSY"}}"""))), "x");
+        Assert.Empty(otroCodigo.Candidates);
+        Assert.StartsWith("La API del juego", otroCodigo.Error);
+
+        var html = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => Json("<html>mantenimiento</html>"))), "x");
+        Assert.Empty(html.Candidates);
+        Assert.StartsWith("La API del juego", html.Error);
+    }
+
+    [Fact]
+    public async Task Un_error_inesperado_o_una_fecha_rara_no_tiran_excepcion()
+    {
+        var raro = await EloLookup.SearchAsync(new HttpClient(new FakeHandler(_ => throw new InvalidOperationException("charset"))), "x");
+        Assert.Empty(raro.Candidates);
+        Assert.Equal("No se pudo consultar la API del juego.", raro.Error);
+
+        // En milisegundos (por si la API cambia) se entiende; un número imposible queda sin fecha.
+        var json = Fixture.Replace("1735099389", "1735099389000").Replace("1587690245", "9000000000000000000");
+        var candidatos = EloLookup.Parse(json);
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1735099389), candidatos.Single(c => c.ProfileId == 3003).LastMatch);
+        Assert.Null(candidatos.Single(c => c.ProfileId == 3002).LastMatch);
     }
 }

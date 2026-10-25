@@ -23,6 +23,8 @@ public static class EloLookup
 
     private const long OneVsOneBoard = 3;
     private const long TeamBoard = 4;
+    private const long UnknownAliases = 9;
+    private const long MaxUnixSeconds = 253_402_300_799; // 9999-12-31
 
     /// <summary>La consulta de un nombre: el parámetro aliases es un arreglo JSON con el nombre.</summary>
     public static Uri Address(string alias)
@@ -31,16 +33,27 @@ public static class EloLookup
         return new Uri($"{BaseUrl}/community/leaderboard/GetPersonalStat?title=age2&aliases={Uri.EscapeDataString(aliases)}");
     }
 
+    private const string NotUnderstood = "La API del juego respondió algo que no entiendo: probá más tarde.";
+
     /// <summary>Los candidatos de una respuesta, el que jugó más recientemente primero; vacío si no hay o no se entiende.</summary>
-    public static IReadOnlyList<EloCandidate> Parse(string json)
+    public static IReadOnlyList<EloCandidate> Parse(string json) => Read(json).Candidates;
+
+    /// <summary>
+    /// Una respuesta: los candidatos, o un error si la API avisó otra cosa que "ese nombre no existe" (código 9) o si
+    /// no se entiende. Así un límite de pedidos no se lee como "no encontré a ese jugador".
+    /// </summary>
+    public static EloSearch Read(string json)
     {
         try
         {
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("statGroups", out var groups)
-                || groups.ValueKind != JsonValueKind.Array)
-                return [];
+            if (root.ValueKind != JsonValueKind.Object)
+                return new([], NotUnderstood);
+            if (root.TryGetProperty("result", out var result) && Number(result, "code", out var code) && code != 0)
+                return code == UnknownAliases ? new([], null) : new([], $"La API del juego respondió un error (código {code}): probá más tarde.");
+            if (!root.TryGetProperty("statGroups", out var groups) || groups.ValueKind != JsonValueKind.Array)
+                return new([], NotUnderstood);
             var boards = Boards(root);
             var candidates = new List<EloCandidate>();
             foreach (var group in groups.EnumerateArray())
@@ -52,15 +65,22 @@ public static class EloLookup
                 if (Text(member, "alias") is not { } alias || !Number(member, "profile_id", out var profile))
                     continue;
                 var (oneVsOne, team, last) = boards.GetValueOrDefault(id);
-                candidates.Add(new EloCandidate(alias, profile, Text(member, "country"), oneVsOne, team,
-                    last > 0 ? DateTimeOffset.FromUnixTimeSeconds(last) : null));
+                candidates.Add(new EloCandidate(alias, profile, Text(member, "country"), oneVsOne, team, Date(last)));
             }
-            return candidates.OrderByDescending(c => c.LastMatch ?? DateTimeOffset.MinValue).ToList();
+            return new(candidates.OrderByDescending(c => c.LastMatch ?? DateTimeOffset.MinValue).ToList(), null);
         }
         catch (JsonException)
         {
-            return [];
+            return new([], NotUnderstood);
         }
+    }
+
+    /// <summary>La fecha de la última partida: segundos unix (o milisegundos, por si la API cambia); null si no tiene sentido.</summary>
+    private static DateTimeOffset? Date(long seconds)
+    {
+        if (seconds > 100_000_000_000)
+            seconds /= 1000;
+        return seconds is > 0 and <= MaxUnixSeconds ? DateTimeOffset.FromUnixTimeSeconds(seconds) : null;
     }
 
     /// <summary>Busca el nombre en la API (10 s como mucho). Un nombre que no existe no es error: no hay candidatos.</summary>
@@ -75,15 +95,21 @@ public static class EloLookup
             using var response = await http.SendAsync(request, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return new([], $"La API del juego respondió {(int)response.StatusCode}: probá más tarde.");
-            return new(Parse(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false)), null);
+            return Read(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
         {
             return new([], $"No se pudo consultar la API del juego: no respondió en {Timeout.TotalSeconds:0} s.");
         }
-        catch (HttpRequestException e)
+        catch (HttpRequestException)
         {
-            return new([], $"No se pudo consultar la API del juego: {e.Message}");
+            // Sin el mensaje de .NET: viene en inglés ("No such host is known").
+            return new([], "No se pudo consultar la API del juego: revisá la conexión.");
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // Una respuesta demasiado grande o con un charset raro: nunca un cartel de error (spec D10, 6).
+            return new([], "No se pudo consultar la API del juego.");
         }
     }
 
