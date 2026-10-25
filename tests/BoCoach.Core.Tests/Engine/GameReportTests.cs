@@ -85,7 +85,7 @@ public class GameReportTests
         var summary = GameReportText.Summary(report);
         Assert.Equal(cruce, summary.TakeLast(2));
         var html = GameReportText.Html(report, new DateTime(2026, 10, 25, 21, 0, 0));
-        Assert.Contains("<li>Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49).</li>", html);
+        Assert.Contains($"<li>{System.Net.WebUtility.HtmlEncode(cruce[0])}</li>", html); // la "á" va como entidad
     }
 
     [Fact]
