@@ -118,6 +118,7 @@ public sealed class HudModTests : IDisposable
             {
                 ["Type"] = "Anchor",
                 ["Name"] = "WorldTimer",
+                ["Anchor"] = new JsonObject { ["xorigin"] = 1700, ["yorigin"] = 0, ["alignment"] = "TopLeft" },
                 ["ChildWidgets"] = new JsonArray(
                     Wrap(Label("WorldTimerLabel", 0, 12, 1000, 40)),
                     Wrap(Label("GameIDLabel", 0, 64, 512, 49))),
@@ -253,6 +254,10 @@ public sealed class HudModTests : IDisposable
         var panel = HudMod.ClockPanel(ClockPanel(), Layout());
 
         Assert.Equal(2734, (int)panel["Collection"]!["ViewPort"]!["xorigin"]!);
+        // El ancla del original (1700) se suma a la colección: con ella el reloj caía fuera de la pantalla
+        // (20261024-224921). XavilUI, que también corre la colección, la deja en 0.
+        var anchor = Widget(panel, "WorldTimer")["Anchor"]!;
+        Assert.Equal((0, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
         Assert.Equal((0, 12, 230, 84), View(Widget(panel, "BoCoachClockBackground")));
         var label = Widget(panel, "WorldTimerLabel");

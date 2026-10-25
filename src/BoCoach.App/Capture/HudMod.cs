@@ -221,6 +221,12 @@ public static class HudMod
         var clock = collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         StripOurs(clock);
+        // El ancla del original (1700) se suma a la colección: con las dos el reloj caía fuera de la pantalla
+        // (20261024-224921). XavilUI, que también corre la colección, la deja en 0.
+        if (clock["Anchor"] is JsonObject anchor)
+            (anchor["xorigin"], anchor["yorigin"]) = (0, 0);
+        else
+            clock["Anchor"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["alignment"] = "TopLeft" };
         var label = Children(clock).FirstOrDefault(c => Text(c, "Name") == "WorldTimerLabel")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
