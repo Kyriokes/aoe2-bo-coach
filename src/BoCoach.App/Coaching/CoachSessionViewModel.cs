@@ -429,7 +429,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// </summary>
     private void Suggest(CoachFrame frame)
     {
-        if (Overlay is null || frame.Loading is not { } loading || frame.Me is not { } me || _coach is null)
+        if (Overlay is null || frame.Loading is not { } loading)
+            return;
+        // Una partida nueva: lo de la anterior no vale aunque acá no se encuentre tu nombre (D10, revisión de c).
+        (_matchupQuery, Overlay.MatchupLine, Overlay.MatchAdvice) = (null, null, null);
+        if (frame.Me is not { } me || _coach is null)
             return;
         var facing = loading.Facing(me);
         var match = new MatchSetup(me.Civ, facing?.Civ, loading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(),
@@ -583,7 +587,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     public void Dispose() => Stop();
 
-    private void Apply(CoachFrame frame)
+    internal void Apply(CoachFrame frame)
     {
         if (Overlay is null)
             return;

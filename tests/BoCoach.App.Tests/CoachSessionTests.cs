@@ -6,6 +6,7 @@ using BoCoach.Core.Engine;
 using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
 
@@ -204,6 +205,26 @@ public sealed class CoachSessionTests : IDisposable
 
         Assert.StartsWith("Japoneses en ", session.Overlay!.MatchupLine);
         Assert.Contains(esperado, session.Overlay.MatchupLine);
+    }
+
+    // D10 (revisión de c): una pantalla de carga nueva donde no se encuentra tu nombre dejaba el cruce de la partida
+    // anterior en el overlay (y en el informe, si la anterior no llegó al minuto).
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_sin_tu_nombre_borra_el_cruce_anterior()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(0, new ResourceAmounts(200, 200, 100, 200), 4, 5));
+        static LoadingPlayer Jugador(int slot, string name, string civ) => new(slot, name, "", civ, null, (0, 0, 0));
+        var primera = new LoadingReading([Jugador(1, "Kyriokes", "franks"), Jugador(2, "Rival", "britons")], "Arabia");
+
+        session.Apply(Frame(view) with { Loading = primera, Me = primera.Players[0] });
+        Assert.StartsWith("Francos contra britanos en Arabia", session.Overlay!.MatchupLine);
+
+        var segunda = new LoadingReading([Jugador(1, "Otro", "celts"), Jugador(2, "Rival", "goths")], "Arena");
+        session.Apply(Frame(view) with { Loading = segunda, Me = null });
+        Assert.Null(session.Overlay.MatchupLine);
+        Assert.Null(session.Overlay.MatchAdvice);
     }
 
     // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.
