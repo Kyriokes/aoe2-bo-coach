@@ -81,6 +81,9 @@ La web (`web/`, ver [web/README.md](web/README.md)) es una biblioteca pública d
 - **Desde la web…** (biblioteca) importa una BO con su código de 6 letras, el enlace «Abrir en BO Coach» o la dirección de su página.
 - **Publicar en la web** (editor) la publica con tu cuenta, o la reemplaza si ya la habías publicado desde esta PC. La primera vez pide el token, que se crea en "Mi cuenta" de la web.
 - **Cuenta de la web…** cambia la dirección de la web o el token, y registra los enlaces `bocoach://` para que el botón «Abrir en BO Coach» de la web abra la app directo.
+- `BoCoach.exe --publish <carpeta> [--dry-run]` publica todas las BO de una carpeta con esa misma cuenta (así se subieron las de `build_orders/civs`), o las reemplaza si ya se publicaron desde esta PC. Con `--dry-run` solo dice qué haría. La app no tiene consola: para ver lo que escribe, redirigila (`| Write-Output` en PowerShell).
+
+En la web, una BO dice quién armó la guía (el `author` del JSON) y, si es otro, la cuenta que la subió: "por Hera, subida por Ana".
 
 ## Probar la visión sobre una grabación (tools/ReplaySession)
 
