@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Core.Economy;
 using BoCoach.Core.Web;
@@ -58,6 +59,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private bool _autoNoBoWarned;
     private BuildOrder? _previousBuildOrder;
     private string? _declinedSuggestion;
+    private MatchupQuery? _matchupQuery;
 
     /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
@@ -389,6 +391,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
     private void Finished(GameReport report)
     {
+        // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
+        if (_matchupQuery is { } query)
+        {
+            report = report with
+            {
+                Matchup = MatchupText.Report(_data.Matchups(query.Civ), query, TimeSpan.FromSeconds(report.Length), CivName, MapName),
+            };
+            _matchupQuery = null;
+        }
         try
         {
             Directory.CreateDirectory(ReportsFolder);
@@ -422,21 +433,25 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         var facing = loading.Facing(me);
         var match = new MatchSetup(me.Civ, facing?.Civ, loading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(),
-            loading.PositionOf(me), loading.Map);
+            loading.PositionOf(me), loading.Map, Elo1v1);
         Overlay.MatchAdvice = BuildOrderSuggester.Advice(match, _data.CivStyles) is { } advice && facing?.Civ is { } rival
             ? $"Contra {CivName(rival)} (enfrente): {advice}"
             : null;
+        // D10: el cruce con las estadísticas reales (1v1 con el rival; por equipos, tu civ) y para el informe.
+        _matchupQuery = loading.Matchup(me, Elo1v1, EloTeam);
+        var matchups = me.Civ is { } myCiv ? _data.Matchups(myCiv) : MatchupStats.Empty;
+        Overlay.MatchupLine = _matchupQuery is { } query ? MatchupText.Loading(matchups, query, CivName, MapName) : null;
         if (me.Civ is null)
             return;
         var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>().ToList();
-        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles);
+        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles, matchups);
         if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
             return;
         // D6: si arrancó solo, cambia a la sugerida cuando puntúa más que la que corre (la copia de la biblioteca, sin
         // la civ de la partida). Ctrl+Alt+B vuelve a la anterior.
         var running = library.FirstOrDefault(b => b.Id == _coach.BuildOrder.Id) ?? _coach.BuildOrder;
         if (_startedAutomatically && suggestion.BuildOrder.Id != _declinedSuggestion
-            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles))
+            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles, matchups))
         {
             _previousBuildOrder = running;
             Start(suggestion.BuildOrder, _liveFrames(), automatic: true);
@@ -448,6 +463,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _suggestion = suggestion;
         Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
     }
+
+    /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>
+    private string? MapName(string key) => _data.Maps.Get(key)?.Name;
 
     /// <summary>El nombre de una civ en castellano (el de Latinoamérica, o el de España si el juego está así).</summary>
     private string CivName(string civ)
@@ -580,8 +598,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Suggest(frame);
         }
         // La sugerencia vale durante la carga y el primer minuto de partida.
-        if ((_suggestion is not null || Overlay.MatchAdvice is not null) && frame.View.Time > SuggestionSeconds)
-            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice) = (null, null, null);
+        if ((_suggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null) && frame.View.Time > SuggestionSeconds)
+            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null);
         // Sin reloj (menú, pantalla de carga) el overlay baja, así no tapa el mapa de la pantalla de carga.
         var lowered = frame.SecondsWithoutClock >= LoweredAfterSeconds;
         if (frame.Area is { IsEmpty: false } area && (area != _placedOver || lowered != _lowered))

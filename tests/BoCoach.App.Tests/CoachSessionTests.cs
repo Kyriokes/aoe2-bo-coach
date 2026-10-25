@@ -184,6 +184,28 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
     }
 
+    // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
+    [Theory]
+    [InlineData("", "por equipos (sin tu Elo)")]
+    [InlineData("1200", "por equipos (Elo 1200)")]
+    public async Task En_la_pantalla_de_carga_muestra_el_cruce(string eloEquipos, string esperado)
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
+        {
+            PlayerName = "Kyriokes",
+            EloTeamText = eloEquipos,
+        };
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        for (var i = 0; i < 6; i++)
+            await session.LiveCoach!.StepAsync();
+
+        Assert.StartsWith("Japoneses en ", session.Overlay!.MatchupLine);
+        Assert.Contains(esperado, session.Overlay.MatchupLine);
+    }
+
     // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.
     [Fact]
     public async Task Al_detener_el_coach_guarda_el_informe_y_muestra_el_resumen()

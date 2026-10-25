@@ -49,6 +49,7 @@
     <None Include="..\..\data\events*.json" Link="data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\civ_styles.json" Link="data\civ_styles.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\maps.json" Link="data\maps.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\data\matchup_stats.json" Link="data\matchup_stats.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\hud_layout.json" Link="data\hud_layout.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\fonts\*.json" Link="data\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="..\..\data\icons\*.json" Link="data\icons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />

@@ -75,6 +75,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     /// <summary>D4: el consejo contra el rival de enfrente, en la pantalla de carga y el primer minuto.</summary>
     [ObservableProperty] public partial string? MatchAdvice { get; set; }
 
+    /// <summary>D10: las estadísticas reales del cruce (o de tu civ por equipos), en la pantalla de carga y el primer minuto.</summary>
+    [ObservableProperty] public partial string? MatchupLine { get; set; }
+
     public void Apply(CoachFrame frame)
     {
         var view = frame.View;
