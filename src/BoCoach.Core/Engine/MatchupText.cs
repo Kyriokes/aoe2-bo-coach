@@ -23,6 +23,32 @@ public static class MatchupText
         return stats.PreviousMixed ? texto + " (Con datos del parche anterior.)" : texto;
     }
 
+    /// <summary>
+    /// La sección "El cruce" del informe: el renglón general (sin la tendencia ni el aviso del parche) y el de la
+    /// duración que tuvo la partida. El informe no sabe si ganaste: es contexto, no un veredicto.
+    /// </summary>
+    public static IReadOnlyList<string> Report(MatchupStats stats, MatchupQuery query, TimeSpan gameLength,
+        Func<string, string> civName, Func<string, string?> mapName)
+    {
+        if (Summary(stats, query, civName, mapName) is not { } resumen)
+            return [];
+        var band = stats.DurationBand(gameLength);
+        var cell = query.Team
+            ? stats.Team(query.Civ, resumen.Map, resumen.EloBand, band)
+            : stats.OneVsOne(query.Civ, query.Rival!, resumen.Map, resumen.EloBand, band);
+        var duro = $"Duró {(int)gameLength.TotalMinutes} min: a esa duración, ";
+        var segundo = query.Team
+            ? $"{duro}los equipos con {civName(query.Civ)} ganan el {Range(cell!)}."
+            : $"{duro}en este cruce ganás el {Range(cell!)}.";
+        if (cell!.N == 0)
+            segundo += " Estimado: pocas partidas así.";
+        return [resumen.Headline + Estimated(resumen, query), segundo];
+    }
+
+    /// <summary>El porqué de la sugerencia de BO cuando el cruce tiene tendencia por duración.</summary>
+    public static string DurationReason(DurationTrend trend) =>
+        trend.FavorsShort ? "el cruce se gana más en partidas cortas" : "el cruce se gana más en partidas largas";
+
     private sealed record Resumen(string Headline, MatchupCell General, int Map, int EloBand, string Place, string? MapLabel);
 
     private static Resumen? Summary(MatchupStats stats, MatchupQuery query, Func<string, string> civName, Func<string, string?> mapName)

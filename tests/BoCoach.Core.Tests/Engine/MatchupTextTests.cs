@@ -138,4 +138,49 @@ public class MatchupTextTests
         var texto = MatchupText.Loading(Datos(MatchupJson.Cell(470, 430, 490, 80), previousMixed: true), BritanosEnArabia, Civ, Mapa);
         Assert.Equal("Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49). (Con datos del parche anterior.)", texto);
     }
+
+    private static readonly Dictionary<int, int[]> ConFranjaDelMedio = new()
+    {
+        [1] = MatchupJson.Cell(540, 491, 587, 50), [3] = MatchupJson.Cell(450, 410, 490, 30), [5] = MatchupJson.Cell(560, 540, 580, 200),
+    };
+
+    [Fact]
+    public void Informe_uno_contra_uno()
+    {
+        var stats = Datos(MatchupJson.Cell(470, 430, 490, 80), ConFranjaDelMedio, previousMixed: true);
+
+        Assert.Equal(["Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49).",
+                      "Duró 34 min: a esa duración, en este cruce ganás el 45 % (41 a 49)."],
+            MatchupText.Report(stats, BritanosEnArabia, new TimeSpan(0, 34, 50), Civ, Mapa));
+        Assert.Equal("Duró 25 min: a esa duración, en este cruce ganás el 48 % (47 a 49). Estimado: pocas partidas así.",
+            MatchupText.Report(stats, BritanosEnArabia, TimeSpan.FromMinutes(25), Civ, Mapa)[1]);
+    }
+
+    [Fact]
+    public void Informe_por_equipos()
+    {
+        var stats = Datos(MatchupJson.Cell(520, 506, 540, 900), ConFranjaDelMedio);
+
+        Assert.Equal(["Francos en Nómada por equipos (Elo 1200): 52 % (51 a 54).",
+                      "Duró 60 min: a esa duración, los equipos con francos ganan el 56 % (54 a 58)."],
+            MatchupText.Report(stats, new MatchupQuery("franks", null, "nomad", 1200, Team: true), TimeSpan.FromMinutes(60), Civ, Mapa));
+    }
+
+    [Fact]
+    public void Informe_sin_datos_vacio()
+    {
+        var stats = Datos(MatchupJson.Cell(470, 430, 490, 80));
+        Assert.Empty(MatchupText.Report(stats, BritanosEnArabia with { Civ = "spartans" }, TimeSpan.FromMinutes(30), Civ, Mapa));
+        Assert.Empty(MatchupText.Report(stats, BritanosEnArabia with { Rival = null }, TimeSpan.FromMinutes(30), Civ, Mapa));
+        Assert.Empty(MatchupText.Report(MatchupStats.Empty, BritanosEnArabia, TimeSpan.FromMinutes(30), Civ, Mapa));
+    }
+
+    [Fact]
+    public void Porque_de_la_sugerencia()
+    {
+        var corta = new MatchupCell(0.54, 0.49, 0.59, 50);
+        var larga = new MatchupCell(0.42, 0.38, 0.46, 40);
+        Assert.Equal("el cruce se gana más en partidas cortas", MatchupText.DurationReason(new DurationTrend(1, corta, 5, larga)));
+        Assert.Equal("el cruce se gana más en partidas largas", MatchupText.DurationReason(new DurationTrend(1, larga, 5, corta)));
+    }
 }
