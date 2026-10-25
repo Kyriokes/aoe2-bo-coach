@@ -25,6 +25,11 @@ USER_AGENT = "aoe2-bo-coach-stats (+https://github.com/Kyriokes/aoe2-bo-coach)"
 CIVS = {"mayans": "mayan"}
 # Civs que se descartan con sus partidas (por ejemplo, una de broma o de un modo especial).
 IGNORADAS: frozenset[str] = frozenset()
+# Las columnas de cada archivo que se usan.
+COLUMNAS = {
+    "matches.parquet": ("match_id", "ladder", "map", "start_time", "completion_time", "avg_elo"),
+    "players.parquet": ("match_id", "civ_id", "civ", "team", "old_rating", "won"),
+}
 # patchStart es una fecha sin hora: la primera partida de la foto real empezó 2 horas antes de las 0 UTC de ese día.
 TOLERANCIA_PARCHE_S = 86_400
 
@@ -100,10 +105,35 @@ def _ruta(path: Path) -> str:
     return path.as_posix().replace("'", "''")
 
 
+def _controlar_formato(con: duckdb.DuckDBPyConnection, origen: Path) -> None:
+    """Que cada archivo se pueda leer como parquet y tenga las columnas que se usan; si no, FuenteInvalida."""
+    for archivo, columnas in COLUMNAS.items():
+        try:
+            tiene = {fila[0] for fila in con.execute(f"DESCRIBE SELECT * FROM '{_ruta(origen / archivo)}'").fetchall()}
+        except duckdb.Error as error:
+            detalle = str(error).splitlines()[0]
+            raise FuenteInvalida(f"{archivo} no se puede leer como parquet (¿cambió el formato de la fuente?): "
+                                 f"{detalle}") from error
+        faltan = [c for c in columnas if c not in tiene]
+        if faltan:
+            raise FuenteInvalida(f"a {archivo} le faltan las columnas {', '.join(faltan)} "
+                                 f"(¿cambió el formato de la fuente?)")
+
+
 def normalizar(origen: Path, destino: Path, civs_validas: set[str]) -> None:
     """Traduce la foto de origen a la tabla de partidas de la caché (cache.COLUMNAS_*) y la escribe en destino."""
     parche = inicio_del_parche(origen)
     con = duckdb.connect()
+    _controlar_formato(con, origen)
+    try:
+        _normalizar(con, origen, destino, civs_validas, parche)
+    except duckdb.Error as error:
+        detalle = str(error).splitlines()[0]
+        raise FuenteInvalida(f"no se pudo traducir la foto de {origen}: {detalle}") from error
+
+
+def _normalizar(con: duckdb.DuckDBPyConnection, origen: Path, destino: Path, civs_validas: set[str],
+                parche: int) -> None:
     partidas, jugadores = _ruta(origen / "matches.parquet"), _ruta(origen / "players.parquet")
     primera = con.execute(f"SELECT min(start_time) FROM '{partidas}'").fetchone()[0]
     if primera is not None and primera < parche - TOLERANCIA_PARCHE_S:

@@ -121,3 +121,20 @@ def test_foto_con_partidas_de_antes_del_parche(tmp_path):
     foto_aoe2guide(tmp_path / "origen", inicios=(unix("2026-06-20"),), patch_start="2026-07-01")
     with pytest.raises(FuenteInvalida, match="antes del parche"):
         normalizar(tmp_path / "origen", tmp_path / "destino", {"mayan", "franks"})
+
+
+def test_columna_renombrada_da_un_mensaje_claro(tmp_path):
+    foto_aoe2guide(tmp_path / "origen")
+    matches = (tmp_path / "origen" / "matches.parquet").as_posix()
+    otra = (tmp_path / "origen" / "otra.parquet").as_posix()
+    duckdb.connect().execute(f"""COPY (SELECT * EXCLUDE ("map"), "map" AS mapa FROM '{matches}') TO '{otra}' (FORMAT parquet)""")
+    (tmp_path / "origen" / "otra.parquet").replace(tmp_path / "origen" / "matches.parquet")
+    with pytest.raises(FuenteInvalida, match=r"matches\.parquet.*map"):
+        normalizar(tmp_path / "origen", tmp_path / "destino", {"mayan", "franks"})
+
+
+def test_archivo_que_no_es_parquet_da_un_mensaje_claro(tmp_path):
+    foto_aoe2guide(tmp_path / "origen")
+    (tmp_path / "origen" / "players.parquet").write_text("<html>Mantenimiento</html>", encoding="utf-8")
+    with pytest.raises(FuenteInvalida, match=r"players\.parquet"):
+        normalizar(tmp_path / "origen", tmp_path / "destino", {"mayan", "franks"})
