@@ -61,6 +61,10 @@
 // el negro del mod) o "blue" (números azules).
 // Con el HUD del mod BoCoach HUD, <región> puede ser "wood:square" (el número del cuadrado negro) o "wood:stock"
 // (lo que está a la derecha del cuadrado).
+//
+//   ReplaySession hud-preview <salida.png> [--layout data/hud_layout.json] [--fonts data/fonts] [--scale 1]
+// Dibuja el diseño del panel del mod (data/hud_layout.json) como imagen, con números de muestra, para retocar medidas
+// sin abrir el juego.
 
 using System.Globalization;
 using System.Text.Json;
@@ -99,6 +103,7 @@ try
         "civs" => CivGuides.Civs(args[1], args),
         "improve" => CivGuides.Improve(args[1], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
+        "hud-preview" => HudPreview.Render(args[1], Layout(args), Text(args, "--fonts", Path.Combine("data", "fonts")), double.Parse(Text(args, "--scale", "1"), CultureInfo.InvariantCulture)),
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
@@ -738,6 +743,9 @@ static async IAsyncEnumerable<(int Frame, ScreenReading Reading)> Readings(strin
     foreach (var frame in session.Frames)
         yield return (frame.Index, (await reader.ReadAsync(Regions(session, frame.Index), frame.TimeMs / 1000.0)).ToReading());
 }
+
+// El diseño del panel del mod (--layout, por defecto data/hud_layout.json).
+static HudLayout Layout(string[] args) => HudLayout.Load(Text(args, "--layout", Path.Combine("data", HudLayout.FileName)));
 
 static string Text(string[] args, string name, string fallback)
 {
