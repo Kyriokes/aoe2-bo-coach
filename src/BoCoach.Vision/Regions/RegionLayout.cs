@@ -180,8 +180,24 @@ public sealed class RegionLayout
             regions[name] = new RegionRect(values[0], values[1], values[2], values[3]).Clamped();
         }
         var reference = dto?.ReferenceResolution is { Length: 2 } r ? r : [Default.ReferenceWidth, Default.ReferenceHeight];
-        var hud = dto?.HudLayout is { ValueKind: JsonValueKind.Object } element ? HudLayout.Parse(element.GetRawText(), Path.GetFileName(path)) : null;
+        var hud = dto?.HudLayout is { ValueKind: JsonValueKind.Object } element ? ParseHudOrNull(element, Path.GetFileName(path)) : null;
         return new RegionLayout(reference[0], reference[1], regions, dto?.HudScale is double scale && scale > 0 ? scale : 1, hud);
+    }
+
+    /// <summary>
+    /// El diseño guardado lo escribió la app: si una versión más estricta no lo entiende, las regiones se cargan igual
+    /// sin diseño (la calibración sola lo vuelve a escribir) en vez de fallar en cada arranque del coach.
+    /// </summary>
+    private static HudLayout? ParseHudOrNull(JsonElement element, string source)
+    {
+        try
+        {
+            return HudLayout.Parse(element.GetRawText(), source);
+        }
+        catch (InvalidDataException)
+        {
+            return null;
+        }
     }
 
     public void Save(string path)
