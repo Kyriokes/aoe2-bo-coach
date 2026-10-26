@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { durationLabel, MAP_NAMES, oneVsOne, type MatchupData } from "./matchups";
+import { durationLabel, MAP_NAMES, oneVsOne, percent, type MatchupData } from "./matchups";
 import { durationText, mapLine, matchupSitemapPaths, matchupStaticParams, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
 import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
 
@@ -42,6 +42,14 @@ describe("lo que muestra cada página de cruces", () => {
     expect(resumen.estimated).toBe(false);
     expect(pairCells(data, "franks", "britons")).toHaveLength(720);
     expect(pairCells(data, "franks", "britons")[0]).toBe(530); // desde los francos: 1000 - 470
+  });
+
+  it("los dos lados del cruce suman 100", () => {
+    // 50,5 % redondea a 51 y 49,5 % a 50: redondeados por separado daban 101.
+    const data = parseTest(buildMatchups({ "aztecs|portuguese": same(505, 480, 530, 900) }, {}));
+    const resumen = pairSummary(data, "aztecs", "portuguese");
+    expect(percent(resumen.general.p)).toBe(51);
+    expect(resumen.rivalPercent).toBe(49);
   });
 
   it("frase de duración con la regla de honestidad", () => {

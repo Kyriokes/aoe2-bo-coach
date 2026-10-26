@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, type MatchupData } from "@/lib/matchups";
+import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, type MatchupData } from "@/lib/matchups";
 import { getMatchups } from "@/lib/matchupsServer";
 import { mapLine, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { MatchupDuration } from "@/components/MatchupDuration";
@@ -174,7 +174,7 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
           </span>
           {isEven(general) ? <span className="text-faint"> (parejo)</span> : null}
           <span className="text-muted">
-            ; {nameB.toLowerCase()}, {percent(1 - general.p)} %.
+            ; {nameB.toLowerCase()}, {summary.rivalPercent} %.
           </span>
         </p>
         <p className="text-sm text-faint">

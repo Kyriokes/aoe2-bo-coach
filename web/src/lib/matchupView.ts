@@ -82,6 +82,8 @@ export function pairCells(data: MatchupData, a: string, b: string): number[] {
 
 export interface PairSummary {
   general: Cell;
+  /** La chance del rival en %, el complemento de la de `a` (redondeadas por separado, 50,5 y 49,5 daban 51 y 50). */
+  rivalPercent: number;
   maps: { key: string | null; name: string; cell: Cell }[];
   /** El general no tiene partidas: todo sale del modelo. */
   estimated: boolean;
@@ -95,7 +97,7 @@ export function pairSummary(data: MatchupData, a: string, b: string): PairSummar
     { key: null, name: "Todos los mapas", cell: general },
     ...data.mapKeys.map((key, i) => ({ key, name: MAP_NAMES[key] ?? key, cell: oneVsOne(data, a, b, i + 1, 0, 0) ?? general })),
   ];
-  return { general, maps, estimated: general.n === 0 };
+  return { general, rivalPercent: 100 - percent(general.p), maps, estimated: general.n === 0 };
 }
 
 /**
