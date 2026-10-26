@@ -138,4 +138,32 @@ public class GameDataTests
         Assert.Equal(125, V89.Get("heavy_plow").FarmFood);
         Assert.Equal(0, V89.Get("wheelbarrow").FarmFood);
     }
+
+    // D12: las bonificaciones de civ sobre lo que rinde la comida (recursos 216, 268, 219, 69 y 237 del .dat).
+    [Theory]
+    [InlineData("tatars", GatherSource.Sheep, 1.57)]
+    [InlineData("goths", GatherSource.Hunt, 1.23)]
+    [InlineData("mayan", GatherSource.Sheep, 1.15)]
+    [InlineData("mayan", GatherSource.Hunt, 1.15)]
+    [InlineData("mayan", GatherSource.Berries, 1.15)]
+    [InlineData("spartans", GatherSource.Berries, 1.1)]
+    [InlineData("britons", GatherSource.Sheep, 1)]
+    [InlineData("tatars", GatherSource.Hunt, 1)]
+    public void Rendimiento_de_la_comida_por_civ(string civ, GatherSource source, double expected)
+    {
+        foreach (var age in Enum.GetValues<Age>())
+            Assert.Equal(expected, V89.Civ(civ).FoodYield(source, age), 4);
+    }
+
+    [Fact]
+    public void Las_mejoras_de_granja_de_los_sicilianos_y_el_folwark_de_los_polacos()
+    {
+        Assert.Equal(2.25, V89.Civ("sicilians").FarmUpgradeFood(Age.Feudal), 4);
+        Assert.Equal(0, V89.Civ("sicilians").FarmExtra(Age.Feudal), 4);
+        Assert.Equal(0.1, V89.Civ("poles").FarmExtra(Age.Dark), 4);
+        Assert.Equal(1, V89.Civ("poles").FarmUpgradeFood(Age.Dark), 4);
+        Assert.Equal((1.0, 0.0), (V89.Civ("britons").FarmUpgradeFood(Age.Castle), V89.Civ("britons").FarmExtra(Age.Castle)));
+        Assert.Equal((1.0, 0.0), (CivBonuses.None.FarmUpgradeFood(Age.Dark), CivBonuses.None.FarmExtra(Age.Dark)));
+        Assert.Equal(1, CivBonuses.None.FoodYield(GatherSource.Sheep, Age.Dark));
+    }
 }

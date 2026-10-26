@@ -106,4 +106,25 @@ public sealed class CivBonuses
 
     /// <summary>Lo que se recibe al llegar a una edad (dravidianos +200 de madera; etíopes +100 de comida y de oro).</summary>
     public ResourceAmounts AgeResources(Age age) => _ageResources.GetValueOrDefault(age, ResourceAmounts.Zero);
+
+    /// <summary>D12: lo que rinde la comida de las ovejas, la caza y las bayas, por edad (ver <see cref="FoodYield"/>).</summary>
+    public IReadOnlyDictionary<GatherSource, double[]> FoodYields { get; init; } = new Dictionary<GatherSource, double[]>();
+
+    /// <summary>D12: multiplicador de lo que suman las mejoras de granja, por edad (ver <see cref="FarmUpgradeFood"/>).</summary>
+    public double[]? FarmUpgradeFoods { get; init; }
+
+    /// <summary>D12: comida de más por granja como fracción, por edad (ver <see cref="FarmExtra"/>).</summary>
+    public double[]? FarmExtras { get; init; }
+
+    /// <summary>
+    /// Cuánto rinde la comida de una fuente (tártaros: ovejas ×1,57; godos: caza ×1,23; mayas ×1,15). La fuente dura
+    /// más y el aldeano trabaja más lento en la misma proporción: con la comida finita cambia el total, no la tasa.
+    /// </summary>
+    public double FoodYield(GatherSource source, Age age) => FoodYields.TryGetValue(source, out var v) ? v[(int)age] : 1;
+
+    /// <summary>Multiplicador de lo que suman la collera, el arado pesado y la rotación a cada granja (sicilianos ×2,25).</summary>
+    public double FarmUpgradeFood(Age age) => FarmUpgradeFoods?[(int)age] ?? 1;
+
+    /// <summary>Comida de más por granja, como fracción de la que tiene (folwark de los polacos: 0,1).</summary>
+    public double FarmExtra(Age age) => FarmExtras?[(int)age] ?? 0;
 }

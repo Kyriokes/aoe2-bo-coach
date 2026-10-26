@@ -169,6 +169,14 @@ public static partial class GameDataLoader
             carry[source] = Ages(values, $"carry.{name}");
         }
 
+        var foodYield = new Dictionary<GatherSource, double[]>();
+        foreach (var (name, values) in dto.FoodYield ?? [])
+        {
+            if (!Enum.TryParse<GatherSource>(name, ignoreCase: true, out var source))
+                throw new GameDataException($"civs.{key}.food_yield: fuente desconocida '{name}'.");
+            foodYield[source] = Ages(values, $"food_yield.{name}");
+        }
+
         var ageResources = new Dictionary<Age, ResourceAmounts>();
         foreach (var (name, amounts) in dto.AgeResources ?? [])
         {
@@ -192,6 +200,9 @@ public static partial class GameDataLoader
         {
             Names = dto.Names ?? new Dictionary<string, string>(),
             Unavailable = (dto.Unavailable ?? []).ToHashSet(),
+            FoodYields = foodYield,
+            FarmUpgradeFoods = dto.FarmUpgradeFood is { } upgrades ? Ages(upgrades, "farm_upgrade_food") : null,
+            FarmExtras = dto.FarmExtra is { } extra ? Ages(extra, "farm_extra") : null,
         };
     }
 
@@ -264,7 +275,10 @@ public static partial class GameDataLoader
         double[]? VillagerSpeed,
         Dictionary<string, Dictionary<string, double>>? AgeResources,
         Dictionary<string, string>? Names,
-        List<string>? Unavailable);
+        List<string>? Unavailable,
+        Dictionary<string, double[]>? FoodYield,
+        double[]? FarmUpgradeFood,
+        double[]? FarmExtra);
 
     internal sealed record CivStartDto(int Food, int Wood, int Stone, int Gold, int Villagers, bool NoHouses);
 

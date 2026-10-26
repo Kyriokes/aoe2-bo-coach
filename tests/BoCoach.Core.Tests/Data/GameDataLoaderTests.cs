@@ -72,6 +72,15 @@ public class GameDataLoaderTests
     }
 
     [Fact]
+    public void Una_fuente_desconocida_en_food_yield_de_una_civ_da_error()
+    {
+        var e = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Json(TownCenter, Tasas + """, "civs": { "x": { "food_yield": { "cows": [1, 1, 1, 1] } } } """)));
+
+        Assert.Contains("food_yield", e.Message);
+    }
+
+    [Fact]
     public void Sin_food_per_object_queda_vacio()
     {
         var data = GameDataLoader.Parse(Json(TownCenter));

@@ -135,6 +135,14 @@ VARIANTES_RECOLECCION = {
 COMIDA_POR_OBJETO = {"sheep": 594, "hunt": 48, "berries": 59}  # oveja, jabalí, arbusto de bayas
 RECURSO_COMIDA_GRANJA = 36
 CIV_CON_RECURSOS = 1
+# Lo que rinde la comida de cada fuente por civ: cada tarea de recolección multiplica lo que junta por un recurso de
+# la civ (el `resource_multiplier` de la tarea en el .dat; ovejas 216 = "Sheep +50% food" de los tártaros, caza 268 =
+# "Hunting bonuses" de los godos). Las bayas usan el 219, que hoy se mueve siempre junto con el 190 (la comida de las
+# demás tareas): si un parche los separa, el extractor avisa.
+RENDIMIENTO_COMIDA = {"sheep": 216, "hunt": 268, "berries": 219}
+RECURSO_RENDIMIENTO_COMIDA = 190
+RECURSO_MEJORAS_GRANJA = 69  # multiplica lo que suman la collera, el arado pesado y la rotación (sicilianos ×2,25)
+RECURSO_GRANJA_EXTRA = 237  # comida de más por granja, como fracción del recurso 36 (folwark de los polacos: 10 %)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -606,6 +614,21 @@ class Extractor:
                 valor = c.d
         return valor
 
+    @staticmethod
+    def recurso(comandos, rid: int, base: float) -> float:
+        """Un recurso de la civ después de los comandos: el 6 lo multiplica y el 1 lo fija (modo 0) o le suma (modo 1)."""
+        valor = base
+        for c in comandos:
+            if c.a != rid:
+                continue
+            if c.type == 6:
+                valor *= c.d
+            elif c.type == 1 and c.b == 0:
+                valor = c.d
+            elif c.type == 1 and c.b == 1:
+                valor += c.d
+        return valor
+
     def costo_con_bonos(self, comandos, ids, clase, base: dict[str, int]) -> dict[str, int]:
         resultado = {}
         for recurso in RECURSOS.values():
@@ -674,6 +697,32 @@ class Extractor:
             self.atributo(cmds, {TAREAS["wood"][0]}, CLASE_ALDEANO, ATTR_VELOCIDAD, lenador.speed) / lenador.speed, 4))
         if any(v != 1 for v in velocidad):
             datos["villager_speed"] = velocidad
+
+        # D12: lo que rinde la comida, para la comida finita del modo asistido. La fuente dura más y el aldeano trabaja
+        # más lento en la misma proporción (tártaros: ovejas ×1,57 con el pastor ×0,637): la tasa casi no cambia y el
+        # total sí. El folwark solo cuenta si lo fija una bonificación propia de la civ (las tecnologías genéricas de
+        # granja también tocan el 237, pero sin folwark no hace nada).
+        recursos_civ = self.dat.civs[civ_id].resources
+        rendimiento = {}
+        for fuente, rid in RENDIMIENTO_COMIDA.items():
+            valores = por_edad(lambda cmds, n, rid=rid: round(self.recurso(cmds, rid, recursos_civ[rid]), 4))
+            if any(v != 1 for v in valores):
+                rendimiento[fuente] = valores
+        if rendimiento:
+            datos["food_yield"] = rendimiento
+        bayas = RENDIMIENTO_COMIDA["berries"]
+        if por_edad(lambda cmds, n: self.recurso(cmds, bayas, recursos_civ[bayas])) != por_edad(
+                lambda cmds, n: self.recurso(cmds, RECURSO_RENDIMIENTO_COMIDA, recursos_civ[RECURSO_RENDIMIENTO_COMIDA])):
+            print(f"  aviso: {self.dat.civs[civ_id].name}: el rendimiento de las bayas ({bayas}) ya no es igual al de la "
+                  f"comida ({RECURSO_RENDIMIENTO_COMIDA}); revisar cuál usa el recolector", file=sys.stderr)
+        mejoras = por_edad(lambda cmds, n: round(self.recurso(cmds, RECURSO_MEJORAS_GRANJA, recursos_civ[RECURSO_MEJORAS_GRANJA]), 4))
+        if any(v != 1 for v in mejoras):
+            datos["farm_upgrade_food"] = mejoras
+        extra = por_edad(lambda cmds, n: round(next(
+            (c.d for c in reversed(cmds)
+             if c.type == 1 and c.a == RECURSO_GRANJA_EXTRA and c.b == 0 and c.c == RECURSO_COMIDA_GRANJA), 0.0), 4))
+        if any(v != 0 for v in extra):
+            datos["farm_extra"] = extra
 
         # Recursos que da cada edad al llegar (dravidianos +200 de madera, etíopes +100 de comida y de oro): los
         # comandos nuevos de cada edad que suman al stock.

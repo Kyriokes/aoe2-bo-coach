@@ -1156,6 +1156,14 @@
           50.0
         ]
       },
+      "food_yield": {
+        "hunt": [
+          1.23,
+          1.23,
+          1.23,
+          1.23
+        ]
+      },
       "costs": {
         "militia": [
           {
@@ -2419,6 +2427,26 @@
     },
     "mayan": {
       "dat_name": "Mayan",
+      "food_yield": {
+        "sheep": [
+          1.15,
+          1.15,
+          1.15,
+          1.15
+        ],
+        "hunt": [
+          1.15,
+          1.15,
+          1.15,
+          1.15
+        ],
+        "berries": [
+          1.15,
+          1.15,
+          1.15,
+          1.15
+        ]
+      },
       "costs": {
         "archer": [
           {
@@ -4078,6 +4106,14 @@
     },
     "tatars": {
       "dat_name": "Tatars",
+      "food_yield": {
+        "sheep": [
+          1.57,
+          1.57,
+          1.57,
+          1.57
+        ]
+      },
       "names": {
         "en": "Tatars",
         "es": "Tártaros",
@@ -4419,6 +4455,12 @@
     },
     "sicilians": {
       "dat_name": "Sicilians",
+      "farm_upgrade_food": [
+        2.25,
+        2.25,
+        2.25,
+        2.25
+      ],
       "costs": {
         "transport_ship": [
           {
@@ -4489,6 +4531,12 @@
     },
     "poles": {
       "dat_name": "Poles",
+      "farm_extra": [
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
       "costs": {
         "light_cavalry": [
           {
@@ -5060,6 +5108,26 @@
           11.0,
           11.0,
           11.0
+        ]
+      },
+      "food_yield": {
+        "sheep": [
+          1.1,
+          1.1,
+          1.1,
+          1.1
+        ],
+        "hunt": [
+          1.1,
+          1.1,
+          1.1,
+          1.1
+        ],
+        "berries": [
+          1.1,
+          1.1,
+          1.1,
+          1.1
         ]
       },
       "times": {
