@@ -16,36 +16,10 @@ import {
   trend,
   type Cell,
 } from "./matchups";
+import { buildMatchups, parseTest, same } from "./matchupsTesting";
 
-type CellFn = (map: number, elo: number, duration: number) => [number, number, number, number];
-
-/** Un matchup_stats.json de prueba con el formato que escribe tools/stats. */
-function build(oneVsOneEntries: Record<string, CellFn>, teamEntries: Record<string, CellFn>, extra: Record<string, unknown> = {}) {
-  const values = (fn: CellFn) => {
-    const out: number[] = [];
-    for (let m = 0; m < 5; m++) for (let e = 0; e < 6; e++) for (let d = 0; d < 6; d++) out.push(...fn(m, e, d));
-    return out;
-  };
-  return JSON.stringify({
-    schema_version: 1,
-    generated: "2026-10-25",
-    source: { name: "aoe2-guide", url: "https://aoe2-guide.vercel.app/data", from: "2026-06-01", to: "2026-07-03" },
-    patch: { label: "Update 185872", start: "2026-06-01", previous_mixed: false },
-    matches: { "1v1": 100, team: 50 },
-    bands: { elo: [850, 1050, 1300, 1600], game_minutes: [20, 30, 40, 55], maps: ["arabia", "arena", "black_forest", "nomad"] },
-    interval: 0.9,
-    one_vs_one: Object.fromEntries(Object.entries(oneVsOneEntries).map(([k, fn]) => [k, values(fn)])),
-    team: Object.fromEntries(Object.entries(teamEntries).map(([k, fn]) => [k, values(fn)])),
-    ...extra,
-  });
-}
-
-const same = (p: number, from: number, to: number, n: number): CellFn => () => [p, from, to, n];
-const parse = (json: string) => {
-  const data = parseMatchups(json);
-  if (!data) throw new Error("no se leyó");
-  return data;
-};
+const build = buildMatchups;
+const parse = parseTest;
 
 describe("estadísticas de cruces", () => {
   it("lee la cabecera y las franjas", () => {

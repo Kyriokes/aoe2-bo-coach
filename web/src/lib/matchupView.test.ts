@@ -1,0 +1,58 @@
+import { describe, expect, it } from "vitest";
+import { mapLine, pairCells, pairSummary, rivalsOf, teamOf } from "./matchupView";
+import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
+
+const tres = (fn: CellFn) => ({ "britons|franks": fn, "britons|mayan": fn, "franks|mayan": fn });
+
+describe("lo que muestra cada página de cruces", () => {
+  it("rivales con sus 30 casilleros", () => {
+    const data = parseTest(buildMatchups(tres((m, e) => [100 * m + 10 * e, 0, 999, 5]), { franks: same(510, 500, 520, 900) }));
+    const rivales = rivalsOf(data, "franks");
+
+    expect(rivales.map((r) => r.rival).sort()).toEqual(["britons", "mayan"]);
+    const britanos = rivales.find((r) => r.rival === "britons")!;
+    expect(britanos.cells).toHaveLength(30);
+    // franks va segunda en "britons|franks": desde los francos, la chance se invierte.
+    expect(britanos.cells[2 * 6 + 3].p).toBeCloseTo(1 - 0.23, 6);
+    const mayas = rivales.find((r) => r.rival === "mayan")!;
+    expect(mayas.cells[2 * 6 + 3].p).toBeCloseTo(0.23, 6);
+    expect(teamOf(data, "franks")).toHaveLength(30);
+    expect(teamOf(data, "spartans")).toBeNull();
+    expect(rivalsOf(data, "spartans")).toEqual([]);
+  });
+
+  it("el resumen del cruce desde a", () => {
+    const data = parseTest(buildMatchups(tres((m) => [m === 0 ? 470 : 400 + 10 * m, 430, 490, m === 4 ? 0 : 80]), {}));
+    const resumen = pairSummary(data, "britons", "franks", "Britanos");
+
+    expect(resumen.general.p).toBeCloseTo(0.47, 6);
+    expect(resumen.maps.map((m) => m.name)).toEqual(["Todos los mapas", "Arabia", "Arena", "Bosque Negro", "Nómada"]);
+    expect(resumen.maps[1].cell.p).toBeCloseTo(0.41, 6);
+    expect(resumen.maps[4].cell.n).toBe(0);
+    expect(resumen.estimated).toBe(false);
+    expect(pairCells(data, "franks", "britons")).toHaveLength(720);
+    expect(pairCells(data, "franks", "britons")[0]).toBe(530); // desde los francos: 1000 - 470
+  });
+
+  it("frase de duración con la regla de honestidad", () => {
+    const porDuracion = (franjas: Record<number, [number, number, number, number]>) =>
+      parseTest(buildMatchups({ "britons|franks": (_m, _e, d) => franjas[d] ?? (d === 0 ? [480, 460, 500, 300] : [480, 470, 490, 0]) }, {}));
+
+    const cortas = porDuracion({ 1: [540, 491, 587, 50], 5: [420, 380, 460, 40] });
+    expect(pairSummary(cortas, "britons", "franks", "Britanos").trendText).toBe(
+      "Britanos ganan más en partidas cortas: 54 % en menos de 20 min, 42 % en 55 min o más.",
+    );
+    expect(pairSummary(cortas, "franks", "britons", "Francos").trendText).toBe(
+      "Francos ganan más en partidas largas: 46 % en menos de 20 min, 58 % en 55 min o más.",
+    );
+    const pareja = porDuracion({ 1: [540, 491, 587, 50], 5: [450, 400, 495, 40] });
+    expect(pairSummary(pareja, "britons", "franks", "Britanos").trendText).toBe("Sin diferencia clara por duración.");
+    expect(pairSummary(porDuracion({}), "britons", "franks", "Britanos").trendText).toBeNull();
+  });
+
+  it("textos de un mapa sin partidas", () => {
+    expect(mapLine({ p: 0.47, from: 0.4, to: 0.54, n: 0 }, "Nómada")).toBe("Estimado: no hay partidas de este cruce en Nómada.");
+    expect(mapLine({ p: 0.47, from: 0.4, to: 0.54, n: 0 }, null)).toBe("Estimado: no hay partidas de este cruce.");
+    expect(mapLine({ p: 0.47, from: 0.4, to: 0.54, n: 12 }, "Nómada")).toBeNull();
+  });
+});
