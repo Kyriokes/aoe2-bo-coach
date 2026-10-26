@@ -14,6 +14,9 @@ export function Header() {
           <Link href="/biblioteca" className="hover:text-amber">
             Biblioteca
           </Link>
+          <Link href="/cruces" className="hover:text-amber">
+            Cruces
+          </Link>
           <Link href="/subir" className="hover:text-amber">
             Armar una BO
           </Link>

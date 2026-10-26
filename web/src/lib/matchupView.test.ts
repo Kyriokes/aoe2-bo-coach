@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapLine, pairCells, pairSummary, rivalsOf, teamOf } from "./matchupView";
+import { mapLine, matchupSitemapPaths, pairCells, pairSummary, rivalsOf, teamOf } from "./matchupView";
 import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
 
 const tres = (fn: CellFn) => ({ "britons|franks": fn, "britons|mayan": fn, "franks|mayan": fn });
@@ -48,6 +48,19 @@ describe("lo que muestra cada página de cruces", () => {
     const pareja = porDuracion({ 1: [540, 491, 587, 50], 5: [450, 400, 495, 40] });
     expect(pairSummary(pareja, "britons", "franks", "Britanos").trendText).toBe("Sin diferencia clara por duración.");
     expect(pairSummary(porDuracion({}), "britons", "franks", "Britanos").trendText).toBeNull();
+  });
+
+  it("las entradas del sitemap", () => {
+    const data = parseTest(buildMatchups(tres(same(500, 480, 520, 10)), { franks: same(510, 500, 520, 900) }));
+    expect(matchupSitemapPaths(data)).toEqual([
+      "/cruces",
+      "/cruces/britons",
+      "/cruces/franks",
+      "/cruces/mayan",
+      "/cruces/britons-vs-franks",
+      "/cruces/britons-vs-mayan",
+      "/cruces/franks-vs-mayan",
+    ]);
   });
 
   it("textos de un mapa sin partidas", () => {

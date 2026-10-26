@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { chanceText, isEven, type Cell } from "@/lib/matchups";
+import { chanceColor, chanceText, isEven, type Cell } from "@/lib/matchups";
 
 /** Un rival con sus 30 casilleros (mapa · 6 + franja de Elo) desde la civ de la página. */
 export interface RivalOption {
@@ -15,12 +15,6 @@ export interface RivalOption {
 export interface Choice {
   index: number;
   label: string;
-}
-
-export function chanceColor(c: Cell) {
-  if (c.from > 0.5) return "text-green";
-  if (c.to < 0.5) return "text-red";
-  return "text-muted";
 }
 
 /** Los rivales de una civ ordenados por la chance, con el mapa y la franja de Elo para elegir (D10, spec 5.5). */

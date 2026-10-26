@@ -19,10 +19,3 @@ export function getMatchups(): MatchupData | null {
   }
   return cached;
 }
-
-/** Las civs que tienen estadísticas, en orden alfabético de su clave. */
-export function civsWithData(data: MatchupData): string[] {
-  const civs = new Set<string>(data.team.keys());
-  for (const pair of data.oneVsOne.keys()) for (const civ of pair.split("|")) civs.add(civ);
-  return [...civs].sort();
-}

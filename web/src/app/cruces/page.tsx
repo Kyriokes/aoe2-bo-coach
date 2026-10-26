@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getMatchups, civsWithData } from "@/lib/matchupsServer";
+import { getMatchups } from "@/lib/matchupsServer";
+import { civsWithData } from "@/lib/matchupView";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
 const TITLE = "Cruces de civs";

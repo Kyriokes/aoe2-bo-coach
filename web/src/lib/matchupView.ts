@@ -5,6 +5,18 @@ import { durationLabel, MAP_NAMES, oneVsOne, percent, team, trend, type Cell, ty
  * navegador no recibe el archivo entero (3,7 MB) para cambiar el mapa o la franja de Elo.
  */
 
+/** Las civs que tienen estadísticas, en orden alfabético de su clave. */
+export function civsWithData(data: MatchupData): string[] {
+  const civs = new Set<string>(data.team.keys());
+  for (const pair of data.oneVsOne.keys()) for (const civ of pair.split("|")) civs.add(civ);
+  return [...civs].sort();
+}
+
+/** Las rutas de /cruces para el sitemap: la de elegir, la de cada civ y la de cada pareja (claves en orden alfabético). */
+export function matchupSitemapPaths(data: MatchupData): string[] {
+  return ["/cruces", ...civsWithData(data).map((civ) => `/cruces/${civ}`), ...[...data.oneVsOne.keys()].sort().map((pair) => `/cruces/${pair.replace("|", "-vs-")}`)];
+}
+
 /** Un rival con sus 30 casilleros de duración "todas": el índice es mapa · 6 + franja de Elo. */
 export interface RivalRow {
   rival: string;

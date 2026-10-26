@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, type MatchupData } from "@/lib/matchups";
-import { civsWithData, getMatchups } from "@/lib/matchupsServer";
-import { mapLine, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
+import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, type MatchupData } from "@/lib/matchups";
+import { getMatchups } from "@/lib/matchupsServer";
+import { civsWithData, mapLine, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { MatchupDuration } from "@/components/MatchupDuration";
-import { chanceColor, MatchupRivals, type Choice } from "@/components/MatchupRivals";
+import { MatchupRivals, type Choice } from "@/components/MatchupRivals";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
 /** Todas las páginas se arman al compilar: las de cada civ y las de cada pareja (con las claves en orden alfabético). */

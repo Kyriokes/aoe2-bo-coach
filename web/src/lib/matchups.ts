@@ -146,6 +146,13 @@ export function isEven(c: Cell): boolean {
   return c.from <= 0.5 && 0.5 <= c.to;
 }
 
+/** La clase del color de una chance: verde si el rango queda arriba del 50 %, rojo si queda abajo. */
+export function chanceColor(c: Cell): string {
+  if (c.from > 0.5) return "text-green";
+  if (c.to < 0.5) return "text-red";
+  return "text-muted";
+}
+
 export function percent(x: number): number {
   return Math.round(x * 100);
 }
