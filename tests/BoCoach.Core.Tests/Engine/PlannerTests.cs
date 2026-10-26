@@ -159,6 +159,29 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Cada_granja_la_hace_un_granjero_que_todavia_no_tiene()
+    {
+        // Los 2 granjeros que ya hay tienen su granja: las 3 nuevas esperan a los aldeanos que van a granjas.
+        var start = PlanStart.Standard with
+        {
+            IdleVillagers = 0,
+            Stock = new ResourceAmounts(Food: 200, Wood: 500, Stone: 0, Gold: 0),
+            Villagers = new Dictionary<GatherSource, int> { [GatherSource.Farm] = 2, [GatherSource.Wood] = 2 },
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["farm"] = 2, ["house"] = 2 },
+            PopulationCap = 15,
+        };
+        var farmers = new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 5, Assign = GatherSource.Farm, Group = "g" };
+        var farms = new Step { Id = "s2", Do = StepAction.Build, What = "farm", Count = 3, From = GatherSource.Farm, Assign = GatherSource.Farm, Group = "g" };
+
+        var plan = Planner.Simulate([new PlanItem(farmers, 3), new PlanItem(farms, 3)], start);
+
+        Assert.True(plan.Completed);
+        var firstFarmer = plan.Jobs.Where(j => j.StepId == "s1").Min(j => j.End);
+        Assert.All(plan.Jobs.Where(j => j.StepId == "s2"), j => Assert.True(j.Start >= firstFarmer, $"granja a los {j.Start} s"));
+        Assert.All(plan.Blocks.Where(b => b.StepId == "s2"), b => Assert.True(b.Expected));
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));
