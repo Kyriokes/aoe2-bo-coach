@@ -40,13 +40,22 @@ public interface IFrameSource
     /// capturas que siguen usan las regiones nuevas. Una grabación no calibra.
     /// </summary>
     bool Recalibrate() => false;
+
+    /// <summary>
+    /// Si la calibración sola ya encontró el HUD en esta sesión del coach. Mientras no, el coach la vuelve a intentar
+    /// aunque lea el reloj: una calibración vieja puede leerlo y tener otras cajas corridas. Una grabación no calibra.
+    /// </summary>
+    bool Calibrated => true;
 }
 
 /// <summary>La pantalla en vivo: cada región se captura una sola vez por captura, recién cuando se la pide.</summary>
-public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func<RegionLayout?>? recalibrate = null) : IFrameSource
+/// <param name="calibrated">Si la calibración sola encontró el HUD al empezar (ver <see cref="IFrameSource.Calibrated"/>).</param>
+public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func<RegionLayout?>? recalibrate = null, bool calibrated = true) : IFrameSource
 {
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private RegionLayout _layout = layout;
+
+    public bool Calibrated { get; private set; } = calibrated;
 
     public TimeSpan Interval { get; init; } = TimeSpan.FromMilliseconds(500);
 
@@ -61,6 +70,7 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func
         if (recalibrate?.Invoke() is not { } found)
             return false;
         _layout = found;
+        Calibrated = true;
         return true;
     }
 

@@ -87,6 +87,56 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Equal(2, frames.Recalibrations);
     }
 
+    /// <summary>
+    /// La grabación de scouts (con reloj) como pantalla en vivo que todavía no se calibró sola; cuenta los pedidos de
+    /// calibrar y la calibración encuentra el HUD a partir del intento <paramref name="succeedAt"/>.
+    /// </summary>
+    private sealed class UncalibratedFrames(RecordedSession session, int succeedAt) : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => GameWindow.PrimaryScreen;
+        public int Recalibrations { get; private set; }
+        public bool Calibrated { get; private set; }
+
+        public Frame? Next()
+        {
+            if (_served >= session.Frames.Count)
+                return null;
+            var frame = session.Frames[_served++];
+            return new Frame(region => session.Has(frame.Index, region) ? session.Image(frame.Index, region) : null, frame.TimeMs / 1000.0, Area);
+        }
+
+        public bool Recalibrate()
+        {
+            Calibrated = ++Recalibrations >= succeedAt;
+            return Calibrated;
+        }
+    }
+
+    /// <summary>
+    /// Partida 20261025-230041: el coach automático arrancó en el menú (sin HUD que calibrar) y en la partida la
+    /// calibración vieja leía el reloj, así que no volvió a calibrar y la caja de la cola quedó corrida toda la partida.
+    /// Con el reloj a la vista y sin calibrar en esta sesión, prueba enseguida y después cada 30 s hasta que encuentra
+    /// el HUD.
+    /// </summary>
+    [Fact]
+    public async Task Con_reloj_y_sin_calibrar_en_la_sesion_vuelve_a_calibrar_hasta_encontrar_el_HUD()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var frames = new UncalibratedFrames(session, succeedAt: 2);
+        using var live = Live(frames);
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        double? firstClock = null;
+        while (await live.StepAsync() && (firstClock is null || last!.View.Time < firstClock + 90))
+            firstClock ??= last?.Hud?.ClockRead == true ? last.View.Time : null;
+
+        // El primero apenas se ve el reloj, el segundo a los 30 s (encuentra el HUD) y después ninguno más.
+        Assert.Equal(2, frames.Recalibrations);
+    }
+
     private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
 
     /// <summary>

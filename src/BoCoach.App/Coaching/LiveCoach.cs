@@ -140,6 +140,9 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     public const double RecalibrateEverySeconds = 5;
 
+    /// <summary>Con reloj, cada cuánto se vuelve a probar la calibración sola mientras no encontró el HUD (sin el mod, nunca).</summary>
+    public const double RecalibrateInGameSeconds = 30;
+
     private readonly object _gate = new();
     private readonly GameData _data;
     private readonly HudFonts _fonts;
@@ -161,6 +164,7 @@ public sealed class LiveCoach : IDisposable
     private double? _lastLoadingTry;
     private double? _noClockSince;
     private double? _lastRecalibrate;
+    private double? _lastInGameRecalibrate;
     private bool _loadingDone;
     private LoadingReading? _loadingReading;
     private LoadingPlayer? _me;
@@ -304,7 +308,19 @@ public sealed class LiveCoach : IDisposable
                 }
             }
             else
+            {
                 _lastRecalibrate = null;
+                // Con reloj pero sin calibrar en esta sesión (el coach automático arrancó en el menú): la calibración
+                // vieja lee el reloj pero puede tener otras cajas corridas (en la 20261025-230041, la cola). Se prueba
+                // apenas se ve el reloj y después cada tanto; el lector sigue igual si el diseño del HUD no cambió.
+                if (!Frames.Calibrated && (_lastInGameRecalibrate is not { } tried || frame.RealTime - tried >= RecalibrateInGameSeconds))
+                {
+                    _lastInGameRecalibrate = frame.RealTime;
+                    var before = Frames.Hud?.Name;
+                    if (Frames.Recalibrate() && Frames.Hud?.Name != before)
+                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud);
+                }
+            }
             if (hud.ClockRead)
             {
                 _loadingDone = false;

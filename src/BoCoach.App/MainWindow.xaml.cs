@@ -41,11 +41,11 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             gameData: () => data.GameData, playerName: () => Coach?.PlayerName);
         ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual
-        // y el coach la vuelve a intentar cada tanto mientras no vea el reloj (arrancó en el menú del juego).
+        // y el coach la vuelve a intentar cada tanto hasta encontrar el HUD (arrancó en el menú del juego).
         Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () =>
         {
-            Tools.TryAutoCalibrate();
-            return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null);
+            var calibrated = Tools.TryAutoCalibrate();
+            return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated);
         }, CoachSettings.DefaultPath);
         CoachButton.DataContext = Coach;
         PlayerNameBox.DataContext = Coach;
