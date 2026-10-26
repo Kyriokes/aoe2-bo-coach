@@ -132,6 +132,11 @@ describe("estadísticas de cruces", () => {
     expect(matchupRouting("/biblioteca")).toBeNull();
   });
 
+  it("una dirección con % mal formado da 404, no un error", () => {
+    expect(matchupRouting("/cruces/%ZZ")).toEqual({ notFound: true });
+    expect(matchupRouting("/cruces/%E0%A4%A")).toEqual({ notFound: true });
+  });
+
   it("los nombres de mapas son los de maps.json", () => {
     const text = readFileSync(fileURLToPath(new URL("../../../data/maps.json", import.meta.url)), "utf8");
     const maps = JSON.parse(text.split("\n").filter((line) => !line.trimStart().startsWith("//")).join("\n")).maps;

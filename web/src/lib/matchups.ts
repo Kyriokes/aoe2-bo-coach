@@ -190,7 +190,14 @@ export function parseSlug(slug: string): { civ: string } | { a: string; b: strin
 export function matchupRouting(pathname: string): { redirect: string } | { notFound: true } | null {
   const match = /^\/cruces\/([^/]+)\/?$/.exec(pathname);
   if (!match || match[1] === "ir") return null;
-  const parsed = parseSlug(decodeURIComponent(match[1]));
+  let slug: string;
+  try {
+    slug = decodeURIComponent(match[1]);
+  } catch {
+    // Un "%" que no forma un carácter: corre en cada pedido, así que nada de 500.
+    return { notFound: true };
+  }
+  const parsed = parseSlug(slug);
   if (!parsed) return { notFound: true };
   if ("civ" in parsed) return parsed.civ === match[1] ? null : { redirect: `/cruces/${parsed.civ}` };
   const canonical = pairSlug(parsed.a, parsed.b);
