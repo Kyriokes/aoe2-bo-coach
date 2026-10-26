@@ -1,4 +1,5 @@
-import { MAP_NAMES, oneVsOne, percent, team, trend, type Cell, type MatchupData } from "./matchups";
+import { CIV_NAMES } from "./civNames";
+import { MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, team, trend, type Cell, type MatchupData } from "./matchups";
 
 /**
  * Lo que necesita cada página de /cruces, sacado de las estadísticas: solo los casilleros de esa página, así el
@@ -25,6 +26,31 @@ export function matchupSitemapPaths(data: MatchupData): string[] {
 export function matchupStaticParams(data: MatchupData | null): { slug: string }[] {
   if (!data) return [{ slug: "franks" }];
   return [...civsWithData(data).map((civ) => ({ slug: civ })), ...[...data.oneVsOne.keys()].map((pair) => ({ slug: pair.replace("|", "-vs-") }))];
+}
+
+/**
+ * Título, descripción y dirección de una página de /cruces/[slug] ("Britanos contra francos: estadísticas del
+ * cruce"); null si el slug no es una civ ni una pareja en orden alfabético. Las civs van en plural y con artículo:
+ * "les ganan los britanos a los francos".
+ */
+export function matchupPageMeta(slug: string): { title: string; description: string; path: string } | null {
+  const parsed = parseSlug(slug);
+  if (!parsed) return null;
+  if ("civ" in parsed) {
+    const civ = CIV_NAMES[parsed.civ];
+    return {
+      title: `${civ}: contra qué civs ganan`,
+      description: `Cuánto les ganan los ${civ.toLowerCase()} a cada civ de Age of Empires II en 1v1 y cómo les va por equipos, por mapa y Elo, con partidas clasificatorias reales.`,
+      path: `/cruces/${parsed.civ}`,
+    };
+  }
+  if (!parsed.canonical) return null;
+  const [a, b] = [CIV_NAMES[parsed.a], CIV_NAMES[parsed.b]];
+  return {
+    title: `${a} contra ${b.toLowerCase()}: estadísticas del cruce`,
+    description: `Cuánto les ganan los ${a.toLowerCase()} a los ${b.toLowerCase()} en Age of Empires II por mapa, Elo y duración de la partida, con partidas clasificatorias reales.`,
+    path: `/cruces/${pairSlug(parsed.a, parsed.b)}`,
+  };
 }
 
 /** Un rival con sus 30 casilleros de duración "todas": el índice es mapa · 6 + franja de Elo. */

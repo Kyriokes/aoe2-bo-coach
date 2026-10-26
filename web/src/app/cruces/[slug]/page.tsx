@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, type MatchupData } from "@/lib/matchups";
 import { getMatchups } from "@/lib/matchupsServer";
-import { mapLine, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
+import { mapLine, matchupPageMeta, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { MatchupDuration } from "@/components/MatchupDuration";
 import { MatchupRivals, type Choice } from "@/components/MatchupRivals";
 import { civLabel, SITE_NAME } from "@/lib/share";
@@ -27,15 +27,9 @@ function eloChoices(data: MatchupData): Choice[] {
 
 export async function generateMetadata({ params }: PageProps<"/cruces/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const parsed = parseSlug(slug);
-  if (!parsed || (!("civ" in parsed) && !parsed.canonical)) return { title: "No encontrado", robots: { index: false } };
-  const title = "civ" in parsed
-    ? `${civLabel(parsed.civ)}: contra qué civs gana`
-    : `${civLabel(parsed.a)} contra ${civLabel(parsed.b).toLowerCase()}: estadísticas del cruce`;
-  const description = "civ" in parsed
-    ? `Cuánto gana ${civLabel(parsed.civ)} contra cada civ de Age of Empires II en 1v1 y cómo le va por equipos, por mapa y Elo, con partidas clasificatorias reales.`
-    : `Cuánto gana ${civLabel(parsed.a)} contra ${civLabel(parsed.b)} en Age of Empires II por mapa, Elo y duración de la partida, con partidas clasificatorias reales.`;
-  const url = `/cruces/${"civ" in parsed ? parsed.civ : pairSlug(parsed.a, parsed.b)}`;
+  const meta = matchupPageMeta(slug);
+  if (!meta) return { title: "No encontrado", robots: { index: false } };
+  const { title, description, path: url } = meta;
   return {
     title,
     description,
@@ -90,9 +84,9 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
     <article className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
         <Breadcrumb />
-        <h1 className="text-2xl font-semibold">{name}: cómo le va contra cada civ</h1>
+        <h1 className="text-2xl font-semibold">{name}: cómo les va contra cada civ</h1>
         <p className="max-w-3xl text-muted">
-          La chance de ganar de {name.toLowerCase()} contra cada rival a Elo parejo, en partidas clasificatorias reales, con un
+          La chance de ganar de los {name.toLowerCase()} contra cada rival a Elo parejo, en partidas clasificatorias reales, con un
           rango probable y cuántas partidas hay detrás. Tocá un rival para ver el cruce por mapa y por duración.
         </p>
       </header>
@@ -117,7 +111,7 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
             Por equipos
           </h2>
           <p className="max-w-3xl text-sm text-muted">
-            La chance de un equipo que tiene a {name.toLowerCase()} en lugar de una civ promedio, a Elo parejo. En equipos se
+            La chance de un equipo con {name.toLowerCase()} en lugar de una civ promedio, a Elo parejo. En equipos se
             cuentan apariciones de la civ (cada jugador), no partidas.
           </p>
           <div className="overflow-x-auto rounded-md border border-line">
@@ -180,7 +174,7 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
         <p className="text-sm text-faint">
           {general.n > 0 ? `${general.n.toLocaleString("es-AR")} partidas 1v1 entre las dos civs. ` : `${estimated} `}
           <Link href={`/cruces/${b}`} className="hover:text-amber">
-            Cómo le va a {nameB.toLowerCase()} contra todas
+            Cómo les va a los {nameB.toLowerCase()} contra todas
           </Link>
         </p>
       </header>

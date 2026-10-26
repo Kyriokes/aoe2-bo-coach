@@ -4,7 +4,7 @@ import { getMatchups } from "@/lib/matchupsServer";
 import { civsWithData } from "@/lib/matchupView";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
-const TITLE = "Cruces de civs";
+const TITLE = "Cruces de civs en Age of Empires II";
 const DESCRIPTION =
   "Cuánto gana cada civ de Age of Empires II contra cada rival, por mapa, Elo y duración de la partida, con partidas clasificatorias reales.";
 

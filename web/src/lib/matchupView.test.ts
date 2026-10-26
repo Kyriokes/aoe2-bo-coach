@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { durationLabel, MAP_NAMES, oneVsOne, percent, type MatchupData } from "./matchups";
-import { durationText, mapLine, matchupSitemapPaths, matchupStaticParams, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
+import { durationText, mapLine, matchupPageMeta, matchupSitemapPaths, matchupStaticParams, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
 import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
 
 const tres = (fn: CellFn) => ({ "britons|franks": fn, "britons|mayan": fn, "franks|mayan": fn });
@@ -116,6 +116,23 @@ describe("lo que muestra cada página de cruces", () => {
     // Sin datos legibles, una página igual: con Cache Components una lista vacía rompe el build, y la página ya dice
     // que no hay estadísticas.
     expect(matchupStaticParams(null)).toEqual([{ slug: "franks" }]);
+  });
+
+  it("título y descripción de cada página", () => {
+    expect(matchupPageMeta("britons-vs-franks")).toEqual({
+      title: "Britanos contra francos: estadísticas del cruce",
+      description:
+        "Cuánto les ganan los britanos a los francos en Age of Empires II por mapa, Elo y duración de la partida, con partidas clasificatorias reales.",
+      path: "/cruces/britons-vs-franks",
+    });
+    expect(matchupPageMeta("franks")).toEqual({
+      title: "Francos: contra qué civs ganan",
+      description:
+        "Cuánto les ganan los francos a cada civ de Age of Empires II en 1v1 y cómo les va por equipos, por mapa y Elo, con partidas clasificatorias reales.",
+      path: "/cruces/franks",
+    });
+    expect(matchupPageMeta("franks-vs-britons")).toBeNull();
+    expect(matchupPageMeta("zzz")).toBeNull();
   });
 
   it("textos de un mapa sin partidas", () => {
