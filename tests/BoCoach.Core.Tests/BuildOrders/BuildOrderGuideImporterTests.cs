@@ -51,6 +51,18 @@ public class BuildOrderGuideImporterTests
     }
 
     [Fact]
+    public void El_molino_de_la_guia_no_se_agrega_otra_vez_al_ir_a_las_bayas()
+    {
+        // Las tres guías hacen el molino con un constructor y después lo pasan a las bayas: es un solo molino.
+        foreach (var civ in new[] { "britons", "byzantines", "chinese" })
+        {
+            var bo = BuildOrderGuideImporter.Convert(Guide(civ), TestData.GameData).BuildOrder;
+
+            Assert.True(bo.Steps.Where(s => s is { Do: StepAction.Build, What: "mill" }).Sum(s => s.Count) == 1, civ);
+        }
+    }
+
+    [Fact]
     public void Las_granjas_de_la_lista_no_se_cuentan_dos_veces()
     {
         // Cada aldeano que va a granjas hace la suya: las granjas que la página lista en el mismo paso son esas.

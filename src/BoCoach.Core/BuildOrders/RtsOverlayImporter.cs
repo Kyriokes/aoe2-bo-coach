@@ -407,6 +407,9 @@ public static partial class RtsOverlayImporter
         {
             if (ForCiv(what) is not { } made)
                 return;
+            // Un campamento o molino de la guía cuenta como el de su recurso: el que va después no agrega otro.
+            if (what is "lumber_camp" or "mill" or "mining_camp")
+                _camps.Add(what);
             what = made;
             if (what == "house")
                 _cap += count * HousePop;
