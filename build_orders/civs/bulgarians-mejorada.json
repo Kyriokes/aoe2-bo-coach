@@ -4,7 +4,7 @@
   "name": "Fast Smith Men-at-Arms \u2192 Knights (mejorada)",
   "civ": "bulgarians",
   "author": "Imperius",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Smith Men-at-Arms \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Investigar Telar\u0022: \u002B1 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -1 en oro; \u0022Mover 4 de ovejas a madera\u0022 antes que \u0022Construir 1 casa \u2192 madera\u0022; \u0022Investigar Telar\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022; \u0022Mover 2 de ovejas a madera\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 8:10, Edad de los Castillos 17:14, fin 19:54, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:45, Edad de los Castillos 16:38, fin 19:18, centro urbano parado 3 s. Fast Feudal into Men-at-Arms with a fast Blacksmith. Transition into Castle Age with 2 Stable Knights. High Risk! Fuente: https://www.buildorderguide.com/builds/QT1oTgrlQB9ig8qLqOir.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Smith Men-at-Arms \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B3 en ovejas, \u002B3 en bayas, \u002B1 en madera; Antes de \u0022Mover 1 de caza a madera\u0022: -3 en ovejas, -4 en bayas; Antes de \u0022Mover 4 de ovejas a madera\u0022: \u002B1 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -1 en oro; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Mover 1 de caza a madera\u0022; \u0022Investigar Telar\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022; \u0022Mover 2 de ovejas a madera\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 8:10, Edad de los Castillos 17:14, fin 19:54, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:41, Edad de los Castillos 16:32, fin 19:12, centro urbano parado 0 s. Fast Feudal into Men-at-Arms with a fast Blacksmith. Transition into Castle Age with 2 Stable Knights. High Risk! Fuente: https://www.buildorderguide.com/builds/QT1oTgrlQB9ig8qLqOir.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -104,16 +104,16 @@
       "id": "s11",
       "do": "train",
       "what": "villager",
-      "count": 5,
+      "count": 4,
       "assign": "berries",
       "after": []
     },
     {
       "id": "s12",
-      "do": "move",
-      "count": 1,
+      "do": "train",
+      "what": "villager",
+      "count": 4,
       "assign": "wood",
-      "from": "hunt",
       "after": []
     },
     {
@@ -127,19 +127,19 @@
     },
     {
       "id": "s14",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "hunt",
+      "after": []
+    },
+    {
+      "id": "s15",
       "do": "build",
       "what": "barracks",
       "count": 1,
       "assign": "wood",
       "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s15",
-      "do": "move",
-      "count": 4,
-      "assign": "wood",
-      "from": "sheep",
       "after": []
     },
     {
@@ -161,13 +161,21 @@
     },
     {
       "id": "s18",
+      "do": "move",
+      "count": 4,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s19",
       "do": "research",
       "what": "loom",
       "count": 1,
       "after": []
     },
     {
-      "id": "s19",
+      "id": "s20",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -177,7 +185,7 @@
       "note": "Agregado al importar. Only Collect 10 Gold"
     },
     {
-      "id": "s20",
+      "id": "s21",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -185,19 +193,10 @@
       "at_pop": 21
     },
     {
-      "id": "s21",
+      "id": "s22",
       "do": "train",
       "what": "militia",
       "count": 3,
-      "after": []
-    },
-    {
-      "id": "s22",
-      "do": "build",
-      "what": "farm",
-      "count": 1,
-      "assign": "farm",
-      "from": "wood",
       "after": []
     },
     {
@@ -206,18 +205,27 @@
       "what": "farm",
       "count": 1,
       "assign": "farm",
-      "from": "gold",
+      "from": "wood",
       "after": []
     },
     {
       "id": "s24",
+      "do": "build",
+      "what": "farm",
+      "count": 1,
+      "assign": "farm",
+      "from": "gold",
+      "after": []
+    },
+    {
+      "id": "s25",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s26",
       "do": "move",
       "count": 2,
       "assign": "wood",
@@ -225,7 +233,7 @@
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s27",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -234,14 +242,14 @@
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s28",
       "do": "research",
       "what": "forging",
       "count": 1,
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s29",
       "do": "research",
       "what": "scale_mail_armor",
       "count": 1,
@@ -249,7 +257,7 @@
       "note": "Constru\u00ED 2 wall"
     },
     {
-      "id": "s29",
+      "id": "s30",
       "do": "build",
       "what": "farm",
       "count": 4,
@@ -258,14 +266,14 @@
       "after": []
     },
     {
-      "id": "s30",
+      "id": "s31",
       "do": "research",
       "what": "horse_collar",
       "count": 1,
       "after": []
     },
     {
-      "id": "s31",
+      "id": "s32",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -275,7 +283,7 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s32",
+      "id": "s33",
       "do": "train",
       "what": "villager",
       "count": 14,
@@ -284,7 +292,7 @@
       "group": "granjas2"
     },
     {
-      "id": "s33",
+      "id": "s34",
       "do": "build",
       "what": "farm",
       "count": 8,
@@ -294,7 +302,7 @@
       "group": "granjas2"
     },
     {
-      "id": "s34",
+      "id": "s35",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -304,7 +312,7 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s35",
+      "id": "s36",
       "do": "train",
       "what": "villager",
       "count": 5,
@@ -312,7 +320,7 @@
       "after": []
     },
     {
-      "id": "s36",
+      "id": "s37",
       "do": "move",
       "count": 5,
       "assign": "gold",
@@ -320,14 +328,14 @@
       "after": []
     },
     {
-      "id": "s37",
+      "id": "s38",
       "do": "research",
       "what": "wheelbarrow",
       "count": 1,
       "after": []
     },
     {
-      "id": "s38",
+      "id": "s39",
       "do": "build",
       "what": "stable",
       "count": 2,
@@ -336,21 +344,21 @@
       "after": []
     },
     {
-      "id": "s39",
+      "id": "s40",
       "do": "research",
       "what": "castle_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s40",
+      "id": "s41",
       "do": "research",
       "what": "gold_mining",
       "count": 1,
       "after": []
     },
     {
-      "id": "s41",
+      "id": "s42",
       "do": "research",
       "what": "bloodlines",
       "count": 1,

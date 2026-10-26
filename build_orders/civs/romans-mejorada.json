@@ -4,7 +4,7 @@
   "name": "Romans Infantry (mejorada)",
   "civ": "romans",
   "author": "Rambo",
-  "description": "Mejorada con el simulador del coach desde \u0022Romans Infantry\u0022, con la misma estrategia: Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B1 en madera, -1 en ovejas; Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B19 en madera; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: -19 en madera; \u0022Construir 5 granjas \u2192 granjas\u0022 antes que \u0022Construir 6 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:44, Edad de los Castillos 21:38, fin 25:58, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:17, Edad de los Castillos 19:09, fin 23:29, centro urbano parado 0 s. M@A rush in feudal into castle and infantry spam with late game flex Fuente: https://www.buildorderguide.com/builds/lfvaDnYsatp8TDhn8VM6.",
+  "description": "Mejorada con el simulador del coach desde \u0022Romans Infantry\u0022, con la misma estrategia: Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B1 en madera, -1 en ovejas; Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B19 en madera; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: -19 en madera; \u0022Construir 5 granjas \u2192 granjas\u0022 antes que \u0022Construir 1 casa \u2192 madera\u0022; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 6 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:44, Edad de los Castillos 21:38, fin 25:58, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:17, Edad de los Castillos 17:41, fin 22:01, centro urbano parado 19 s. M@A rush in feudal into castle and infantry spam with late game flex Fuente: https://www.buildorderguide.com/builds/lfvaDnYsatp8TDhn8VM6.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -217,22 +217,22 @@
     {
       "id": "s25",
       "do": "build",
-      "what": "farm",
-      "count": 6,
-      "assign": "farm",
-      "from": "wood",
-      "after": [],
-      "note": "If enemy has 0 units \u003E Farm| Archers\u003E 6-10 Skirms, maybe armor |  Scouts \u003E 1/2 no. as spears"
-    },
-    {
-      "id": "s26",
-      "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
       "from": "wood",
       "after": [],
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s26",
+      "do": "build",
+      "what": "farm",
+      "count": 6,
+      "assign": "farm",
+      "from": "wood",
+      "after": [],
+      "note": "If enemy has 0 units \u003E Farm| Archers\u003E 6-10 Skirms, maybe armor |  Scouts \u003E 1/2 no. as spears"
     },
     {
       "id": "s27",
