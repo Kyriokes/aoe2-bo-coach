@@ -161,6 +161,37 @@ public class PlannerFoodTests
         Assert.Equal((GatherSource.Farm, IdleReason.WaitingFarm, 1, 0.0), (idle.Source, idle.Reason, idle.Villagers, idle.From));
     }
 
+    [Theory]
+    [InlineData("tatars", GatherSource.Sheep, 200 + 800 * 1.57)] // 8 ovejas de 157
+    [InlineData("goths", GatherSource.Hunt, 200 + 680 * 1.23)]
+    [InlineData("mayan", GatherSource.Berries, 200 + 750 * 1.15)]
+    [InlineData("britons", GatherSource.Sheep, 200 + 800)]
+    public void La_comida_de_cada_fuente_rinde_segun_la_civ(string civ, GatherSource source, double food)
+    {
+        var plan = Run(Arabia, Start(source, 6), TestData.GameData.Civ(civ), Loom(1500));
+
+        Assert.Equal(food, plan.Timeline[^1].Stock.Food, 6);
+        Assert.Equal((source, IdleReason.Exhausted), (plan.Idle.Single().Source, plan.Idle.Single().Reason));
+    }
+
+    [Fact]
+    public void Las_mejoras_de_granja_de_los_sicilianos_rinden_mas()
+    {
+        var start = Start(GatherSource.Farm, 1, food: 0, wood: 0) with { Researched = ["horse_collar"] };
+
+        var plan = Run(SmallFarms, start, TestData.GameData.Civ("sicilians"), Loom(1500));
+
+        Assert.Equal(50 + 75 * 2.25, plan.Timeline[^1].Stock.Food, 6);
+    }
+
+    [Fact]
+    public void El_folwark_de_los_polacos_suma_un_diez_por_ciento_a_cada_granja()
+    {
+        var plan = Run(SmallFarms, Start(GatherSource.Farm, 1, food: 0, wood: 0), TestData.GameData.Civ("poles"), Loom(600));
+
+        Assert.Equal(55, plan.Timeline[^1].Stock.Food, 6);
+    }
+
     [Fact]
     public void Los_granjeros_que_se_van_y_vuelven_traen_granja_llena()
     {

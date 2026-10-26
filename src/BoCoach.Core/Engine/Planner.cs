@@ -400,7 +400,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     var idle = _food.Idle(source, working);
                     if (idle > 0)
                         RecordIdle(source, source == GatherSource.Farm ? IdleReason.Reseed : IdleReason.Exhausted, idle);
-                    gathered = _food.Gather(source, working, gathered);
+                    gathered = _food.Gather(source, working, gathered, _civ.FoodYield(source, _age));
                 }
                 _stock = _stock.With(resource, _stock[resource] + gathered);
             }
@@ -433,10 +433,14 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 _stock = _stock.With(Resource.Wood, _stock.Wood - cost * reseeded);
         }
 
-        /// <summary>La comida de una granja nueva o resembrada: la base más lo que suman las mejoras ya investigadas.</summary>
+        /// <summary>
+        /// La comida de una granja nueva o resembrada: la base más lo que suman las mejoras ya investigadas (por el
+        /// multiplicador de la civ: sicilianos ×2,25), más lo que suma la civ a cada granja (folwark polaco: 10 %).
+        /// </summary>
         private double FarmFood() =>
-            (_settings.Food?.FarmFood ?? _data.FoodPerObject[GatherSource.Farm])
-            + _researched.Sum(t => _data.TryGet(t, out var tech) ? tech.FarmFood : 0);
+            ((_settings.Food?.FarmFood ?? _data.FoodPerObject[GatherSource.Farm])
+             + _researched.Sum(t => _data.TryGet(t, out var tech) ? tech.FarmFood : 0) * _civ.FarmUpgradeFood(_age))
+            * (1 + _civ.FarmExtra(_age));
 
         /// <summary>Registra aldeanos que no juntan nada este segundo; si ya estaban así, estira el intervalo (como <see cref="Block"/>).</summary>
         private void RecordIdle(GatherSource source, IdleReason reason, int villagers)

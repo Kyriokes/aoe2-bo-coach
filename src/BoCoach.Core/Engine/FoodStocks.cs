@@ -53,19 +53,25 @@ internal sealed class FoodStocks(FoodSupply supply)
 
     /// <summary>
     /// Lo que juntan este segundo los aldeanos de la fuente, descontado de lo que queda: <paramref name="wanted"/> (lo
-    /// que juntarían con la comida infinita) o lo que quede. En las granjas cada una da a lo sumo lo de un granjero. Si
-    /// alcanza, devuelve exactamente <paramref name="wanted"/>, así con comida de sobra los números son los mismos que
-    /// sin contarla.
+    /// que juntarían con la comida infinita) o lo que quede. <paramref name="yield"/> es lo que rinde la comida de la
+    /// fuente para la civ (tártaros: ovejas ×1,57): cada unidad que se junta gasta 1/rendimiento de la fuente. En las
+    /// granjas (su comida ya viene con la civ) cada una da a lo sumo lo de un granjero. Si alcanza, devuelve exactamente
+    /// <paramref name="wanted"/>, así con comida de sobra los números son los mismos que sin contarla.
     /// </summary>
-    public double Gather(GatherSource source, int villagers, double wanted)
+    public double Gather(GatherSource source, int villagers, double wanted, double yield = 1)
     {
         if (villagers == 0)
             return 0;
         if (source != GatherSource.Farm)
         {
-            var gathered = Math.Min(_pools[source], wanted);
-            _pools[source] -= gathered;
-            return gathered;
+            if (_pools[source] * yield <= wanted)
+            {
+                var rest = _pools[source] * yield;
+                _pools[source] = 0;
+                return rest;
+            }
+            _pools[source] -= wanted / yield;
+            return wanted;
         }
 
         var share = wanted / villagers;
