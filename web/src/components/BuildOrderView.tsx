@@ -3,9 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
-import { stallsByStep } from "@/lib/coach/stalls";
+import { blockLines } from "@/lib/coach/stalls";
 import type { Analysis, AnalysisResult, Issue } from "@/lib/coach/types";
-import { BLOCK_TEXT } from "@/lib/editor/text";
+import { BLOCK_TEXT, blockReason } from "@/lib/editor/text";
 import { Timeline } from "./Timeline";
 
 type State = { status: "loading" } | { status: "error"; message: string } | { status: "done"; result: AnalysisResult };
@@ -71,7 +71,7 @@ export function BuildOrderView({
 }
 
 function AnalysisView({ analysis }: { analysis: Analysis }) {
-  const blocksByStep = stallsByStep(analysis.blocks ?? []);
+  const linesByStep = blockLines(analysis.blocks ?? []);
   const issues = new Map<string, string[]>();
   for (const issue of analysis.issues) {
     const key = issue.step_id ?? "";
@@ -107,11 +107,17 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
             <div className="flex-1">
               <p>{step.text}</p>
               {step.note ? <p className="text-xs text-muted">{step.note}</p> : null}
-              {(blocksByStep.get(step.id) ?? []).map((b, j) => (
-                <p key={j} className="text-xs text-orange">
-                  Se traba de {formatClock(b.from)} a {formatClock(b.to)}: {BLOCK_TEXT[b.reason]}
-                </p>
-              ))}
+              {(linesByStep.get(step.id) ?? []).map(({ kind, block: b }, j) =>
+                kind === "stall" ? (
+                  <p key={j} className="text-xs text-orange">
+                    Se traba de {formatClock(b.from)} a {formatClock(b.to)}: {BLOCK_TEXT[b.reason]}
+                  </p>
+                ) : (
+                  <p key={j} className="text-xs text-faint">
+                    Espera de {formatClock(b.from)} a {formatClock(b.to)}: {blockReason(b)}
+                  </p>
+                ),
+              )}
               {(issues.get(step.id) ?? []).map((message, j) => (
                 <p key={j} className="text-xs text-red">
                   {message}
