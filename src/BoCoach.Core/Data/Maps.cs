@@ -6,6 +6,17 @@ namespace BoCoach.Core.Data;
 /// <summary>Un mapa del juego: qué fuentes tiene y si hay agua para pescar y para el muelle.</summary>
 public sealed record GameMap(string Key, string Name, bool Water, IReadOnlySet<GatherSource> Sources, string? Note)
 {
+    /// <summary>Lo que tiene cada jugador en Arabia: 8 ovejas, 2 jabalíes y 6 arbustos de bayas.</summary>
+    public static IReadOnlyDictionary<GatherSource, int> StandardFood { get; } = new Dictionary<GatherSource, int>
+    {
+        [GatherSource.Sheep] = 8,
+        [GatherSource.Hunt] = 2,
+        [GatherSource.Berries] = 6,
+    };
+
+    /// <summary>D12: cuántas ovejas, jabalíes y arbustos de bayas tiene cada jugador (por defecto, los de Arabia).</summary>
+    public IReadOnlyDictionary<GatherSource, int> Food { get; init; } = StandardFood;
+
     public bool Has(GatherSource source) => Sources.Contains(source);
 }
 
@@ -76,7 +87,22 @@ public sealed class Maps
             ? list.Select(Text).OfType<string>().Select(ParseSource).OfType<GatherSource>().ToHashSet()
             : AllSources;
         var water = map["water"] is JsonValue w && w.GetValueKind() is JsonValueKind.True or JsonValueKind.False && w.GetValue<bool>();
-        return new GameMap(key.Trim(), Text(map["name"]) ?? key, water, sources, Text(map["note"]));
+        return new GameMap(key.Trim(), Text(map["name"]) ?? key, water, sources, Text(map["note"])) { Food = ReadFood(map["food"]) };
+    }
+
+    /// <summary>Las cantidades de food que valen (un entero de 0 en adelante de una fuente contada); lo demás queda en el estándar.</summary>
+    private static IReadOnlyDictionary<GatherSource, int> ReadFood(JsonNode? node)
+    {
+        if (node is not JsonObject food)
+            return GameMap.StandardFood;
+        var result = new Dictionary<GatherSource, int>(GameMap.StandardFood);
+        foreach (var (name, value) in food)
+        {
+            if (ParseSource(name) is { } source && result.ContainsKey(source)
+                && value is JsonValue v && v.GetValueKind() == JsonValueKind.Number && v.TryGetValue<int>(out var count) && count >= 0)
+                result[source] = count;
+        }
+        return result;
     }
 
     private static GatherSource? ParseSource(string text) =>

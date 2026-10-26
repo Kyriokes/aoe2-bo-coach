@@ -6,12 +6,15 @@
 //     sheep (ovejas y animales de rebaño), hunt (jabalíes, ciervos), berries, fish (pesca de orilla y mar), farm,
 //     wood, gold, stone.
 //   note: lo que conviene saber (arranque sin centro urbano, agua que varía).
+//   food: cuántas ovejas (sheep), jabalíes (hunt) y arbustos de bayas (berries) tiene cada jugador, para la comida
+//     finita del modo asistido (D12). Sin food, los de Arabia: 8, 2 y 6. Los ciervos no cuentan.
 // La clave de cada mapa es el nombre en inglés en snake_case: así la sugerencia de BO (D4) lo compara con lo que
 // lee la pantalla de carga con el juego en inglés. "any" es "cualquier mapa" y no filtra nada.
 {
   "maps": {
     "any": { "name": "Cualquiera", "water": true, "sources": ["sheep", "hunt", "berries", "fish", "farm", "wood", "gold", "stone"] },
-    "arabia": { "name": "Arabia", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"] },
+    "arabia": { "name": "Arabia", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
+      "food": { "sheep": 8, "hunt": 2, "berries": 6 } },
     "arena": { "name": "Arena", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],
       "note": "Amurallado: las aperturas agresivas de Feudal rinden menos." },
     "black_forest": { "name": "Bosque Negro", "water": false, "sources": ["sheep", "hunt", "berries", "farm", "wood", "gold", "stone"],

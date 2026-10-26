@@ -58,6 +58,29 @@ public class MapsTests
     }
 
     [Fact]
+    public void Arabia_trae_la_comida_estandar_y_un_mapa_sin_food_usa_la_de_Arabia()
+    {
+        var arabia = Real.Get("arabia")!.Food;
+        Assert.Equal(8, arabia[GatherSource.Sheep]);
+        Assert.Equal(2, arabia[GatherSource.Hunt]);
+        Assert.Equal(6, arabia[GatherSource.Berries]);
+
+        var sinFood = Maps.Parse("""{"maps":{"x":{"name":"X","sources":["sheep","wood"]}}}""").Get("x")!;
+        Assert.Equal(GameMap.StandardFood, sinFood.Food);
+    }
+
+    [Fact]
+    public void Un_valor_de_food_mal_escrito_se_ignora()
+    {
+        var food = Maps.Parse("""{"maps":{"x":{"name":"X","food":{"sheep":"ocho","hunt":-1,"berries":4,"farm":3}}}}""").Get("x")!.Food;
+
+        Assert.Equal(8, food[GatherSource.Sheep]);
+        Assert.Equal(2, food[GatherSource.Hunt]);
+        Assert.Equal(4, food[GatherSource.Berries]);
+        Assert.False(food.ContainsKey(GatherSource.Farm));
+    }
+
+    [Fact]
     public void Un_error_de_sintaxis_dice_el_archivo()
     {
         var path = Path.Combine(Path.GetTempPath(), $"maps-{Guid.NewGuid():N}.json");
