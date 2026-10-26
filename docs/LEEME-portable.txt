@@ -21,7 +21,8 @@ partida rápida contra 7 IA para leer tu nombre y calibrar). Se vuelve a abrir c
 
 Para usar el coach:
   1. Tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en "Full screen" o "Windowed".
-     En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo.
+     En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo. Si venís de una versión
+     anterior, volvé a tocarlo: el diseño del HUD cambia entre versiones y la app lee el nuevo.
   2. En la segunda fila de arriba escribí "Tu nombre" como sale en el juego y elegí el "Idioma del
      juego" (inglés, castellano de España o de Latinoamérica: en el juego está en Opciones). Con el
      coach andando antes de la partida, en la pantalla de carga toma tu civ solo; si no, elegí la
