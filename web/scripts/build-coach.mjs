@@ -5,6 +5,7 @@
 //   public/coach/events.json      data/events.json
 //   public/coach/maps.json        data/maps.json (los mapas: fuentes y agua, D8)
 //   public/coach/donaciones.json  data/donaciones.json (formas de donar y metas)
+//   public/coach/matchup_stats.json  data/matchup_stats.json (estadísticas reales de cruces, D10: páginas /cruces)
 //   public/coach/ejemplos/        las BO de build_orders/ e index.json (nombre de cada una)
 //
 // Corre solo antes de `next build` y `next dev` (prebuild/predev). Necesita el SDK de .NET (ver global.json).
@@ -53,6 +54,7 @@ cpSync(join(repo, "data", "game_data", gameData.file), join(out, "game_data.json
 cpSync(join(repo, "data", "events.json"), join(out, "events.json"));
 cpSync(join(repo, "data", "maps.json"), join(out, "maps.json"));
 cpSync(join(repo, "data", "donaciones.json"), join(out, "donaciones.json"));
+cpSync(join(repo, "data", "matchup_stats.json"), join(out, "matchup_stats.json"));
 
 // BO de ejemplo (las mismas que trae la app), para probar "Subir una BO" sin tener una propia.
 const examples = join(out, "ejemplos");
