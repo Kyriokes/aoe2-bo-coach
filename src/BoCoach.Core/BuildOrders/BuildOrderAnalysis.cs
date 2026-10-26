@@ -204,6 +204,7 @@ public static class BuildOrderAnalysis
             w.WriteNumber("from", block.From);
             w.WriteNumber("to", block.To);
             w.WriteString("missing", block.Missing?.ToString().ToLowerInvariant());
+            w.WriteBoolean("expected", block.Expected);
             w.WriteEndObject();
         }
         w.WriteEndArray();

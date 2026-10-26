@@ -91,7 +91,9 @@ public class PlannerTests
 
         var plan = Planner.Simulate([new PlanItem(camp, 1)], start);
 
-        Assert.Equal(BlockReason.Villagers, Assert.Single(plan.Blocks).Reason);
+        var block = Assert.Single(plan.Blocks);
+        Assert.Equal(BlockReason.Villagers, block.Reason);
+        Assert.False(block.Expected); // no viene ningún leñador: es un trabón
     }
 
     [Fact]
@@ -148,7 +150,7 @@ public class PlannerTests
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));
 
-        Assert.Contains(plan.Blocks, b => b.StepId == "s1" && b.Reason == BlockReason.Age);
+        Assert.Contains(plan.Blocks, b => b.StepId == "s1" && b.Reason == BlockReason.Age && !b.Expected);
     }
 
     [Fact]
@@ -156,7 +158,47 @@ public class PlannerTests
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Train, What = "militia" }));
 
-        Assert.Contains(plan.Blocks, b => b.StepId == "s1" && b.Reason == BlockReason.Producer);
+        Assert.Contains(plan.Blocks, b => b.StepId == "s1" && b.Reason == BlockReason.Producer && !b.Expected);
+    }
+
+    // Esperar algo que ya viene en camino no es un trabón: la web no lo muestra como "Se traba".
+    [Fact]
+    public void Esperar_la_edad_que_se_investiga_es_una_espera()
+    {
+        var start = PlanStart.Standard with { Stock = new ResourceAmounts(Food: 500, Wood: 200, Stone: 200, Gold: 100) };
+        var feudal = new Step { Id = "s1", Do = StepAction.Research, What = "feudal_age" };
+        var range = new Step { Id = "s2", Do = StepAction.Build, What = "archery_range" };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1), new PlanItem(range, 1)], start);
+
+        var block = Assert.Single(plan.Blocks, b => b.StepId == "s2");
+        Assert.Equal(BlockReason.Age, block.Reason);
+        Assert.True(block.Expected);
+    }
+
+    [Fact]
+    public void Esperar_el_edificio_que_se_construye_es_una_espera()
+    {
+        var plan = Planner.Simulate(Bo(
+            new Step { Id = "s1", Do = StepAction.Build, What = "barracks", Builders = 3, Assign = GatherSource.Wood },
+            new Step { Id = "s2", Do = StepAction.Train, What = "militia" }));
+
+        var block = Assert.Single(plan.Blocks, b => b.StepId == "s2" && b.Reason == BlockReason.Producer);
+        Assert.True(block.Expected);
+    }
+
+    [Fact]
+    public void Esperar_al_aldeano_que_sale_del_centro_urbano_es_una_espera()
+    {
+        var start = PlanStart.Standard with { IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 3 }, PopulationCap = 15 };
+        var villagers = Villagers("s1", 2, GatherSource.Wood);
+        var camp = new Step { Id = "s2", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(villagers, 2), new PlanItem(camp, 1)], start);
+
+        var block = Assert.Single(plan.Blocks, b => b.StepId == "s2");
+        Assert.Equal(BlockReason.Villagers, block.Reason);
+        Assert.True(block.Expected);
     }
 
     [Fact]

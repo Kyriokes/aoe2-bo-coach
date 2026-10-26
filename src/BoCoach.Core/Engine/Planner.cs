@@ -107,6 +107,12 @@ public enum BlockReason
 public sealed record PlanBlock(string StepId, BlockReason Reason, double From, double To, Resource? Missing = null)
 {
     public double Duration => To - From;
+
+    /// <summary>
+    /// Lo que falta ya viene en camino: la edad se está investigando, el edificio que lo produce se está construyendo
+    /// o el aldeano que lo construye está en la cola. Es una espera, no un trabón.
+    /// </summary>
+    public bool Expected { get; init; }
 }
 
 /// <param name="Start">Cuándo empieza (primer aldeano en cola, primer cimiento, click de la tech).</param>
@@ -432,14 +438,14 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             {
                 if (_buildings.GetValueOrDefault(producer) == 0)
                 {
-                    Block(item, BlockReason.Producer);
+                    Block(item, BlockReason.Producer, expected: BuildingComing(producer));
                     return;
                 }
                 if (_busyProducers.GetValueOrDefault(producer) >= _buildings[producer])
                     return; // el edificio está ocupado con el trabajo anterior: no es un bloqueo del paso
                 if (entity.Age > _age)
                 {
-                    Block(item, BlockReason.Age);
+                    Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
                     return;
                 }
                 if (entity.Pop > 0 && _population + _reserved + entity.Pop > _cap)
@@ -494,7 +500,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 return;
             if (entity.Age > _age)
             {
-                Block(item, BlockReason.Age);
+                Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
                 return;
             }
 
@@ -508,7 +514,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 // Primero quién lo construye: sin aldeanos en 'from' lo que frena es esperarlos, no los recursos.
                 if ((parallel || item.HeldBuilders == 0) && !HasBuilders(item.Step.From))
                 {
-                    Block(item, BlockReason.Villagers);
+                    Block(item, BlockReason.Villagers, expected: VillagersComing(item.Step.From));
                     return;
                 }
                 var cost = _civ.Cost(entity, _age);
@@ -525,7 +531,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     builders = TakeVillagers(item.Step.From, team);
                     if (builders == 0)
                     {
-                        Block(item, BlockReason.Villagers);
+                        Block(item, BlockReason.Villagers, expected: VillagersComing(item.Step.From));
                         return;
                     }
                     _builders += builders;
@@ -576,7 +582,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             var available = item.Step.From is { } from ? _villagers[from] : _idle;
             if (available == 0)
             {
-                Block(item, BlockReason.Villagers);
+                Block(item, BlockReason.Villagers, expected: VillagersComing(item.Step.From));
                 return;
             }
             var moved = TakeVillagers(item.Step.From, Math.Min(item.Step.Count, available));
@@ -648,16 +654,30 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         }
 
         /// <summary>Registra que el paso está trabado este segundo; si ya lo estaba por lo mismo, estira el intervalo.</summary>
-        private void Block(ItemSim item, BlockReason reason, Resource? missing = null)
+        /// <param name="expected">Lo que falta ya viene en camino (ver <see cref="PlanBlock.Expected"/>).</param>
+        private void Block(ItemSim item, BlockReason reason, Resource? missing = null, bool expected = false)
         {
             var i = _blocks.FindLastIndex(b => b.StepId == item.Step.Id);
-            if (i >= 0 && _blocks[i].Reason == reason && _blocks[i].Missing == missing && _blocks[i].To >= _time)
+            if (i >= 0 && _blocks[i].Reason == reason && _blocks[i].Missing == missing && _blocks[i].Expected == expected && _blocks[i].To >= _time)
             {
                 _blocks[i] = _blocks[i] with { To = _time + Tick };
                 return;
             }
-            _blocks.Add(new PlanBlock(item.Step.Id, reason, _time, _time + Tick, missing));
+            _blocks.Add(new PlanBlock(item.Step.Id, reason, _time, _time + Tick, missing) { Expected = expected });
         }
+
+        /// <summary>Ya se pagó (y no terminó) el clic de la edad que hace falta.</summary>
+        private bool AgeComing(Age needed) =>
+            _items.Any(i => i.Unfinished > 0 && i.Step.Do == StepAction.Research && AgeReachedBy(i.Step.What ?? "") >= needed);
+
+        /// <summary>Se está construyendo un edificio de esa clave (o uno que cuenta como ella).</summary>
+        private bool BuildingComing(string key) =>
+            _items.Any(i => i.Unfinished > 0 && i.Step.Do == StepAction.Build && i.Entity is { } e && (e.Key == key || e.CountsAs.Contains(key)));
+
+        /// <summary>Viene un aldeano a esa fuente: en la cola del centro urbano, o constructores que vuelven ahí.</summary>
+        private bool VillagersComing(GatherSource? to) => _items.Any(i => IsVillagers(i.Step)
+            ? i.Started && (i.Remaining > 0 || i.Unfinished > 0) && (to is null || i.Step.Assign == to)
+            : i.Step.Do == StepAction.Build && i.Unfinished > 0 && to is not null && (i.Step.Assign ?? i.Step.From) == to);
 
         private void Sample() => _timeline.Add(new PlanSample(
             _time, _stock, _population, _cap, _villagers.Values.Sum() + _idle + _builders));

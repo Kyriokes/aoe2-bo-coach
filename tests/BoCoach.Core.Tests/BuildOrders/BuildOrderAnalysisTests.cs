@@ -35,6 +35,10 @@ public class BuildOrderAnalysisTests
         var jobs = r.GetProperty("jobs").EnumerateArray().ToList();
         Assert.Contains(jobs, j => j.GetProperty("kind").GetString() == "produce" && j.GetProperty("what").GetString() == "villager" && j.GetProperty("building").GetString() == "town_center#1");
         Assert.Contains(jobs, j => j.GetProperty("kind").GetString() == "build" && j.GetProperty("what").GetString() == "house");
+        // Cada bloqueo dice si es una espera de algo que ya viene (el campamento espera al primer leñador).
+        var blocks = r.GetProperty("blocks").EnumerateArray().ToList();
+        Assert.All(blocks, b => Assert.Contains(b.GetProperty("expected").ValueKind, new[] { JsonValueKind.True, JsonValueKind.False }));
+        Assert.Contains(blocks, b => b.GetProperty("reason").GetString() == "villagers" && b.GetProperty("expected").GetBoolean());
         Assert.Equal(540, r.GetProperty("targets").GetProperty("feudal_click_time").GetInt32());
         Assert.Equal(BuildOrder.CurrentSchemaVersion, r.GetProperty("build_order").GetProperty("schema_version").GetInt32());
         // D2: la postura de cierre deducida (la BO no la trae).
