@@ -125,4 +125,17 @@ public class GameDataTests
         var e = Assert.Throws<KeyNotFoundException>(() => V89.Get("trebuchet_volador"));
         Assert.Contains("trebuchet_volador", e.Message);
     }
+
+    // D12: la comida finita del modo asistido (verificado en el .dat el 2026-10-26).
+    [Fact]
+    public void Trae_la_comida_de_cada_fuente_y_lo_que_suman_las_mejoras_de_granja()
+    {
+        Assert.Equal(100, V89.FoodPerObject[GatherSource.Sheep]);
+        Assert.Equal(340, V89.FoodPerObject[GatherSource.Hunt]);
+        Assert.Equal(125, V89.FoodPerObject[GatherSource.Berries]);
+        Assert.Equal(175, V89.FoodPerObject[GatherSource.Farm]);
+        Assert.Equal(75, V89.Get("horse_collar").FarmFood);
+        Assert.Equal(125, V89.Get("heavy_plow").FarmFood);
+        Assert.Equal(0, V89.Get("wheelbarrow").FarmFood);
+    }
 }

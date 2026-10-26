@@ -64,7 +64,21 @@ public static partial class GameDataLoader
         }
 
         var civs = (dto.Civs ?? []).ToDictionary(c => c.Key, c => ToCiv(c.Key, c.Value, entities));
-        return new GameData(dto.DatVersion, entities, ToGatherRates(dto.GatherRates), civs, ToCarry(dto.GatherCarry));
+        return new GameData(dto.DatVersion, entities, ToGatherRates(dto.GatherRates), civs, ToCarry(dto.GatherCarry), ToFood(dto.FoodPerObject));
+    }
+
+    private static Dictionary<GatherSource, double>? ToFood(Dictionary<string, double>? food)
+    {
+        if (food is null)
+            return null;
+        var result = new Dictionary<GatherSource, double>();
+        foreach (var (name, amount) in food)
+        {
+            if (!Enum.TryParse<GatherSource>(name, ignoreCase: true, out var source))
+                throw new GameDataException($"food_per_object: fuente desconocida '{name}'.");
+            result[source] = amount;
+        }
+        return result;
     }
 
     private static Entity ToEntity(string key, EntityDto dto)
@@ -109,6 +123,7 @@ public static partial class GameDataLoader
         {
             Gather = gather,
             CountsAs = dto.CountsAs ?? [],
+            FarmFood = dto.FarmFood ?? 0,
         };
     }
 
@@ -233,7 +248,8 @@ public static partial class GameDataLoader
         Dictionary<string, EntityDto>? Entities,
         Dictionary<string, double>? GatherRates,
         Dictionary<string, CivDto>? Civs,
-        Dictionary<string, double>? GatherCarry);
+        Dictionary<string, double>? GatherCarry,
+        Dictionary<string, double>? FoodPerObject);
 
     internal sealed record CivDto(
         string? DatName,
@@ -263,7 +279,8 @@ public static partial class GameDataLoader
         int Pop,
         int PopBonus,
         Dictionary<string, GatherEffectDto>? Gather,
-        string[]? CountsAs);
+        string[]? CountsAs,
+        double? FarmFood);
 
     internal sealed record GatherEffectDto(double? Work, double[]? Carry, double? Speed);
 }

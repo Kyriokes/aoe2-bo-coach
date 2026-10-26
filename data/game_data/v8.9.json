@@ -739,7 +739,8 @@
       },
       "time": 20,
       "made_in": "mill",
-      "age": "feudal"
+      "age": "feudal",
+      "farm_food": 75.0
     },
     "heavy_plow": {
       "kind": "tech",
@@ -759,7 +760,8 @@
             1.0
           ]
         }
-      }
+      },
+      "farm_food": 125.0
     },
     "gold_mining": {
       "kind": "tech",
@@ -1011,6 +1013,12 @@
     "wood": 10,
     "gold": 10,
     "stone": 10
+  },
+  "food_per_object": {
+    "sheep": 100.0,
+    "hunt": 340.0,
+    "berries": 125.0,
+    "farm": 175.0
   },
   "civs": {
     "britons": {

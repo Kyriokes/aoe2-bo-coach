@@ -61,4 +61,21 @@ public class GameDataLoaderTests
 
         Assert.Contains("Wood", e.Message);
     }
+
+    [Fact]
+    public void Una_fuente_desconocida_en_food_per_object_da_error()
+    {
+        var e = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Json(TownCenter, Tasas + """, "food_per_object": { "cows": 150 } """)));
+
+        Assert.Contains("food_per_object", e.Message);
+    }
+
+    [Fact]
+    public void Sin_food_per_object_queda_vacio()
+    {
+        var data = GameDataLoader.Parse(Json(TownCenter));
+
+        Assert.Empty(data.FoodPerObject);
+    }
 }

@@ -130,6 +130,12 @@ VARIANTES_RECOLECCION = {
     "stone": 124,    # VMMIN minero de piedra
 }
 
+# D12: comida de cada objeto para la comida finita del modo asistido (los ciervos no cuentan). La granja no guarda su
+# comida en la unidad sino en un recurso global de la civ (36), que Gaia trae en 0: se lee de la primera civ real.
+COMIDA_POR_OBJETO = {"sheep": 594, "hunt": 48, "berries": 59}  # oveja, jabalí, arbusto de bayas
+RECURSO_COMIDA_GRANJA = 36
+CIV_CON_RECURSOS = 1
+
 
 # ---------------------------------------------------------------------------------------------------------------
 # Bonificaciones de civilización.
@@ -445,6 +451,8 @@ class Extractor:
             comandos = self.dat.effects[tech.effect_id].effect_commands if 0 <= tech.effect_id < len(self.dat.effects) else []
             if recoleccion := self.efectos_de_recoleccion(comandos):
                 datos["gather"] = recoleccion
+            if granja := self.comida_de_granja(comandos):
+                datos["farm_food"] = granja
             return datos
 
         unidad = self.unidades[dat_id]
@@ -483,6 +491,20 @@ class Extractor:
             recurso: round(self.unidades[uid].bird.work_rate, 3)
             for recurso, uid in VARIANTES_RECOLECCION.items()
         }
+
+    def comida_por_objeto(self) -> dict[str, float]:
+        """La comida de una oveja, un jabalí, un arbusto de bayas y una granja sin mejoras."""
+        comida = {
+            fuente: next(s.amount for s in self.unidades[uid].resource_storages if s.type == 0)
+            for fuente, uid in COMIDA_POR_OBJETO.items()
+        }
+        comida["farm"] = self.dat.civs[CIV_CON_RECURSOS].resources[RECURSO_COMIDA_GRANJA]
+        return comida
+
+    @staticmethod
+    def comida_de_granja(comandos) -> float:
+        """Lo que suma una tecnología a la comida de cada granja (collera +75, arado pesado +125)."""
+        return sum(c.d for c in comandos if c.type == 1 and c.a == RECURSO_COMIDA_GRANJA and c.b == 1)
 
     def cargas(self) -> dict[str, float]:
         """Cuánto lleva por viaje el aldeano de cada tarea (10; el cazador, 35)."""
@@ -829,6 +851,7 @@ class Extractor:
             "entities": entidades,
             "gather_rates": self.tasas(),
             "gather_carry": self.cargas(),
+            "food_per_object": self.comida_por_objeto(),
             "civs": self.civs(entidades),
         }
 

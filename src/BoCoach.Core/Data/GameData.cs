@@ -25,6 +25,9 @@ public sealed record Entity(
     /// molino y casa): confirma sus pasos, cubre los requisitos de edad y produce lo que ellos producen.
     /// </summary>
     public IReadOnlyList<string> CountsAs { get; init; } = [];
+
+    /// <summary>Lo que suma (si es una tecnología) a la comida de cada granja nueva o resembrada: collera +75, arado pesado +125.</summary>
+    public double FarmFood { get; init; }
 }
 
 /// <summary>
@@ -40,13 +43,15 @@ public sealed class GameData
     public const double DefaultCarry = 10;
 
     public GameData(string datVersion, IReadOnlyDictionary<string, Entity> entities, IReadOnlyDictionary<GatherSource, double> gatherRates,
-        IReadOnlyDictionary<string, CivBonuses>? civs = null, IReadOnlyDictionary<GatherSource, double>? gatherCarry = null)
+        IReadOnlyDictionary<string, CivBonuses>? civs = null, IReadOnlyDictionary<GatherSource, double>? gatherCarry = null,
+        IReadOnlyDictionary<GatherSource, double>? foodPerObject = null)
     {
         DatVersion = datVersion;
         Entities = entities;
         GatherRates = gatherRates;
         Civs = civs ?? new Dictionary<string, CivBonuses>();
         GatherCarry = gatherCarry ?? new Dictionary<GatherSource, double>();
+        FoodPerObject = foodPerObject ?? new Dictionary<GatherSource, double>();
     }
 
     public string DatVersion { get; }
@@ -60,6 +65,12 @@ public sealed class GameData
     public IReadOnlyDictionary<GatherSource, double> GatherCarry { get; }
 
     public double Carry(GatherSource source) => GatherCarry.GetValueOrDefault(source, DefaultCarry);
+
+    /// <summary>
+    /// D12: la comida de una oveja, un jabalí, un arbusto de bayas y una granja sin mejoras (100, 340, 125 y 175), para
+    /// la comida finita del modo asistido. Vacío si el archivo es de antes del extractor que la exporta.
+    /// </summary>
+    public IReadOnlyDictionary<GatherSource, double> FoodPerObject { get; }
 
     public Entity Get(string key) =>
         Entities.TryGetValue(key, out var entity)
