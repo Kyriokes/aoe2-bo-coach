@@ -502,6 +502,9 @@ static async Task<int> Replay(string recording, string[] args)
     var valid = new Dictionary<string, int>();
     var clipped = new Dictionary<string, int>();
     var events = 0;
+    // Huecos sin reloj en plena partida (entre el primer reloj y el último): el overlay del coach baja con 2 s.
+    var gaps = new List<(int Frame, double Seconds)>();
+    (int Frame, long TimeMs)? lastClock = null;
     await using var csv = new StreamWriter(output);
     await csv.WriteLineAsync(ScreenReadingLog.Header);
     foreach (var frame in session.Frames)
@@ -513,6 +516,12 @@ static async Task<int> Replay(string recording, string[] args)
         foreach (var region in state.Clipped)
             clipped[region] = clipped.GetValueOrDefault(region) + 1;
         events += state.NewEvents.Count;
+        if (state.ClockRead)
+        {
+            if (lastClock is { } last && frame.TimeMs - last.TimeMs >= 2000)
+                gaps.Add((last.Frame + 1, (frame.TimeMs - last.TimeMs) / 1000.0));
+            lastClock = (frame.Index, frame.TimeMs);
+        }
 
         await csv.WriteLineAsync(ScreenReadingLog.Format(frame.Index, frame.TimeMs, state.ToReading(), state.IdleVillagers, state.Age?.ToString()));
     }
@@ -524,6 +533,7 @@ static async Task<int> Replay(string recording, string[] args)
     foreach (var (region, n) in clipped.OrderByDescending(c => c.Value))
         Console.WriteLine($"  aviso: en {region} el número toca el borde de la caja en {n} capturas: agrandá esa caja al calibrar.");
     Console.WriteLine(args.Contains("--no-log") ? "  log: no se leyó" : $"  log: {events} eventos");
+    Console.WriteLine($"  huecos sin reloj de 2 s o más en partida: {gaps.Count}{(gaps.Count == 0 ? "" : $" ({string.Join(", ", gaps.Select(g => $"captura {g.Frame}: {g.Seconds:0.0} s"))})")}");
     return 0;
 }
 
