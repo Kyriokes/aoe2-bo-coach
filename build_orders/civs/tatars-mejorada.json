@@ -4,7 +4,7 @@
   "name": "Fast Scouts \u2192 Cavalry Archer (mejorada)",
   "civ": "tatars",
   "author": "Imperius",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Scouts \u2192 Cavalry Archer\u0022, con la misma estrategia: \u0022Construir 1 establo \u2192 madera\u0022 antes que \u0022Mover 1 de ovejas a madera\u0022. Simulada antes: Edad Feudal 8:36, Edad de los Castillos 20:38, fin 24:18, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:36, Edad de los Castillos 20:05, fin 23:45, centro urbano parado 0 s. Fast Feudal with 4 Scouts =\u003E Transition into Castle Age with 3 Range Cavalry Archer Fuente: https://www.buildorderguide.com/builds/oOPDnmZAxz4r5clAeZMK.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Scouts \u2192 Cavalry Archer\u0022, con la misma estrategia: \u0022Construir 1 establo \u2192 madera\u0022 antes que \u0022Mover 1 de ovejas a madera\u0022; \u0022Construir 4 granjas \u2192 granjas\u0022 antes que \u0022Investigar Collera\u0022; \u0022Construir 3 galer\u00EDas de tiro \u2192 madera\u0022 antes que \u0022Investigar Linaje\u0022. Simulada antes: Edad Feudal 6:51, Edad de los Castillos 17:23, fin 21:03, centro urbano parado 16 s. Despu\u00E9s: Edad Feudal 6:51, Edad de los Castillos 16:59, fin 20:39, centro urbano parado 3 s. Fast Feudal with 4 Scouts =\u003E Transition into Castle Age with 3 Range Cavalry Archer Fuente: https://www.buildorderguide.com/builds/oOPDnmZAxz4r5clAeZMK.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -159,19 +159,19 @@
     },
     {
       "id": "s18",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s19",
       "do": "build",
       "what": "stable",
       "count": 1,
       "assign": "wood",
       "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s19",
-      "do": "move",
-      "count": 1,
-      "assign": "wood",
-      "from": "sheep",
       "after": []
     },
     {
@@ -224,18 +224,18 @@
     },
     {
       "id": "s26",
-      "do": "research",
-      "what": "horse_collar",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s27",
       "do": "build",
       "what": "farm",
       "count": 4,
       "assign": "farm",
       "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s27",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
       "after": []
     },
     {
@@ -362,13 +362,6 @@
     },
     {
       "id": "s42",
-      "do": "research",
-      "what": "bloodlines",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s43",
       "do": "build",
       "what": "archery_range",
       "count": 3,
@@ -376,6 +369,13 @@
       "from": "wood",
       "after": [],
       "note": "Start training Cavalry Archers. New Villagers on Wood"
+    },
+    {
+      "id": "s43",
+      "do": "research",
+      "what": "bloodlines",
+      "count": 1,
+      "after": []
     },
     {
       "id": "s44",

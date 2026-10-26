@@ -4,7 +4,7 @@
   "name": "Fast Smith Men-at-Arms \u2192 Knights (mejorada)",
   "civ": "bulgarians",
   "author": "Imperius",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Smith Men-at-Arms \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Investigar Telar\u0022: \u002B1 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -1 en oro; \u0022Investigar Telar\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022. Simulada antes: Edad Feudal 8:10, Edad de los Castillos 17:47, fin 20:27, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:51, Edad de los Castillos 17:47, fin 20:27, centro urbano parado 0 s. Fast Feudal into Men-at-Arms with a fast Blacksmith. Transition into Castle Age with 2 Stable Knights. High Risk! Fuente: https://www.buildorderguide.com/builds/QT1oTgrlQB9ig8qLqOir.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Smith Men-at-Arms \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Investigar Telar\u0022: \u002B1 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -1 en oro; \u0022Mover 4 de ovejas a madera\u0022 antes que \u0022Construir 1 casa \u2192 madera\u0022; \u0022Investigar Telar\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022; \u0022Mover 2 de ovejas a madera\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 8:10, Edad de los Castillos 17:14, fin 19:54, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:45, Edad de los Castillos 16:38, fin 19:18, centro urbano parado 3 s. Fast Feudal into Men-at-Arms with a fast Blacksmith. Transition into Castle Age with 2 Stable Knights. High Risk! Fuente: https://www.buildorderguide.com/builds/QT1oTgrlQB9ig8qLqOir.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -136,19 +136,19 @@
     },
     {
       "id": "s15",
+      "do": "move",
+      "count": 4,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s16",
       "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
       "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s16",
-      "do": "move",
-      "count": 4,
-      "assign": "wood",
-      "from": "sheep",
       "after": []
     },
     {
@@ -218,19 +218,19 @@
     },
     {
       "id": "s25",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s26",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
       "assign": "wood",
       "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s26",
-      "do": "move",
-      "count": 2,
-      "assign": "wood",
-      "from": "sheep",
       "after": []
     },
     {

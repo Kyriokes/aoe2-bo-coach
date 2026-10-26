@@ -4,7 +4,7 @@
   "name": "Archers (Drav\u00EDdicos) (mejorada)",
   "civ": "dravidians",
   "author": "Hera",
-  "description": "Mejorada con el simulador del coach desde \u0022Archers (Drav\u00EDdicos)\u0022, con la misma estrategia: Antes de \u0022Investigar Telar\u0022: -3 en madera; Antes de \u0022Investigar Edad Feudal a 22 de poblaci\u00F3n\u0022: \u002B3 en madera; Antes de \u0022Investigar Carretilla\u0022: -1 en oro; Antes de \u0022Investigar Edad de los Castillos\u0022: \u002B1 en oro. Simulada antes: Edad Feudal 7:55, Edad de los Castillos 18:00, fin 21:30, centro urbano parado 13 s. Despu\u00E9s: Edad Feudal 7:55, Edad de los Castillos 17:45, fin 21:15, centro urbano parado 0 s. Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Drav\u00EDdicos. Going for archers in Feudal Age is one of the easiest builds, yet it\u2019s very powerful. This build gets you to two ranges working faster than Cicero\u0027s Archers build with only 22 pop before clicking up to Feudal but delays Horse Collar in return. When reaching the Castle Age you can go for 2 TCs or a university and fast ballistics.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 7:55, Edad de los Castillos 17:35, fin 21:05, centro urbano parado 0 s). Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Drav\u00EDdicos. Going for archers in Feudal Age is one of the easiest builds, yet it\u2019s very powerful. This build gets you to two ranges working faster than Cicero\u0027s Archers build with only 22 pop before clicking up to Feudal but delays Horse Collar in return. When reaching the Castle Age you can go for 2 TCs or a university and fast ballistics.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -111,17 +111,17 @@
     },
     {
       "id": "s12",
-      "do": "research",
-      "what": "loom",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s13",
       "do": "train",
       "what": "villager",
       "count": 7,
       "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s13",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
       "after": []
     },
     {
@@ -265,17 +265,17 @@
     },
     {
       "id": "s30",
-      "do": "research",
-      "what": "wheelbarrow",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s31",
       "do": "train",
       "what": "villager",
       "count": 8,
       "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s31",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
       "after": []
     },
     {

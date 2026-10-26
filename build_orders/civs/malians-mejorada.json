@@ -4,7 +4,7 @@
   "name": "Fast Scouts \u2192 Knights (mejorada)",
   "civ": "malians",
   "author": "robpob",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Scouts \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Construir 1 centro urbano \u2192 madera\u0022: \u002B5 en madera; Antes de \u0022Construir 5 granjas \u2192 granjas\u0022: -5 en madera; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 1 establo \u2192 madera\u0022; \u0022Construir 1 centro urbano \u2192 madera\u0022 antes que \u0022Construir 5 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:26, Edad de los Castillos 17:31, fin 25:36, centro urbano parado 25 s. Despu\u00E9s: Edad Feudal 7:26, Edad de los Castillos 17:06, fin 24:46, centro urbano parado 0 s. Malian fast scouts, using wood bonus to go up early.  After castle age, build order shows rough roadmap to 3 stable knights, and then adding 2 TCs. If you want to create constant camels instead of knights, rule of thumb is 1 more on food \u0026 gold per stable (as creation time is lower).  After this rush to imp for farimba powerspike. Fuente: https://www.buildorderguide.com/builds/MpKkuNhdFj0HhguzSNGE.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Scouts \u2192 Knights\u0022, con la misma estrategia: Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: \u002B1 en madera, -1 en oro; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 1 establo \u2192 madera\u0022. Simulada antes: Edad Feudal 7:05, Edad de los Castillos 17:10, fin 24:50, centro urbano parado 25 s. Despu\u00E9s: Edad Feudal 7:05, Edad de los Castillos 16:45, fin 24:25, centro urbano parado 0 s. Malian fast scouts, using wood bonus to go up early.  After castle age, build order shows rough roadmap to 3 stable knights, and then adding 2 TCs. If you want to create constant camels instead of knights, rule of thumb is 1 more on food \u0026 gold per stable (as creation time is lower).  After this rush to imp for farimba powerspike. Fuente: https://www.buildorderguide.com/builds/MpKkuNhdFj0HhguzSNGE.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -274,12 +274,20 @@
       "id": "s31",
       "do": "train",
       "what": "villager",
-      "count": 5,
+      "count": 4,
       "assign": "gold",
       "after": []
     },
     {
       "id": "s32",
+      "do": "train",
+      "what": "villager",
+      "count": 12,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s33",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -289,7 +297,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s33",
+      "id": "s34",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -298,21 +306,21 @@
       "after": []
     },
     {
-      "id": "s34",
+      "id": "s35",
       "do": "research",
       "what": "wheelbarrow",
       "count": 1,
       "after": []
     },
     {
-      "id": "s35",
+      "id": "s36",
       "do": "research",
       "what": "castle_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s36",
+      "id": "s37",
       "do": "move",
       "count": 2,
       "assign": "gold",
@@ -320,21 +328,21 @@
       "after": []
     },
     {
-      "id": "s37",
+      "id": "s38",
       "do": "research",
       "what": "bloodlines",
       "count": 1,
       "after": []
     },
     {
-      "id": "s38",
+      "id": "s39",
       "do": "research",
       "what": "scale_mail_armor",
       "count": 1,
       "after": []
     },
     {
-      "id": "s39",
+      "id": "s40",
       "do": "build",
       "what": "stable",
       "count": 1,
@@ -343,7 +351,7 @@
       "after": []
     },
     {
-      "id": "s40",
+      "id": "s41",
       "do": "research",
       "what": "bow_saw",
       "count": 1,
@@ -351,7 +359,7 @@
       "note": "Investig\u00E1 chain_mail_armor"
     },
     {
-      "id": "s41",
+      "id": "s42",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -361,22 +369,22 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s42",
+      "id": "s43",
       "do": "train",
       "what": "villager",
-      "count": 10,
+      "count": 9,
       "assign": "gold",
       "after": []
     },
     {
-      "id": "s43",
+      "id": "s44",
       "do": "research",
       "what": "gold_shaft_mining",
       "count": 1,
       "after": []
     },
     {
-      "id": "s44",
+      "id": "s45",
       "do": "research",
       "what": "heavy_plow",
       "count": 1,
@@ -384,7 +392,7 @@
       "note": "This is sufficient for 2 stable knights"
     },
     {
-      "id": "s45",
+      "id": "s46",
       "do": "train",
       "what": "villager",
       "count": 12,
@@ -393,7 +401,7 @@
       "group": "granjas3"
     },
     {
-      "id": "s46",
+      "id": "s47",
       "do": "build",
       "what": "farm",
       "count": 3,
@@ -403,7 +411,7 @@
       "group": "granjas3"
     },
     {
-      "id": "s47",
+      "id": "s48",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -413,16 +421,16 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s48",
+      "id": "s49",
       "do": "train",
       "what": "villager",
-      "count": 15,
+      "count": 14,
       "assign": "gold",
       "after": [],
       "note": "This is sufficient for 3 stable knights"
     },
     {
-      "id": "s49",
+      "id": "s50",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -432,25 +440,25 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s50",
+      "id": "s51",
       "do": "train",
       "what": "villager",
-      "count": 12,
+      "count": 13,
       "assign": "wood",
-      "after": []
-    },
-    {
-      "id": "s51",
-      "do": "build",
-      "what": "town_center",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
       "after": []
     },
     {
       "id": "s52",
       "do": "build",
+      "what": "town_center",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s53",
+      "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
@@ -459,20 +467,11 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s53",
+      "id": "s54",
       "do": "train",
       "what": "villager",
-      "count": 17,
+      "count": 18,
       "assign": "wood",
-      "after": []
-    },
-    {
-      "id": "s54",
-      "do": "build",
-      "what": "town_center",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
       "after": []
     },
     {
@@ -487,6 +486,15 @@
     {
       "id": "s56",
       "do": "build",
+      "what": "town_center",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s57",
+      "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
@@ -495,15 +503,15 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s57",
+      "id": "s58",
       "do": "train",
       "what": "villager",
-      "count": 17,
+      "count": 18,
       "assign": "wood",
       "after": []
     },
     {
-      "id": "s58",
+      "id": "s59",
       "do": "build",
       "what": "farm",
       "count": 5,

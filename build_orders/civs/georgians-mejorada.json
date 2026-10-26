@@ -4,7 +4,7 @@
   "name": "Fast Castle 10min (Georgianos) (mejorada)",
   "civ": "georgians",
   "author": "Toaster226",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Castle 10min (Georgianos)\u0022, con la misma estrategia: \u0022Construir 1 granja \u2192 granjas\u0022 antes que \u0022Mover 1 de caza a madera\u0022; \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022 antes que \u0022Construir 1 mercado \u2192 madera\u0022; \u0022Construir 1 mercado \u2192 madera\u0022 antes que \u0022Construir 1 casa \u2192 madera\u0022; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Mover 2 de bayas a madera\u0022. Simulada antes: Edad Feudal 8:20, Edad de los Castillos 12:49, fin 17:34, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:20, Edad de los Castillos 12:19, fin 17:04, centro urbano parado 0 s. Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Georgianos. Fast Castle into Knights Fuente: https://www.buildorderguide.com/builds/bR8HzKNpngmnlYgF36ws.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Castle 10min (Georgianos)\u0022, con la misma estrategia: \u0022Construir 1 granja \u2192 granjas\u0022 antes que \u0022Mover 1 de caza a madera\u0022; \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022 antes que \u0022Mover 2 de bayas a madera\u0022. Simulada antes: Edad Feudal 8:20, Edad de los Castillos 12:42, fin 17:27, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:20, Edad de los Castillos 12:20, fin 17:05, centro urbano parado 0 s. Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Georgianos. Fast Castle into Knights Fuente: https://www.buildorderguide.com/builds/bR8HzKNpngmnlYgF36ws.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -210,6 +210,14 @@
     },
     {
       "id": "s23",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "berries",
+      "after": []
+    },
+    {
+      "id": "s24",
       "do": "build",
       "what": "market",
       "count": 1,
@@ -218,7 +226,7 @@
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s25",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -226,14 +234,6 @@
       "from": "wood",
       "after": [],
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
-    },
-    {
-      "id": "s25",
-      "do": "move",
-      "count": 2,
-      "assign": "wood",
-      "from": "berries",
-      "after": []
     },
     {
       "id": "s26",

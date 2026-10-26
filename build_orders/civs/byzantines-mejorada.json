@@ -4,7 +4,7 @@
   "name": "Skirmisher Spam (mejorada)",
   "civ": "byzantines",
   "author": "TheViper",
-  "description": "Mejorada con el simulador del coach desde \u0022Skirmisher Spam\u0022, con la misma estrategia: Antes de \u0022Construir 1 cuartel \u2192 madera\u0022: \u002B1 en madera; Antes de \u0022Mover 2 de caza a ovejas\u0022: -1 en madera; \u0022Construir 1 galer\u00EDa de tiro \u2192 madera\u0022 antes que \u0022Mover 1 de ovejas a madera\u0022. Simulada antes: Edad Feudal 8:32, Edad de los Castillos 20:17, Edad Imperial 25:27, fin 28:37, centro urbano parado 25 s. Despu\u00E9s: Edad Feudal 8:03, Edad de los Castillos 19:48, Edad Imperial 24:58, fin 28:08, centro urbano parado 25 s. TheViper played this Byzantines game to demonstrate how strong the civilization was during King of the Desert. He sends the fifth Villager to Wood too early, which ultimately didn\u0027t matter. Fuente: https://www.buildorderguide.com/builds/avmmLBy8tsc0mhsMUFPs.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 7:40, Edad de los Castillos 19:25, Edad Imperial 24:35, fin 27:45, centro urbano parado 25 s). TheViper played this Byzantines game to demonstrate how strong the civilization was during King of the Desert. He sends the fifth Villager to Wood too early, which ultimately didn\u0027t matter. Fuente: https://www.buildorderguide.com/builds/avmmLBy8tsc0mhsMUFPs.",
   "tags": [
     "mejorada",
     "buildorderguide"
@@ -67,12 +67,20 @@
       "id": "s7",
       "do": "train",
       "what": "villager",
-      "count": 4,
+      "count": 3,
       "assign": "wood",
       "after": []
     },
     {
       "id": "s8",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s9",
       "do": "build",
       "what": "mill",
       "count": 1,
@@ -81,24 +89,12 @@
       "after": []
     },
     {
-      "id": "s9",
+      "id": "s10",
       "do": "train",
       "what": "villager",
       "count": 2,
       "assign": "berries",
-      "after": [],
-      "group": "molino1"
-    },
-    {
-      "id": "s10",
-      "do": "build",
-      "what": "mill",
-      "count": 1,
-      "assign": "berries",
-      "from": "berries",
-      "after": [],
-      "group": "molino1",
-      "note": "Agregado al importar"
+      "after": []
     },
     {
       "id": "s11",
@@ -128,7 +124,7 @@
       "id": "s14",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 5,
       "assign": "wood",
       "after": []
     },
@@ -143,18 +139,18 @@
     },
     {
       "id": "s16",
-      "do": "move",
-      "count": 2,
-      "assign": "sheep",
-      "from": "hunt",
+      "do": "train",
+      "what": "villager",
+      "count": 6,
+      "assign": "wood",
       "after": []
     },
     {
       "id": "s17",
       "do": "move",
       "count": 2,
-      "assign": "wood",
-      "from": "sheep",
+      "assign": "sheep",
+      "from": "hunt",
       "after": []
     },
     {
@@ -163,11 +159,19 @@
       "count": 2,
       "assign": "wood",
       "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s19",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "sheep",
       "after": [],
       "note": "Barracks Builder builds Houses and Wall"
     },
     {
-      "id": "s19",
+      "id": "s20",
       "do": "train",
       "what": "villager",
       "count": 11,
@@ -175,21 +179,12 @@
       "after": []
     },
     {
-      "id": "s20",
+      "id": "s21",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
       "after": [],
       "at_pop": 20
-    },
-    {
-      "id": "s21",
-      "do": "build",
-      "what": "archery_range",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
-      "after": []
     },
     {
       "id": "s22",
@@ -203,7 +198,7 @@
     {
       "id": "s23",
       "do": "build",
-      "what": "blacksmith",
+      "what": "archery_range",
       "count": 1,
       "assign": "wood",
       "from": "wood",
@@ -211,20 +206,29 @@
     },
     {
       "id": "s24",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s25",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s26",
       "do": "research",
       "what": "horse_collar",
       "count": 1,
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s27",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -234,7 +238,7 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s27",
+      "id": "s28",
       "do": "train",
       "what": "villager",
       "count": 6,
@@ -242,14 +246,14 @@
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s29",
       "do": "train",
       "what": "skirmisher",
       "count": 1,
       "after": []
     },
     {
-      "id": "s29",
+      "id": "s30",
       "do": "build",
       "what": "farm",
       "count": 2,
@@ -258,23 +262,13 @@
       "after": []
     },
     {
-      "id": "s30",
+      "id": "s31",
       "do": "build",
       "what": "farm",
       "count": 1,
       "assign": "farm",
       "from": "wood",
       "after": []
-    },
-    {
-      "id": "s31",
-      "do": "build",
-      "what": "house",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
-      "after": [],
-      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
       "id": "s32",
@@ -288,48 +282,6 @@
     },
     {
       "id": "s33",
-      "do": "train",
-      "what": "villager",
-      "count": 12,
-      "assign": "farm",
-      "after": [],
-      "group": "granjas2"
-    },
-    {
-      "id": "s34",
-      "do": "build",
-      "what": "farm",
-      "count": 9,
-      "assign": "farm",
-      "from": "farm",
-      "after": [],
-      "group": "granjas2"
-    },
-    {
-      "id": "s35",
-      "do": "research",
-      "what": "fletching",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s36",
-      "do": "research",
-      "what": "padded_archer_armor",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s37",
-      "do": "build",
-      "what": "farm",
-      "count": 4,
-      "assign": "farm",
-      "from": "berries",
-      "after": []
-    },
-    {
-      "id": "s38",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -339,7 +291,59 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
+      "id": "s34",
+      "do": "train",
+      "what": "villager",
+      "count": 12,
+      "assign": "farm",
+      "after": [],
+      "group": "granjas1"
+    },
+    {
+      "id": "s35",
+      "do": "build",
+      "what": "farm",
+      "count": 9,
+      "assign": "farm",
+      "from": "farm",
+      "after": [],
+      "group": "granjas1"
+    },
+    {
+      "id": "s36",
+      "do": "research",
+      "what": "fletching",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s37",
+      "do": "research",
+      "what": "padded_archer_armor",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s38",
+      "do": "build",
+      "what": "farm",
+      "count": 4,
+      "assign": "farm",
+      "from": "berries",
+      "after": []
+    },
+    {
       "id": "s39",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s40",
       "do": "train",
       "what": "villager",
       "count": 7,
@@ -347,7 +351,7 @@
       "after": []
     },
     {
-      "id": "s40",
+      "id": "s41",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -357,35 +361,25 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s41",
+      "id": "s42",
       "do": "research",
       "what": "wheelbarrow",
       "count": 1,
       "after": []
     },
     {
-      "id": "s42",
+      "id": "s43",
       "do": "research",
       "what": "castle_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s43",
+      "id": "s44",
       "do": "research",
       "what": "gold_mining",
       "count": 1,
       "after": []
-    },
-    {
-      "id": "s44",
-      "do": "build",
-      "what": "house",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
-      "after": [],
-      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
       "id": "s45",
@@ -399,6 +393,16 @@
     },
     {
       "id": "s46",
+      "do": "build",
+      "what": "house",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s47",
       "do": "train",
       "what": "villager",
       "count": 14,
@@ -406,7 +410,7 @@
       "after": []
     },
     {
-      "id": "s47",
+      "id": "s48",
       "do": "build",
       "what": "monastery",
       "count": 1,
@@ -415,7 +419,7 @@
       "after": []
     },
     {
-      "id": "s48",
+      "id": "s49",
       "do": "research",
       "what": "bow_saw",
       "count": 1,
@@ -423,7 +427,7 @@
       "note": "Investig\u00E1 bodkin_arrow"
     },
     {
-      "id": "s49",
+      "id": "s50",
       "do": "research",
       "what": "heavy_plow",
       "count": 1,
@@ -431,14 +435,14 @@
       "note": "Research Elite Skirmisher"
     },
     {
-      "id": "s50",
+      "id": "s51",
       "do": "train",
       "what": "monk",
       "count": 3,
       "after": []
     },
     {
-      "id": "s51",
+      "id": "s52",
       "do": "build",
       "what": "town_center",
       "count": 1,
@@ -448,14 +452,14 @@
       "note": "Start sending Villagers to Stone"
     },
     {
-      "id": "s52",
+      "id": "s53",
       "do": "research",
       "what": "imperial_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s53",
+      "id": "s54",
       "do": "build",
       "what": "university",
       "count": 1,

@@ -4,7 +4,7 @@
   "name": "Hideout Conqs (mejorada)",
   "civ": "spanish",
   "author": "WololoCrash",
-  "description": "Mejorada con el simulador del coach desde \u0022Hideout Conqs\u0022, con la misma estrategia: Antes de \u0022Investigar Edad Feudal a 25 de poblaci\u00F3n\u0022: \u002B1 en oro, -1 en madera; \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022 antes que \u0022Construir 1 mercado \u2192 madera\u0022. Simulada antes: Edad Feudal 8:45, Edad de los Castillos 14:02, fin 19:16, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:45, Edad de los Castillos 12:25, fin 17:39, centro urbano parado 0 s. 14:30 defensive Castle, Conqs to harass. Then either boom behind or go forward siege. Fuente: https://www.buildorderguide.com/builds/QMnkjT1SEfiWrN3twMN9.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 8:45, Edad de los Castillos 12:02, fin 17:16, centro urbano parado 0 s). 14:30 defensive Castle, Conqs to harass. Then either boom behind or go forward siege. Fuente: https://www.buildorderguide.com/builds/QMnkjT1SEfiWrN3twMN9.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -81,7 +81,7 @@
       "id": "s8",
       "do": "train",
       "what": "villager",
-      "count": 2,
+      "count": 1,
       "assign": "hunt",
       "after": []
     },
@@ -89,12 +89,20 @@
       "id": "s9",
       "do": "train",
       "what": "villager",
+      "count": 2,
+      "assign": "hunt",
+      "after": []
+    },
+    {
+      "id": "s10",
+      "do": "train",
+      "what": "villager",
       "count": 3,
       "assign": "stone",
       "after": []
     },
     {
-      "id": "s10",
+      "id": "s11",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -104,7 +112,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s11",
+      "id": "s12",
       "do": "train",
       "what": "villager",
       "count": 3,
@@ -112,7 +120,7 @@
       "after": []
     },
     {
-      "id": "s12",
+      "id": "s13",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -121,15 +129,15 @@
       "after": []
     },
     {
-      "id": "s13",
+      "id": "s14",
       "do": "train",
       "what": "villager",
-      "count": 4,
-      "assign": "gold",
+      "count": 5,
+      "assign": "wood",
       "after": []
     },
     {
-      "id": "s14",
+      "id": "s15",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -137,18 +145,9 @@
       "at_pop": 25
     },
     {
-      "id": "s15",
-      "do": "build",
-      "what": "house",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
-      "after": []
-    },
-    {
       "id": "s16",
       "do": "build",
-      "what": "blacksmith",
+      "what": "house",
       "count": 1,
       "assign": "wood",
       "from": "wood",
@@ -165,6 +164,15 @@
     },
     {
       "id": "s18",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s19",
       "do": "train",
       "what": "villager",
       "count": 4,
@@ -172,14 +180,14 @@
       "after": []
     },
     {
-      "id": "s19",
+      "id": "s20",
       "do": "research",
       "what": "loom",
       "count": 1,
       "after": []
     },
     {
-      "id": "s20",
+      "id": "s21",
       "do": "research",
       "what": "castle_age",
       "count": 1,
@@ -187,7 +195,7 @@
       "at_pop": 26
     },
     {
-      "id": "s21",
+      "id": "s22",
       "do": "move",
       "count": 3,
       "assign": "gold",
@@ -195,7 +203,7 @@
       "after": []
     },
     {
-      "id": "s22",
+      "id": "s23",
       "do": "move",
       "count": 3,
       "assign": "wood",
@@ -203,21 +211,21 @@
       "after": []
     },
     {
-      "id": "s23",
+      "id": "s24",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s25",
       "do": "research",
       "what": "horse_collar",
       "count": 1,
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s26",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -226,7 +234,7 @@
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s27",
       "do": "build",
       "what": "castle",
       "count": 1,
@@ -235,7 +243,7 @@
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s28",
       "do": "research",
       "what": "bow_saw",
       "count": 1,

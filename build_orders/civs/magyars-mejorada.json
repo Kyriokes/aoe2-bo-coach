@@ -4,7 +4,7 @@
   "name": "Magyar Scouts \u2192 Cav Arch With Boom (mejorada)",
   "civ": "magyars",
   "author": "Dragonstar_AoE",
-  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 7:16, Edad de los Castillos 18:58, fin 22:38, centro urbano parado 0 s). you know just the transition, this build also helps in macro management Fuente: https://www.buildorderguide.com/builds/H0sQDlhkPwFpVMIRzaWi.",
+  "description": "Mejorada con el simulador del coach desde \u0022Magyar Scouts \u2192 Cav Arch With Boom\u0022, con la misma estrategia: Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B4 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: \u002B1 en madera, -5 en oro; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 5 granjas \u2192 granjas\u0022; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022; \u0022Construir 1 campamento minero \u2192 oro\u0022 antes que \u0022Entrenar 8 exploradores\u0022. Simulada antes: Edad Feudal 6:40, Edad de los Castillos 18:04, fin 21:44, centro urbano parado 27 s. Despu\u00E9s: Edad Feudal 6:40, Edad de los Castillos 17:22, fin 21:02, centro urbano parado 0 s. you know just the transition, this build also helps in macro management Fuente: https://www.buildorderguide.com/builds/H0sQDlhkPwFpVMIRzaWi.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -176,21 +176,21 @@
     {
       "id": "s20",
       "do": "build",
-      "what": "farm",
-      "count": 5,
-      "assign": "farm",
-      "from": "sheep",
-      "after": []
-    },
-    {
-      "id": "s21",
-      "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
       "from": "wood",
       "after": [],
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
+    },
+    {
+      "id": "s21",
+      "do": "build",
+      "what": "farm",
+      "count": 5,
+      "assign": "farm",
+      "from": "sheep",
+      "after": []
     },
     {
       "id": "s22",
@@ -234,8 +234,9 @@
     {
       "id": "s26",
       "do": "train",
-      "what": "scout_cavalry",
-      "count": 8,
+      "what": "villager",
+      "count": 4,
+      "assign": "gold",
       "after": []
     },
     {
@@ -252,8 +253,8 @@
       "id": "s28",
       "do": "train",
       "what": "villager",
-      "count": 5,
-      "assign": "gold",
+      "count": 11,
+      "assign": "wood",
       "after": []
     },
     {
@@ -268,6 +269,13 @@
     },
     {
       "id": "s30",
+      "do": "train",
+      "what": "scout_cavalry",
+      "count": 8,
+      "after": []
+    },
+    {
+      "id": "s31",
       "do": "build",
       "what": "archery_range",
       "count": 3,
@@ -276,7 +284,7 @@
       "after": []
     },
     {
-      "id": "s31",
+      "id": "s32",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -285,15 +293,15 @@
       "after": []
     },
     {
-      "id": "s32",
+      "id": "s33",
       "do": "train",
       "what": "villager",
-      "count": 8,
+      "count": 7,
       "assign": "gold",
       "after": []
     },
     {
-      "id": "s33",
+      "id": "s34",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -303,43 +311,43 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s34",
+      "id": "s35",
       "do": "train",
       "what": "villager",
-      "count": 12,
+      "count": 13,
       "assign": "wood",
       "after": []
     },
     {
-      "id": "s35",
+      "id": "s36",
       "do": "research",
       "what": "fletching",
       "count": 1,
       "after": []
     },
     {
-      "id": "s36",
+      "id": "s37",
       "do": "research",
       "what": "padded_archer_armor",
       "count": 1,
       "after": []
     },
     {
-      "id": "s37",
+      "id": "s38",
       "do": "research",
       "what": "bloodlines",
       "count": 1,
       "after": []
     },
     {
-      "id": "s38",
+      "id": "s39",
       "do": "research",
       "what": "castle_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s39",
+      "id": "s40",
       "do": "move",
       "count": 3,
       "assign": "gold",
@@ -347,7 +355,7 @@
       "after": []
     },
     {
-      "id": "s40",
+      "id": "s41",
       "do": "research",
       "what": "bow_saw",
       "count": 1,
@@ -355,7 +363,7 @@
       "note": "Investig\u00E1 bodkin_arrow"
     },
     {
-      "id": "s41",
+      "id": "s42",
       "do": "build",
       "what": "university",
       "count": 1,

@@ -4,7 +4,7 @@
   "name": "Men-at-Arms \u2192 Archers (Espartanos) (mejorada)",
   "civ": "spartans",
   "author": "Hera",
-  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 7:39, Edad de los Castillos 17:23, fin 20:03, centro urbano parado 28 s). Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Espartanos. This build is one way of buying time to mass archers since your opponent is usually forced to deal with the men-at-arms in their base first. Fuente: https://www.buildorderguide.com/builds/11.",
+  "description": "Mejorada con el simulador del coach desde \u0022Men-at-Arms \u2192 Archers (Espartanos)\u0022, con la misma estrategia: Antes de \u0022Construir 2 galer\u00EDas de tiro \u2192 madera\u0022: \u002B5 en oro; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: -5 en oro; \u0022Construir 1 casa \u2192 madera\u0022 antes que \u0022Construir 2 galer\u00EDas de tiro \u2192 madera\u0022. Simulada antes: Edad Feudal 7:38, Edad de los Castillos 17:21, fin 20:01, centro urbano parado 25 s. Despu\u00E9s: Edad Feudal 7:38, Edad de los Castillos 17:15, fin 19:55, centro urbano parado 14 s. Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Espartanos. This build is one way of buying time to mass archers since your opponent is usually forced to deal with the men-at-arms in their base first. Fuente: https://www.buildorderguide.com/builds/11.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -202,15 +202,6 @@
     {
       "id": "s23",
       "do": "build",
-      "what": "archery_range",
-      "count": 2,
-      "assign": "wood",
-      "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s24",
-      "do": "build",
       "what": "house",
       "count": 1,
       "assign": "wood",
@@ -219,11 +210,20 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s25",
+      "id": "s24",
       "do": "train",
       "what": "villager",
       "count": 7,
       "assign": "gold",
+      "after": []
+    },
+    {
+      "id": "s25",
+      "do": "build",
+      "what": "archery_range",
+      "count": 2,
+      "assign": "wood",
+      "from": "wood",
       "after": []
     },
     {

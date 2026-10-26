@@ -4,7 +4,7 @@
   "name": "Fast Archers (mejorada)",
   "civ": "britons",
   "author": "ExMayor",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Archers\u0022, con la misma estrategia: Antes de \u0022Construir 1 molino \u2192 bayas\u0022: \u002B1 en madera; Antes de \u0022Construir 1 molino \u2192 madera\u0022: -1 en madera; Antes de \u0022Investigar Telar\u0022: -1 en madera; Antes de \u0022Investigar Edad Feudal a 20 de poblaci\u00F3n\u0022: \u002B1 en madera; \u0022Construir 1 molino \u2192 bayas\u0022 antes que \u0022Construir 1 molino \u2192 madera\u0022. Simulada antes: Edad Feudal 8:07, Edad de los Castillos 18:09, fin 25:49, centro urbano parado 4 s. Despu\u00E9s: Edad Feudal 8:16, Edad de los Castillos 17:26, fin 25:06, centro urbano parado 0 s. Britons 20 pop. Fast Archers Fuente: https://www.buildorderguide.com/builds/H3AAyzy7fQW8gtBF6iut.",
+  "description": "Mejorada con el simulador del coach desde \u0022Fast Archers\u0022, con la misma estrategia: Antes de \u0022Construir 3 granjas \u2192 granjas\u0022: \u002B1 en madera; Antes de \u0022Investigar Collera\u0022: -1 en madera; \u0022Construir 3 granjas \u2192 granjas\u0022 antes que \u0022Construir 5 granjas \u2192 granjas\u0022; \u0022Construir 5 granjas \u2192 granjas\u0022 antes que \u0022Investigar Collera\u0022. Simulada antes: Edad Feudal 7:05, Edad de los Castillos 18:15, fin 25:55, centro urbano parado 49 s. Despu\u00E9s: Edad Feudal 7:05, Edad de los Castillos 17:37, fin 25:17, centro urbano parado 0 s. Britons 20 pop. Fast Archers Fuente: https://www.buildorderguide.com/builds/H3AAyzy7fQW8gtBF6iut.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -77,17 +77,15 @@
       "do": "build",
       "what": "mill",
       "count": 1,
-      "assign": "berries",
+      "assign": "wood",
       "from": "wood",
-      "after": [],
-      "note": "Agregado al importar"
+      "after": []
     },
     {
       "id": "s9",
-      "do": "build",
-      "what": "mill",
+      "do": "move",
       "count": 1,
-      "assign": "wood",
+      "assign": "berries",
       "from": "wood",
       "after": []
     },
@@ -111,7 +109,7 @@
       "id": "s12",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 7,
       "assign": "wood",
       "after": []
     },
@@ -124,14 +122,6 @@
     },
     {
       "id": "s14",
-      "do": "train",
-      "what": "villager",
-      "count": 7,
-      "assign": "wood",
-      "after": []
-    },
-    {
-      "id": "s15",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -139,7 +129,7 @@
       "at_pop": 20
     },
     {
-      "id": "s16",
+      "id": "s15",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -149,7 +139,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s17",
+      "id": "s16",
       "do": "move",
       "count": 2,
       "assign": "gold",
@@ -157,7 +147,7 @@
       "after": []
     },
     {
-      "id": "s18",
+      "id": "s17",
       "do": "move",
       "count": 2,
       "assign": "wood",
@@ -165,7 +155,7 @@
       "after": []
     },
     {
-      "id": "s19",
+      "id": "s18",
       "do": "move",
       "count": 1,
       "assign": "wood",
@@ -173,7 +163,7 @@
       "after": []
     },
     {
-      "id": "s20",
+      "id": "s19",
       "do": "move",
       "count": 1,
       "assign": "berries",
@@ -181,7 +171,7 @@
       "after": []
     },
     {
-      "id": "s21",
+      "id": "s20",
       "do": "move",
       "count": 2,
       "assign": "wood",
@@ -189,7 +179,7 @@
       "after": []
     },
     {
-      "id": "s22",
+      "id": "s21",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -198,7 +188,7 @@
       "after": []
     },
     {
-      "id": "s23",
+      "id": "s22",
       "do": "build",
       "what": "barracks",
       "count": 1,
@@ -207,7 +197,7 @@
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s23",
       "do": "train",
       "what": "villager",
       "count": 5,
@@ -215,14 +205,14 @@
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s24",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s25",
       "do": "build",
       "what": "archery_range",
       "count": 2,
@@ -231,7 +221,7 @@
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s26",
       "do": "train",
       "what": "villager",
       "count": 6,
@@ -239,7 +229,7 @@
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s27",
       "do": "build",
       "what": "house",
       "count": 2,
@@ -248,14 +238,14 @@
       "after": []
     },
     {
-      "id": "s29",
+      "id": "s28",
       "do": "train",
       "what": "archer",
       "count": 6,
       "after": []
     },
     {
-      "id": "s30",
+      "id": "s29",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -264,14 +254,14 @@
       "after": []
     },
     {
-      "id": "s31",
+      "id": "s30",
       "do": "research",
       "what": "fletching",
       "count": 1,
       "after": []
     },
     {
-      "id": "s32",
+      "id": "s31",
       "do": "move",
       "count": 1,
       "assign": "gold",
@@ -279,7 +269,7 @@
       "after": []
     },
     {
-      "id": "s33",
+      "id": "s32",
       "do": "train",
       "what": "villager",
       "count": 12,
@@ -287,14 +277,7 @@
       "after": []
     },
     {
-      "id": "s34",
-      "do": "research",
-      "what": "horse_collar",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s35",
+      "id": "s33",
       "do": "build",
       "what": "farm",
       "count": 3,
@@ -303,7 +286,7 @@
       "after": []
     },
     {
-      "id": "s36",
+      "id": "s34",
       "do": "build",
       "what": "farm",
       "count": 5,
@@ -312,7 +295,14 @@
       "after": []
     },
     {
-      "id": "s37",
+      "id": "s35",
+      "do": "research",
+      "what": "horse_collar",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s36",
       "do": "research",
       "what": "castle_age",
       "count": 1,
@@ -320,7 +310,7 @@
       "note": "If they go infantry, make a 3rd archery range and continue training archers and skirmishers. If they go cavalry, make a stable and train spearmen and scouts. If they go skirmishers, retreat archers, make a stable and train scouts. If they go mixed archers and skirmishers, make a stable, train scouts and skirmishers"
     },
     {
-      "id": "s38",
+      "id": "s37",
       "do": "build",
       "what": "town_center",
       "count": 2,

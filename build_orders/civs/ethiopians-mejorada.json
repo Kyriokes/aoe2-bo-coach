@@ -4,7 +4,7 @@
   "name": "Straight Archers (mejorada)",
   "civ": "ethiopians",
   "author": "Hera",
-  "description": "Mejorada con el simulador del coach desde \u0022Straight Archers\u0022, con la misma estrategia: Antes de \u0022Entrenar 2 arqueros\u0022: \u002B2 en madera, -2 en oro; \u0022Construir 1 cuartel \u2192 madera\u0022 antes que \u0022Construir 1 campamento minero \u2192 oro\u0022. Simulada antes: Edad Feudal 7:55, Edad de los Castillos 18:22, fin 26:02, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:55, Edad de los Castillos 18:04, fin 25:44, centro urbano parado 0 s. Going for archers in Feudal Age is one of the easiest builds, yet it\u0027s very powerful. Up to about 1k4-1k5 DE this is Hera\u0027s opinion the best strategy to use if you master it. After that you will need to learn to mix in a drush or some MAA before hand. Fuente: https://www.buildorderguide.com/builds/N2D7FPxWza7aFOzHIKrM.",
+  "description": "Mejorada con el simulador del coach desde \u0022Straight Archers\u0022, con la misma estrategia: Antes de \u0022Entrenar 2 arqueros\u0022: \u002B1 en madera, -1 en oro; Antes de \u0022Construir 1 casa \u2192 madera\u0022: \u002B8 en madera; Antes de \u0022Entrenar 2 arqueros\u0022: -8 en madera; \u0022Construir 1 cuartel \u2192 madera\u0022 antes que \u0022Mover 2 de ovejas a oro\u0022; \u0022Construir 1 granja \u2192 granjas\u0022 antes que \u0022Construir 2 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:55, Edad de los Castillos 18:26, fin 26:06, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:55, Edad de los Castillos 17:42, fin 25:22, centro urbano parado 0 s. Going for archers in Feudal Age is one of the easiest builds, yet it\u0027s very powerful. Up to about 1k4-1k5 DE this is Hera\u0027s opinion the best strategy to use if you master it. After that you will need to learn to mix in a drush or some MAA before hand. Fuente: https://www.buildorderguide.com/builds/N2D7FPxWza7aFOzHIKrM.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -160,21 +160,21 @@
     {
       "id": "s18",
       "do": "build",
-      "what": "barracks",
-      "count": 1,
-      "assign": "wood",
-      "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s19",
-      "do": "build",
       "what": "mining_camp",
       "count": 1,
       "assign": "gold",
       "from": "sheep",
       "after": [],
       "note": "Agregado al importar"
+    },
+    {
+      "id": "s19",
+      "do": "build",
+      "what": "barracks",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": []
     },
     {
       "id": "s20",
@@ -229,7 +229,7 @@
       "id": "s26",
       "do": "train",
       "what": "villager",
-      "count": 5,
+      "count": 6,
       "assign": "gold",
       "after": []
     },
@@ -237,7 +237,7 @@
       "id": "s27",
       "do": "train",
       "what": "villager",
-      "count": 13,
+      "count": 12,
       "assign": "wood",
       "after": []
     },
@@ -262,7 +262,7 @@
       "id": "s30",
       "do": "train",
       "what": "villager",
-      "count": 14,
+      "count": 13,
       "assign": "wood",
       "after": []
     },
@@ -286,18 +286,18 @@
       "id": "s33",
       "do": "build",
       "what": "farm",
-      "count": 2,
+      "count": 1,
       "assign": "farm",
-      "from": "hunt",
+      "from": "sheep",
       "after": []
     },
     {
       "id": "s34",
       "do": "build",
       "what": "farm",
-      "count": 1,
+      "count": 2,
       "assign": "farm",
-      "from": "sheep",
+      "from": "hunt",
       "after": []
     },
     {
@@ -328,6 +328,14 @@
     },
     {
       "id": "s38",
+      "do": "train",
+      "what": "villager",
+      "count": 21,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s39",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -335,14 +343,6 @@
       "from": "wood",
       "after": [],
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
-    },
-    {
-      "id": "s39",
-      "do": "train",
-      "what": "villager",
-      "count": 22,
-      "assign": "wood",
-      "after": []
     },
     {
       "id": "s40",
@@ -436,7 +436,7 @@
       "id": "s51",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 7,
       "assign": "gold",
       "after": []
     },

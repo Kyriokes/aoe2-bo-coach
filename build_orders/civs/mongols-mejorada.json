@@ -4,7 +4,7 @@
   "name": "Fast Scout Rush (mejorada)",
   "civ": "mongols",
   "author": "Hera",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Scout Rush\u0022, con la misma estrategia: Antes de \u0022Investigar Telar\u0022: \u002B1 en madera, -1 en ovejas; \u0022Construir 1 cuartel \u2192 madera\u0022 antes que \u0022Mover 5 de ovejas a madera\u0022. Simulada antes: Edad Feudal 7:06, fin 11:53, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 5:35, fin 10:25, centro urbano parado 0 s. Build from Hera vs Yo from his stream Fuente: https://www.buildorderguide.com/builds/P1iWBJnvISZYe5KUN2uW.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 5:31, fin 10:11, centro urbano parado 0 s). Build from Hera vs Yo from his stream Fuente: https://www.buildorderguide.com/builds/P1iWBJnvISZYe5KUN2uW.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -112,27 +112,19 @@
       "id": "s12",
       "do": "train",
       "what": "villager",
-      "count": 8,
+      "count": 9,
       "assign": "sheep",
       "after": []
     },
     {
       "id": "s13",
-      "do": "train",
-      "what": "villager",
-      "count": 3,
-      "assign": "wood",
-      "after": []
-    },
-    {
-      "id": "s14",
       "do": "research",
       "what": "loom",
       "count": 1,
       "after": []
     },
     {
-      "id": "s15",
+      "id": "s14",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -140,20 +132,28 @@
       "at_pop": 15
     },
     {
+      "id": "s15",
+      "do": "move",
+      "count": 5,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
       "id": "s16",
+      "do": "move",
+      "count": 2,
+      "assign": "wood",
+      "from": "sheep",
+      "after": []
+    },
+    {
+      "id": "s17",
       "do": "build",
       "what": "barracks",
       "count": 1,
       "assign": "wood",
       "from": "wood",
-      "after": []
-    },
-    {
-      "id": "s17",
-      "do": "move",
-      "count": 5,
-      "assign": "wood",
-      "from": "sheep",
       "after": []
     },
     {
@@ -166,14 +166,6 @@
     },
     {
       "id": "s19",
-      "do": "move",
-      "count": 2,
-      "assign": "wood",
-      "from": "sheep",
-      "after": []
-    },
-    {
-      "id": "s20",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -182,7 +174,7 @@
       "after": []
     },
     {
-      "id": "s21",
+      "id": "s20",
       "do": "build",
       "what": "stable",
       "count": 1,
@@ -191,7 +183,7 @@
       "after": []
     },
     {
-      "id": "s22",
+      "id": "s21",
       "do": "move",
       "count": 2,
       "assign": "sheep",
@@ -199,7 +191,7 @@
       "after": []
     },
     {
-      "id": "s23",
+      "id": "s22",
       "do": "train",
       "what": "villager",
       "count": 4,
@@ -207,14 +199,14 @@
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s23",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s24",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -224,14 +216,14 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s26",
+      "id": "s25",
       "do": "train",
       "what": "scout_cavalry",
       "count": 3,
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s26",
       "do": "build",
       "what": "house",
       "count": 2,
@@ -240,7 +232,7 @@
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s27",
       "do": "move",
       "count": 2,
       "assign": "sheep",
@@ -248,7 +240,7 @@
       "after": []
     },
     {
-      "id": "s29",
+      "id": "s28",
       "do": "train",
       "what": "villager",
       "count": 5,

@@ -4,7 +4,7 @@
   "name": "19 Vil 1 Range (Kit\u00E1n) (mejorada)",
   "civ": "khitans",
   "author": "Hera",
-  "description": "Mejorada con el simulador del coach desde \u002219 Vil 1 Range (Kit\u00E1n)\u0022, con la misma estrategia: Antes de \u0022Construir 2 casas \u2192 madera\u0022: \u002B1 en madera, -1 en caza. Simulada antes: Edad Feudal 8:06, fin 13:26, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:44, fin 13:04, centro urbano parado 0 s. Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Kit\u00E1n. standard 1 range archer build order Fuente: https://www.buildorderguide.com/builds/ZCQtzQOMVL1lcHSGNbOl.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 7:05, fin 12:25, centro urbano parado 0 s). Gu\u00EDa gen\u00E9rica con la civ puesta: la p\u00E1gina no tiene una para Kit\u00E1n. standard 1 range archer build order Fuente: https://www.buildorderguide.com/builds/ZCQtzQOMVL1lcHSGNbOl.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -52,8 +52,8 @@
       "id": "s5",
       "do": "train",
       "what": "villager",
-      "count": 4,
-      "assign": "wood",
+      "count": 1,
+      "assign": "hunt",
       "after": []
     },
     {
@@ -89,7 +89,7 @@
       "id": "s9",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 7,
       "assign": "hunt",
       "after": []
     },
@@ -97,7 +97,7 @@
       "id": "s10",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 5,
       "assign": "wood",
       "after": []
     },

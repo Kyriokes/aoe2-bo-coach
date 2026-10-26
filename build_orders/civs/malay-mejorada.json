@@ -4,7 +4,7 @@
   "name": "Two Militia Rush (mejorada)",
   "civ": "malay",
   "author": "oSetinhas",
-  "description": "Mejorada con el simulador del coach desde \u0022Two Militia Rush\u0022, con la misma estrategia: Antes de \u0022Mover 3 de ovejas a caza\u0022: \u002B1 en madera, -1 en caza; Antes de \u0022Mover 3 de ovejas a caza\u0022: \u002B1 en madera, -1 en ovejas. Simulada antes: Edad Feudal 8:22, fin 11:24, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:03, fin 10:02, centro urbano parado 0 s. Malay Two Militia Rush Fuente: https://www.buildorderguide.com/builds/1VZRboZgqwk2pqH67uZi.",
+  "description": "Mejorada con el simulador del coach desde \u0022Two Militia Rush\u0022, con la misma estrategia: Antes de \u0022Mover 3 de ovejas a caza\u0022: \u002B1 en madera, -1 en caza; Antes de \u0022Construir 1 cuartel \u2192 madera\u0022: \u002B1 en madera, -1 en ovejas. Simulada antes: Edad Feudal 7:47, fin 10:49, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 6:54, fin 9:53, centro urbano parado 0 s. Malay Two Militia Rush Fuente: https://www.buildorderguide.com/builds/1VZRboZgqwk2pqH67uZi.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -76,12 +76,20 @@
       "id": "s8",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 5,
       "assign": "wood",
       "after": []
     },
     {
       "id": "s9",
+      "do": "train",
+      "what": "villager",
+      "count": 4,
+      "assign": "sheep",
+      "after": []
+    },
+    {
+      "id": "s10",
       "do": "move",
       "count": 3,
       "assign": "hunt",
@@ -89,7 +97,7 @@
       "after": []
     },
     {
-      "id": "s10",
+      "id": "s11",
       "do": "train",
       "what": "villager",
       "count": 7,
@@ -97,7 +105,7 @@
       "after": []
     },
     {
-      "id": "s11",
+      "id": "s12",
       "do": "move",
       "count": 1,
       "assign": "hunt",
@@ -105,15 +113,15 @@
       "after": []
     },
     {
-      "id": "s12",
+      "id": "s13",
       "do": "train",
       "what": "villager",
-      "count": 1,
-      "assign": "sheep",
+      "count": 5,
+      "assign": "wood",
       "after": []
     },
     {
-      "id": "s13",
+      "id": "s14",
       "do": "build",
       "what": "barracks",
       "count": 1,
@@ -122,7 +130,7 @@
       "after": []
     },
     {
-      "id": "s14",
+      "id": "s15",
       "do": "train",
       "what": "villager",
       "count": 7,
@@ -130,7 +138,7 @@
       "after": []
     },
     {
-      "id": "s15",
+      "id": "s16",
       "do": "train",
       "what": "villager",
       "count": 1,
@@ -139,7 +147,7 @@
       "group": "molino1"
     },
     {
-      "id": "s16",
+      "id": "s17",
       "do": "build",
       "what": "mill",
       "count": 1,
@@ -150,7 +158,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s17",
+      "id": "s18",
       "do": "move",
       "count": 1,
       "assign": "berries",
@@ -158,7 +166,7 @@
       "after": []
     },
     {
-      "id": "s18",
+      "id": "s19",
       "do": "train",
       "what": "villager",
       "count": 3,
@@ -166,7 +174,7 @@
       "after": []
     },
     {
-      "id": "s19",
+      "id": "s20",
       "do": "train",
       "what": "villager",
       "count": 7,
@@ -174,7 +182,7 @@
       "after": []
     },
     {
-      "id": "s20",
+      "id": "s21",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -182,7 +190,7 @@
       "at_pop": 20
     },
     {
-      "id": "s21",
+      "id": "s22",
       "do": "move",
       "count": 5,
       "assign": "wood",
@@ -190,7 +198,7 @@
       "after": []
     },
     {
-      "id": "s22",
+      "id": "s23",
       "do": "build",
       "what": "lumber_camp",
       "count": 1,
@@ -199,7 +207,7 @@
       "after": []
     },
     {
-      "id": "s23",
+      "id": "s24",
       "do": "move",
       "count": 4,
       "assign": "sheep",
@@ -207,14 +215,14 @@
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s25",
       "do": "train",
       "what": "militia",
       "count": 2,
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s26",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -223,7 +231,7 @@
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s27",
       "do": "move",
       "count": 1,
       "assign": "wood",
@@ -231,7 +239,7 @@
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s28",
       "do": "move",
       "count": 1,
       "assign": "berries",
@@ -239,7 +247,7 @@
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s29",
       "do": "move",
       "count": 2,
       "assign": "berries",
@@ -247,7 +255,7 @@
       "after": []
     },
     {
-      "id": "s29",
+      "id": "s30",
       "do": "build",
       "what": "archery_range",
       "count": 1,
@@ -256,7 +264,7 @@
       "after": []
     },
     {
-      "id": "s30",
+      "id": "s31",
       "do": "move",
       "count": 2,
       "assign": "wood",
@@ -264,7 +272,7 @@
       "after": []
     },
     {
-      "id": "s31",
+      "id": "s32",
       "do": "move",
       "count": 2,
       "assign": "berries",
@@ -272,7 +280,7 @@
       "after": []
     },
     {
-      "id": "s32",
+      "id": "s33",
       "do": "train",
       "what": "villager",
       "count": 4,
@@ -280,7 +288,7 @@
       "after": []
     },
     {
-      "id": "s33",
+      "id": "s34",
       "do": "build",
       "what": "mining_camp",
       "count": 1,

@@ -4,7 +4,7 @@
   "name": "Castle Drop ARENA (mejorada)",
   "civ": "portuguese",
   "author": "oSethinas",
-  "description": "Mejorada con el simulador del coach desde \u0022Castle Drop ARENA\u0022, con la misma estrategia: \u0022Investigar Telar\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 8:27, Edad de los Castillos 12:19, fin 14:59, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:27, Edad de los Castillos 11:27, fin 14:07, centro urbano parado 0 s. oSethinas Castle drop on Arena Fuente: https://www.buildorderguide.com/builds/waVxaGiR75R97DexFlQN.",
+  "description": "Mejorada con el simulador del coach desde \u0022Castle Drop ARENA\u0022, con la misma estrategia: Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: \u002B1 en madera, -1 en oro. Simulada antes: Edad Feudal 8:27, Edad de los Castillos 11:50, fin 14:30, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 8:16, Edad de los Castillos 11:16, fin 13:56, centro urbano parado 0 s. oSethinas Castle drop on Arena Fuente: https://www.buildorderguide.com/builds/waVxaGiR75R97DexFlQN.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -106,12 +106,20 @@
       "id": "s11",
       "do": "train",
       "what": "villager",
-      "count": 3,
+      "count": 2,
       "assign": "gold",
       "after": []
     },
     {
       "id": "s12",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "wood",
+      "after": []
+    },
+    {
+      "id": "s13",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -121,7 +129,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s13",
+      "id": "s14",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
@@ -129,7 +137,7 @@
       "at_pop": 22
     },
     {
-      "id": "s14",
+      "id": "s15",
       "do": "move",
       "count": 2,
       "assign": "wood",
@@ -137,7 +145,7 @@
       "after": []
     },
     {
-      "id": "s15",
+      "id": "s16",
       "do": "build",
       "what": "market",
       "count": 1,
@@ -146,22 +154,7 @@
       "after": []
     },
     {
-      "id": "s16",
-      "do": "train",
-      "what": "villager",
-      "count": 7,
-      "assign": "wood",
-      "after": []
-    },
-    {
       "id": "s17",
-      "do": "research",
-      "what": "loom",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s18",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -170,7 +163,22 @@
       "after": []
     },
     {
+      "id": "s18",
+      "do": "train",
+      "what": "villager",
+      "count": 8,
+      "assign": "wood",
+      "after": []
+    },
+    {
       "id": "s19",
+      "do": "research",
+      "what": "loom",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s20",
       "do": "research",
       "what": "castle_age",
       "count": 1,
@@ -178,7 +186,7 @@
       "at_pop": 23
     },
     {
-      "id": "s20",
+      "id": "s21",
       "do": "move",
       "count": 3,
       "assign": "stone",
@@ -186,7 +194,7 @@
       "after": []
     },
     {
-      "id": "s21",
+      "id": "s22",
       "do": "move",
       "count": 7,
       "assign": "stone",
@@ -194,7 +202,7 @@
       "after": []
     },
     {
-      "id": "s22",
+      "id": "s23",
       "do": "build",
       "what": "barracks",
       "count": 1,

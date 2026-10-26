@@ -4,7 +4,7 @@
   "name": "1 Range Archers (mejorada)",
   "civ": "koreans",
   "author": "Hiphopmind",
-  "description": "Mejorada con el simulador del coach desde \u00221 Range Archers\u0022, con la misma estrategia: Antes de \u0022Construir 2 granjas \u2192 granjas\u0022: \u002B4 en madera; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: \u002B2 en oro; Antes de \u0022Construir 4 granjas \u2192 granjas\u0022: -2 en oro, -4 en madera; \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022 antes que \u0022Construir 4 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:30, fin 13:28, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:30, fin 12:30, centro urbano parado 0 s. 1 Range Archers Fuente: https://www.buildorderguide.com/builds/sooX8KLK90G8iLXYsKO1.",
+  "description": "Mejorada con el simulador del coach desde \u00221 Range Archers\u0022, con la misma estrategia: Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: \u002B4 en madera, \u002B2 en oro; Antes de \u0022Construir 4 granjas \u2192 granjas\u0022: -2 en oro, -4 en madera; \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022 antes que \u0022Investigar Emplumado\u0022; \u0022Investigar Emplumado\u0022 antes que \u0022Construir 4 granjas \u2192 granjas\u0022. Simulada antes: Edad Feudal 7:30, fin 13:25, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:30, fin 12:33, centro urbano parado 0 s. 1 Range Archers Fuente: https://www.buildorderguide.com/builds/sooX8KLK90G8iLXYsKO1.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -201,19 +201,19 @@
     },
     {
       "id": "s23",
-      "do": "train",
-      "what": "villager",
-      "count": 14,
-      "assign": "wood",
-      "after": []
-    },
-    {
-      "id": "s24",
       "do": "build",
       "what": "farm",
       "count": 2,
       "assign": "farm",
       "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s24",
+      "do": "train",
+      "what": "villager",
+      "count": 12,
+      "assign": "wood",
       "after": []
     },
     {
@@ -235,18 +235,18 @@
     },
     {
       "id": "s27",
+      "do": "research",
+      "what": "fletching",
+      "count": 1,
+      "after": []
+    },
+    {
+      "id": "s28",
       "do": "build",
       "what": "farm",
       "count": 4,
       "assign": "farm",
       "from": "berries",
-      "after": []
-    },
-    {
-      "id": "s28",
-      "do": "research",
-      "what": "fletching",
-      "count": 1,
       "after": []
     }
   ],

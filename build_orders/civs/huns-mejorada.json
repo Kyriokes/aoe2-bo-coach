@@ -4,7 +4,7 @@
   "name": "Scouts \u2192 CA (mejorada)",
   "civ": "huns",
   "author": "WololoCrash",
-  "description": "Mejorada con el simulador del coach desde \u0022Scouts \u2192 CA\u0022, con la misma estrategia: Antes de \u0022Construir 1 galer\u00EDa de tiro \u2192 madera\u0022: \u002B5 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -5 en oro; \u0022Investigar Carretilla\u0022 antes que \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022. Simulada antes: Edad Feudal 7:30, Edad de los Castillos 18:30, fin 21:10, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:30, Edad de los Castillos 15:30, fin 18:11, centro urbano parado 0 s. The Truth. Fuente: https://www.buildorderguide.com/builds/LC9e8kHi1EDD9Uc3Afqg.",
+  "description": "Mejorada con el simulador del coach desde \u0022Scouts \u2192 CA\u0022, con la misma estrategia: Antes de \u0022Construir 1 molino \u2192 bayas\u0022: \u002B1 en madera, -1 en caza; Antes de \u0022Construir 1 herrer\u00EDa \u2192 madera\u0022: \u002B5 en oro; Antes de \u0022Construir 1 campamento minero \u2192 oro\u0022: -5 en oro. Simulada antes: Edad Feudal 7:30, Edad de los Castillos 16:58, fin 19:38, centro urbano parado 0 s. Despu\u00E9s: Edad Feudal 7:38, Edad de los Castillos 15:51, fin 18:31, centro urbano parado 0 s. The Truth. Fuente: https://www.buildorderguide.com/builds/LC9e8kHi1EDD9Uc3Afqg.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -49,8 +49,8 @@
       "id": "s5",
       "do": "train",
       "what": "villager",
-      "count": 1,
-      "assign": "hunt",
+      "count": 5,
+      "assign": "wood",
       "after": []
     },
     {
@@ -77,7 +77,7 @@
       "id": "s8",
       "do": "train",
       "what": "villager",
-      "count": 2,
+      "count": 1,
       "assign": "hunt",
       "after": [],
       "note": "Atra\u00E9 3 ciervo"
@@ -191,14 +191,6 @@
     },
     {
       "id": "s22",
-      "do": "train",
-      "what": "villager",
-      "count": 5,
-      "assign": "gold",
-      "after": []
-    },
-    {
-      "id": "s23",
       "do": "build",
       "what": "archery_range",
       "count": 1,
@@ -207,14 +199,15 @@
       "after": []
     },
     {
-      "id": "s24",
-      "do": "research",
-      "what": "wheelbarrow",
-      "count": 1,
+      "id": "s23",
+      "do": "train",
+      "what": "villager",
+      "count": 5,
+      "assign": "gold",
       "after": []
     },
     {
-      "id": "s25",
+      "id": "s24",
       "do": "build",
       "what": "blacksmith",
       "count": 1,
@@ -223,7 +216,7 @@
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s25",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -231,6 +224,13 @@
       "from": "gold",
       "after": [],
       "note": "Agregado al importar"
+    },
+    {
+      "id": "s26",
+      "do": "research",
+      "what": "wheelbarrow",
+      "count": 1,
+      "after": []
     },
     {
       "id": "s27",
