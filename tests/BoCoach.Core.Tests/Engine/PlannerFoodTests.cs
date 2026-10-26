@@ -48,18 +48,22 @@ public class PlannerFoodTests
 
     [Theory]
     [MemberData(nameof(AllBuildOrders))]
-    public void Con_comida_de_sobra_todas_las_BO_dan_lo_mismo_que_con_la_infinita(string file)
+    public void Con_comida_de_sobra_las_BO_dan_lo_mismo_salvo_los_granjeros_que_esperan_su_granja(string file)
     {
         var bo = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, file));
 
         var infinite = new Planner(TestData.GameData).Simulate(bo);
         var plenty = new Planner(TestData.GameData, new PlannerSettings { Food = Plenty }).Simulate(bo);
 
+        // Con comida de sobra no se acaba nada. Lo único que cambia es el granjero que espera su granja: con la comida
+        // infinita juntaba de una granja que todavía no existía (35 de las 129 BO del repo, revisión del 2026-10-26).
+        Assert.Empty(infinite.Idle);
+        Assert.All(plenty.Idle, i => Assert.Equal(IdleReason.WaitingFarm, i.Reason));
+        if (plenty.Idle.Count > 0)
+            return;
         Assert.Equal(infinite.Steps.Select(s => (s.Step.Id, s.Start, s.End)), plenty.Steps.Select(s => (s.Step.Id, s.Start, s.End)));
         Assert.Equal(infinite.Blocks, plenty.Blocks);
         Assert.Equal(infinite.Timeline, plenty.Timeline);
-        Assert.Empty(infinite.Idle);
-        Assert.Empty(plenty.Idle);
     }
 
     [Fact]
@@ -142,6 +146,19 @@ public class PlannerFoodTests
 
         Assert.Contains(plan.Blocks, b => b.StepId == "casa" && b.Reason == BlockReason.Resources && b.Missing == Resource.Wood);
         Assert.All(plan.Timeline, s => Assert.True(s.Stock.Wood >= 0));
+    }
+
+    [Fact]
+    public void Un_granjero_que_espera_su_granja_no_junta()
+    {
+        // El paso de granjas que la hace desde la granja espera madera: su granjero todavía no tiene dónde trabajar.
+        var farm = new Step { Id = "granja", Do = StepAction.Build, What = "farm", From = GatherSource.Farm, Assign = GatherSource.Farm };
+
+        var plan = Run(Arabia, Start(GatherSource.Farm, 1, food: 0, wood: 0), farm);
+
+        Assert.Equal(0, plan.Timeline[^1].Stock.Food, 6);
+        var idle = Assert.Single(plan.Idle);
+        Assert.Equal((GatherSource.Farm, IdleReason.WaitingFarm, 1, 0.0), (idle.Source, idle.Reason, idle.Villagers, idle.From));
     }
 
     [Fact]

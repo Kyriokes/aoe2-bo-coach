@@ -129,6 +129,12 @@ public enum IdleReason
 
     /// <summary>La granja se vació y no hay madera para resembrarla.</summary>
     Reseed,
+
+    /// <summary>
+    /// Granjeros sin granja que esperan la suya: queda un paso de granjas que la hace desde la granja y todavía no la
+    /// empezó (falta madera o le toca después).
+    /// </summary>
+    WaitingFarm,
 }
 
 /// <summary>Un intervalo en que aldeanos de una fuente no juntaron nada (D12: "6 aldeanos parados: se acabaron las ovejas").</summary>
@@ -378,22 +384,39 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
 
         private void Gather()
         {
-            _food?.SyncFarms(_villagers[GatherSource.Farm], FarmFood());
+            var waiting = _food is null ? 0 : WaitingFarmers();
+            _food?.SyncFarms(_villagers[GatherSource.Farm] - waiting, FarmFood());
             foreach (var (source, count) in _villagers)
             {
                 if (count == 0)
                     continue;
                 var resource = source.Resource();
-                var gathered = _rates[source] * count * Tick;
+                var working = source == GatherSource.Farm ? count - waiting : count;
+                var gathered = _rates[source] * working * Tick;
                 if (_food is not null && FoodStocks.Counts(source))
                 {
-                    var idle = _food.Idle(source, count);
+                    if (source == GatherSource.Farm && waiting > 0)
+                        RecordIdle(source, IdleReason.WaitingFarm, waiting);
+                    var idle = _food.Idle(source, working);
                     if (idle > 0)
                         RecordIdle(source, source == GatherSource.Farm ? IdleReason.Reseed : IdleReason.Exhausted, idle);
-                    gathered = _food.Gather(source, count, gathered);
+                    gathered = _food.Gather(source, working, gathered);
                 }
                 _stock = _stock.With(resource, _stock[resource] + gathered);
             }
+        }
+
+        /// <summary>
+        /// Los granjeros sin granja que esperan la suya: los que sobran sobre las granjas hechas, hasta las que quedan por
+        /// empezar en pasos de granjas que se hacen desde la granja (así las hace un granjero que todavía no tiene la
+        /// suya). El que llega a la granja sin un paso así trae su granja.
+        /// </summary>
+        private int WaitingFarmers()
+        {
+            var pending = _items
+                .Where(i => i.End is null && i.Step is { Do: StepAction.Build, What: "farm", From: GatherSource.Farm })
+                .Sum(i => i.Remaining);
+            return Math.Min(pending, Math.Max(0, _villagers[GatherSource.Farm] - _buildings.GetValueOrDefault("farm")));
         }
 
         /// <summary>
