@@ -161,7 +161,9 @@ el coach y el replanificador en vivo siguen así). Prendida en el modo asistido:
   jabalí" de la BO los encuentra donde estaban; queda registrado en `PlanResult.Idle` ("6 aldeanos parados: se
   acabaron las ovejas a las 6:10").
 - **Granjas:** cada granjero tiene su granja (el Planner lleva la comida de una granja por granjero; el que llega a la
-  granja sin un paso de granjas también trae la suya, y el generador hace siempre una por granjero). Al agotarse se
+  granja sin un paso de granjas también trae la suya, y el generador hace siempre una por granjero). El que llega con
+  un paso de granjas pendiente que la hace desde la granja la espera sin juntar (`IdleReason.WaitingFarm`; revisión
+  del 2026-10-26: con la comida infinita juntaba de una granja que no existía). Al agotarse se
   resiembra sola cobrando la madera de una granja con el costo de la civ (60 sin bonificaciones), antes que cualquier
   otro gasto, como la cola de resiembra del molino. Sin madera, el granjero espera y queda registrado. Las mejoras de
   granja valen para las granjas nuevas y las resembradas, como en el juego.
