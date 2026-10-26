@@ -38,9 +38,13 @@ public class PlannerFoodTests
 
     private static Step Loom(int at) => new() { Id = "telar", Do = StepAction.Research, What = "loom", AtTime = at };
 
-    private static PlanResult Run(FoodSupply food, PlanStart start, params Step[] steps) =>
+    private static PlanResult Run(FoodSupply food, PlanStart start, params Step[] steps) => Run(food, start, null, steps);
+
+    private static PlanResult Run(FoodSupply food, PlanStart start, CivBonuses? civ, params Step[] steps) =>
         new Planner(TestData.GameData, new PlannerSettings { Food = food })
-            .Simulate(steps.Select(s => new PlanItem(s, s.Count)).ToList(), start);
+            .Simulate(steps.Select(s => new PlanItem(s, s.Count)).ToList(), start, civ);
+
+    private static readonly FoodSupply SmallFarms = Arabia with { FarmFood = 50 };
 
     [Theory]
     [MemberData(nameof(AllBuildOrders))]
@@ -95,5 +99,60 @@ public class PlannerFoodTests
         Assert.Equal(200, plan.Timeline[^1].Stock.Food, 6);
         var idle = Assert.Single(plan.Idle);
         Assert.Equal((GatherSource.Hunt, IdleReason.Exhausted, 3, 0.0), (idle.Source, idle.Reason, idle.Villagers, idle.From));
+    }
+
+    [Fact]
+    public void La_granja_se_resiembra_con_madera_y_sin_madera_el_granjero_espera()
+    {
+        var plan = Run(SmallFarms, Start(GatherSource.Farm, 1, food: 0, wood: 60), Loom(600));
+
+        Assert.Equal(100, plan.Timeline[^1].Stock.Food, 6);
+        Assert.Equal(0, plan.Timeline[^1].Stock.Wood, 6);
+        var idle = Assert.Single(plan.Idle);
+        Assert.Equal((GatherSource.Farm, IdleReason.Reseed, 1), (idle.Source, idle.Reason, idle.Villagers));
+        Assert.True(idle.To >= 600);
+    }
+
+    [Fact]
+    public void La_collera_agranda_las_granjas_nuevas()
+    {
+        var start = Start(GatherSource.Farm, 1, food: 0, wood: 0) with { Researched = ["horse_collar"] };
+
+        var plan = Run(SmallFarms, start, Loom(600));
+
+        Assert.Equal(125, plan.Timeline[^1].Stock.Food, 6);
+    }
+
+    [Fact]
+    public void Los_teutones_resiembran_mas_barato()
+    {
+        var plan = Run(SmallFarms, Start(GatherSource.Farm, 1, food: 0, wood: 72), TestData.GameData.Civ("teutons"), Loom(600));
+
+        Assert.Equal(150, plan.Timeline[^1].Stock.Food, 6);
+        Assert.Equal(0, plan.Timeline[^1].Stock.Wood, 6);
+    }
+
+    [Fact]
+    public void La_resiembra_paga_antes_que_los_pasos()
+    {
+        var start = Start(GatherSource.Farm, 1, food: 0, wood: 60) with { IdleVillagers = 1 };
+        var house = new Step { Id = "casa", Do = StepAction.Build, What = "house", Builders = 1, AtTime = 1 };
+
+        var plan = Run(Arabia with { FarmFood = 0.0001 }, start, house);
+
+        Assert.Contains(plan.Blocks, b => b.StepId == "casa" && b.Reason == BlockReason.Resources && b.Missing == Resource.Wood);
+        Assert.All(plan.Timeline, s => Assert.True(s.Stock.Wood >= 0));
+    }
+
+    [Fact]
+    public void Los_granjeros_que_se_van_y_vuelven_traen_granja_llena()
+    {
+        var leave = new Step { Id = "a-madera", Do = StepAction.Move, Count = 1, From = GatherSource.Farm, Assign = GatherSource.Wood, AtTime = 5 };
+        var back = new Step { Id = "a-granja", Do = StepAction.Move, Count = 1, From = GatherSource.Wood, Assign = GatherSource.Farm, AtTime = 10 };
+
+        var plan = Run(Arabia with { FarmFood = 40 }, Start(GatherSource.Farm, 2, food: 0, wood: 0), leave, back, Loom(400));
+
+        var rate = Rate(GatherSource.Farm);
+        Assert.InRange(plan.Timeline[^1].Stock.Food, 80 + 4 * rate, 80 + 6 * rate);
     }
 }

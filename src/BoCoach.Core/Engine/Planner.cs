@@ -327,6 +327,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             while (true)
             {
                 CompleteRunning();
+                ReseedFarms();
                 // Los pasos arrancan en orden: cada uno cuando el anterior arrancó. Los aldeanos son la excepción: el
                 // centro urbano no para porque un paso de antes espere (un molino sin madera, un campamento sin
                 // constructor); alcanza con que la BO haya llegado hasta ahí. Lo que no es aldeanos sigue esperando
@@ -377,6 +378,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
 
         private void Gather()
         {
+            _food?.SyncFarms(_villagers[GatherSource.Farm], FarmFood());
             foreach (var (source, count) in _villagers)
             {
                 if (count == 0)
@@ -387,12 +389,31 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 {
                     var idle = _food.Idle(source, count);
                     if (idle > 0)
-                        RecordIdle(source, IdleReason.Exhausted, idle);
+                        RecordIdle(source, source == GatherSource.Farm ? IdleReason.Reseed : IdleReason.Exhausted, idle);
                     gathered = _food.Gather(source, count, gathered);
                 }
                 _stock = _stock.With(resource, _stock[resource] + gathered);
             }
         }
+
+        /// <summary>
+        /// Las granjas vacías se resiembran solas con la madera de una granja (el costo de la civ), antes que cualquier
+        /// paso, como la cola de resiembra del molino. Solo con la comida finita.
+        /// </summary>
+        private void ReseedFarms()
+        {
+            if (_food is null)
+                return;
+            var cost = _civ.Cost(_data.Get("farm"), _age).Wood;
+            var reseeded = _food.Reseed(_stock.Wood, cost, FarmFood());
+            if (reseeded > 0)
+                _stock = _stock.With(Resource.Wood, _stock.Wood - cost * reseeded);
+        }
+
+        /// <summary>La comida de una granja nueva o resembrada: la base más lo que suman las mejoras ya investigadas.</summary>
+        private double FarmFood() =>
+            (_settings.Food?.FarmFood ?? _data.FoodPerObject[GatherSource.Farm])
+            + _researched.Sum(t => _data.TryGet(t, out var tech) ? tech.FarmFood : 0);
 
         /// <summary>Registra aldeanos que no juntan nada este segundo; si ya estaban así, estira el intervalo (como <see cref="Block"/>).</summary>
         private void RecordIdle(GatherSource source, IdleReason reason, int villagers)
