@@ -8,7 +8,7 @@ El diseño completo y las fases están en [PLAN.md](PLAN.md).
 
 ## Descargar
 
-Cada versión publicada está en [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases): un `.zip` con `BoCoach.exe` (trae .NET adentro, no hay que instalar nada) y la carpeta `data`. Cada corrida del CI también deja la versión portable como artefacto (14 días). Para publicar una versión se sube una etiqueta `v0.9.0`: el workflow `release.yml` arma el `.zip` y la release.
+Cada versión publicada está en [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases): un `.zip` con `BoCoach.exe` (trae .NET adentro, no hay que instalar nada) y la carpeta `data`. Cada corrida del CI también deja la versión portable como artefacto (14 días). Cada versión nueva que llega a `main` (la `<Version>` de `BoCoach.App.csproj` sin su etiqueta) se publica sola: el workflow `release.yml` arma el `.zip`, la release y la etiqueta `v<versión>`, y el botón "Descargar para Windows" de la web baja esa. También se puede publicar subiendo una etiqueta `v0.9.0` a mano.
 
 ## Requisitos para desarrollar
 

@@ -53,7 +53,7 @@ git push -q origin <rama de la fase>
 ```
 
 - A `main` solo cuando el usuario lo pide en el chat (fast-forward). Por iniciativa propia el clasificador de permisos lo bloquea.
-- No subas etiquetas `v*`: disparan la release pública y eso lo decide el usuario.
+- No subas etiquetas `v*`: la release pública sale sola con cada push a `main` que trae una versión nueva (`release.yml`), así que publicar es pedir el push a `main`. Por eso a `main` va solo lo que el usuario ya probó.
 - El CI corre en cada push; si hace falta, se consulta sin autenticación: `curl -s "https://api.github.com/repos/Kyriokes/aoe2-bo-coach/actions/runs?per_page=3"`.
 
 ## 6. Avisarle al usuario
