@@ -183,6 +183,20 @@ export function parseSlug(slug: string): { civ: string } | { a: string; b: strin
   return { a, b, canonical: first === a };
 }
 
+/**
+ * Lo que hace el proxy con una dirección de /cruces/<slug>: la pareja al revés redirige a la del orden alfabético y
+ * lo que no es ni civ ni pareja da 404. null deja seguir a la página (también /cruces e /cruces/ir).
+ */
+export function matchupRouting(pathname: string): { redirect: string } | { notFound: true } | null {
+  const match = /^\/cruces\/([^/]+)\/?$/.exec(pathname);
+  if (!match || match[1] === "ir") return null;
+  const parsed = parseSlug(decodeURIComponent(match[1]));
+  if (!parsed) return { notFound: true };
+  if ("civ" in parsed) return parsed.civ === match[1] ? null : { redirect: `/cruces/${parsed.civ}` };
+  const canonical = pairSlug(parsed.a, parsed.b);
+  return canonical === match[1] ? null : { redirect: `/cruces/${canonical}` };
+}
+
 /** "todas", "menos de 850", "de 1050 a 1300", "1600 o más". */
 export function eloLabel(data: MatchupData, band: number): string {
   const l = data.eloLimits;

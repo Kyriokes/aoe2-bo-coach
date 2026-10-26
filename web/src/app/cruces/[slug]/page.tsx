@@ -8,7 +8,11 @@ import { MatchupDuration } from "@/components/MatchupDuration";
 import { MatchupRivals, type Choice } from "@/components/MatchupRivals";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
-/** Todas las páginas se arman al compilar: las de cada civ y las de cada pareja (con las claves en orden alfabético). */
+/**
+ * Todas las páginas se arman al compilar: las de cada civ y las de cada pareja (con las claves en orden alfabético).
+ * La pareja al revés y lo que no es ni civ ni pareja los resuelve src/proxy.ts antes de llegar acá (308 y 404 de
+ * verdad: con el prerenderizado parcial, una redirección o un notFound armados al pedirlos salían con 200).
+ */
 export function generateStaticParams() {
   const data = getMatchups();
   if (!data) return [];
@@ -29,7 +33,7 @@ export async function generateMetadata({ params }: PageProps<"/cruces/[slug]">):
   if (!parsed || (!("civ" in parsed) && !parsed.canonical)) return { title: "No encontrado", robots: { index: false } };
   const title = "civ" in parsed
     ? `${civLabel(parsed.civ)}: contra qué civs gana`
-    : `${civLabel(parsed.a)} contra ${civLabel(parsed.b)}: estadísticas del cruce`;
+    : `${civLabel(parsed.a)} contra ${civLabel(parsed.b).toLowerCase()}: estadísticas del cruce`;
   const description = "civ" in parsed
     ? `Cuánto gana ${civLabel(parsed.civ)} contra cada civ de Age of Empires II en 1v1 y cómo le va por equipos, por mapa y Elo, con partidas clasificatorias reales.`
     : `Cuánto gana ${civLabel(parsed.a)} contra ${civLabel(parsed.b)} en Age of Empires II por mapa, Elo y duración de la partida, con partidas clasificatorias reales.`;
@@ -159,7 +163,7 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
       <header className="flex flex-col gap-2">
         <Breadcrumb civ={a} />
         <h1 className="text-2xl font-semibold">
-          {nameA} contra {nameB}
+          {nameA} contra {nameB.toLowerCase()}
         </h1>
         <p className="text-lg">
           <span className={chanceColor(general)}>

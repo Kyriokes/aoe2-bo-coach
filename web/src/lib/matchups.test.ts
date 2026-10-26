@@ -9,6 +9,7 @@ import {
   isEven,
   MAP_NAMES,
   oneVsOne,
+  matchupRouting,
   pairSlug,
   parseMatchups,
   parseSlug,
@@ -116,6 +117,19 @@ describe("estadísticas de cruces", () => {
     expect(parseSlug("franks-vs-franks")).toBeNull();
     expect(parseSlug("zzz")).toBeNull();
     expect(parseSlug("franks-vs-britons-vs-celts")).toBeNull();
+  });
+
+  it("el proxy redirige la pareja al revés y da 404 a lo que no existe", () => {
+    expect(matchupRouting("/cruces/franks-vs-britons")).toEqual({ redirect: "/cruces/britons-vs-franks" });
+    expect(matchupRouting("/cruces/Franks-VS-Britons")).toEqual({ redirect: "/cruces/britons-vs-franks" });
+    expect(matchupRouting("/cruces/zzz")).toEqual({ notFound: true });
+    expect(matchupRouting("/cruces/zzz-vs-franks")).toEqual({ notFound: true });
+    expect(matchupRouting("/cruces/franks-vs-franks")).toEqual({ notFound: true });
+    expect(matchupRouting("/cruces/britons-vs-franks")).toBeNull();
+    expect(matchupRouting("/cruces/franks")).toBeNull();
+    expect(matchupRouting("/cruces/ir")).toBeNull();
+    expect(matchupRouting("/cruces")).toBeNull();
+    expect(matchupRouting("/biblioteca")).toBeNull();
   });
 
   it("los nombres de mapas son los de maps.json", () => {
