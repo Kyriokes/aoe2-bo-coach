@@ -79,6 +79,12 @@ public sealed record PlannerSettings
 
     /// <summary>Cada cuántos segundos guardar una muestra para la línea de tiempo.</summary>
     public double SampleEvery { get; init; } = 10;
+
+    /// <summary>
+    /// D12: la comida que hay en el mapa (ovejas, caza, bayas y granjas se agotan). Null = infinita, como en el editor
+    /// manual, el optimizador y el coach; la usa el modo asistido.
+    /// </summary>
+    public FoodSupply? Food { get; init; }
 }
 
 /// <summary>Trabajo que falta de un paso. <paramref name="Remaining"/> sale del Tracker (o es el total en el editor).</summary>
@@ -113,6 +119,22 @@ public sealed record PlanBlock(string StepId, BlockReason Reason, double From, d
     /// o el aldeano que lo construye está en la cola. Es una espera, no un trabón.
     /// </summary>
     public bool Expected { get; init; }
+}
+
+/// <summary>Por qué unos aldeanos no juntan nada (solo con la comida finita, D12).</summary>
+public enum IdleReason
+{
+    /// <summary>La fuente se acabó (ovejas, caza o bayas).</summary>
+    Exhausted,
+
+    /// <summary>La granja se vació y no hay madera para resembrarla.</summary>
+    Reseed,
+}
+
+/// <summary>Un intervalo en que aldeanos de una fuente no juntaron nada (D12: "6 aldeanos parados: se acabaron las ovejas").</summary>
+public sealed record PlanIdle(GatherSource Source, IdleReason Reason, double From, double To, int Villagers)
+{
+    public double Duration => To - From;
 }
 
 /// <param name="Start">Cuándo empieza (primer aldeano en cola, primer cimiento, click de la tech).</param>
@@ -150,6 +172,9 @@ public sealed record PlanResult(
 
     /// <summary>Los edificios: los del arranque y los que se terminaron, en orden.</summary>
     public IReadOnlyList<PlanBuilding> Buildings { get; init; } = [];
+
+    /// <summary>Los aldeanos que se quedaron sin juntar nada; siempre vacío con la comida infinita.</summary>
+    public IReadOnlyList<PlanIdle> Idle { get; init; } = [];
 
     public bool Completed => Steps.All(s => s.End is not null);
 
@@ -204,6 +229,11 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private readonly Dictionary<string, List<Instance>> _instances = [];
         private readonly List<PlanJob> _jobs = [];
         private readonly List<PlanBuilding> _buildingList = [];
+        private readonly List<PlanIdle> _idleList = [];
+
+        /// <summary>Lo que queda de cada fuente de comida; null con la comida infinita.</summary>
+        private readonly FoodStocks? _food;
+
         private double _time;
         private ResourceAmounts _stock;
 
@@ -244,6 +274,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 }
             }
             _gatherModel = new GatherModel(data, settings.Efficiency);
+            _food = settings.Food is { } supply ? new FoodStocks(supply) : null;
             _researched = [.. start.Researched];
             RefreshRates();
             _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step)) { PaidAt = item.PaidAt }).ToList();
@@ -331,6 +362,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             {
                 Jobs = _jobs,
                 Buildings = _buildingList,
+                Idle = _idleList,
             };
         }
 
@@ -350,8 +382,28 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 if (count == 0)
                     continue;
                 var resource = source.Resource();
-                _stock = _stock.With(resource, _stock[resource] + _rates[source] * count * Tick);
+                var gathered = _rates[source] * count * Tick;
+                if (_food is not null && FoodStocks.Counts(source))
+                {
+                    var idle = _food.Idle(source, count);
+                    if (idle > 0)
+                        RecordIdle(source, IdleReason.Exhausted, idle);
+                    gathered = _food.Gather(source, count, gathered);
+                }
+                _stock = _stock.With(resource, _stock[resource] + gathered);
             }
+        }
+
+        /// <summary>Registra aldeanos que no juntan nada este segundo; si ya estaban así, estira el intervalo (como <see cref="Block"/>).</summary>
+        private void RecordIdle(GatherSource source, IdleReason reason, int villagers)
+        {
+            var i = _idleList.FindLastIndex(r => r.Source == source && r.Reason == reason);
+            if (i >= 0 && _idleList[i].Villagers == villagers && _idleList[i].To >= _time)
+            {
+                _idleList[i] = _idleList[i] with { To = _time + Tick };
+                return;
+            }
+            _idleList.Add(new PlanIdle(source, reason, _time, _time + Tick, villagers));
         }
 
         /// <summary>Tasas por aldeano con la edad y las tecnologías de ahora (cambian cuando termina una).</summary>
