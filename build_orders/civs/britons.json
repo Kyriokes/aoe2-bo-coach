@@ -83,13 +83,11 @@
     },
     {
       "id": "s9",
-      "do": "build",
-      "what": "mill",
+      "do": "move",
       "count": 1,
       "assign": "berries",
       "from": "wood",
-      "after": [],
-      "note": "Agregado al importar"
+      "after": []
     },
     {
       "id": "s10",

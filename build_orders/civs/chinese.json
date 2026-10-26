@@ -92,13 +92,12 @@
     },
     {
       "id": "s10",
-      "do": "build",
-      "what": "mill",
+      "do": "move",
       "count": 1,
       "assign": "berries",
       "from": "wood",
       "after": [],
-      "note": "Agregado al importar. Atra\u00E9 jabal\u00ED"
+      "note": "Atra\u00E9 jabal\u00ED"
     },
     {
       "id": "s11",
