@@ -395,7 +395,11 @@ public sealed class Coach
         }
         if (Tracker.InProgress.Any(s => s.Step.What is { } what && _data.TryGet(what, out var e) && e.MadeIn == "town_center"))
             _townCenterBusyAt = snapshot.Time;
-        if (snapshot.Queue is { } queue)
+        // La cola cuenta recién cuando mostró algo: una caja corrida sobre el mapa la lee vacía toda la partida (en la
+        // 20261025-230041 el centro urbano quedó "parado" los 29:53 con aldeanos saliendo sin parar).
+        if (snapshot.Queue is { Count: > 0 })
+            _queueTrusted = true;
+        if (snapshot.Queue is { } queue && _queueTrusted)
         {
             _queue = queue;
             if (snapshot.Time - _queueSeenAt > QueueStaleSeconds)
@@ -423,6 +427,7 @@ public sealed class Coach
     /// <summary>Segundos sin leer la cola a partir de los que se vuelve a deducir por los aldeanos.</summary>
     private const double QueueStaleSeconds = 5;
 
+    private bool _queueTrusted;
     private double _queueSeenAt = double.NegativeInfinity;
     private double _queueFirstSeenAt = double.NegativeInfinity;
     private double _townCenterQueuedAt = double.NegativeInfinity;

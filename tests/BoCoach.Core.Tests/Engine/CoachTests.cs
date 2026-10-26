@@ -415,6 +415,27 @@ public class CoachTests
     }
 
     [Fact]
+    public void La_cola_vacia_no_cuenta_hasta_que_la_cola_muestra_algo()
+    {
+        // Partida 20261025-230041: la caja de la cola había quedado corrida sobre el mapa (la calibración de la prueba
+        // anterior) y se leía vacía toda la partida: el overlay y el informe dieron el centro urbano parado los 29:53
+        // mientras salían aldeanos sin parar.
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, int villagers, params string[] queue) =>
+            At(time, 200, villagers) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
+
+        // Un aldeano cada 25 s y la cola vacía: se deduce por los aldeanos (no está parado).
+        for (var t = 0; t <= 100; t++)
+            Assert.Null(coach.Update(Queue(1000 + t, 10 + t / 25)).TownCenterIdle);
+
+        // La cola muestra un aldeano: desde ahí vale, y vacía 6 s es el centro urbano parado.
+        coach.Update(Queue(1101, 14, "villager"));
+        Assert.Null(coach.Update(Queue(1104, 14)).TownCenterIdle);
+        Assert.NotNull(coach.Update(Queue(1107, 14)).TownCenterIdle);
+    }
+
+    [Fact]
     public void Una_investigacion_en_la_cola_queda_en_curso()
     {
         // Partida 20261018-132830: el clic en Castillos (20:26) no se vio en el stock, pero la cola lo mostraba.
