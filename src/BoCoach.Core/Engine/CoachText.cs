@@ -23,6 +23,40 @@ public sealed record CoachLines(
 
     /// <summary>Paso mixto: las otras metas del paso actual, una por renglón ("✓" las hechas).</summary>
     public IReadOnlyList<string> Goals { get; init; } = [];
+
+    /// <summary>Con la BO terminada (<see cref="CoachView.Compact"/>): el overlay muestra solo <see cref="Card"/>.</summary>
+    public bool Compact { get; init; }
+
+    /// <summary>Con <see cref="Compact"/>, lo que pide hacer algo, lo más urgente primero. Vacía: no se muestra nada.</summary>
+    public IReadOnlyList<CardLine> Card { get; init; } = [];
+}
+
+/// <summary>Un renglón de la tarjeta chica de la BO terminada.</summary>
+public sealed record CardLine(string Text, CardKind Kind);
+
+/// <summary>De qué es un renglón de la tarjeta (el overlay le da su color).</summary>
+public enum CardKind
+{
+    /// <summary>Aviso del log o señal de la partida (granja agotada, ataque, clic del rival).</summary>
+    Alert,
+
+    /// <summary>El centro urbano parado.</summary>
+    TownCenter,
+
+    /// <summary>Se puede hacer clic en la próxima edad.</summary>
+    Ready,
+
+    /// <summary>Faltan edificios para la próxima edad.</summary>
+    Missing,
+
+    /// <summary>Un edificio de la postura parado o que falta.</summary>
+    Building,
+
+    /// <summary>Mover aldeanos de un recurso a otro.</summary>
+    Suggestion,
+
+    /// <summary>Una tecnología que falta.</summary>
+    Tech,
 }
 
 public static class CoachText
@@ -48,7 +82,32 @@ public static class CoachText
                 Goals = [],
             };
         }
+        if (view.Compact)
+            lines = lines with { Compact = true, Card = Card(view, lines) };
         return lines;
+    }
+
+    /// <summary>
+    /// La tarjeta de la BO terminada: los avisos, el centro urbano parado, la próxima edad si se puede hacer clic o le
+    /// faltan edificios, los edificios de la postura parados, mover aldeanos y las tecnologías que faltan. No va lo que
+    /// solo informa (lo que falta juntar para la edad, lo que está en curso, el reparto).
+    /// </summary>
+    private static List<CardLine> Card(CoachView view, CoachLines lines)
+    {
+        var card = new List<CardLine>();
+        if (lines.Alert is { } alert)
+            card.Add(new CardLine($"⚠ {alert}", CardKind.Alert));
+        if (lines.Idle is { } idle)
+            card.Add(new CardLine($"⏱ {idle}", CardKind.TownCenter));
+        if (view.Posture is { NextAgeInProgress: false } posture && (posture.NextAgeReady || posture.NextAgeBuildingsMissing > 0)
+            && PostureStatus(posture) is { } status)
+            card.Add(new CardLine(status, posture.NextAgeReady ? CardKind.Ready : CardKind.Missing));
+        if (view.Posture is { } gaps)
+            card.AddRange(gaps.Gaps.Select(g => new CardLine(GapText(g), CardKind.Building)));
+        if (lines.Suggestion is { } suggestion)
+            card.Add(new CardLine($"⇄ {suggestion}", CardKind.Suggestion));
+        card.AddRange(view.Techs.Select(t => new CardLine(TechText(t), CardKind.Tech)));
+        return card;
     }
 
     private static CoachLines BaseLines(CoachView view, GameData data)
@@ -79,11 +138,12 @@ public static class CoachText
         }
         if (view.Current is null && view.Posture is { } posture)
         {
-            // D2: la BO terminó y queda su postura de cierre.
+            // D2: la BO terminó y queda su postura de cierre. Primero se avisa que terminó y que el panel se achica; con
+            // Compact, el overlay muestra solo la tarjeta.
             return new CoachLines(
-                PostureTitle(posture),
-                PostureStatus(posture),
-                null,
+                "BO terminada",
+                posture.Queue.Count > 0 ? PostureTitle(posture) : null,
+                "En unos segundos el panel se achica: aparece solo cuando hay algo que hacer",
                 [.. posture.Gaps.Select(GapText), .. running],
                 [],
                 null,

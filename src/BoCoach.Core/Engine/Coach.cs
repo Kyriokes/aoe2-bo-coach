@@ -101,6 +101,15 @@ public sealed record CoachView(
 
     /// <summary>La rama de la BO en curso (D3), o null.</summary>
     public BranchView? Branch { get; init; }
+
+    /// <summary>
+    /// Con la BO terminada, pasado el aviso de <see cref="Coach.FinishedNoticeSeconds"/>: el overlay muestra solo lo
+    /// que pide hacer algo (pedido del usuario, 2026-10-26).
+    /// </summary>
+    public bool Compact { get; init; }
+
+    /// <summary>Con la BO terminada, las tecnologías que faltan (<see cref="TechReminders"/>).</summary>
+    public IReadOnlyList<TechReminder> Techs { get; init; } = [];
 }
 
 /// <summary>
@@ -132,6 +141,8 @@ public sealed class Coach
     private ResourceAmounts? _guide;
     private readonly PostureCoach _posture;
     private PostureView? _postureView;
+    private double? _postureSince;
+    private readonly TechReminders _techs;
     private IReadOnlyList<QueueItem>? _queue;
     private ResourceAmounts? _guideCandidate;
     private double _guideCandidateSince;
@@ -146,6 +157,7 @@ public sealed class Coach
         Tracker.Update(State);
         Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
         _posture = new PostureCoach(Tracker.BuildOrder, data);
+        _techs = new TechReminders(data, Tracker.BuildOrder.Civ, _posture.Definition.Queue);
         Signals = new GameSignals(data);
         _branches = new Branches(Tracker.BuildOrder, data, events);
         _report = new GameReportBuilder(Tracker.BuildOrder, _planner);
@@ -181,6 +193,9 @@ public sealed class Coach
     /// <summary>Cuántos segundos de partida se muestra un aviso.</summary>
     public double AlertSeconds { get; init; } = 8;
 
+    /// <summary>Segundos de partida que el overlay muestra "BO terminada" antes de quedar solo con lo que hay que hacer.</summary>
+    public double FinishedNoticeSeconds { get; init; } = 10;
+
     /// <summary>
     /// Margen sobre el tiempo de un aldeano antes de avisar que el centro urbano está parado: la cola no se ve, pero si
     /// pasan más de 25 s (más este margen) sin que suba el total del HUD, no estuvo produciendo todo el tiempo.
@@ -211,8 +226,11 @@ public sealed class Coach
         if (clicked || State.LastAdded > 0 || snapshot.Time - _plannedAt >= ReplanEvery)
             Replan();
         _postureView = Abandonment.Abandoned ? null : PostureView();
+        _postureSince = _postureView is null ? null : _postureSince ?? State.Time;
         Economy = _economy.Update(Tracker, _plan, PostureDemand());
         _suggestion = Economy.Suggestion;
+        if (_postureView is not null)
+            _techs.Update(State, FreshQueue, LivePlan.Start(Tracker).Age, State.VillagersOn ?? Actual(), Built, ResearchedByBuildOrder);
         UpdateGuide(snapshot.Time);
         View = BuildView();
         _report.Observe(snapshot, View, State, Tracker.Steps);
@@ -299,8 +317,16 @@ public sealed class Coach
         return count >= 1 ? new Suggestion(from, to, count) : null;
     }
 
-    /// <summary>Atajo "avanzar": da por hecho el paso actual (con una rama en curso, la cierra).</summary>
-    public CoachView Advance() => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(Tracker.Advance);
+    /// <summary>
+    /// Atajo "avanzar": da por hecho el paso actual (con una rama en curso, la cierra). Con la BO terminada, descarta
+    /// la primera tecnología que falta ("Ya está": el coach arrancó con la partida empezada y no vio que se hizo).
+    /// </summary>
+    public CoachView Advance() => _branches.View() is not null ? Correct(() => _branches.Dismiss())
+        : Finished ? Correct(() => _techs.Dismiss())
+        : Correct(Tracker.Advance);
+
+    /// <summary>La BO terminó (queda la postura de cierre) y no hay una rama en curso.</summary>
+    private bool Finished => Tracker.Current is null && _postureView is not null && _branches.View() is null;
 
     /// <summary>
     /// Atajo "retroceder": deshace lo último que se completó o salteó. Con la BO abandonada, la retoma (lo ajeno y el
@@ -362,9 +388,16 @@ public sealed class Coach
     /// armadura acolchada toda la partida.
     /// </summary>
     private bool CanResearchNow(Entity tech, Age age) =>
-        tech.Age <= age
-        && (tech.MadeIn is not { } building || building == BuildOrderValidator.StartingBuilding || State.Count($"{building}_built") > 0
-            || Tracker.Steps.Any(s => s.Step.Do == StepAction.Build && s.Step.What == building && s.State == StepState.Done));
+        tech.Age <= age && (tech.MadeIn is not { } building || building == BuildOrderValidator.StartingBuilding || Built(building));
+
+    /// <summary>Hay un edificio así: lo avisó el log o está hecho un paso de la BO que lo construye.</summary>
+    private bool Built(string building) =>
+        State.Count($"{building}_built") > 0
+        || Tracker.Steps.Any(s => s.Step.Do == StepAction.Build && s.Step.What == building && s.State == StepState.Done);
+
+    /// <summary>Un paso de la BO hizo esa investigación, la tiene en curso o se salteó.</summary>
+    private bool ResearchedByBuildOrder(string tech) =>
+        Tracker.Steps.Any(s => s.Step.Do == StepAction.Research && s.Step.What == tech && s.State is StepState.Done or StepState.InProgress or StepState.Skipped);
 
     /// <summary>
     /// Una investigación de la BO que aparece en la cola (avanzando o esperando) ya se pagó: queda en curso aunque la
@@ -601,6 +634,8 @@ public sealed class Coach
             Posture = _postureView,
             Signals = RecentSignals(),
             Branch = _branches.View(),
+            Compact = Finished && State.Time - _postureSince >= FinishedNoticeSeconds,
+            Techs = Finished ? _techs.Shown : [],
         };
     }
 
@@ -611,9 +646,11 @@ public sealed class Coach
     /// el juego no avisa (granjas) y la producción militar a medias: esos nunca se cierran solos.
     /// </summary>
     private PostureView? PostureView() => Tracker.Current is null
-        ? _posture.View(State, State.Time - _queueSeenAt <= QueueStaleSeconds ? _queue : null, LivePlan.Start(Tracker).Age,
-            _data.Civ(Tracker.BuildOrder.Civ))
+        ? _posture.View(State, FreshQueue, LivePlan.Start(Tracker).Age, _data.Civ(Tracker.BuildOrder.Civ))
         : null;
+
+    /// <summary>La última cola leída, si se leyó hace poco (null si no).</summary>
+    private IReadOnlyList<QueueItem>? FreshQueue => State.Time - _queueSeenAt <= QueueStaleSeconds ? _queue : null;
 
     /// <summary>
     /// D2: con la postura en pantalla, la economía (y con ella la GD) junta para producir sin parar sus unidades y

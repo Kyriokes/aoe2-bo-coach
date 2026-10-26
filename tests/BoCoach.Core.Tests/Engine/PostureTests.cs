@@ -147,8 +147,66 @@ public class PostureTests
 
         Assert.NotNull(view.Posture);
         var lines = CoachText.Lines(view, Data);
-        Assert.Equal("Postura: aldeanos y exploradores siempre en cola", lines.Current);
+        Assert.Equal("BO terminada", lines.Current);
+        Assert.Equal("Postura: aldeanos y exploradores siempre en cola", lines.Status);
         Assert.Contains("Sin establo: los exploradores no tienen dónde salir", lines.Running);
+    }
+
+    // Con la BO terminada (pedido del usuario, 2026-10-26: "debería pasar a ser mínima u ocultarse", opción A): 10 s el
+    // panel completo con "BO terminada"; después, una tarjeta chica con lo que pide hacer algo, y nada si no hay nada.
+    [Fact]
+    public void Con_la_BO_terminada_el_panel_avisa_y_despues_queda_solo_lo_que_hay_que_hacer()
+    {
+        var coach = new Coach(Scouts, Data, TestData.Events);
+        for (var i = 0; i < Scouts.Steps.Count && coach.Tracker.Current is not null; i++)
+            coach.Advance();
+        var view = coach.Update(new GameSnapshot(900, Poor, 25, 30));
+        Assert.False(view.Compact);
+        Assert.False(CoachText.Lines(view, Data).Compact);
+
+        view = coach.Update(new GameSnapshot(909, Poor, 25, 30));
+        Assert.False(view.Compact);
+        view = coach.Update(new GameSnapshot(910, Poor, 25, 30));
+        var lines = CoachText.Lines(view, Data);
+        Assert.True(view.Compact);
+        Assert.True(lines.Compact);
+        // Lo que pide hacer algo, lo más urgente primero; lo que solo informa (juntar para la edad) no va.
+        Assert.Equal(new CardLine("Para Edad de los Castillos: te faltan 2 edificios de Edad Feudal", CardKind.Missing), lines.Card[0]);
+        Assert.Equal(new CardLine("Sin establo: los exploradores no tienen dónde salir", CardKind.Building), lines.Card[1]);
+        Assert.DoesNotContain(lines.Card, c => c.Text.Contains("guardando") || c.Text.Contains("siempre en cola"));
+
+        // Con el establo y la galería hechos (sin leer la cola), ya no faltan edificios ni hay establo parado.
+        coach.Update(new GameSnapshot(911, Poor, 25, 30, [new GameEvent("stable_built", 911)]));
+        view = coach.Update(new GameSnapshot(912, Poor, 25, 30, [new GameEvent("archery_range_built", 912)]));
+        Assert.DoesNotContain(CoachText.Lines(view, Data).Card, c => c.Kind is CardKind.Missing or CardKind.Building);
+
+        // "Atrás" vuelve a la BO: el panel completo otra vez.
+        Assert.False(coach.Back().Compact);
+    }
+
+    [Fact]
+    public void Con_la_BO_terminada_pide_las_tecnologias_que_faltan_y_Ya_esta_descarta_la_primera()
+    {
+        var coach = new Coach(Scouts, Data, TestData.Events) { FinishedNoticeSeconds = 0 };
+        for (var i = 0; i < Scouts.Steps.Count && coach.Tracker.Current is not null; i++)
+            coach.Advance();
+        var rich = new ResourceAmounts(2000, 2000, 0, 2000);
+        // La BO hizo el telar, el campamento maderero, el molino y el establo; no hay campamento minero.
+        var view = coach.Update(new GameSnapshot(900, rich, 25, 30, [new GameEvent("stable_built", 900), new GameEvent("archery_range_built", 900)])
+        {
+            VillagersOn = new ResourceAmounts(10, 8, 0, 4),
+        });
+
+        Assert.Equal(["wheelbarrow", "double_bit_axe"], view.Techs.Select(t => t.Tech));
+        var card = CoachText.Lines(view, Data).Card;
+        Assert.Contains(card, c => c is { Text: "Hacé clic en Edad de los Castillos", Kind: CardKind.Ready });
+        Assert.Equal(["Investigá Carretilla (centro urbano)", "Investigá Hacha de doble filo (campamento maderero)"],
+            card.Where(c => c.Kind == CardKind.Tech).Select(c => c.Text));
+
+        // "Ya está" saca la carretilla; la que sigue entra con la próxima captura.
+        Assert.Equal(["double_bit_axe"], coach.Advance().Techs.Select(t => t.Tech));
+        view = coach.Update(new GameSnapshot(901, rich, 25, 30) { VillagersOn = new ResourceAmounts(10, 8, 0, 4) });
+        Assert.Equal(["double_bit_axe", "horse_collar"], view.Techs.Select(t => t.Tech));
     }
 
     // La GD y la economía usan la demanda de la postura (lo que faltaba de D2): producir sin parar cada unidad de la
