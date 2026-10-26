@@ -185,6 +185,18 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
     }
 
+    // El panel baja solo fuera de la partida (la pantalla de carga, para no tapar el mapa). En plena partida queda
+    // arriba a la derecha aunque no se lea el reloj: abajo tapaba el minimapa (pedido del usuario, 2026-10-26).
+    [Fact]
+    public void En_plena_partida_el_panel_no_baja_aunque_no_se_lea_el_reloj()
+    {
+        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(300, new ResourceAmounts(100, 200, 200, 100), 23, 25));
+
+        Assert.False(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 20) with { InGame = true }));
+        Assert.False(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 1)));
+        Assert.True(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 3)));
+    }
+
     // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
     [Theory]
     [InlineData("", "por equipos (sin tu Elo)")]

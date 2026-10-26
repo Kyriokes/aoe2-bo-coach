@@ -243,6 +243,32 @@ public sealed class LiveCoachTests : IDisposable
         Assert.NotNull(live.TakePendingReport()); // lecturas nuevas desde el informe
     }
 
+    // El panel del coach bajaba en plena partida con 2 s sin leer el reloj y tapaba el minimapa (pedido del usuario,
+    // 2026-10-26: "esto jamás debería ocurrir durante el juego"). Un hueco sin reloj de menos de 30 s sigue siendo la
+    // partida; recién al terminar deja de serlo.
+    [Fact]
+    public async Task Un_hueco_sin_reloj_en_plena_partida_sigue_siendo_la_partida()
+    {
+        var session = RecordedSession.Load(Fixture);
+        using var live = Live(new GapFrames(session, before: 10, gap: 70, gapInFront: true));
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 10; i++)
+            await live.StepAsync();
+        Assert.True(last!.InGame);
+
+        for (var i = 0; i < 20; i++)
+            await live.StepAsync();
+        Assert.True(last!.SecondsWithoutClock >= 10, $"sin reloj {last.SecondsWithoutClock} s");
+        Assert.True(last.InGame);
+
+        for (var i = 0; i < 50; i++)
+            await live.StepAsync();
+        Assert.True(last!.Waiting);
+        Assert.False(last.InGame);
+    }
+
     // D6: partida nueva sin pantalla de carga leída: el reloj vuelve a empezar (3 lecturas seguidas para atrás).
     [Fact]
     public async Task Un_reloj_que_vuelve_a_empezar_es_otra_partida()

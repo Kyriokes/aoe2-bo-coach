@@ -86,6 +86,7 @@ public sealed class UsageMeter
 /// <param name="Civ">La civ con que corre el coach (clave de game_data, o "any").</param>
 /// <param name="InFront">False mientras el juego está abierto pero no al frente (alt-tab): no se lee nada y el overlay se esconde.</param>
 /// <param name="Waiting">Esperando una partida: antes de la primera pantalla de carga o del primer reloj, y después de un fin de partida.</param>
+/// <param name="InGame">Hay una partida en curso: se leyó el reloj desde la última pantalla de carga y la partida no terminó (30 s sin reloj). Un hueco sin reloj más corto (algo tapa el reloj, una lectura que falla) sigue siendo la partida.</param>
 public sealed record CoachFrame(
     CoachView View,
     HudState? Hud,
@@ -103,7 +104,8 @@ public sealed record CoachFrame(
     string Civ = "any",
     bool InFront = true,
     bool Waiting = false,
-    string? Notice = null);
+    string? Notice = null,
+    bool InGame = false);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -488,7 +490,7 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice, _clockSeenInGame));
     }
 
     /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>
