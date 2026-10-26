@@ -287,7 +287,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             {
                 CompleteRunning();
                 for (var i = 0; i < _items.Count; i++)
-                    Advance(_items[i], i == 0 || _items[i - 1].Started);
+                    Advance(_items[i], i == 0 || Releases(_items[i - 1]));
 
                 if (_time >= nextSample)
                 {
@@ -311,6 +311,15 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 Buildings = _buildingList,
             };
         }
+
+        /// <summary>
+        /// Si el paso ya deja arrancar al siguiente. Un clic de edad cuenta recién cuando se paga: lo que la BO pone
+        /// después (pasar aldeanos a la madera mientras se investiga) no se hace antes del clic. Lo demás cuenta cuando
+        /// entra en la cola o empieza.
+        /// </summary>
+        private static bool Releases(ItemSim item) =>
+            item.End is not null
+            || (item.Step.Do == StepAction.Research && AgeReachedBy(item.Step.What ?? "") is not null ? item.Start is not null : item.Started);
 
         private void Gather()
         {

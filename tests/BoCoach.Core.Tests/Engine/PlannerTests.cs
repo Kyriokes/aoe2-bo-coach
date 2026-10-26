@@ -95,6 +95,20 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Lo_que_va_despues_del_clic_de_edad_espera_a_que_se_pague()
+    {
+        // "Clic en Feudal y pasá 3 de ovejas a madera": si todavía no hay 500 de comida, los 3 siguen en las ovejas.
+        var start = PlanStart.Standard with { Stock = ResourceAmounts.Zero, IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 10 } };
+        var feudal = new Step { Id = "s1", Do = StepAction.Research, What = "feudal_age" };
+        var move = new Step { Id = "s2", Do = StepAction.Move, Count = 3, From = GatherSource.Sheep, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1), new PlanItem(move, 1)], start);
+
+        Assert.True(plan.ClickTime("feudal_age") > 100);
+        Assert.True(plan.For("s2")!.Start >= plan.ClickTime("feudal_age"));
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));
