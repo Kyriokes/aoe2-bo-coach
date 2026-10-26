@@ -8,6 +8,7 @@ using BoCoach.App.Coaching;
 using BoCoach.App.Overlay;
 using BoCoach.App.Web;
 using BoCoach.Core;
+using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Recording;
@@ -228,6 +229,8 @@ public partial class App : Application
     /// <summary>
     /// Dibuja el overlay como se vería en un momento de una partida grabada y cierra.
     /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo nombre --at 8:20 [--debug].
+    /// --bo es parte del nombre de una BO de la biblioteca o la ruta de un .json (una BO corta que ya terminó muestra la
+    /// tarjeta de la BO terminada).
     /// </summary>
     /// <param name="bands">
     /// Simula el casillero del diseño nuevo en cada recurso (el de la celda a 1080p) y la celda entera de inactivos, y
@@ -235,8 +238,10 @@ public partial class App : Application
     /// </param>
     private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false)
     {
-        var entry = data.Library.List().FirstOrDefault(e => bo is null || e.Name.Contains(bo, StringComparison.OrdinalIgnoreCase));
-        if (entry?.BuildOrder is not { } buildOrder || readings is null)
+        var buildOrder = bo is not null && File.Exists(bo)
+            ? BuildOrderSerializer.Load(bo)
+            : data.Library.List().FirstOrDefault(e => bo is null || e.Name.Contains(bo, StringComparison.OrdinalIgnoreCase))?.BuildOrder;
+        if (buildOrder is null || readings is null)
         {
             Shutdown(2);
             return;
