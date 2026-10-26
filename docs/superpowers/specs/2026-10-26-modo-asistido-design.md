@@ -150,15 +150,21 @@ después de juntar.
 Opción del Planner, `PlannerSettings.Food` (null = infinita, como hoy; el editor manual, el optimizador, las BO por civ,
 el coach y el replanificador en vivo siguen así). Prendida en el modo asistido:
 
-- **Cantidades:** la comida de cada objeto sale del `.dat` con el extractor (oveja, jabalí, arbusto de bayas, granja, y
-  lo que suman a la granja la collera, el arado pesado y la rotación de cultivos) a game_data. Cuántos objetos hay de
-  cada uno va por mapa en `data/maps.json` (`food`: ovejas, jabalíes, arbustos; por defecto los de Arabia, para que el
-  usuario los revise como el resto del archivo).
+- **Cantidades:** la comida de cada objeto sale del `.dat` con el extractor a game_data (`food_per_object`: oveja 100,
+  jabalí 340, arbusto de bayas 125, granja 175, verificado el 2026-10-26) y lo que suma cada tecnología a la granja
+  (`farm_food`: collera +75, arado pesado +125). La rotación de cultivos (+175) no es una entidad de game_data todavía:
+  entra en el sub-paso (d) con las mejoras eco de Castillos. Cuántos objetos hay de cada uno va por mapa en
+  `data/maps.json` (`food`: ovejas, jabalíes, arbustos; por defecto los de Arabia, 8, 2 y 6, para que el usuario los
+  revise como el resto del archivo). Los ciervos no cuentan.
 - **Simulación:** cada fuente lleva lo que le queda y lo baja con lo que se recolecta. Los aldeanos de una fuente
-  agotada quedan sin tarea y queda registrado (un `PlanBlock` nuevo o su equivalente: "6 aldeanos parados: se acabaron
-  las ovejas a las 6:10").
-- **Granjas:** cada granja tiene su comida; al agotarse se resiembra sola cobrando 60 de madera (como la cola de
-  resiembra del molino). Sin madera, el granjero espera y queda registrado.
+  agotada quedan **parados en esa fuente** (no juntan nada) hasta que un paso los mueve, así un "mover de ovejas al
+  jabalí" de la BO los encuentra donde estaban; queda registrado en `PlanResult.Idle` ("6 aldeanos parados: se
+  acabaron las ovejas a las 6:10").
+- **Granjas:** cada granjero tiene su granja (el Planner lleva la comida de una granja por granjero; el que llega a la
+  granja sin un paso de granjas también trae la suya, y el generador hace siempre una por granjero). Al agotarse se
+  resiembra sola cobrando la madera de una granja con el costo de la civ (60 sin bonificaciones), antes que cualquier
+  otro gasto, como la cola de resiembra del molino. Sin madera, el granjero espera y queda registrado. Las mejoras de
+  granja valen para las granjas nuevas y las resembradas, como en el juego.
 - Pesca, ciervos y mercado no entran en la primera versión (sección 11).
 
 ## 5. Piezas del Core
