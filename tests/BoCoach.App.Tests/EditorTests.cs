@@ -250,10 +250,12 @@ public sealed class EditorTests : IDisposable
         Assert.Contains("Sin población", blocked.BlockText);
         Assert.Contains(editor.Summary, line => line.StartsWith("Bloqueo de población en el paso 2"));
 
-        // Con una casa más antes de los aldeanos, el bloqueo desaparece.
+        // Con una casa más antes de los aldeanos, el bloqueo desaparece. La hacen los de las ovejas: no hay leñadores, y
+        // una casa que nadie puede hacer no frena al centro urbano (los aldeanos salen igual y se quedan sin lugar).
         editor.SelectedStep = editor.Steps[0];
         editor.AddBuildCommand.Execute(null);
         editor.SelectedStep!.Count = 2;
+        editor.SelectedStep.From = GatherSource.Sheep;
         Assert.False(editor.Steps[2].IsPopBlocked);
         Assert.DoesNotContain(editor.Summary, line => line.StartsWith("Bloqueo de población"));
     }
