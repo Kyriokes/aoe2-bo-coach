@@ -20,11 +20,15 @@ public class HudLayoutTests
         Assert.Equal("bocoach-2026-10", layout.Name);
         Assert.Equal(0.4286, layout.PixelsPerUnitAt1080p, 4);
         Assert.Equal(HudLayout.CellOrder, layout.Cells.Select(c => c.Name));
-        Assert.Equal((2720, 108), (layout.Bar.Width, layout.Bar.Height));
+        // La barra cubre la pantalla entera a cualquier escala del HUD (el juego la recorta en el borde): pedido del
+        // usuario en la tercera prueba (2026-10-25), la de 2720 se veía cortada.
+        Assert.Equal((4600, 108), (layout.Bar.Width, layout.Bar.Height));
         Assert.Equal(10, layout.Cell("wood").X);
         Assert.Equal(80, layout.Cell("population").Chip!.Width);
         Assert.Equal(5, layout.Anchors.Count());
-        Assert.Equal(new UnitRect(2734, 12, 230, 84), layout.ClockRect());
+        // El reloj va a `gap` del final de la última celda (no de la barra), sobre un campo negro largo que tapa todo
+        // su texto ("hh:mm:ss (Normal - 1.7) (Estándar)" se salía del de 230).
+        Assert.Equal(new UnitRect(2734, 12, 800, 84), layout.ClockRect());
     }
 
     [Fact]

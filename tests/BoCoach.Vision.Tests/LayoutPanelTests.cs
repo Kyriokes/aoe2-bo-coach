@@ -56,6 +56,29 @@ public class LayoutPanelTests
         Assert.Null(LayoutPanel.Chip(Layout, Wood, WoodBox(chip: false)));
     }
 
+    /// <summary>
+    /// En población el total va escrito sobre el casillero: un número de tres cifras, o el suavizado de los bordes
+    /// del juego, puede tocar las líneas que se miran a 1 px del borde. Unos píxeles sueltos no lo rechazan; un
+    /// tercio de la línea de otro color (casillero corrido), sí.
+    /// </summary>
+    [Fact]
+    public void Un_numero_que_toca_la_linea_del_borde_no_pierde_el_casillero()
+    {
+        var box = WoodBox();
+        var chip = Layout.ChipRect(Wood, new PixelRect(0, 0, box.Width, box.Height));
+        void White(int x, int y) { var i = (y * box.Width + x) * 4; (box.Bgra[i], box.Bgra[i + 1], box.Bgra[i + 2]) = (255, 255, 255); }
+        for (var x = chip.X + chip.Width / 2 - 1; x <= chip.X + chip.Width / 2 + 1; x++)
+            White(x, chip.Y + 1);
+        for (var y = chip.Y + chip.Height / 2 - 1; y <= chip.Y + chip.Height / 2 + 1; y++)
+            White(chip.X + chip.Width - 2, y);
+
+        Assert.Equal(chip, LayoutPanel.Chip(Layout, Wood, box));
+
+        for (var x = chip.X + 1; x < chip.X + 1 + chip.Width / 3; x++)
+            White(x, chip.Y + 1);
+        Assert.Null(LayoutPanel.Chip(Layout, Wood, box));
+    }
+
     [Fact]
     public void La_celda_de_inactivos_devuelve_la_caja_entera()
     {

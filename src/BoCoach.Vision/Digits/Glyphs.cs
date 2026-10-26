@@ -9,15 +9,20 @@ public sealed record Glyph(int Left, int Right, float[] Cell, float WidthRatio)
 }
 
 /// <summary>
-/// Separa los caracteres de una región: columnas con tinta seguidas forman un carácter; si un bloque es mucho
-/// más ancho que un dígito típico (dígitos pegados, como el "00" del reloj), se parte en partes iguales.
+/// Separa los caracteres de una región: columnas con tinta seguidas forman un carácter. Un bloque de dos dígitos
+/// típicos o más son dígitos pegados (el "00" del reloj) y se parte en partes iguales; uno algo más ancho que un dígito
+/// con una columna de poca tinta adentro es un dígito con algo fino pegado (el "0" y el ":" del reloj del HUD propio)
+/// y se parte en ese valle. Si además se pasa cómo se parece una grilla a la letra, un bloque así que no se parece a
+/// ningún carácter se parte donde las dos partes sí se parecen (el "/2" de "12/20").
 /// </summary>
 public static class Glyphs
 {
     /// <summary>Tinta mínima para que una columna cuente como parte de un carácter.</summary>
     private const float ColumnInk = 0.6f;
 
-    public static IReadOnlyList<Glyph> Extract(CapturedImage image, InkSpec ink, double typicalWidthRatio)
+    /// <param name="distance">Distancia de una grilla a su carácter más parecido de la letra, o null para no usarla.</param>
+    /// <param name="maxDistance">Hasta esta distancia una grilla se parece a un carácter.</param>
+    public static IReadOnlyList<Glyph> Extract(CapturedImage image, InkSpec ink, double typicalWidthRatio, Func<float[], float>? distance = null, float maxDistance = float.MaxValue)
     {
         var map = ink.InkMap(image);
         var (w, h) = (image.Width, image.Height);
@@ -50,9 +55,22 @@ public static class Glyphs
         var textHeight = band.Bottom - band.Top + 1;
 
         var columns = new float[w];
+        var solid = new int[w];
+        var runs = new int[w];
         for (var x = 0; x < w; x++)
+        {
+            var inRun = false;
             for (var y = 0; y < h; y++)
+            {
                 columns[x] += map[y * w + x];
+                var firm = map[y * w + x] >= SolidInk;
+                if (firm)
+                    solid[x]++;
+                if (firm && !inRun)
+                    runs[x]++;
+                inRun = firm;
+            }
+        }
 
         var blocks = new List<(int A, int B)>();
         for (var x = 0; x < w; x++)
@@ -66,21 +84,86 @@ public static class Glyphs
         }
 
         var typical = Math.Max(2, typicalWidthRatio * textHeight);
-        var glyphs = new List<Glyph>();
-        foreach (var (a, b) in blocks)
+        Glyph Cut(int left, int right) => Normalize(map, w, h, left, right, textHeight);
+
+        // Un bloque más ancho que un dígito que quedó entero (sin valle) y no se parece a nada: dos caracteres que se
+        // tocan con trazo firme (el "/" y el "2" de "12/20"). Se prueba cada corte y gana el que deja las dos partes
+        // más parecidas a la letra, si las dos se parecen.
+        IEnumerable<Glyph> Recognized(int a, int b)
         {
-            var width = b - a + 1;
-            var parts = Math.Max(1, (int)Math.Round(width / typical));
-            if (width < typical * 1.6)
-                parts = 1;
-            for (var p = 0; p < parts; p++)
+            var whole = Cut(a, b);
+            if (distance is null || b - a + 1 < typical * ValleyMinWidth || distance(whole.Cell) <= maxDistance)
+                return [whole];
+            (Glyph Left, Glyph Right, float Worst)? best = null;
+            for (var x = a + 1; x < b - 1; x++)
             {
-                var left = a + (int)Math.Round(p * width / (double)parts);
-                var right = a + (int)Math.Round((p + 1) * width / (double)parts) - 1;
-                glyphs.Add(Normalize(map, w, h, left, right, textHeight));
+                var (left, right) = (Cut(a, x), Cut(x + 1, b));
+                var worst = Math.Max(distance(left.Cell), distance(right.Cell));
+                if (worst <= maxDistance && (best is null || worst < best.Value.Worst))
+                    best = (left, right, worst);
             }
+            return best is { } found ? [found.Left, found.Right] : [whole];
         }
-        return glyphs;
+
+        return [.. blocks.SelectMany(block => Split(columns, solid, runs, block.A, block.B, typical)).SelectMany(part => Recognized(part.A, part.B))];
+    }
+
+    /// <summary>Un píxel con esta tinta o más es trazo firme; menos, borde suavizado.</summary>
+    private const float SolidInk = 0.5f;
+
+    /// <summary>Un bloque de al menos este ancho (en dígitos típicos) puede ser dos caracteres que se tocan.</summary>
+    private const double ValleyMinWidth = 1.2;
+
+    /// <summary>Desde este ancho (en dígitos típicos) un bloque sin valle son dígitos pegados: partes iguales.</summary>
+    private const double GluedMinWidth = 1.6;
+
+    /// <summary>Columnas desde cada borde del bloque donde no se busca el valle (cada parte queda de 2 o más).</summary>
+    private const int ValleyMargin = 2;
+
+    /// <summary>El valle tiene que tener menos de esta parte de la tinta de la columna más cargada del bloque.</summary>
+    private const double ValleyDepth = 0.3;
+
+    /// <summary>
+    /// Píxeles firmes que puede tener la columna del valle, todos seguidos: donde dos caracteres se tocan hay borde
+    /// suavizado y a lo sumo la punta de uno (el "/" de "N/M" toca al dígito que sigue por arriba).
+    /// </summary>
+    private const int ValleySolidMax = 3;
+
+    /// <summary>
+    /// Parte un bloque de columnas con tinta en caracteres. Un bloque más ancho que un dígito con un valle adentro son
+    /// dos caracteres que se tocan (el "0" y el ":" del reloj del HUD propio, "4/10" en "N/M", "60" en un stock;
+    /// grabación 20261025-024356) y se parte en el valle, que no va a ninguno de los dos (es el borde suavizado de
+    /// ambos); se repite en cada parte. Sin valle, desde 1,6 dígitos son dígitos pegados y se parte en partes iguales.
+    /// </summary>
+    private static IEnumerable<(int A, int B)> Split(float[] columns, int[] solid, int[] runs, int a, int b, double typical)
+    {
+        var width = b - a + 1;
+        if (width >= typical * ValleyMinWidth && Valley(columns, solid, runs, a, b) is { } valley)
+            return Split(columns, solid, runs, a, valley - 1, typical).Concat(Split(columns, solid, runs, valley + 1, b, typical));
+        if (width < typical * GluedMinWidth)
+            return [(a, b)];
+        var parts = Math.Max(2, (int)Math.Round(width / typical));
+        return Enumerable.Range(0, parts).Select(p => (a + (int)Math.Round(p * width / (double)parts), a + (int)Math.Round((p + 1) * width / (double)parts) - 1));
+    }
+
+    /// <summary>
+    /// La columna interior con menos tinta entre las que son casi todo borde suavizado (pocos píxeles firmes y
+    /// seguidos), si tiene bastante menos que la columna más cargada; si no, null. El hueco de un "0" también tiene
+    /// poca tinta, pero firme y en dos tramos (los arcos de arriba y de abajo): no es un valle, y tomándolo "60" se
+    /// partía en "6", "1", "1".
+    /// </summary>
+    private static int? Valley(float[] columns, int[] solid, int[] runs, int a, int b)
+    {
+        var peak = 0f;
+        for (var x = a; x <= b; x++)
+            peak = Math.Max(peak, columns[x]);
+        var (valley, valleyInk) = (-1, float.MaxValue);
+        for (var x = a + ValleyMargin; x <= b - ValleyMargin; x++)
+        {
+            if (solid[x] <= ValleySolidMax && runs[x] <= 1 && columns[x] < valleyInk)
+                (valley, valleyInk) = (x, columns[x]);
+        }
+        return valley >= 0 && valleyInk <= ValleyDepth * peak ? valley : null;
     }
 
     /// <summary>

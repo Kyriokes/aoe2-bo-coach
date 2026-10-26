@@ -15,6 +15,9 @@ public static class LayoutPanel
     /// <summary>Hasta cuántos píxeles (a 1080p) se corre un campo para seguir a su fondo negro.</summary>
     public const int Refine = 3;
 
+    /// <summary>Parte de cada línea del borde del casillero que tiene que ser de su color.</summary>
+    public const double LineMatch = 0.8;
+
     /// <summary>
     /// El rectángulo del casillero si su color está en el lugar que dice el diseño (las cuatro líneas a 1 px de su
     /// borde, dentro del marco que la GD de la app deja libre); null si no está (mod viejo, sin mod, caja corrida).
@@ -29,16 +32,25 @@ public static class LayoutPanel
         if (inner.Width < 2 || inner.Height < 2 || inner.X + inner.Width > box.Width || inner.Y + inner.Height > box.Height)
             return null;
         var color = chip.Color.Captured;
-        for (var x = inner.X; x < inner.X + inner.Width; x++)
+        // Cada línea tiene que ser del color del casillero en su mayor parte: el total de población va escrito sobre
+        // el casillero y puede tocarlas, y los bordes del juego salen suavizados. Un casillero corrido 2 px o más
+        // deja una línea entera afuera.
+        bool Line(IEnumerable<(int X, int Y)> pixels)
         {
-            if (!Similar(box.Pixel(x, inner.Y), color) || !Similar(box.Pixel(x, inner.Y + inner.Height - 1), color))
-                return null;
+            int total = 0, matching = 0;
+            foreach (var (x, y) in pixels)
+            {
+                total++;
+                if (Similar(box.Pixel(x, y), color))
+                    matching++;
+            }
+            return matching >= LineMatch * total;
         }
-        for (var y = inner.Y; y < inner.Y + inner.Height; y++)
-        {
-            if (!Similar(box.Pixel(inner.X, y), color) || !Similar(box.Pixel(inner.X + inner.Width - 1, y), color))
-                return null;
-        }
+        var columns = Enumerable.Range(inner.X, inner.Width);
+        var rows = Enumerable.Range(inner.Y, inner.Height);
+        if (!Line(columns.Select(x => (x, inner.Y))) || !Line(columns.Select(x => (x, inner.Y + inner.Height - 1)))
+            || !Line(rows.Select(y => (inner.X, y))) || !Line(rows.Select(y => (inner.X + inner.Width - 1, y))))
+            return null;
         return rect;
     }
 

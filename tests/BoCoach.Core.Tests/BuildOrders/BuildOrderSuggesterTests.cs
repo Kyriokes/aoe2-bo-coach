@@ -1,4 +1,6 @@
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
+using BoCoach.Core.Tests.Data;
 
 namespace BoCoach.Core.Tests.BuildOrders;
 
@@ -234,5 +236,94 @@ public class BuildOrderSuggesterTests
         Assert.Equal(suggestion.Score, BuildOrderSuggester.Score(Archers, match, Small));
         Assert.True(suggestion.Score > BuildOrderSuggester.Score(Scouts, match, Small));
         Assert.Equal(0, BuildOrderSuggester.Score(Archers with { Civ = "otra" }, match, Small));
+    }
+
+    [Fact]
+    public void Ventanas_por_defecto_y_del_archivo()
+    {
+        Assert.Equal([1, 2], CivStyles.Empty.Window("archers"));
+        Assert.Equal([1, 2], CivStyles.Empty.Window("maa"));
+        Assert.Equal([3, 4], CivStyles.Empty.Window("fast_castle"));
+        Assert.Empty(CivStyles.Empty.Window("dragones"));
+
+        var path = Path.Combine(Path.GetTempPath(), $"civ_styles_{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """{ "civs": { "franks": ["scouts"] }, "windows": { "archers": [2, 9, "x"], "scouts": "mal" } }""");
+        try
+        {
+            var styles = CivStyles.Load(path);
+            Assert.Equal([2], styles.Window("archers"));
+            Assert.Equal([1, 2], styles.Window("scouts"));
+            Assert.Equal([3, 4], styles.Window("fast_castle"));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void El_archivo_del_repo_tiene_las_ventanas()
+    {
+        Assert.Equal([1, 2], Styles.Window("scouts"));
+        Assert.Equal([1, 2], Styles.Window("archers"));
+        Assert.Equal([3, 4], Styles.Window("fast_castle"));
+    }
+
+    /// <summary>
+    /// britons|franks con, para los britanos, franja 1 = 44 %, 2 = 45 %, 3 y 4 = 50 %, 5 = <paramref name="larga"/> y
+    /// general 50 %: a los francos les va mejor corto. Igual en todos los mapas y franjas de Elo.
+    /// </summary>
+    private static MatchupStats CortoParaFrancos(int[]? larga = null)
+    {
+        int[] Celda(int m, int e, int d) => d switch
+        {
+            0 => MatchupJson.Cell(500, 480, 520, 600),
+            1 => MatchupJson.Cell(440, 400, 480, 60),
+            2 => MatchupJson.Cell(450, 410, 490, 60),
+            5 => larga ?? MatchupJson.Cell(560, 520, 600, 60),
+            _ => MatchupJson.Cell(500, 460, 540, 60),
+        };
+        return MatchupStats.Parse(MatchupJson.Build(
+            new Dictionary<string, Func<int, int, int, int[]>> { ["britons|franks"] = Celda },
+            new Dictionary<string, Func<int, int, int, int[]>> { ["franks"] = Celda }));
+    }
+
+    private static readonly MatchSetup FrancosContraBritanos = new("franks", "britons", Elo: 1100);
+
+    [Fact]
+    public void La_ventana_del_cruce_suma_a_la_BO_que_la_aprovecha()
+    {
+        var stats = CortoParaFrancos();
+
+        var exploradores = BuildOrderSuggester.Score(Scouts, FrancosContraBritanos, CivStyles.Empty, stats)
+                           - BuildOrderSuggester.Score(Scouts, FrancosContraBritanos, CivStyles.Empty);
+        var castillo = BuildOrderSuggester.Score(FastCastle, FrancosContraBritanos, CivStyles.Empty, stats)
+                       - BuildOrderSuggester.Score(FastCastle, FrancosContraBritanos, CivStyles.Empty);
+        Assert.Equal(1.1, exploradores, 2);
+        Assert.Equal(0, castillo, 2);
+
+        var sugerida = BuildOrderSuggester.Suggest([Scouts, FastCastle], FrancosContraBritanos, CivStyles.Empty, stats);
+        Assert.NotNull(sugerida);
+        Assert.Same(Scouts, sugerida.BuildOrder);
+        Assert.Contains("el cruce se gana más en partidas cortas", sugerida.Reason);
+    }
+
+    [Fact]
+    public void Sin_tendencia_no_suma()
+    {
+        // La franja larga (para los francos, 52 % de 48 a 56) toca a la corta (56 % de 52 a 60): no se distingue del ruido.
+        var stats = CortoParaFrancos(larga: MatchupJson.Cell(480, 440, 520, 60));
+        Assert.Equal(BuildOrderSuggester.Score(Scouts, FrancosContraBritanos, CivStyles.Empty),
+            BuildOrderSuggester.Score(Scouts, FrancosContraBritanos, CivStyles.Empty, stats), 6);
+    }
+
+    [Fact]
+    public void Sin_datos_de_cruces_la_sugerencia_no_cambia()
+    {
+        var sinDatos = BuildOrderSuggester.Suggest(Library, new MatchSetup("britons", "franks", Elo: 1100), Styles);
+        var vacio = BuildOrderSuggester.Suggest(Library, new MatchSetup("britons", "franks", Elo: 1100), Styles, MatchupStats.Empty);
+        Assert.Equal(sinDatos?.BuildOrder, vacio?.BuildOrder);
+        Assert.Equal(sinDatos?.Reason, vacio?.Reason);
+        Assert.Equal(sinDatos?.Score, vacio?.Score);
     }
 }

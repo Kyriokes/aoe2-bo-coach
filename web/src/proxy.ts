@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { matchupRouting } from "@/lib/matchups";
 import { supabaseConfigured, supabaseKey, supabaseUrl } from "@/lib/supabase/env";
 
 /**
@@ -7,6 +8,12 @@ import { supabaseConfigured, supabaseKey, supabaseUrl } from "@/lib/supabase/env
  * que las páginas la lean. No decide permisos: eso lo hacen las políticas por fila de la base.
  */
 export async function proxy(request: NextRequest) {
+  // D10: /cruces/<pareja al revés> redirige con 308 y lo que no existe da 404 (la página, prerenderizada en partes,
+  // ya no puede cambiar el estado cuando lo descubre).
+  const matchup = matchupRouting(request.nextUrl.pathname);
+  if (matchup && "redirect" in matchup) return NextResponse.redirect(new URL(matchup.redirect, request.url), 308);
+  if (matchup) return NextResponse.rewrite(new URL("/_not-found", request.url), { status: 404 });
+
   let response = NextResponse.next({ request });
   if (!supabaseConfigured) return response;
 

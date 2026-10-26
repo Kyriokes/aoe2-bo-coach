@@ -115,6 +115,21 @@ public sealed class RegionLayoutTests : IDisposable
         Assert.Equal(1.5, loaded.HudScale);
     }
 
+    /// <summary>
+    /// El diseño guardado lo escribió la app misma; si una versión nueva lo valida más estricto, el archivo del usuario
+    /// se abre igual, sin diseño (y vuelve a calibrar), en vez de fallar en cada arranque del coach.
+    /// </summary>
+    [Fact]
+    public void Un_diseno_guardado_que_no_se_entiende_se_ignora_y_las_regiones_se_cargan()
+    {
+        File.WriteAllText(_path, """{ "regions": { "food": [0.1, 0.2, 0.03, 0.02] }, "hud_layout": { "name": "roto" } }""");
+
+        var loaded = RegionLayout.LoadOrDefault(_path);
+
+        Assert.Null(loaded.Hud);
+        Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X, 5);
+    }
+
     [Fact]
     public void La_calibracion_manual_conserva_el_diseno()
     {

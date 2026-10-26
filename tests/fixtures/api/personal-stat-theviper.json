@@ -1,0 +1,164 @@
+{
+ "result": {
+  "code": 0,
+  "message": "SUCCESS"
+ },
+ "statGroups": [
+  {
+   "id": 11675149,
+   "name": "",
+   "type": 1,
+   "members": [
+    {
+     "profile_id": 3001,
+     "name": "/steam/0",
+     "alias": "TheViper",
+     "personal_statgroup_id": 11675149,
+     "xp": 90,
+     "level": 1,
+     "leaderboardregion_id": 2,
+     "country": "tw",
+     "clanlist_name": ""
+    }
+   ]
+  },
+  {
+   "id": 102580,
+   "name": "",
+   "type": 1,
+   "members": [
+    {
+     "profile_id": 3002,
+     "name": "/steam/0",
+     "alias": "TheViper",
+     "personal_statgroup_id": 102580,
+     "xp": 1382,
+     "level": 1,
+     "leaderboardregion_id": 4,
+     "country": "ar",
+     "clanlist_name": ""
+    }
+   ]
+  },
+  {
+   "id": 3606283,
+   "name": "",
+   "type": 1,
+   "members": [
+    {
+     "profile_id": 3003,
+     "name": "/steam/0",
+     "alias": "TheViper",
+     "personal_statgroup_id": 3606283,
+     "xp": 290,
+     "level": 1,
+     "leaderboardregion_id": 2,
+     "country": "vn",
+     "clanlist_name": ""
+    }
+   ]
+  }
+ ],
+ "leaderboardStats": [
+  {
+   "statgroup_id": 102580,
+   "leaderboard_id": 4,
+   "wins": 1,
+   "losses": 0,
+   "streak": 1,
+   "disputes": 0,
+   "drops": 0,
+   "rank": -1,
+   "ranktotal": -1,
+   "ranklevel": -1,
+   "rating": 915,
+   "regionrank": -1,
+   "regionranktotal": -1,
+   "lastmatchdate": 1587690245,
+   "highestrank": 0,
+   "highestranklevel": 0,
+   "highestrating": 0,
+   "metadata": ""
+  },
+  {
+   "statgroup_id": 3606283,
+   "leaderboard_id": 4,
+   "wins": 179,
+   "losses": 206,
+   "streak": -5,
+   "disputes": 0,
+   "drops": 31,
+   "rank": -1,
+   "ranktotal": 71666,
+   "ranklevel": 0,
+   "rating": 856,
+   "regionrank": -1,
+   "regionranktotal": 14972,
+   "lastmatchdate": 1735099389,
+   "highestrank": 46869,
+   "highestranklevel": 1,
+   "highestrating": 935,
+   "metadata": ""
+  },
+  {
+   "statgroup_id": 3606283,
+   "leaderboard_id": 3,
+   "wins": 94,
+   "losses": 100,
+   "streak": -1,
+   "disputes": 0,
+   "drops": 56,
+   "rank": -1,
+   "ranktotal": 46652,
+   "ranklevel": 0,
+   "rating": 843,
+   "regionrank": -1,
+   "regionranktotal": 7744,
+   "lastmatchdate": 1700605822,
+   "highestrank": 31248,
+   "highestranklevel": 1,
+   "highestrating": 859,
+   "metadata": ""
+  },
+  {
+   "statgroup_id": 11675149,
+   "leaderboard_id": 4,
+   "wins": 1,
+   "losses": 2,
+   "streak": -1,
+   "disputes": 0,
+   "drops": 0,
+   "rank": -1,
+   "ranktotal": -1,
+   "ranklevel": -1,
+   "rating": 931,
+   "regionrank": -1,
+   "regionranktotal": -1,
+   "lastmatchdate": 1731593506,
+   "highestrank": 0,
+   "highestranklevel": 0,
+   "highestrating": 0,
+   "metadata": ""
+  },
+  {
+   "statgroup_id": 11675149,
+   "leaderboard_id": 3,
+   "wins": 0,
+   "losses": 2,
+   "streak": -2,
+   "disputes": 0,
+   "drops": 0,
+   "rank": -1,
+   "ranktotal": -1,
+   "ranklevel": -1,
+   "rating": 905,
+   "regionrank": -1,
+   "regionranktotal": -1,
+   "lastmatchdate": 1731754925,
+   "highestrank": 0,
+   "highestranklevel": 0,
+   "highestrating": 0,
+   "metadata": ""
+  }
+ ]
+}

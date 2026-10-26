@@ -71,4 +71,31 @@ public class GameReportTests
         Assert.Contains("<title>Informe: Arqueros</title>", html);
         Assert.Contains("sin hacer", html);
     }
+
+    private static GameReport Simple => new("Arqueros", 1200, [new StepTiming(1, "Construir 2 casas", 0, 40)],
+        [new AgeClick("Feudal", 487, 610, 500, 480)], 31, [new GameInterval(150, 12)], 57, 20, 2, []);
+
+    [Fact]
+    public void El_informe_suma_el_cruce()
+    {
+        var cruce = new[] { "Britanos contra francos en Arabia (Elo 1050): ganás 47 % (43 a 49).",
+                            "Duró 34 min: a esa duración, en este cruce ganás el 45 % (41 a 49)." };
+        var report = Simple with { Matchup = cruce };
+
+        var summary = GameReportText.Summary(report);
+        Assert.Equal(["El cruce: " + cruce[0], cruce[1]], summary.TakeLast(2));
+        // En la página, su propia sección "El cruce" (spec D10, 5.4), no repetido en el resumen.
+        var html = GameReportText.Html(report, new DateTime(2026, 10, 25, 21, 0, 0));
+        Assert.Contains("<h2>El cruce</h2>", html);
+        Assert.Contains($"<li>{System.Net.WebUtility.HtmlEncode(cruce[0])}</li>", html); // la "á" va como entidad
+        Assert.DoesNotContain(System.Net.WebUtility.HtmlEncode("El cruce: "), html);
+    }
+
+    [Fact]
+    public void Sin_cruce_el_informe_no_cambia()
+    {
+        Assert.Empty(Simple.Matchup);
+        Assert.DoesNotContain(GameReportText.Summary(Simple), line => line.Contains("contra", StringComparison.Ordinal));
+        Assert.Equal(GameReportText.Summary(Simple), GameReportText.Summary(Simple with { Matchup = [] }));
+    }
 }

@@ -28,6 +28,8 @@ public sealed class HudModTests : IDisposable
 
     private static JsonObject Wrap(JsonObject widget) => new() { ["Widget"] = widget };
 
+    private static JsonObject Rgb(int r, int g, int b) => new() { ["r"] = r, ["g"] = g, ["b"] = b, ["a"] = 1 };
+
     private static JsonObject Label(string name, int x, int y, int w, int h, int? help = null)
     {
         var label = new JsonObject
@@ -74,7 +76,15 @@ public sealed class HudModTests : IDisposable
         var population = Icon("Population", 856);
         population["StateMaterials"] = new JsonObject { ["UserStates"] = 2, ["UserState0"] = new JsonObject { ["Material"] = "Population" }, ["UserState1"] = new JsonObject { ["Material"] = "None" } };
         children.Add(Wrap(population));
-        children.Add(Wrap(Label("PopulationCount", 910, 60, 130, 34)));
+        var populationCount = Label("PopulationCount", 910, 60, 130, 34);
+        populationCount["StateMaterials"] = new JsonObject
+        {
+            ["UserStates"] = 3,
+            ["UserState0"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 1, 1) } },
+            ["UserState1"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 0, 0) } },
+            ["UserState2"] = new JsonObject { ["Font"] = new JsonObject { ["FontIndex"] = 0, ["PointSize"] = 34, ["TextColor"] = Rgb(1, 1, 0) } },
+        };
+        children.Add(Wrap(populationCount));
         children.Add(Wrap(new JsonObject { ["Type"] = "Base", ["Name"] = "PopulationFlash", ["ViewPort"] = View(900, 60, 140, 72) }));
         children.Add(Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Idle", ["ViewPort"] = View(1080, 57, 70, 70), ["StateMaterials"] = new JsonObject { ["StateNormal"] = new JsonObject { ["Material"] = "IdleVillagerNormal" } } }));
         var idleWorkers = Label("IdleWorkers", 1060, 70, 40, 30);
@@ -118,6 +128,7 @@ public sealed class HudModTests : IDisposable
             {
                 ["Type"] = "Anchor",
                 ["Name"] = "WorldTimer",
+                ["Anchor"] = new JsonObject { ["xorigin"] = 1700, ["yorigin"] = 0, ["alignment"] = "TopLeft" },
                 ["ChildWidgets"] = new JsonArray(
                     Wrap(Label("WorldTimerLabel", 0, 12, 1000, 40)),
                     Wrap(Label("GameIDLabel", 0, 64, 512, 49))),
@@ -159,21 +170,30 @@ public sealed class HudModTests : IDisposable
         Assert.Equal("None", Material(wood));
         Assert.Equal(42011, (int)wood["Help"]!);
         var children = Children(wood);
-        Assert.Equal(["BoCoachIcon", "BoCoachChip", "BoCoachBack0", "BoCoachSeparator", "Workers"], children.Select(c => (string?)c["Name"]));
+        Assert.Equal(["BoCoachIcon", "BoCoachChip", "BoCoachSeparator", "Workers"], children.Select(c => (string?)c["Name"]));
         Assert.Equal("ResourceWood", Material(children[0]));
         Assert.Equal((10, 12, 84, 84), View(children[0]));
         Assert.Equal((104, 12, 70, 84), View(children[1]));
         Assert.Equal(0.53, (double)children[1]["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
-        Assert.Equal((180, 12, 230, 84), View(children[2]));
-        Assert.Equal("/", (string?)children[3]["Text"]);
-        Assert.Equal(44, Points(children[3]));
-        Assert.Equal((184, 12, 70, 84), View(children[4]));
-        Assert.Equal(48, Points(children[4]));
-        Assert.Equal("CentreCentre", (string?)children[4]["TextAnchor"]);
+        Assert.Equal("/", (string?)children[2]["Text"]);
+        Assert.Equal(44, Points(children[2]));
+        Assert.Equal((184, 12, 70, 84), View(children[3]));
+        Assert.Equal(48, Points(children[3]));
+        Assert.Equal("CentreCentre", (string?)children[3]["TextAnchor"]);
+
+        // El fondo negro de "aldeanos / stock" es hermano del contenedor, antes que él y que el stock y un plano más
+        // abajo: adentro del contenedor (plano 1 + 1) tapaba al stock (plano 2, hermano) en el juego (20261024-224921).
+        var siblings = Children(Widget(panel, "Background")).Select(c => (string?)c["Name"]).ToList();
+        var back = Widget(panel, "BoCoachBack_wood_0");
+        Assert.Equal((190, 12, 230, 84), View(back));
+        Assert.Equal(1, (int)back["ZPlaneLocalOffset"]!);
+        Assert.True(siblings.IndexOf("BoCoachBack_wood_0") < siblings.IndexOf("Wood"), "el fondo va antes que el contenedor");
+        Assert.True(siblings.IndexOf("Wood") < siblings.IndexOf("WoodStorage"), "el stock va después del contenedor");
 
         var storage = Widget(panel, "WoodStorage");
         Assert.Equal((284, 12, 132, 84), View(storage));
         Assert.Equal(48, Points(storage));
+        Assert.Equal(2, (int)storage["ZPlaneLocalOffset"]!);
         Assert.Equal(42202, (int)storage["Help"]!);
         Assert.Equal("CentreCentre", (string?)storage["TextAnchor"]);
 
@@ -183,6 +203,7 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((104, 12, 80, 84), View(Children(population).First(c => (string?)c["Name"] == "Workers")));
         Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationCount")));
         Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
+        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
 
         Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
         Assert.Equal("IdleVillagerNormal", Material(Widget(panel, "Idle")));
@@ -197,25 +218,55 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(44, Points(ageText));
     }
 
+    /// <summary>
+    /// El fondo del juego (la textura de la civ) se apaga en sus nueve estados y la barra lisa es un hijo propio con
+    /// material normal: en el juego, un color liso puesto en los estados por civ no se dibujó y se vio la textura
+    /// (20261024-224921). Los colores lisos con StateNormal (casilleros, bordes) sí se dibujan.
+    /// </summary>
     [Fact]
-    public void El_fondo_es_liso_en_los_nueve_estados_y_la_barra_mide_lo_del_diseno()
+    public void El_fondo_del_juego_se_apaga_y_la_barra_lisa_es_el_primer_hijo()
     {
         var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
         var collection = panel["Collection"]!["ViewPort"]!;
-        Assert.Equal((2720, 108), ((int)collection["width"]!, (int)collection["height"]!));
+        Assert.Equal((4600, 108), ((int)collection["width"]!, (int)collection["height"]!));
         var background = Widget(panel, "Background");
-        Assert.Equal((0, 0, 2720, 108), View(background));
+        Assert.Equal((0, 0, 4600, 108), View(background));
         Assert.Equal(9, (int)background["StateMaterials"]!["UserStates"]!);
         foreach (var state in new[] { "UserState0", "UserState8" })
-        {
-            Assert.Equal("FlatColorWithAlpha", Material(background, state));
-            Assert.Equal(0.1, (double)background["StateMaterials"]![state]!["Color"]!["r"]!, 2);
-        }
-        Assert.Equal((0, 0, 2720, 2), View(Widget(panel, "BoCoachBorderTop")));
-        Assert.Equal((0, 106, 2720, 2), View(Widget(panel, "BoCoachBorderBottom")));
+            Assert.Equal("None", Material(background, state));
+        var bar = Children(background)[0];
+        Assert.Equal("BoCoachBar", (string?)bar["Name"]);
+        // La barra cubre la pantalla entera pero no pasa por debajo del campo negro del reloj (otro panel con el mismo
+        // plano 1: no se sabe cuál se dibuja arriba): un tramo hasta el reloj y otro desde su final hasta el borde. El
+        // menú del juego (plano 11) queda arriba de la barra.
+        Assert.Equal((0, 0, 2734, 108), View(bar));
+        Assert.Equal("FlatColorWithAlpha", Material(bar));
+        var rest = Children(background)[1];
+        Assert.Equal("BoCoachBarAfterClock", (string?)rest["Name"]);
+        Assert.Equal((3534, 0, 1066, 108), View(rest));
+        Assert.Equal("FlatColorWithAlpha", Material(rest));
+        Assert.Equal(0.1, (double)bar["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
+        Assert.Null(bar["ZPlaneLocalOffset"]);
+        Assert.Equal((0, 0, 4600, 2), View(Widget(panel, "BoCoachBorderTop")));
+        Assert.Equal((0, 106, 4600, 2), View(Widget(panel, "BoCoachBorderBottom")));
         Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
-        Assert.Equal((2718, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
+        Assert.Equal((4598, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
+    }
+
+    /// <summary>El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan, a 48 pt.</summary>
+    [Fact]
+    public void El_N_M_conserva_sus_tres_colores_a_48_pt()
+    {
+        var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
+
+        var states = Widget(panel, "PopulationCount")["StateMaterials"]!;
+        Assert.Equal(3, (int)states["UserStates"]!);
+        Assert.Null(states["StateNormal"]);
+        foreach (var state in new[] { "UserState0", "UserState1", "UserState2" })
+            Assert.Equal(48, (int)states[state]!["Font"]!["PointSize"]!);
+        Assert.Equal(0, (int)states["UserState1"]!["Font"]!["TextColor"]!["g"]!);
+        Assert.Equal(1, (int)states["UserState2"]!["Font"]!["TextColor"]!["g"]!);
     }
 
     [Fact]
@@ -230,16 +281,24 @@ public sealed class HudModTests : IDisposable
     }
 
     [Fact]
-    public void El_reloj_toma_el_diseno_y_la_coleccion_se_corre_al_final_de_la_barra()
+    public void El_reloj_se_ubica_con_el_ancla_del_panel_y_la_coleccion_queda_en_su_origen()
     {
         var panel = HudMod.ClockPanel(ClockPanel(), Layout());
 
-        Assert.Equal(2734, (int)panel["Collection"]!["ViewPort"]!["xorigin"]!);
+        // El origen de la colección se mide en unidades de pantalla (3840 de ancho) y el ancla en las del HUD, como la
+        // barra: con la colección corrida a 2734 el reloj caía en 1367 px (2734 × 0,5) con el HUD del usuario al 87 %,
+        // 178 px a la derecha de la barra (segunda prueba del 2026-10-24). Con el ancla cae al final de la barra a
+        // cualquier escala del HUD (en el mod viejo, ancla 1700 = 737 px = 1700 × 0,4348).
+        var viewport = panel["Collection"]!["ViewPort"]!;
+        Assert.Equal((0, 0), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
+        var anchor = Widget(panel, "WorldTimer")["Anchor"]!;
+        Assert.Equal((2734, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
-        Assert.Equal((0, 12, 230, 84), View(Widget(panel, "BoCoachClockBackground")));
+        Assert.Equal((0, 12, 800, 84), View(Widget(panel, "BoCoachClockBackground")));
         var label = Widget(panel, "WorldTimerLabel");
         Assert.Equal(56, Points(label));
-        Assert.Equal((8, 12 + (84 - 56) / 2, 1000, 56), View(label));
+        Assert.Equal((HudMod.ClockTextX, 12 + (84 - 56) / 2, 1000, 56), View(label));
+        Assert.Equal(20, HudMod.ClockTextX);
         Assert.Equal(12 + 84 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
     }
 

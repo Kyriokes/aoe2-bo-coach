@@ -1,8 +1,12 @@
+using System.Globalization;
 using System.IO;
+using System.Net.Http;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Core.Economy;
+using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -29,6 +33,9 @@ public interface ICoachHost
 
     /// <summary>D5: el resumen de la partida terminada, con el informe completo guardado en <paramref name="path"/>.</summary>
     void ShowReport(IReadOnlyList<string> summary, string path);
+
+    /// <summary>D10: elegir entre los jugadores con el mismo nombre que devolvió "Buscar"; null si cancela.</summary>
+    EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates);
 }
 
 /// <summary>Empezar y detener el coach con la BO elegida, y los atajos que lo corrigen durante la partida.</summary>
@@ -52,6 +59,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private bool _autoNoBoWarned;
     private BuildOrder? _previousBuildOrder;
     private string? _declinedSuggestion;
+    private MatchupQuery? _matchupQuery;
 
     /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
@@ -67,6 +75,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         LastBuildOrderId = settings.LastBuildOrder;
+        Elo1v1Text = settings.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "";
+        EloTeamText = settings.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "";
+        ProfileId = settings.ProfileId;
         _settingsPath = settingsPath;
         _data = data;
         _host = host;
@@ -143,6 +154,101 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnPlayerNameChanged(string value) => SaveSettings();
 
+    /// <summary>D10: el Elo de 1v1 tal como se escribe; <see cref="Elo1v1"/> es el número si vale (de 1 a 4000).</summary>
+    [ObservableProperty] public partial string Elo1v1Text { get; set; } = "";
+
+    partial void OnElo1v1TextChanged(string value)
+    {
+        CheckElo(value);
+        SaveSettings();
+    }
+
+    /// <summary>D10: el Elo de equipos tal como se escribe; <see cref="EloTeam"/> es el número si vale.</summary>
+    [ObservableProperty] public partial string EloTeamText { get; set; } = "";
+
+    partial void OnEloTeamTextChanged(string value)
+    {
+        CheckElo(value);
+        SaveSettings();
+    }
+
+    private const string InvalidElo = "Elo no válido: un número de 1 a 4000.";
+
+    /// <summary>Un Elo que no se entiende se avisa (si no, se descartaba sin decir nada y el coach quedaba "sin tu Elo").</summary>
+    private void CheckElo(string text)
+    {
+        if (text.Trim().Length > 0 && ParseElo(text) is null)
+            EloStatus = InvalidElo;
+        else if (EloStatus == InvalidElo)
+            EloStatus = "";
+    }
+
+    public int? Elo1v1 => ParseElo(Elo1v1Text);
+
+    public int? EloTeam => ParseElo(EloTeamText);
+
+    /// <summary>D10: el perfil del juego elegido con "Buscar".</summary>
+    public long? ProfileId { get; private set; }
+
+    /// <summary>D10: lo que pasó con "Buscar" (al lado del botón).</summary>
+    [ObservableProperty] public partial string EloStatus { get; set; } = "";
+
+    /// <summary>D10: cómo se busca un nombre en la API del juego (los tests la cambian).</summary>
+    public Func<string, CancellationToken, Task<EloSearch>> SearchElo { get; set; } =
+        (name, cancel) => EloLookup.SearchAsync(EloHttp, name, cancel);
+
+    private static readonly HttpClient EloHttp = new() { MaxResponseContentBufferSize = 1 << 20 };
+
+    /// <summary>De 1 a 4000; acepta el separador de miles ("1.200" o "1,200").</summary>
+    internal static int? ParseElo(string text)
+    {
+        var digits = text.Trim();
+        if (digits.Length is 5 or 6 && digits[^4] is '.' or ',')
+            digits = digits.Remove(digits.Length - 4, 1);
+        return int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var elo) && elo is >= 1 and <= 4000 ? elo : null;
+    }
+
+    /// <summary>
+    /// D10: busca "Tu nombre" en la API del juego (solo al tocar el botón) y completa los Elo que tenga el jugador. Con
+    /// homónimos, el usuario elige de una lista ordenada por la última partida.
+    /// </summary>
+    [RelayCommand]
+    private async Task SearchEloAsync()
+    {
+        var name = PlayerName.Trim();
+        if (name.Length == 0)
+        {
+            EloStatus = "Poné tu nombre primero.";
+            return;
+        }
+        EloStatus = "Buscando...";
+        var search = await SearchElo(name, CancellationToken.None);
+        if (search.Error is { } error)
+        {
+            EloStatus = error;
+            return;
+        }
+        var chosen = search.Candidates.Count switch
+        {
+            0 => null,
+            1 => search.Candidates[0],
+            _ => _host.ChooseElo(search.Candidates),
+        };
+        if (chosen is null)
+        {
+            EloStatus = search.Candidates.Count == 0 ? $"No encontré a {name} en el juego." : "";
+            return;
+        }
+        ProfileId = chosen.ProfileId;
+        if (chosen.Elo1v1 is { } elo1v1)
+            Elo1v1Text = elo1v1.ToString(CultureInfo.InvariantCulture);
+        if (chosen.EloTeam is { } eloTeam)
+            EloTeamText = eloTeam.ToString(CultureInfo.InvariantCulture);
+        SaveSettings();
+        EloStatus = $"Elo de {chosen.Alias}: 1v1 {chosen.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "-"}, "
+                    + $"equipos {chosen.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "-"}.";
+    }
+
     /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso (hoja de ruta C4).</summary>
     [ObservableProperty] public partial bool FirstRunDone { get; set; }
 
@@ -178,6 +284,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 FirstRunDone = FirstRunDone,
                 AutoStart = AutoStart,
                 LastBuildOrder = LastBuildOrderId,
+                Elo1v1 = Elo1v1,
+                EloTeam = EloTeam,
+                ProfileId = ProfileId,
             }.Save(_settingsPath);
         }
         catch (IOException)
@@ -307,6 +416,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
     private void Finished(GameReport report)
     {
+        // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
+        if (_matchupQuery is { } query)
+        {
+            report = report with
+            {
+                Matchup = MatchupText.Report(_data.Matchups(query.Civ), query, TimeSpan.FromSeconds(report.Length), CivName, MapName),
+            };
+            _matchupQuery = null;
+        }
         try
         {
             Directory.CreateDirectory(ReportsFolder);
@@ -321,8 +439,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>Segundos sin reloj para bajar el overlay (la pantalla de carga se lee después: ver LiveCoach).</summary>
-    public const double LoweredAfterSeconds = 0.5;
+    /// <summary>
+    /// Segundos sin reloj para bajar el overlay (la pantalla de carga se lee antes: ver LiveCoach). Con medio segundo,
+    /// una captura sin leer cada tanto lo hacía saltar de arriba a abajo (tercera prueba del HUD propio, 2026-10-25).
+    /// </summary>
+    public const double LoweredAfterSeconds = 2;
 
     /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
     public const double SuggestionSeconds = 60;
@@ -333,25 +454,33 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// </summary>
     private void Suggest(CoachFrame frame)
     {
-        if (Overlay is null || frame.Loading is not { } loading || frame.Me is not { } me || _coach is null)
+        if (Overlay is null || frame.Loading is not { } loading)
+            return;
+        // Una partida nueva: lo de la anterior no vale aunque acá no se encuentre tu nombre (D10, revisión de c).
+        (_matchupQuery, Overlay.MatchupLine, Overlay.MatchAdvice) = (null, null, null);
+        if (frame.Me is not { } me || _coach is null)
             return;
         var facing = loading.Facing(me);
         var match = new MatchSetup(me.Civ, facing?.Civ, loading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(),
-            loading.PositionOf(me), loading.Map);
+            loading.PositionOf(me), loading.Map, Elo1v1);
         Overlay.MatchAdvice = BuildOrderSuggester.Advice(match, _data.CivStyles) is { } advice && facing?.Civ is { } rival
             ? $"Contra {CivName(rival)} (enfrente): {advice}"
             : null;
+        // D10: el cruce con las estadísticas reales (1v1 con el rival; por equipos, tu civ) y para el informe.
+        _matchupQuery = loading.Matchup(me, Elo1v1, EloTeam);
+        var matchups = me.Civ is { } myCiv ? _data.Matchups(myCiv) : MatchupStats.Empty;
+        Overlay.MatchupLine = _matchupQuery is { } query ? MatchupText.Loading(matchups, query, CivName, MapName) : null;
         if (me.Civ is null)
             return;
         var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>().ToList();
-        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles);
+        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles, matchups);
         if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
             return;
         // D6: si arrancó solo, cambia a la sugerida cuando puntúa más que la que corre (la copia de la biblioteca, sin
         // la civ de la partida). Ctrl+Alt+B vuelve a la anterior.
         var running = library.FirstOrDefault(b => b.Id == _coach.BuildOrder.Id) ?? _coach.BuildOrder;
         if (_startedAutomatically && suggestion.BuildOrder.Id != _declinedSuggestion
-            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles))
+            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles, matchups))
         {
             _previousBuildOrder = running;
             Start(suggestion.BuildOrder, _liveFrames(), automatic: true);
@@ -363,6 +492,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _suggestion = suggestion;
         Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
     }
+
+    /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>
+    private string? MapName(string key) => _data.Maps.Get(key)?.Name;
 
     /// <summary>El nombre de una civ en castellano (el de Latinoamérica, o el de España si el juego está así).</summary>
     private string CivName(string civ)
@@ -480,7 +612,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     public void Dispose() => Stop();
 
-    private void Apply(CoachFrame frame)
+    internal void Apply(CoachFrame frame)
     {
         if (Overlay is null)
             return;
@@ -495,8 +627,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Suggest(frame);
         }
         // La sugerencia vale durante la carga y el primer minuto de partida.
-        if ((_suggestion is not null || Overlay.MatchAdvice is not null) && frame.View.Time > SuggestionSeconds)
-            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice) = (null, null, null);
+        if ((_suggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null) && frame.View.Time > SuggestionSeconds)
+            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null);
         // Sin reloj (menú, pantalla de carga) el overlay baja, así no tapa el mapa de la pantalla de carga.
         var lowered = frame.SecondsWithoutClock >= LoweredAfterSeconds;
         if (frame.Area is { IsEmpty: false } area && (area != _placedOver || lowered != _lowered))

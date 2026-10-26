@@ -18,21 +18,37 @@ internal static class HudLayoutScreens
     /// <summary>Marco del casillero que la GD de la app deja libre (como el overlay, al menos 3 px).</summary>
     public const int GdMargin = 3;
 
+    /// <summary>El rojo del aviso de inactivos del overlay (ResourceOverlay.ShortBrush), a 45 por canal del casillero de comida.</summary>
+    public static readonly (byte R, byte G, byte B) IdleFrameRed = (240, 90, 80);
+
     /// <summary>
     /// Una pantalla entera con la barra del diseño en (<paramref name="originX"/>, <paramref name="originY"/>): fondo
     /// verde, barra, borde, casilleros, fondos negros, cuadrados grises por ícono, tres rayas blancas en cada campo
     /// (números cualquiera) y el rectángulo negro del reloj. Con <paramref name="gdInside"/>, la GD de la app tapa el
-    /// medio de cada casillero (negro, dejando <see cref="GdMargin"/> px de borde).
+    /// medio de cada casillero (negro, dejando <see cref="GdMargin"/> px de borde). Con <paramref name="idleFrame"/>, el
+    /// aviso de inactivos del overlay: un marco rojo de 3 px alrededor de la celda de inactivos. <paramref name="clockShift"/>
+    /// corre el reloj esa cantidad de píxeles respecto de donde el diseño lo pone (está en otro panel del juego).
     /// </summary>
-    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false)
+    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0)
     {
         var canvas = new Canvas(width, height, Grass);
         PixelRect Rect(int x, int y, int w, int h) => new(originX + Px(x, pixelsPerUnit), originY + Px(y, pixelsPerUnit), Px(w, pixelsPerUnit), Px(h, pixelsPerUnit));
         DrawBar(canvas, layout, Rect);
         foreach (var cell in layout.Cells)
             DrawCell(canvas, layout, cell, Rect, gdInside, stripes: true);
+        if (idleFrame)
+        {
+            var idle = layout.CellRect(layout.Cell("idle"));
+            var r = Rect(idle.X, idle.Y, idle.Width, idle.Height);
+            const int thick = 3;
+            canvas.Fill(new PixelRect(r.X, r.Y, r.Width, thick), IdleFrameRed);
+            canvas.Fill(new PixelRect(r.X, r.Y + r.Height - thick, r.Width, thick), IdleFrameRed);
+            canvas.Fill(new PixelRect(r.X, r.Y, thick, r.Height), IdleFrameRed);
+            canvas.Fill(new PixelRect(r.X + r.Width - thick, r.Y, thick, r.Height), IdleFrameRed);
+        }
         var clock = layout.ClockRect();
-        canvas.Fill(Rect(clock.X, clock.Y, clock.Width, clock.Height), Black);
+        var clockRect = Rect(clock.X, clock.Y, clock.Width, clock.Height);
+        canvas.Fill(clockRect with { X = clockRect.X + clockShift }, Black);
         return canvas.Image;
     }
 

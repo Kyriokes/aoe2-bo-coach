@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
 
 namespace BoCoach.Core.BuildOrders;
 
@@ -25,18 +26,33 @@ public sealed class CivStyles
     private readonly IReadOnlyDictionary<string, string> _advice;
     private readonly IReadOnlyDictionary<string, string> _civAdvice;
     private readonly IReadOnlyDictionary<string, List<string>> _positions;
+    private readonly IReadOnlyDictionary<string, List<int>> _windows;
+
+    /// <summary>
+    /// D10: las franjas de duración típicas de cada estilo (1 = menos de 20 minutos de juego, 2 = de 20 a 30, 3 = de
+    /// 30 a 40, 4 = de 40 a 55, 5 = 55 o más), si el archivo no las dice.
+    /// </summary>
+    private static readonly Dictionary<string, List<int>> DefaultWindows = new()
+    {
+        ["archers"] = [1, 2],
+        ["scouts"] = [1, 2],
+        ["maa"] = [1, 2],
+        ["fast_castle"] = [3, 4],
+    };
 
     public CivStyles(IReadOnlyDictionary<string, List<string>> civs,
         IReadOnlyDictionary<string, List<string>>? counters = null,
         IReadOnlyDictionary<string, string>? advice = null,
         IReadOnlyDictionary<string, string>? civAdvice = null,
-        IReadOnlyDictionary<string, List<string>>? positions = null)
+        IReadOnlyDictionary<string, List<string>>? positions = null,
+        IReadOnlyDictionary<string, List<int>>? windows = null)
     {
         _civs = civs;
         _counters = counters ?? DefaultCounters;
         _advice = advice ?? new Dictionary<string, string>();
         _civAdvice = civAdvice ?? new Dictionary<string, string>();
         _positions = positions ?? new Dictionary<string, List<string>>();
+        _windows = windows ?? new Dictionary<string, List<int>>();
     }
 
     public static CivStyles Empty { get; } = new(new Dictionary<string, List<string>>());
@@ -61,8 +77,15 @@ public sealed class CivStyles
         if (root["civs"] is not JsonObject civs)
             return new(Lists(root)); // formato viejo: solo las civs
         return new(Lists(civs), root["counters"] is JsonObject c ? Lists(c) : null, Texts(root["advice"]), Texts(root["civ_advice"]),
-            root["positions"] is JsonObject p ? Lists(p) : null);
+            root["positions"] is JsonObject p ? Lists(p) : null, root["windows"] is JsonObject w ? Windows(w) : null);
     }
+
+    /// <summary>Las ventanas del archivo: listas de franjas de 1 a 5 (lo que no es un número de 1 a 5 se ignora).</summary>
+    private static Dictionary<string, List<int>> Windows(JsonObject json) => json
+        .Where(kv => kv.Value is JsonArray)
+        .ToDictionary(kv => kv.Key, kv => kv.Value!.AsArray()
+            .Select(n => n is JsonValue v && v.GetValueKind() == JsonValueKind.Number && v.TryGetValue<int>(out var band) ? band : 0)
+            .Where(band => band is >= 1 and <= 5).ToList());
 
     private static Dictionary<string, List<string>> Lists(JsonObject json) => json
         .Where(kv => kv.Value is JsonArray)
@@ -81,6 +104,10 @@ public sealed class CivStyles
 
     /// <summary>Si el estilo <paramref name="style"/> le gana a <paramref name="other"/> al principio.</summary>
     public bool Beats(string style, string other) => _counters.TryGetValue(style, out var beaten) && beaten.Contains(other);
+
+    /// <summary>D10: las franjas de duración típicas del estilo (vacío si no se conoce).</summary>
+    public IReadOnlyList<int> Window(string style) =>
+        _windows.TryGetValue(style, out var bands) ? bands : DefaultWindows.TryGetValue(style, out var fallback) ? fallback : [];
 
     /// <summary>Los estilos que convienen en esa posición del equipo.</summary>
     public IReadOnlyList<string> ForPosition(TeamPosition position) =>
@@ -106,7 +133,9 @@ public enum TeamPosition
 /// <param name="OtherRivals">Las civs de los demás rivales.</param>
 /// <param name="Position">Flanco o bolsillo; null en 1 contra 1 o 2 contra 2.</param>
 /// <param name="Map">El mapa, si se leyó.</param>
-public sealed record MatchSetup(string? Civ, string? Facing = null, IReadOnlyList<string?>? OtherRivals = null, TeamPosition? Position = null, string? Map = null);
+/// <param name="Elo">El Elo 1v1 del jugador (D10: las estadísticas de cruces son de 1v1), si lo puso.</param>
+public sealed record MatchSetup(string? Civ, string? Facing = null, IReadOnlyList<string?>? OtherRivals = null, TeamPosition? Position = null,
+    string? Map = null, int? Elo = null);
 
 /// <summary>Una BO sugerida, por qué (para el overlay) y sus puntos.</summary>
 public sealed record BuildOrderSuggestion(BuildOrder BuildOrder, string Reason, double Score = 0);
@@ -154,11 +183,13 @@ public static class BuildOrderSuggester
 
     /// <summary>
     /// Puntos por la civ, el mapa y el estilo típico; contra el rival de enfrente (+2) y cada uno de los demás (+0,5);
-    /// y por la posición en el equipo (+1).
+    /// y por la posición en el equipo (+1). D10: con las estadísticas reales de cruces, de -2 a +2 según cuánto mejor se
+    /// gana el cruce con el rival de enfrente en la ventana de duración del estilo que en general.
     /// </summary>
-    public static BuildOrderSuggestion? Suggest(IEnumerable<BuildOrder> library, MatchSetup match, CivStyles styles)
+    public static BuildOrderSuggestion? Suggest(IEnumerable<BuildOrder> library, MatchSetup match, CivStyles styles,
+        MatchupStats? matchups = null)
     {
-        var context = Context.For(match, styles);
+        var context = Context.For(match, styles, matchups);
         (BuildOrder Bo, double Score, List<string> Why)? best = null;
         foreach (var bo in library)
         {
@@ -173,15 +204,47 @@ public static class BuildOrderSuggester
     }
 
     /// <summary>Los puntos de una BO para esa partida (0 si es de otra civ: no se puede sugerir). D6 compara con ellos la que corre.</summary>
-    public static double Score(BuildOrder bo, MatchSetup match, CivStyles styles) => Evaluate(bo, Context.For(match, styles), styles)?.Score ?? 0;
+    public static double Score(BuildOrder bo, MatchSetup match, CivStyles styles, MatchupStats? matchups = null) =>
+        Evaluate(bo, Context.For(match, styles, matchups), styles)?.Score ?? 0;
+
+    /// <summary>D10: el cruce con el rival de enfrente, si tiene tendencia por duración (la regla de honestidad).</summary>
+    private sealed record DurationContext(MatchupStats Stats, string Civ, string Facing, int Map, int EloBand, MatchupCell Total,
+        DurationTrend Trend)
+    {
+        public static DurationContext? For(MatchSetup match, MatchupStats? stats)
+        {
+            if (stats is null || stats.IsEmpty || match.Civ is not { } civ || match.Facing is not { } facing)
+                return null;
+            var (map, elo) = (stats.MapIndex(match.Map), stats.EloBand(match.Elo));
+            return stats.OneVsOne(civ, facing, map, elo, 0) is { } total && stats.OneVsOneTrend(civ, facing, map, elo) is { } trend
+                ? new DurationContext(stats, civ, facing, map, elo, total, trend)
+                : null;
+        }
+
+        /// <summary>
+        /// Los puntos de una ventana: la chance en sus franjas (promedio pesado por partidas: el archivo no trae el
+        /// casillero de dos franjas juntas) contra la general, × 20 y entre -2 y 2.
+        /// </summary>
+        public double Points(IReadOnlyList<int> window)
+        {
+            var cells = window.Select(band => Stats.OneVsOne(Civ, Facing, Map, EloBand, band)).OfType<MatchupCell>().ToList();
+            var games = cells.Sum(c => c.N);
+            if (games == 0)
+                return 0;
+            var chance = cells.Sum(c => c.P * c.N) / games;
+            return Math.Clamp((chance - Total.P) * 20, -2, 2);
+        }
+    }
 
     /// <summary>Lo que se deduce de la partida una sola vez, para puntuar cada BO.</summary>
     private sealed record Context(string? Civ, IReadOnlyList<string> Mine, string? FacingStyle, IReadOnlyList<string> OtherStyles,
-        IReadOnlyList<string> PositionStyles, string MapKey, MatchSetup Match)
+        IReadOnlyList<string> PositionStyles, string MapKey, MatchSetup Match, DurationContext? Duration)
     {
-        public static Context For(MatchSetup match, CivStyles styles) => new(match.Civ, styles.Of(match.Civ), styles.Of(match.Facing).FirstOrDefault(),
+        public static Context For(MatchSetup match, CivStyles styles, MatchupStats? matchups) => new(match.Civ, styles.Of(match.Civ),
+            styles.Of(match.Facing).FirstOrDefault(),
             (match.OtherRivals ?? []).Select(c => styles.Of(c).FirstOrDefault()).OfType<string>().ToList(),
-            match.Position is { } position ? styles.ForPosition(position) : [], Normalize(match.Map), match);
+            match.Position is { } position ? styles.ForPosition(position) : [], Normalize(match.Map), match,
+            DurationContext.For(match, matchups));
     }
 
     /// <summary>Los puntos de una BO y por qué, o null si es de otra civ.</summary>
@@ -224,6 +287,14 @@ public static class BuildOrderSuggester
         {
             score += c.Mine[0] == style ? 3 : 2;
             why.Add($"{Name(style)}, típico de tu civ");
+        }
+        if (style is not null && c.Duration is { } duration && styles.Window(style) is { Count: > 0 } window)
+        {
+            var points = duration.Points(window);
+            score += points;
+            // El porqué solo si suma algo y la tendencia apunta al lado de la ventana del estilo.
+            if (points >= 0.5 && duration.Trend.FavorsShort == window.Average() < 3)
+                why.Add(MatchupText.DurationReason(duration.Trend));
         }
         if (style is not null && c.FacingStyle is not null && styles.Beats(style, c.FacingStyle))
         {

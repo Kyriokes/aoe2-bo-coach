@@ -1,0 +1,529 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-10-25T02:43:56.6783825-03:00",
+  "area": [
+    0,
+    0,
+    1920,
+    1080
+  ],
+  "game_found": true,
+  "interval_ms": 500,
+  "hud_scale": 1.0146,
+  "hud_layout": {
+    "name": "bocoach-2026-10",
+    "pixels_per_unit_at_1080p": 0.4286,
+    "bar": {
+      "width": 2720,
+      "height": 108,
+      "background": [
+        0.1,
+        0.1,
+        0.1
+      ],
+      "border": {
+        "width": 2,
+        "color": [
+          0.44,
+          0.44,
+          0.44
+        ]
+      }
+    },
+    "cells": {
+      "wood": {
+        "x": 10,
+        "width": 410,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "chip": {
+          "x": 104,
+          "y": 12,
+          "width": 70,
+          "height": 84,
+          "color": [
+            0.53,
+            0.36,
+            0.16
+          ]
+        },
+        "fields": {
+          "villagers": {
+            "x": 184,
+            "y": 12,
+            "width": 70,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          },
+          "stock": {
+            "x": 274,
+            "y": 12,
+            "width": 132,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 180,
+            "y": 12,
+            "width": 230,
+            "height": 84
+          }
+        ],
+        "separator": {
+          "x": 254,
+          "y": 12,
+          "width": 20,
+          "height": 84,
+          "text": "/",
+          "points": 44,
+          "color": [
+            0.55,
+            0.55,
+            0.55
+          ]
+        }
+      },
+      "food": {
+        "x": 420,
+        "width": 410,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "chip": {
+          "x": 104,
+          "y": 12,
+          "width": 70,
+          "height": 84,
+          "color": [
+            0.88,
+            0.41,
+            0.42
+          ]
+        },
+        "fields": {
+          "villagers": {
+            "x": 184,
+            "y": 12,
+            "width": 70,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          },
+          "stock": {
+            "x": 274,
+            "y": 12,
+            "width": 132,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 180,
+            "y": 12,
+            "width": 230,
+            "height": 84
+          }
+        ],
+        "separator": {
+          "x": 254,
+          "y": 12,
+          "width": 20,
+          "height": 84,
+          "text": "/",
+          "points": 44,
+          "color": [
+            0.55,
+            0.55,
+            0.55
+          ]
+        }
+      },
+      "gold": {
+        "x": 830,
+        "width": 410,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "chip": {
+          "x": 104,
+          "y": 12,
+          "width": 70,
+          "height": 84,
+          "color": [
+            0.94,
+            0.75,
+            0.1
+          ]
+        },
+        "fields": {
+          "villagers": {
+            "x": 184,
+            "y": 12,
+            "width": 70,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          },
+          "stock": {
+            "x": 274,
+            "y": 12,
+            "width": 132,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 180,
+            "y": 12,
+            "width": 230,
+            "height": 84
+          }
+        ],
+        "separator": {
+          "x": 254,
+          "y": 12,
+          "width": 20,
+          "height": 84,
+          "text": "/",
+          "points": 44,
+          "color": [
+            0.55,
+            0.55,
+            0.55
+          ]
+        }
+      },
+      "stone": {
+        "x": 1240,
+        "width": 410,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "chip": {
+          "x": 104,
+          "y": 12,
+          "width": 70,
+          "height": 84,
+          "color": [
+            0.62,
+            0.62,
+            0.65
+          ]
+        },
+        "fields": {
+          "villagers": {
+            "x": 184,
+            "y": 12,
+            "width": 70,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          },
+          "stock": {
+            "x": 274,
+            "y": 12,
+            "width": 132,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 180,
+            "y": 12,
+            "width": 230,
+            "height": 84
+          }
+        ],
+        "separator": {
+          "x": 254,
+          "y": 12,
+          "width": 20,
+          "height": 84,
+          "text": "/",
+          "points": 44,
+          "color": [
+            0.55,
+            0.55,
+            0.55
+          ]
+        }
+      },
+      "population": {
+        "x": 1650,
+        "width": 380,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "chip": {
+          "x": 104,
+          "y": 12,
+          "width": 80,
+          "height": 84,
+          "color": [
+            0.16,
+            0.39,
+            0.9
+          ]
+        },
+        "fields": {
+          "total": {
+            "x": 104,
+            "y": 12,
+            "width": 80,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          },
+          "cap": {
+            "x": 190,
+            "y": 12,
+            "width": 180,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 190,
+            "y": 12,
+            "width": 180,
+            "height": 84
+          }
+        ]
+      },
+      "idle": {
+        "x": 2030,
+        "width": 190,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "fields": {
+          "count": {
+            "x": 100,
+            "y": 12,
+            "width": 80,
+            "height": 84,
+            "font": "hud_numbers",
+            "points": 48
+          }
+        },
+        "backgrounds": [
+          {
+            "x": 100,
+            "y": 12,
+            "width": 80,
+            "height": 84
+          }
+        ]
+      },
+      "age": {
+        "x": 2220,
+        "width": 492,
+        "icon": {
+          "x": 10,
+          "y": 12,
+          "size": 84
+        },
+        "fields": {
+          "text": {
+            "x": 104,
+            "y": 28,
+            "width": 378,
+            "height": 52,
+            "font": "ocr",
+            "points": 44
+          }
+        },
+        "backgrounds": []
+      }
+    },
+    "clock": {
+      "gap": 14,
+      "y": 12,
+      "width": 230,
+      "height": 84,
+      "font": "mod_clock",
+      "points": 56
+    }
+  },
+  "regions": {
+    "wood": {
+      "fraction": [
+        0.0026,
+        0,
+        0.09271,
+        0.04352
+      ],
+      "pixels": [
+        5,
+        0,
+        178,
+        47
+      ]
+    },
+    "food": {
+      "fraction": [
+        0.09531,
+        0,
+        0.09271,
+        0.04352
+      ],
+      "pixels": [
+        183,
+        0,
+        178,
+        47
+      ]
+    },
+    "gold": {
+      "fraction": [
+        0.18802,
+        0,
+        0.09271,
+        0.04352
+      ],
+      "pixels": [
+        361,
+        0,
+        178,
+        47
+      ]
+    },
+    "stone": {
+      "fraction": [
+        0.28073,
+        0,
+        0.09271,
+        0.04352
+      ],
+      "pixels": [
+        539,
+        0,
+        178,
+        47
+      ]
+    },
+    "population": {
+      "fraction": [
+        0.37396,
+        0,
+        0.08594,
+        0.04352
+      ],
+      "pixels": [
+        718,
+        0,
+        165,
+        47
+      ]
+    },
+    "idle_villagers": {
+      "fraction": [
+        0.4599,
+        0,
+        0.04323,
+        0.04352
+      ],
+      "pixels": [
+        883,
+        0,
+        83,
+        47
+      ]
+    },
+    "age": {
+      "fraction": [
+        0.52656,
+        0.01111,
+        0.08542,
+        0.0213
+      ],
+      "pixels": [
+        1011,
+        12,
+        164,
+        23
+      ]
+    },
+    "clock": {
+      "fraction": [
+        0.61927,
+        0.00463,
+        0.05208,
+        0.03426
+      ],
+      "pixels": [
+        1189,
+        5,
+        100,
+        37
+      ]
+    },
+    "event_log": {
+      "fraction": [
+        0.00991,
+        0.13888,
+        0.16871,
+        0.1194
+      ],
+      "pixels": [
+        19,
+        150,
+        324,
+        129
+      ]
+    },
+    "production_queue": {
+      "fraction": [
+        0,
+        0.09352,
+        0.525,
+        0.09907
+      ],
+      "pixels": [
+        0,
+        101,
+        1008,
+        107
+      ]
+    },
+    "scores": {
+      "fraction": [
+        0.79688,
+        0.63426,
+        0.20312,
+        0.21759
+      ],
+      "pixels": [
+        1530,
+        685,
+        390,
+        235
+      ]
+    }
+  }
+}

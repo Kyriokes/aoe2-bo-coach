@@ -9,12 +9,20 @@ import { OwnerActions } from "@/components/OwnerActions";
 import { VoteButton, Votes } from "@/components/VoteButton";
 import { StepList, stepsOf, type ListedStep } from "@/components/StepList";
 import { getBuildOrder } from "@/lib/data";
+import { getMatchups } from "@/lib/matchupsServer";
+import { civsWithData } from "@/lib/matchupView";
 import { GAME } from "@/lib/jsonLd";
 import { getCurrentUser } from "@/lib/session";
 import { byline, civLabel, shareDescription, SITE_NAME } from "@/lib/share";
 import { siteUrl } from "@/lib/site";
 import { describeStep } from "@/lib/stepText";
 import { sessionClient } from "@/lib/supabase/server";
+
+/** D10: si la civ tiene estadísticas reales de cruces (para enlazar a /cruces/<civ>). */
+function hasMatchups(civ: string) {
+  const data = getMatchups();
+  return civ !== "any" && data !== null && civsWithData(data).includes(civ.toLowerCase());
+}
 
 /** "Scouts Feudal · build order de Britanos": el título para los buscadores (la página muestra solo el nombre). */
 function pageTitle(bo: { name: string; civ: string }) {
@@ -116,6 +124,14 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
               <span className="text-faint"> · </span>
               <Link href={`/biblioteca?civ=${encodeURIComponent(bo.civ)}`} className="text-faint hover:text-amber">
                 Más de {civLabel(bo.civ)}
+              </Link>
+            </>
+          ) : null}
+          {hasMatchups(bo.civ) ? (
+            <>
+              <span className="text-faint"> · </span>
+              <Link href={`/cruces/${bo.civ.toLowerCase()}`} className="text-faint hover:text-amber">
+                Cómo le va a esta civ
               </Link>
             </>
           ) : null}

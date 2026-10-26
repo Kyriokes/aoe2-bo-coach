@@ -57,6 +57,36 @@ public sealed class LiveCoachTests : IDisposable
         }
     }
 
+    /// <summary>Capturas sin HUD (sin reloj), al frente, cada 0,5 s; cuenta cuántas veces el coach pidió volver a calibrar.</summary>
+    private sealed class BlindFrames : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+        public int Recalibrations { get; private set; }
+        public Frame? Next() => new(_ => null, ++_served * 0.5, Area);
+        public bool Recalibrate() { Recalibrations++; return true; }
+    }
+
+    /// <summary>
+    /// Con "Coach automático" el coach arranca en el menú del juego, donde la calibración sola no encuentra nada, y con
+    /// la calibración vieja nunca ve el reloj del panel nuevo (20261024-224921: grabación con las regiones viejas y sin
+    /// diseño). Sin reloj, se vuelve a probar cada 5 s.
+    /// </summary>
+    [Fact]
+    public async Task Sin_reloj_vuelve_a_calibrar_cada_5_s()
+    {
+        var frames = new BlindFrames();
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, null, frames);
+
+        for (var i = 0; i < 9; i++)
+            await live.StepAsync(); // hasta 4,5 s
+        Assert.Equal(0, frames.Recalibrations);
+        for (var i = 0; i < 15; i++)
+            await live.StepAsync(); // hasta 12 s
+        Assert.Equal(2, frames.Recalibrations);
+    }
+
     private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
 
     /// <summary>

@@ -43,6 +43,20 @@ public sealed class CoachData
 
     private CivStyles? _civStyles;
 
+    /// <summary>
+    /// D10: las estadísticas reales de cruces (data/matchup_stats.json) de esa civ, cargadas una vez por civ y solo
+    /// con lo suyo (leer el archivo tarda unos 170 ms; se hace en la pantalla de carga).
+    /// </summary>
+    public MatchupStats Matchups(string civ)
+    {
+        var key = civ.Trim().ToLowerInvariant();
+        if (!_matchups.TryGetValue(key, out var stats))
+            _matchups[key] = stats = MatchupStats.Load(Path.Combine(DataDir, "matchup_stats.json"), onlyCiv: key);
+        return stats;
+    }
+
+    private readonly Dictionary<string, MatchupStats> _matchups = new();
+
     private HudFonts? _fonts;
 
     /// <summary>Carpeta "data" junto al ejecutable (game_data, events.json y BO de ejemplo).</summary>

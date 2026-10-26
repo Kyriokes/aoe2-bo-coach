@@ -114,9 +114,11 @@ public static class AutoCalibration
     }
 
     /// <summary>
-    /// El mod nuevo: los casilleros de color del diseño son las anclas. Factor píxeles por unidad = mediana de los
-    /// anchos medidos sobre los del diseño; origen de la barra = mediana de lo que cada casillero dista de su lugar.
-    /// Si un casillero no cae donde el diseño lo pone (a 3 px a 1080p, o con otro ancho), no hay detección.
+    /// El mod nuevo: los casilleros de color del diseño son las anclas. Factor píxeles por unidad = pendiente de las
+    /// posiciones medidas sobre las del diseño (el ancho, de unos 30 px, no distingue 0,4286 de 0,4348: con la escala
+    /// real del usuario la piedra caía 8 px lejos y se rechazaba todo); origen de la barra = mediana de lo que cada
+    /// casillero dista de su lugar. Si un casillero no cae donde el diseño lo pone (a 3 px a 1080p, o con otro ancho),
+    /// no hay detección.
     /// </summary>
     private static AutoCalibrationResult? DetectLayout(CapturedImage screen, RegionLayout reference, HudLayout layout)
     {
@@ -125,19 +127,32 @@ public static class AutoCalibration
         var anchors = new List<(HudCell Cell, PixelRect Rect)>();
         foreach (var cell in layout.Anchors)
         {
-            var color = cell.Chip!.Color.Captured;
-            var candidates = rects.Where(r => Within(r.Color, color, ColorTolerance)).ToList();
-            if (candidates.Count == 0)
+            var chip = cell.Chip!;
+            var candidates = rects.Where(r => Within(r.Color, chip.Color.Captured, ColorTolerance)).OrderByDescending(r => r.Rect.Width).ToList();
+            // Del más ancho al más angosto: el casillero entero, o su parte libre (la GD de la app lo parte en varios
+            // rectángulos del mismo ancho, que se juntan y se estiran por los costados). Lo que estirado no tiene la
+            // proporción de un casillero no sirve: el marco de inactivos del overlay es de un rojo parecido al de
+            // comida y más ancho, pero estirado mide la celda entera de alto.
+            PixelRect? anchor = null;
+            foreach (var candidate in candidates)
+            {
+                var same = candidates.Where(r => Math.Abs(r.Rect.X - candidate.Rect.X) <= 2 && Math.Abs(r.Rect.X + r.Rect.Width - candidate.Rect.X - candidate.Rect.Width) <= 2).ToList();
+                var top = same.Min(r => r.Rect.Y);
+                var bottom = same.Max(r => r.Rect.Y + r.Rect.Height);
+                (top, bottom) = Extend(strip, candidate.Rect.X + 1, candidate.Rect.X + candidate.Rect.Width - 2, top, bottom, candidate.Color);
+                var rect = new PixelRect(candidate.Rect.X, top, candidate.Rect.Width, bottom - top);
+                if (ChipShaped(rect, chip))
+                {
+                    anchor = rect;
+                    break;
+                }
+            }
+            if (anchor is not { } found)
                 return null;
-            // El más ancho es el casillero (o su parte libre: la GD de la app lo parte en varios rectángulos del mismo ancho).
-            var widest = candidates.MaxBy(r => r.Rect.Width);
-            var same = candidates.Where(r => Math.Abs(r.Rect.X - widest.Rect.X) <= 2 && Math.Abs(r.Rect.X + r.Rect.Width - widest.Rect.X - widest.Rect.Width) <= 2).ToList();
-            var top = same.Min(r => r.Rect.Y);
-            var bottom = same.Max(r => r.Rect.Y + r.Rect.Height);
-            (top, bottom) = Extend(strip, widest.Rect.X + 1, widest.Rect.X + widest.Rect.Width - 2, top, bottom, widest.Color);
-            anchors.Add((cell, new PixelRect(widest.Rect.X, top, widest.Rect.Width, bottom - top)));
+            anchors.Add((cell, found));
         }
-        var factor = Median(anchors.Select(a => (double)a.Rect.Width / a.Cell.Chip!.Width));
+        var factor = Slope([.. anchors.Select(a => ((double)(a.Cell.X + a.Cell.Chip!.X), (double)a.Rect.X))])
+            ?? Median(anchors.Select(a => (double)a.Rect.Width / a.Cell.Chip!.Width));
         if (factor <= 0)
             return null;
         var originX = Median(anchors.Select(a => a.Rect.X - (a.Cell.X + a.Cell.Chip!.X) * factor));
@@ -163,8 +178,11 @@ public static class AutoCalibration
     }
 
     /// <summary>
-    /// El reloj está en otro panel del juego y su ancla puede no caer exactamente donde el diseño lo predice: se busca
-    /// la primera columna con el 80 % de negro puro en las filas del reloj, hasta <paramref name="search"/> px a cada lado.
+    /// El reloj está en otro panel del juego y puede no caer donde el diseño lo predice (el origen de su colección se
+    /// mide en unidades de pantalla; en la segunda prueba del 2026-10-24 cayó 178 px a la derecha): se busca la primera
+    /// columna con el 80 % de negro puro en las filas del reloj, desde <paramref name="search"/> px a la izquierda de lo
+    /// predicho hasta el borde derecho de la pantalla, y la mitad izquierda del rectángulo tiene que ser negra en su
+    /// mayor parte (el texto del reloj tapa una parte; una raya negra suelta no alcanza).
     /// </summary>
     private static PixelRect ClockBox(CapturedImage screen, PixelRect predicted, int search)
     {
@@ -172,7 +190,7 @@ public static class AutoCalibration
         var height = predicted.Height - 4;
         if (height <= 0 || top < 0 || top + height > screen.Height)
             return predicted;
-        for (var x = Math.Max(0, predicted.X - search); x <= Math.Min(screen.Width - 1, predicted.X + search); x++)
+        int BlackRows(int x)
         {
             var black = 0;
             for (var y = top; y < top + height; y++)
@@ -181,10 +199,42 @@ public static class AutoCalibration
                 if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
                     black++;
             }
-            if (black >= height * 0.8)
+            return black;
+        }
+        var half = Math.Max(1, predicted.Width / 2);
+        for (var x = Math.Max(0, predicted.X - search); x <= screen.Width - half; x++)
+        {
+            if (BlackRows(x) < height * 0.8)
+                continue;
+            var total = 0;
+            for (var dx = 0; dx < half; dx++)
+                total += BlackRows(x + dx);
+            if (total >= ClockRectBlack * half * height)
                 return predicted with { X = x };
         }
         return predicted;
+    }
+
+    /// <summary>Parte de la mitad izquierda del rectángulo del reloj que tiene que ser negro puro.</summary>
+    private const double ClockRectBlack = 0.4;
+
+    /// <summary>Alto sobre ancho a un cuarto del del casillero del diseño.</summary>
+    private static bool ChipShaped(PixelRect rect, HudChip chip) =>
+        rect.Width > 0 && Math.Abs((double)rect.Height / rect.Width - (double)chip.Height / chip.Width) <= ShapeTolerance * chip.Height / chip.Width;
+
+    private const double ShapeTolerance = 0.25;
+
+    /// <summary>Pendiente de mínimos cuadrados de Y sobre X (píxeles por unidad), o null sin dos puntos distintos o con pendiente nula.</summary>
+    private static double? Slope(IReadOnlyList<(double X, double Y)> points)
+    {
+        if (points.Count < 2)
+            return null;
+        var (mx, my) = (points.Average(p => p.X), points.Average(p => p.Y));
+        var sxx = points.Sum(p => (p.X - mx) * (p.X - mx));
+        if (sxx <= 0)
+            return null;
+        var slope = points.Sum(p => (p.X - mx) * (p.Y - my)) / sxx;
+        return slope > 0 ? slope : null;
     }
 
     private static double Median(IEnumerable<double> values)
@@ -199,9 +249,12 @@ public static class AutoCalibration
     /// <summary>Lo común a los dos caminos: cola de producción, log y puntajes, y el RegionLayout.</summary>
     private static AutoCalibrationResult Finish(CapturedImage screen, RegionLayout reference, Dictionary<string, PixelRect> boxes, double scale, IReadOnlyList<PixelRect> squares, HudLayout? hud)
     {
-        var referenceQueue = reference.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
-        boxes[RegionNames.ProductionQueue] = new PixelRect(
-            Scaled(referenceQueue.X, scale), Scaled(referenceQueue.Y, scale), Scaled(referenceQueue.Width, scale), Scaled(referenceQueue.Height, scale));
+        // La cola de producción no es parte del diseño ni de las franjas: su caja es la de siempre a 1080p escalada como
+        // el HUD. No la de la referencia: era la calibración sola anterior, ya escalada, y cada recalibración (cada 5 s
+        // sin reloj) la agrandaba un 1,5 %; en la tercera prueba del HUD propio (2026-10-25) quedó en y 121 con la
+        // cola en y 50 y el centro urbano parecía parado toda la partida.
+        var queue = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
+        boxes[RegionNames.ProductionQueue] = new PixelRect(Scaled(queue.X, scale), Scaled(queue.Y, scale), Scaled(queue.Width, scale), Scaled(queue.Height, scale));
 
         // El panel de puntajes, anclado abajo a la derecha de la pantalla y escalado como el HUD (la caja guardada podía
         // ser la vieja, de 2 renglones).

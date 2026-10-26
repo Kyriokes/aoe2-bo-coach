@@ -28,7 +28,7 @@ public sealed class GlyphReader(GlyphFont font)
     /// </summary>
     public GlyphReading ReadRightmostGroup(CapturedImage image)
     {
-        var glyphs = Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio);
+        var glyphs = Extract(image);
         if (glyphs.Count == 0)
             return new GlyphReading("", 0);
         // Un hueco de grupo es más ancho que un dígito típico (por la altura del texto, no por los dígitos de esta
@@ -42,7 +42,11 @@ public sealed class GlyphReader(GlyphFont font)
     }
 
     public GlyphReading Read(CapturedImage image) =>
-        Classify(Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio), image.Width);
+        Classify(Extract(image), image.Width);
+
+    /// <summary>Los caracteres de la imagen, partiendo con la letra los bloques que no se parecen a nada.</summary>
+    private IReadOnlyList<Glyph> Extract(CapturedImage image) =>
+        Glyphs.Extract(image, font.Ink, font.TypicalWidthRatio, cell => Classify(cell).Distance, MaxDistance);
 
     private GlyphReading Classify(IReadOnlyList<Glyph> glyphs, int imageWidth)
     {

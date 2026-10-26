@@ -34,20 +34,35 @@ public interface IFrameSource
 
     /// <summary>El diseño del mod nuevo con que se calibró o grabó (cada campo se recorta por él), o null.</summary>
     Vision.Hud.HudLayout? Hud => null;
+
+    /// <summary>
+    /// Vuelve a calibrar sobre la pantalla (el coach lo pide mientras no ve el reloj): true si encontró el HUD, y las
+    /// capturas que siguen usan las regiones nuevas. Una grabación no calibra.
+    /// </summary>
+    bool Recalibrate() => false;
 }
 
 /// <summary>La pantalla en vivo: cada región se captura una sola vez por captura, recién cuando se la pide.</summary>
-public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IFrameSource
+public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func<RegionLayout?>? recalibrate = null) : IFrameSource
 {
     private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private RegionLayout _layout = layout;
 
     public TimeSpan Interval { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public PixelRect Area => screen.CaptureArea;
 
-    public double HudScale => layout.HudScale;
+    public double HudScale => _layout.HudScale;
 
-    public Vision.Hud.HudLayout? Hud => layout.Hud;
+    public Vision.Hud.HudLayout? Hud => _layout.Hud;
+
+    public bool Recalibrate()
+    {
+        if (recalibrate?.Invoke() is not { } found)
+            return false;
+        _layout = found;
+        return true;
+    }
 
     private PixelRect? _lastArea;
 
@@ -68,11 +83,11 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout) : IF
 
     private CapturedImage? Capture(string region, PixelRect area)
     {
-        if (!layout.Regions.ContainsKey(region))
+        if (!_layout.Regions.ContainsKey(region))
             return null;
-        var rect = layout.PixelsOf(region, area);
+        var rect = _layout.PixelsOf(region, area);
         // Con el HUD a otra escala, la captura se lleva a los píxeles de 1080p de las letras y los íconos.
-        return rect.IsEmpty ? null : screen.Capture(rect).AtHudScale(layout.HudScale);
+        return rect.IsEmpty ? null : screen.Capture(rect).AtHudScale(_layout.HudScale);
     }
 }
 

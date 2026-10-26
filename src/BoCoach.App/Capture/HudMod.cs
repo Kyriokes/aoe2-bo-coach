@@ -35,6 +35,9 @@ public static class HudMod
     private const string ResourcePanelFile = "resourcepanel.json";
     private const string ClockPanelFile = "worldtimerpanel.json";
 
+    /// <summary>Margen izquierdo del texto del reloj dentro de su campo negro, en unidades del panel.</summary>
+    public const int ClockTextX = 20;
+
     /// <summary>Lo que agrega el mod lleva este prefijo: se saca antes de volver a armar el panel.</summary>
     private const string Ours = "BoCoach";
 
@@ -117,9 +120,11 @@ public static class HudMod
         var background = collection["Widgets"]!.AsArray()[0]!["Widget"]!.AsObject();
         StripOurs(background);
         background["ViewPort"] = View(0, 0, bar.Width, bar.Height);
+        // La textura de la civ se apaga en sus nueve estados; la barra lisa es un hijo con material normal: un color
+        // liso puesto en los estados por civ no se dibujó en el juego y se veía la textura (20261024-224921).
         var states = new JsonObject { ["UserStates"] = 9 };
         for (var i = 0; i < 9; i++)
-            states[$"UserState{i}"] = Flat(bar.Background);
+            states[$"UserState{i}"] = None();
         background["StateMaterials"] = states;
 
         var entries = Detach(background);
@@ -129,8 +134,23 @@ public static class HudMod
         var fontIndex = Named("WoodStorage")["StateMaterials"]?["StateNormal"]?["Font"]?["FontIndex"]?.DeepClone() ?? JsonValue.Create(0);
         var white = new HudColor(1, 1, 1);
 
+        // La barra cubre la pantalla entera menos el campo negro del reloj: está en otro panel con el mismo plano (1) y
+        // no se sabe cuál se dibuja arriba, así que va en dos tramos, hasta el reloj y desde su final. El menú del juego
+        // (escudo y botones, plano 11) queda arriba de la barra.
+        var clockRect = layout.ClockRect();
+        JsonObject BarPart(string name, int x, int width) => Wrap(new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = $"{Ours}{name}",
+            ["ViewPort"] = View(x, 0, width, bar.Height),
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.Background) },
+            ["ChildWidgets"] = new JsonArray(),
+        });
+        var afterClock = clockRect.X + clockRect.Width;
         var children = new JsonArray
         {
+            BarPart("Bar", 0, Math.Min(bar.Width, clockRect.X)),
+            BarPart("BarAfterClock", afterClock, Math.Max(0, bar.Width - afterClock)),
             Border("Top", 0, 0, bar.Width, bar.BorderWidth, bar),
             Border("Bottom", 0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth, bar),
             Border("Left", 0, 0, bar.BorderWidth, bar.Height, bar),
@@ -146,8 +166,18 @@ public static class HudMod
             switch (name)
             {
                 case "Wood" or "Food" or "Gold" or "Stone" or "Population":
-                    BuildContainer(widget, layout.Cell(name.ToLowerInvariant()), bar.Height, name == "Population" ? "total" : "villagers", fontIndex, white);
+                {
+                    var cell = layout.Cell(name.ToLowerInvariant());
+                    // Los fondos negros van como hermanos, antes del contenedor y de la etiqueta del stock y un plano
+                    // más abajo: adentro del contenedor (plano 1 + 1) tapaban al stock (plano 2, hermano) en el juego.
+                    for (var i = 0; i < cell.Backgrounds.Count; i++)
+                    {
+                        var b = cell.Backgrounds[i];
+                        children.Add(Back($"{Ours}Back_{cell.Name}_{i}", cell.X + b.X, b.Y, b.Width, b.Height));
+                    }
+                    BuildContainer(widget, cell, bar.Height, name == "Population" ? "total" : "villagers", fontIndex, white);
                     break;
+                }
                 case "WoodStorage" or "FoodStorage" or "GoldStorage" or "StoneStorage":
                     PlaceLabel(widget, layout, layout.Cell(name[..^"Storage".Length].ToLowerInvariant()), "stock", fontIndex, white);
                     break;
@@ -189,23 +219,31 @@ public static class HudMod
         return original;
     }
 
-    /// <summary>El panel del reloj: la colección corrida al final de la barra, el reloj grande y un rectángulo negro detrás.</summary>
+    /// <summary>El panel del reloj: el ancla corrida al final de la barra, el reloj grande y un rectángulo negro detrás.</summary>
     public static JsonObject ClockPanel(JsonObject original, HudLayout layout)
     {
         var spec = layout.Clock;
         var collection = original["Collection"]!.AsObject();
+        // El origen de la colección se mide en unidades de pantalla (3840 de ancho): corrida a 2734, el reloj caía en
+        // 1367 px (2734 × 0,5) con el HUD del usuario al 87 %, 178 px a la derecha de la barra (segunda prueba del
+        // 2026-10-24). El ancla se mide en las unidades del HUD, como la barra (en el original, 1700 = 737 px a
+        // 0,4348): el reloj se ubica con ella y la colección queda donde la trae el juego.
         if (collection["ViewPort"] is not JsonObject viewport)
             collection["ViewPort"] = viewport = View(0, 0, 3840, 2160);
-        viewport["xorigin"] = layout.Bar.Width + spec.Gap;
-        viewport["yorigin"] = 0;
+        (viewport["xorigin"], viewport["yorigin"]) = (0, 0);
         var clock = collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "WorldTimer")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         StripOurs(clock);
+        var anchorX = layout.ClockRect().X;
+        if (clock["Anchor"] is JsonObject anchor)
+            (anchor["xorigin"], anchor["yorigin"]) = (anchorX, 0);
+        else
+            clock["Anchor"] = new JsonObject { ["xorigin"] = anchorX, ["yorigin"] = 0, ["alignment"] = "TopLeft" };
         var label = Children(clock).FirstOrDefault(c => Text(c, "Name") == "WorldTimerLabel")
             ?? throw new InvalidDataException("No encontré el reloj en el panel.");
         if (label["StateMaterials"]?["StateNormal"]?["Font"] is JsonObject font)
             font["PointSize"] = spec.Points;
-        label["ViewPort"] = View(8, spec.Y + (spec.Height - spec.Points) / 2, 1000, spec.Points);
+        label["ViewPort"] = View(ClockTextX, spec.Y + (spec.Height - spec.Points) / 2, 1000, spec.Points);
         label["ZPlaneLocalOffset"] = 1;
         // Espectadores e ID de partida van debajo del reloj: se bajan para que el reloj grande no los pise.
         foreach (var below in Children(clock).Where(c => Text(c, "Name") is "SpectatorsIcon" or "GameIDLabel"))
@@ -294,11 +332,6 @@ public static class HudMod
                 ["ChildWidgets"] = new JsonArray(),
             }));
         }
-        for (var i = 0; i < cell.Backgrounds.Count; i++)
-        {
-            var b = cell.Backgrounds[i];
-            children.Add(Back($"{Ours}Back{i}", b.X, b.Y, b.Width, b.Height));
-        }
         if (cell.Separator is { } s)
         {
             children.Add(s.Text is { Length: > 0 } text
@@ -337,7 +370,17 @@ public static class HudMod
     {
         var field = cell.Fields[fieldName];
         label["ViewPort"] = Absolute(layout, cell, field);
-        label["StateMaterials"] = Font(fontIndex, field.Points, white);
+        // El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan con el tamaño nuevo.
+        if (label["StateMaterials"] is JsonObject states && states["UserStates"] is not null)
+        {
+            foreach (var (_, state) in states)
+            {
+                if (state is JsonObject { } s && s["Font"] is JsonObject font)
+                    font["PointSize"] = field.Points;
+            }
+        }
+        else
+            label["StateMaterials"] = Font(fontIndex, field.Points, white);
         label["TextAnchor"] = "CentreCentre";
         label["ZPlaneLocalOffset"] = 2;
     }

@@ -35,7 +35,11 @@ public sealed record GameReport(
     double IdleVillagersTime,
     double HousedTime,
     int HousedTimes,
-    IReadOnlyList<FloatingResource> Floating);
+    IReadOnlyList<FloatingResource> Floating)
+{
+    /// <summary>D10: el cruce de la pantalla de carga (<see cref="MatchupText.Report"/>); vacío si no se vio.</summary>
+    public IReadOnlyList<string> Matchup { get; init; } = [];
+}
 
 /// <summary>
 /// Junta el informe captura por captura (lo llama el <see cref="Coach"/> en cada snapshot). Los tiempos del plan salen
@@ -187,6 +191,8 @@ public static class GameReportText
         lines.Add($"Aldeanos inactivos: {Span(report.IdleVillagersTime)}. Sin lugar por población: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "vez" : "veces")}).");
         foreach (var f in report.Floating.OrderByDescending(f => f.Duration).Take(3))
             lines.Add($"Acumulaste {Resource(f.Resource)}: {Span(f.Duration)} con más de {GameReportBuilder.FloatingAmount} desde las {Clock(f.Start)} (hasta {f.Peak}).");
+        // D10: la sección "El cruce" (spec 5.4).
+        lines.AddRange(report.Matchup.Select((line, i) => i == 0 ? $"El cruce: {line}" : line));
         return lines;
     }
 
@@ -203,8 +209,14 @@ public static class GameReportText
         sb.Append(".late{color:#f05a50}.ok{color:#6fd86f}.muted{color:#a39a8f}</style></head><body>");
         sb.Append($"<h1>{E(report.BuildOrder)}</h1><p class=\"muted\">{date:yyyy-MM-dd HH:mm} · {GameClock.Format(report.Length)} de partida</p>");
         sb.Append("<h2>Resumen</h2><ul>");
-        foreach (var line in Summary(report).Skip(1))
+        foreach (var line in Summary(report with { Matchup = [] }).Skip(1))
             sb.Append($"<li>{E(line)}</li>");
+        if (report.Matchup.Count > 0)
+        {
+            sb.Append("</ul><h2>El cruce</h2><ul>");
+            foreach (var line in report.Matchup)
+                sb.Append($"<li>{E(line)}</li>");
+        }
         sb.Append("</ul><h2>Pasos contra la BO</h2><table><tr><th>#</th><th>Paso</th><th>La BO</th><th>Vos</th><th>Atraso</th></tr>");
         foreach (var s in report.Steps)
         {

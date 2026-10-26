@@ -3,8 +3,10 @@ using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
+using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
 
@@ -44,6 +46,17 @@ public sealed class CoachSessionTests : IDisposable
         public void SetOverlayVisible(bool visible) => Visible = visible;
         public void CloseOverlay() => Closed = true;
         public void RunOnUi(Action action) => action();
+
+        /// <summary>D10: qué elige el usuario entre los homónimos que devolvió "Buscar".</summary>
+        public Func<IReadOnlyList<EloCandidate>, EloCandidate?> Choose { get; set; } = _ => null;
+
+        public IReadOnlyList<EloCandidate>? Offered { get; private set; }
+
+        public EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates)
+        {
+            Offered = candidates;
+            return Choose(candidates);
+        }
     }
 
     private CoachFrame Frame(CoachView view, double withoutClock = 0, bool ended = false, HudState? hud = null) =>
@@ -152,7 +165,12 @@ public sealed class CoachSessionTests : IDisposable
             PlayerName = "Kyriokes",
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
-        for (var i = 0; i < 3; i++)
+        for (var i = 0; i < 2; i++)
+            await session.LiveCoach!.StepAsync();
+        // Un segundo sin reloj no mueve el overlay: una captura sin leer cada tanto lo hacía saltar de arriba a abajo
+        // (tercera prueba del HUD propio, 2026-10-25, con la caja del reloj justa).
+        Assert.False(host.Lowered);
+        for (var i = 0; i < 4; i++)
             await session.LiveCoach!.StepAsync();
 
         Assert.True(host.Lowered); // sin reloj, el overlay baja
@@ -165,6 +183,48 @@ public sealed class CoachSessionTests : IDisposable
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
+    }
+
+    // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
+    [Theory]
+    [InlineData("", "por equipos (sin tu Elo)")]
+    [InlineData("1200", "por equipos (Elo 1200)")]
+    public async Task En_la_pantalla_de_carga_muestra_el_cruce(string eloEquipos, string esperado)
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
+        {
+            PlayerName = "Kyriokes",
+            EloTeamText = eloEquipos,
+        };
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        for (var i = 0; i < 6; i++)
+            await session.LiveCoach!.StepAsync();
+
+        Assert.StartsWith("Japoneses en ", session.Overlay!.MatchupLine);
+        Assert.Contains(esperado, session.Overlay.MatchupLine);
+    }
+
+    // D10 (revisión de c): una pantalla de carga nueva donde no se encuentra tu nombre dejaba el cruce de la partida
+    // anterior en el overlay (y en el informe, si la anterior no llegó al minuto).
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_sin_tu_nombre_borra_el_cruce_anterior()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(0, new ResourceAmounts(200, 200, 100, 200), 4, 5));
+        static LoadingPlayer Jugador(int slot, string name, string civ) => new(slot, name, "", civ, null, (0, 0, 0));
+        var primera = new LoadingReading([Jugador(1, "Kyriokes", "franks"), Jugador(2, "Rival", "britons")], "Arabia");
+
+        session.Apply(Frame(view) with { Loading = primera, Me = primera.Players[0] });
+        Assert.StartsWith("Francos contra britanos en Arabia", session.Overlay!.MatchupLine);
+
+        var segunda = new LoadingReading([Jugador(1, "Otro", "celts"), Jugador(2, "Rival", "goths")], "Arena");
+        session.Apply(Frame(view) with { Loading = segunda, Me = null });
+        Assert.Null(session.Overlay.MatchupLine);
+        Assert.Null(session.Overlay.MatchAdvice);
     }
 
     // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.
@@ -412,5 +472,127 @@ public sealed class CoachSessionTests : IDisposable
 
         Assert.False(host.Visible);
         Assert.Equal("El juego no está al frente.", session.Overlay!.Warning);
+    }
+
+    // ---- D10: Elo 1v1 y de equipos, con "Buscar" en la API del juego ----
+
+    private static EloCandidate Candidato(string alias, long perfil, int? uno, int? equipos, int diasAtras = 0) =>
+        new(alias, perfil, "ar", uno, equipos, DateTimeOffset.UtcNow.AddDays(-diasAtras));
+
+    private CoachSessionViewModel SesionConAjustes(FakeHost host, string path) =>
+        new(_data, host, () => null, () => throw new InvalidOperationException(), path);
+
+    [Fact]
+    public void El_Elo_se_guarda_con_los_ajustes()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var session = SesionConAjustes(new FakeHost(), path);
+        Assert.Null(session.Elo1v1);
+
+        session.Elo1v1Text = "1050";
+        session.EloTeamText = "1200";
+        var otra = SesionConAjustes(new FakeHost(), path);
+        Assert.Equal(1050, otra.Elo1v1);
+        Assert.Equal(1200, otra.EloTeam);
+        Assert.Equal("1050", otra.Elo1v1Text);
+
+        otra.Elo1v1Text = "abc";
+        otra.EloTeamText = "99999";
+        Assert.Null(otra.Elo1v1);
+        Assert.Null(otra.EloTeam);
+        var tercera = SesionConAjustes(new FakeHost(), path);
+        Assert.Null(tercera.Elo1v1);
+        Assert.Equal("", tercera.EloTeamText);
+    }
+
+    [Fact]
+    public void El_Elo_acepta_el_punto_de_miles_y_avisa_si_no_vale()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var session = SesionConAjustes(new FakeHost(), path);
+
+        session.Elo1v1Text = "1.200";
+        session.EloTeamText = "1,250";
+        Assert.Equal(1200, session.Elo1v1);
+        Assert.Equal(1250, session.EloTeam);
+        Assert.Equal("", session.EloStatus);
+
+        session.Elo1v1Text = "1200,5";
+        Assert.Null(session.Elo1v1);
+        Assert.Equal("Elo no válido: un número de 1 a 4000.", session.EloStatus);
+        session.Elo1v1Text = "1100";
+        Assert.Equal("", session.EloStatus);
+
+        File.WriteAllText(path, """{ "elo_1v1": 5000, "elo_team": "x" }""");
+        var otra = SesionConAjustes(new FakeHost(), path);
+        Assert.Null(otra.Elo1v1);
+        Assert.Null(otra.EloTeam);
+    }
+
+    [Fact]
+    public async Task Buscar_con_uno_completa_el_Elo()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        var session = SesionConAjustes(new FakeHost(), path);
+        session.PlayerName = "Kyriokes";
+        string? buscado = null;
+        session.SearchElo = (nombre, _) =>
+        {
+            buscado = nombre;
+            return Task.FromResult(new EloSearch([Candidato("Kyriokes", 4341787, 1050, 1200)], null));
+        };
+
+        await session.SearchEloCommand.ExecuteAsync(null);
+
+        Assert.Equal("Kyriokes", buscado);
+        Assert.Equal(1050, session.Elo1v1);
+        Assert.Equal(1200, session.EloTeam);
+        Assert.Equal("Elo de Kyriokes: 1v1 1050, equipos 1200.", session.EloStatus);
+        Assert.Equal(4341787L, CoachSettings.Load(path).ProfileId);
+    }
+
+    [Fact]
+    public async Task Buscar_con_varios_deja_elegir()
+    {
+        var host = new FakeHost { Choose = lista => lista[1] };
+        var session = SesionConAjustes(host, Path.Combine(_library.FullName, "settings.json"));
+        session.PlayerName = "TheViper";
+        session.EloTeamText = "999";
+        var candidatos = new[] { Candidato("TheViper", 1, 843, 856), Candidato("TheViper", 2, 905, null, diasAtras: 300) };
+        session.SearchElo = (_, _) => Task.FromResult(new EloSearch(candidatos, null));
+
+        await session.SearchEloCommand.ExecuteAsync(null);
+
+        Assert.Equal(candidatos, host.Offered);
+        Assert.Equal(905, session.Elo1v1);
+        Assert.Equal(999, session.EloTeam); // el elegido no tiene Elo de equipos: queda el que había
+        Assert.Equal("Elo de TheViper: 1v1 905, equipos -.", session.EloStatus);
+    }
+
+    [Fact]
+    public async Task Buscar_sin_resultados_lo_dice()
+    {
+        var session = SesionConAjustes(new FakeHost(), Path.Combine(_library.FullName, "settings.json"));
+        session.PlayerName = "Nadie";
+        session.SearchElo = (_, _) => Task.FromResult(new EloSearch([], null));
+        await session.SearchEloCommand.ExecuteAsync(null);
+        Assert.Equal("No encontré a Nadie en el juego.", session.EloStatus);
+
+        session.SearchElo = (_, _) => Task.FromResult(new EloSearch([], "No se pudo consultar la API del juego: sin red"));
+        await session.SearchEloCommand.ExecuteAsync(null);
+        Assert.Equal("No se pudo consultar la API del juego: sin red", session.EloStatus);
+    }
+
+    [Fact]
+    public async Task Buscar_sin_nombre_lo_pide()
+    {
+        var session = SesionConAjustes(new FakeHost(), Path.Combine(_library.FullName, "settings.json"));
+        var buscó = false;
+        session.SearchElo = (_, _) => { buscó = true; return Task.FromResult(new EloSearch([], null)); };
+
+        await session.SearchEloCommand.ExecuteAsync(null);
+
+        Assert.False(buscó);
+        Assert.Equal("Poné tu nombre primero.", session.EloStatus);
     }
 }
