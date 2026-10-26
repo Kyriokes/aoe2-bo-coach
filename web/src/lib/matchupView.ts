@@ -17,6 +17,16 @@ export function matchupSitemapPaths(data: MatchupData): string[] {
   return ["/cruces", ...civsWithData(data).map((civ) => `/cruces/${civ}`), ...[...data.oneVsOne.keys()].sort().map((pair) => `/cruces/${pair.replace("|", "-vs-")}`)];
 }
 
+/**
+ * Las páginas de /cruces/[slug] que se arman al compilar: cada civ y cada pareja (claves en orden alfabético). Sin
+ * datos legibles, una sola (los francos), que dice que no hay estadísticas: con Cache Components, una lista vacía
+ * rompe el build.
+ */
+export function matchupStaticParams(data: MatchupData | null): { slug: string }[] {
+  if (!data) return [{ slug: "franks" }];
+  return [...civsWithData(data).map((civ) => ({ slug: civ })), ...[...data.oneVsOne.keys()].map((pair) => ({ slug: pair.replace("|", "-vs-") }))];
+}
+
 /** Un rival con sus 30 casilleros de duración "todas": el índice es mapa · 6 + franja de Elo. */
 export interface RivalRow {
   rival: string;

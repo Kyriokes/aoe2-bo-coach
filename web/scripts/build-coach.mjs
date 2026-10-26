@@ -54,7 +54,10 @@ cpSync(join(repo, "data", "game_data", gameData.file), join(out, "game_data.json
 cpSync(join(repo, "data", "events.json"), join(out, "events.json"));
 cpSync(join(repo, "data", "maps.json"), join(out, "maps.json"));
 cpSync(join(repo, "data", "donaciones.json"), join(out, "donaciones.json"));
-cpSync(join(repo, "data", "matchup_stats.json"), join(out, "matchup_stats.json"));
+// Sin las estadísticas de cruces (tools/stats), las páginas /cruces dicen que no hay datos en vez de romper el build.
+const matchups = join(repo, "data", "matchup_stats.json");
+if (existsSync(matchups)) cpSync(matchups, join(out, "matchup_stats.json"));
+else console.warn("Falta data/matchup_stats.json: las páginas /cruces van a decir que no hay estadísticas.");
 
 // BO de ejemplo (las mismas que trae la app), para probar "Subir una BO" sin tener una propia.
 const examples = join(out, "ejemplos");

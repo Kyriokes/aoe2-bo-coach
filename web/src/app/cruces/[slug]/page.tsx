@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, type MatchupData } from "@/lib/matchups";
 import { getMatchups } from "@/lib/matchupsServer";
-import { civsWithData, mapLine, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
+import { mapLine, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { MatchupDuration } from "@/components/MatchupDuration";
 import { MatchupRivals, type Choice } from "@/components/MatchupRivals";
 import { civLabel, SITE_NAME } from "@/lib/share";
@@ -14,9 +14,7 @@ import { civLabel, SITE_NAME } from "@/lib/share";
  * verdad: con el prerenderizado parcial, una redirección o un notFound armados al pedirlos salían con 200).
  */
 export function generateStaticParams() {
-  const data = getMatchups();
-  if (!data) return [];
-  return [...civsWithData(data).map((civ) => ({ slug: civ })), ...[...data.oneVsOne.keys()].map((pair) => ({ slug: pair.replace("|", "-vs-") }))];
+  return matchupStaticParams(getMatchups());
 }
 
 function mapChoices(data: MatchupData): Choice[] {
@@ -53,7 +51,12 @@ export default async function MatchupPage({ params }: PageProps<"/cruces/[slug]"
   if (!("civ" in parsed) && !parsed.canonical) permanentRedirect(`/cruces/${pairSlug(parsed.a, parsed.b)}`);
   const data = getMatchups();
   if (!data) {
-    return <p className="text-muted">Todavía no hay estadísticas de cruces.</p>;
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-semibold">Cruces de civs</h1>
+        <p className="text-muted">Todavía no hay estadísticas de cruces.</p>
+      </div>
+    );
   }
   return "civ" in parsed ? <CivMatchups data={data} civ={parsed.civ} /> : <PairMatchup data={data} a={parsed.a} b={parsed.b} />;
 }

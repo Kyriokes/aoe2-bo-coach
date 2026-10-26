@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { durationLabel, MAP_NAMES, oneVsOne, type MatchupData } from "./matchups";
-import { durationText, mapLine, matchupSitemapPaths, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
+import { durationText, mapLine, matchupSitemapPaths, matchupStaticParams, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
 import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
 
 const tres = (fn: CellFn) => ({ "britons|franks": fn, "britons|mayan": fn, "franks|mayan": fn });
@@ -93,6 +93,21 @@ describe("lo que muestra cada página de cruces", () => {
       "/cruces/britons-vs-mayan",
       "/cruces/franks-vs-mayan",
     ]);
+  });
+
+  it("las páginas que se arman al compilar", () => {
+    const data = parseTest(buildMatchups(tres(same(500, 480, 520, 10)), { franks: same(510, 500, 520, 900) }));
+    expect(matchupStaticParams(data).map((p) => p.slug)).toEqual([
+      "britons",
+      "franks",
+      "mayan",
+      "britons-vs-franks",
+      "britons-vs-mayan",
+      "franks-vs-mayan",
+    ]);
+    // Sin datos legibles, una página igual: con Cache Components una lista vacía rompe el build, y la página ya dice
+    // que no hay estadísticas.
+    expect(matchupStaticParams(null)).toEqual([{ slug: "franks" }]);
   });
 
   it("textos de un mapa sin partidas", () => {
