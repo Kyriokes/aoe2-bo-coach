@@ -123,6 +123,27 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Lo_que_va_antes_en_la_BO_tiene_prioridad_sobre_los_recursos()
+    {
+        // La collera (75 de madera) va antes que las granjas (60): no se la comen de a una mientras junta.
+        var start = PlanStart.Standard with
+        {
+            Age = Age.Feudal,
+            IdleVillagers = 0,
+            Stock = new ResourceAmounts(Food: 200, Wood: 0, Stone: 0, Gold: 0),
+            Villagers = new Dictionary<GatherSource, int> { [GatherSource.Wood] = 4, [GatherSource.Sheep] = 4 },
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["mill"] = 1 },
+        };
+        var collar = new Step { Id = "s1", Do = StepAction.Research, What = "horse_collar" };
+        var farms = new Step { Id = "s2", Do = StepAction.Build, What = "farm", Count = 3, From = GatherSource.Sheep, Assign = GatherSource.Farm };
+
+        var plan = Planner.Simulate([new PlanItem(collar, 1), new PlanItem(farms, 3)], start);
+
+        Assert.True(plan.Completed);
+        Assert.True(plan.ClickTime("horse_collar") < plan.For("s2")!.Start);
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));

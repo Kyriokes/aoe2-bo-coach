@@ -200,6 +200,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private readonly List<PlanBuilding> _buildingList = [];
         private double _time;
         private ResourceAmounts _stock;
+
+        /// <summary>Lo que en este segundo quedó apartado para pasos que esperan recursos (ver <see cref="Pays"/>).</summary>
+        private ResourceAmounts _claimed;
+
         private int _population;
         private int _reserved;
         private int _cap;
@@ -292,6 +296,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 // a todo lo de antes.
                 var inOrder = true;
                 var reached = true;
+                _claimed = ResourceAmounts.Zero;
                 foreach (var item in _items)
                 {
                     var villagers = IsVillagers(item.Step);
@@ -443,11 +448,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     return;
                 }
                 var cost = _civ.Cost(entity, _age);
-                if (!_stock.Covers(cost))
-                {
-                    Block(item, BlockReason.Resources, Missing(cost));
+                if (!Pays(item, cost))
                     return;
-                }
 
                 queue.Dequeue();
                 _stock -= cost;
@@ -510,11 +512,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     return;
                 }
                 var cost = _civ.Cost(entity, _age);
-                if (!_stock.Covers(cost))
-                {
-                    Block(item, BlockReason.Resources, Missing(cost));
+                if (!Pays(item, cost))
                     return;
-                }
 
                 int builders;
                 if (!parallel && item.HeldBuilders > 0)
@@ -630,8 +629,23 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _ => null,
         };
 
-        private Resource Missing(ResourceAmounts cost) =>
-            Enum.GetValues<Resource>().First(r => _stock[r] < cost[r]);
+        /// <summary>
+        /// Si alcanza para pagar el paso. Lo que va antes en la BO tiene prioridad: si un paso anterior espera un
+        /// recurso, ese recurso queda apartado para él en este segundo (si no, las granjas de 60 se comían de a una la
+        /// madera que juntaba la collera de 75). Los aldeanos no esperan a nadie: el centro urbano no para por un
+        /// edificio o una tecnología.
+        /// </summary>
+        private bool Pays(ItemSim item, ResourceAmounts cost)
+        {
+            var available = IsVillagers(item.Step) ? _stock : _stock - _claimed;
+            if (available.Covers(cost))
+                return true;
+            var missing = Enum.GetValues<Resource>().Where(r => available[r] < cost[r]).ToList();
+            Block(item, BlockReason.Resources, missing[0]);
+            foreach (var r in missing)
+                _claimed = _claimed.With(r, _claimed[r] + cost[r]);
+            return false;
+        }
 
         /// <summary>Registra que el paso está trabado este segundo; si ya lo estaba por lo mismo, estira el intervalo.</summary>
         private void Block(ItemSim item, BlockReason reason, Resource? missing = null)
