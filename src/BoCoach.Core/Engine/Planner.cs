@@ -286,8 +286,19 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             while (true)
             {
                 CompleteRunning();
-                for (var i = 0; i < _items.Count; i++)
-                    Advance(_items[i], i == 0 || Releases(_items[i - 1]));
+                // Los pasos arrancan en orden: cada uno cuando el anterior arrancó. Los aldeanos son la excepción: el
+                // centro urbano no para porque un paso de antes espere (un molino sin madera, un campamento sin
+                // constructor); alcanza con que la BO haya llegado hasta ahí. Lo que no es aldeanos sigue esperando
+                // a todo lo de antes.
+                var inOrder = true;
+                var reached = true;
+                foreach (var item in _items)
+                {
+                    var villagers = IsVillagers(item.Step);
+                    Advance(item, villagers ? reached : inOrder);
+                    inOrder = villagers ? inOrder && Releases(item) : Releases(item);
+                    reached = item.Reached || item.Started || item.End is not null;
+                }
 
                 if (_time >= nextSample)
                 {
@@ -355,15 +366,22 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _finishedSteps.Add(item.Step.Id);
         }
 
-        private void Advance(ItemSim item, bool previousStarted)
+        private static bool IsVillagers(Step step) => step.Do == StepAction.Train && step.What == "villager";
+
+        /// <param name="allowed">Si la BO ya llegó hasta este paso (ver <see cref="Run"/>).</param>
+        private void Advance(ItemSim item, bool allowed)
         {
             if (item.End is not null)
                 return;
 
             if (!item.Started)
             {
-                if (!previousStarted || !ConditionsMet(item.Step))
-                    return;
+                if (!item.Reached)
+                {
+                    if (!allowed || !ConditionsMet(item.Step))
+                        return;
+                    item.Reached = true;
+                }
                 if (item.Step.Do is StepAction.Train or StepAction.Research)
                 {
                     // Entra en la cola del edificio; se paga cuando el edificio lo empieza a producir.
@@ -650,6 +668,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         public int Unfinished { get; set; }
         public int HeldBuilders { get; set; }
         public bool Started { get; set; }
+
+        /// <summary>La BO llegó hasta este paso y se cumplen sus condiciones, aunque todavía no pueda empezar.</summary>
+        public bool Reached { get; set; }
+
         public double? Start { get; set; }
         public double? End { get; set; }
         public double? PaidAt { get; init; }

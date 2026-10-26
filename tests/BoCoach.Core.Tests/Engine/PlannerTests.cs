@@ -109,6 +109,20 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Un_edificio_trabado_no_para_al_centro_urbano()
+    {
+        // El campamento espera madera (no hay leñadores), pero los aldeanos que siguen en la BO salen igual.
+        var start = PlanStart.Standard with { IdleVillagers = 0, Stock = new ResourceAmounts(Food: 200, Wood: 0, Stone: 0, Gold: 0), Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 3 } };
+        var camp = new Step { Id = "s1", Do = StepAction.Build, What = "mining_camp", From = GatherSource.Sheep, Assign = GatherSource.Gold };
+        var villagers = Villagers("s2", 3, GatherSource.Wood);
+
+        var plan = Planner.Simulate([new PlanItem(camp, 1), new PlanItem(villagers, 1)], start);
+
+        Assert.True(plan.Completed);
+        Assert.Equal(0, plan.For("s2")!.Start);
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));
