@@ -146,6 +146,19 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Lo_apartado_para_un_paso_anterior_no_frena_lo_que_no_usa_ese_recurso()
+    {
+        // El telar espera oro (no hay): la casa, que es de madera, se hace igual.
+        var start = PlanStart.Standard with { Stock = new ResourceAmounts(Food: 200, Wood: 100, Stone: 0, Gold: 0) };
+        var loom = new Step { Id = "s1", Do = StepAction.Research, What = "loom" };
+        var house = new Step { Id = "s2", Do = StepAction.Build, What = "house" };
+
+        var plan = Planner.Simulate([new PlanItem(loom, 1), new PlanItem(house, 1)], start);
+
+        Assert.Equal(0, plan.For("s2")!.Start);
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));

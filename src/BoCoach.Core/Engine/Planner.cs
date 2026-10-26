@@ -644,9 +644,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private bool Pays(ItemSim item, ResourceAmounts cost)
         {
             var available = IsVillagers(item.Step) ? _stock : _stock - _claimed;
-            if (available.Covers(cost))
+            // Solo cuenta lo que el paso usa: lo apartado puede dejar en negativo un recurso que no paga.
+            var missing = Enum.GetValues<Resource>().Where(r => cost[r] > 0 && available[r] < cost[r]).ToList();
+            if (missing.Count == 0)
                 return true;
-            var missing = Enum.GetValues<Resource>().Where(r => available[r] < cost[r]).ToList();
             Block(item, BlockReason.Resources, missing[0]);
             foreach (var r in missing)
                 _claimed = _claimed.With(r, _claimed[r] + cost[r]);
