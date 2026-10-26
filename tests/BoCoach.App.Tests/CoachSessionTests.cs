@@ -185,6 +185,33 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
     }
 
+    // Con la BO terminada el panel queda en la tarjeta chica, y sin nada que hacer no se ve (pedido del usuario,
+    // 2026-10-26, opción A).
+    [Fact]
+    public void Con_la_BO_terminada_el_panel_muestra_solo_la_tarjeta_y_sin_nada_que_hacer_no_se_ve()
+    {
+        var coach = new Coach(Scouts, _data.GameData, _data.Events) { FinishedNoticeSeconds = 0 };
+        for (var i = 0; i < Scouts.Steps.Count && coach.Tracker.Current is not null; i++)
+            coach.Advance();
+        var view = coach.Update(new GameSnapshot(900, ResourceAmounts.Zero, 25, 30));
+        var overlay = new OverlayViewModel(_data.GameData, Scouts.Name);
+
+        overlay.Apply(Frame(view));
+        Assert.True(overlay.Compact);
+        Assert.False(overlay.ShowFull);
+        Assert.Contains(overlay.Card, c => c is { Text: "Sin establo: los exploradores no tienen dónde salir", Kind: CardKind.Building });
+        Assert.True(overlay.ShowPanel);
+
+        overlay.Apply(Frame(view with { Posture = null, Suggestion = null, Techs = [] }));
+        Assert.Empty(overlay.Card);
+        Assert.False(overlay.ShowPanel);
+
+        // Un aviso de lectura se ve aunque no haya nada que hacer.
+        overlay.Apply(Frame(view with { Posture = null, Suggestion = null, Techs = [] }, withoutClock: 10));
+        Assert.NotNull(overlay.Warning);
+        Assert.True(overlay.ShowPanel);
+    }
+
     // El panel baja solo fuera de la partida (la pantalla de carga, para no tapar el mapa). En plena partida queda
     // arriba a la derecha aunque no se lea el reloj: abajo tapaba el minimapa (pedido del usuario, 2026-10-26).
     [Fact]

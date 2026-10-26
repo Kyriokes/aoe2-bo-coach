@@ -43,9 +43,24 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string? Idle { get; set; }
     [ObservableProperty] public partial string? Distribution { get; set; }
     [ObservableProperty] public partial string? DistributionNow { get; set; }
-    [ObservableProperty] public partial string? Warning { get; set; }
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowPanel))] public partial string? Warning { get; set; }
     [ObservableProperty] public partial string Debug { get; set; } = "";
-    [ObservableProperty] public partial bool ShowDebug { get; set; }
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowPanel))] public partial bool ShowDebug { get; set; }
+
+    /// <summary>
+    /// Con la BO terminada (pasado el aviso de "BO terminada"): el panel muestra solo <see cref="Card"/> y los avisos de
+    /// lectura (pedido del usuario, 2026-10-26).
+    /// </summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowFull), nameof(ShowPanel))] public partial bool Compact { get; set; }
+
+    /// <summary>Con <see cref="Compact"/>, lo que pide hacer algo (ver <see cref="CoachLines.Card"/>).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowPanel))] public partial IReadOnlyList<CardLine> Card { get; set; } = [];
+
+    /// <summary>El panel completo: la BO en curso (o recién terminada).</summary>
+    public bool ShowFull => !Compact;
+
+    /// <summary>Con la tarjeta vacía y sin avisos de lectura no se ve nada.</summary>
+    public bool ShowPanel => !Compact || Card.Count > 0 || Warning is not null || ShowDebug;
 
     /// <summary>Recordatorios junto al mouse prendidos (el jugador los puede apagar).</summary>
     [ObservableProperty]
@@ -99,6 +114,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Idle = lines.Idle;
         Distribution = lines.Distribution;
         DistributionNow = lines.DistributionNow;
+        Compact = lines.Compact;
+        Card = lines.Card;
         foreach (var target in Resources)
         {
             var resource = ResourceOf(target.Region);

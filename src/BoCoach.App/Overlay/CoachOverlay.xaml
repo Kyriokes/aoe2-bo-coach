@@ -18,107 +18,145 @@
         </Style>
     </Window.Resources>
 
-    <Border Background="#E01E1A16" BorderBrush="#5C5046" BorderThickness="1" CornerRadius="6" Padding="14,10,14,12">
+    <Border Background="#E01E1A16" BorderBrush="#5C5046" BorderThickness="1" CornerRadius="6" Padding="14,10,14,12"
+            Visibility="{Binding ShowPanel, Converter={StaticResource BoolToVisibility}}">
         <StackPanel>
-            <!-- BO, reloj y progreso -->
-            <DockPanel Margin="0,0,0,4">
-                <TextBlock DockPanel.Dock="Right" Foreground="#C9C1B6" FontSize="12">
-                    <Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="  ·  paso " /><Run Text="{Binding Progress, Mode=OneWay}" />
+            <!-- La BO en curso (o recién terminada): el panel completo -->
+            <StackPanel Visibility="{Binding ShowFull, Converter={StaticResource BoolToVisibility}}">
+                <!-- BO, reloj y progreso -->
+                <DockPanel Margin="0,0,0,4">
+                    <TextBlock DockPanel.Dock="Right" Foreground="#C9C1B6" FontSize="12">
+                        <Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="  ·  paso " /><Run Text="{Binding Progress, Mode=OneWay}" />
+                    </TextBlock>
+                    <TextBlock Text="{Binding BuildOrderName}" Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                </DockPanel>
+
+                <!-- D4: BO sugerida en la pantalla de carga -->
+                <TextBlock Text="{Binding BoSuggestion}" Foreground="#8CD17D" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
+                           Visibility="{Binding BoSuggestion, Converter={StaticResource NotEmptyToVisibility}}" />
+                <TextBlock Text="{Binding MatchAdvice}" Foreground="#E8C26A" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
+                           Visibility="{Binding MatchAdvice, Converter={StaticResource NotEmptyToVisibility}}" />
+                <TextBlock Text="{Binding MatchupLine}" Foreground="#C9B8E8" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
+                           Visibility="{Binding MatchupLine, Converter={StaticResource NotEmptyToVisibility}}" />
+
+                <!-- Paso actual (y, si es un paso mixto, sus otras metas) -->
+                <TextBlock Text="{Binding Current}" FontSize="19" FontWeight="SemiBold" />
+                <ItemsControl ItemsSource="{Binding Goals}" Margin="0,2,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontSize="16" Foreground="#F4F2EE" Margin="10,0,0,0" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding Status}" FontSize="14" Margin="0,2,0,0"
+                           Visibility="{Binding Status, Converter={StaticResource NotEmptyToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Setter Property="Foreground" Value="#E8C26A" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusReady}" Value="True">
+                                    <Setter Property="Foreground" Value="#8CD17D" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
                 </TextBlock>
-                <TextBlock Text="{Binding BuildOrderName}" Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-            </DockPanel>
 
-            <!-- D4: BO sugerida en la pantalla de carga -->
-            <TextBlock Text="{Binding BoSuggestion}" Foreground="#8CD17D" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
-                       Visibility="{Binding BoSuggestion, Converter={StaticResource NotEmptyToVisibility}}" />
-            <TextBlock Text="{Binding MatchAdvice}" Foreground="#E8C26A" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
-                       Visibility="{Binding MatchAdvice, Converter={StaticResource NotEmptyToVisibility}}" />
-            <TextBlock Text="{Binding MatchupLine}" Foreground="#C9B8E8" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
-                       Visibility="{Binding MatchupLine, Converter={StaticResource NotEmptyToVisibility}}" />
+                <!-- En curso, siguiente y atrasados -->
+                <ItemsControl ItemsSource="{Binding Running}" Margin="0,6,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#8FC3E8" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="{Binding Next}" Foreground="#C9C1B6" Margin="0,4,0,0"
+                           Visibility="{Binding Next, Converter={StaticResource NotEmptyToVisibility}}" />
+                <ItemsControl ItemsSource="{Binding Late}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#F0A060" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-            <!-- Paso actual (y, si es un paso mixto, sus otras metas) -->
-            <TextBlock Text="{Binding Current}" FontSize="19" FontWeight="SemiBold" />
-            <ItemsControl ItemsSource="{Binding Goals}" Margin="0,2,0,0">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" FontSize="16" Foreground="#F4F2EE" Margin="10,0,0,0" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="{Binding Status}" FontSize="14" Margin="0,2,0,0"
-                       Visibility="{Binding Status, Converter={StaticResource NotEmptyToVisibility}}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                        <Setter Property="Foreground" Value="#E8C26A" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding StatusReady}" Value="True">
-                                <Setter Property="Foreground" Value="#8CD17D" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-
-            <!-- En curso, siguiente y atrasados -->
-            <ItemsControl ItemsSource="{Binding Running}" Margin="0,6,0,0">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" Foreground="#8FC3E8" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="{Binding Next}" Foreground="#C9C1B6" Margin="0,4,0,0"
-                       Visibility="{Binding Next, Converter={StaticResource NotEmptyToVisibility}}" />
-            <ItemsControl ItemsSource="{Binding Late}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding}" Foreground="#F0A060" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <!-- Objetivo de la BO -->
-            <TextBlock Text="{Binding Deviation}" Margin="0,6,0,0"
-                       Visibility="{Binding Deviation, Converter={StaticResource NotEmptyToVisibility}}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                        <Setter Property="Foreground" Value="#8CD17D" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Behind}" Value="True">
-                                <Setter Property="Foreground" Value="#F08070" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-
-            <!-- En un paso largo: cómo repartir los aldeanos de ahora según la BO -->
-            <TextBlock Text="{Binding DistributionNow}" FontSize="13" Foreground="#E8DFC9" Margin="0,8,0,0"
-                       Visibility="{Binding DistributionNow, Converter={StaticResource NotEmptyToVisibility}}" />
-
-            <!-- Cómo quedan los aldeanos al terminar el paso según la BO -->
-            <TextBlock Text="{Binding Distribution}" FontSize="13" Foreground="#C9C1B6" Margin="0,2,0,0"
-                       Visibility="{Binding Distribution, Converter={StaticResource NotEmptyToVisibility}}" />
-
-            <!-- Centro urbano sin producir aldeanos -->
-            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F08070" Margin="0,8,0,0"
-                       Visibility="{Binding Idle, Converter={StaticResource NotEmptyToVisibility}}">
-                <Run Text="⏱ " /><Run Text="{Binding Idle, Mode=OneWay}" />
-            </TextBlock>
-
-            <!-- Aviso del log (granja agotada, ataque) -->
-            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F0A060" Margin="0,8,0,0"
-                       Visibility="{Binding Alert, Converter={StaticResource NotEmptyToVisibility}}">
-                <Run Text="⚠ " /><Run Text="{Binding Alert, Mode=OneWay}" />
-            </TextBlock>
-
-            <!-- Sugerencia de aldeanos -->
-            <Border Background="#33E8C26A" CornerRadius="4" Padding="8,4" Margin="0,8,0,0"
-                    Visibility="{Binding Suggestion, Converter={StaticResource NotEmptyToVisibility}}">
-                <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#F2D58A">
-                    <Run Text="⇄ " /><Run Text="{Binding Suggestion, Mode=OneWay}" />
+                <!-- Objetivo de la BO -->
+                <TextBlock Text="{Binding Deviation}" Margin="0,6,0,0"
+                           Visibility="{Binding Deviation, Converter={StaticResource NotEmptyToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Setter Property="Foreground" Value="#8CD17D" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Behind}" Value="True">
+                                    <Setter Property="Foreground" Value="#F08070" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
                 </TextBlock>
-            </Border>
+
+                <!-- En un paso largo: cómo repartir los aldeanos de ahora según la BO -->
+                <TextBlock Text="{Binding DistributionNow}" FontSize="13" Foreground="#E8DFC9" Margin="0,8,0,0"
+                           Visibility="{Binding DistributionNow, Converter={StaticResource NotEmptyToVisibility}}" />
+
+                <!-- Cómo quedan los aldeanos al terminar el paso según la BO -->
+                <TextBlock Text="{Binding Distribution}" FontSize="13" Foreground="#C9C1B6" Margin="0,2,0,0"
+                           Visibility="{Binding Distribution, Converter={StaticResource NotEmptyToVisibility}}" />
+
+                <!-- Centro urbano sin producir aldeanos -->
+                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F08070" Margin="0,8,0,0"
+                           Visibility="{Binding Idle, Converter={StaticResource NotEmptyToVisibility}}">
+                    <Run Text="⏱ " /><Run Text="{Binding Idle, Mode=OneWay}" />
+                </TextBlock>
+
+                <!-- Aviso del log (granja agotada, ataque) -->
+                <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#F0A060" Margin="0,8,0,0"
+                           Visibility="{Binding Alert, Converter={StaticResource NotEmptyToVisibility}}">
+                    <Run Text="⚠ " /><Run Text="{Binding Alert, Mode=OneWay}" />
+                </TextBlock>
+
+                <!-- Sugerencia de aldeanos -->
+                <Border Background="#33E8C26A" CornerRadius="4" Padding="8,4" Margin="0,8,0,0"
+                        Visibility="{Binding Suggestion, Converter={StaticResource NotEmptyToVisibility}}">
+                    <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#F2D58A">
+                        <Run Text="⇄ " /><Run Text="{Binding Suggestion, Mode=OneWay}" />
+                    </TextBlock>
+                </Border>
+            </StackPanel>
+
+            <!-- Con la BO terminada: solo lo que pide hacer algo (pedido del usuario, 2026-10-26) -->
+            <ItemsControl ItemsSource="{Binding Card}" Visibility="{Binding Compact, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Text}" FontSize="15" FontWeight="SemiBold" Margin="0,1">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Kind}" Value="Alert">
+                                            <Setter Property="Foreground" Value="#F0A060" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="TownCenter">
+                                            <Setter Property="Foreground" Value="#F08070" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="Ready">
+                                            <Setter Property="Foreground" Value="#8CD17D" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="Missing">
+                                            <Setter Property="Foreground" Value="#E8C26A" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="Building">
+                                            <Setter Property="Foreground" Value="#8FC3E8" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Kind}" Value="Suggestion">
+                                            <Setter Property="Foreground" Value="#F2D58A" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- Avisos y depuración -->
             <TextBlock Text="{Binding Warning}" Foreground="#F08070" FontSize="12" Margin="0,8,0,0"
