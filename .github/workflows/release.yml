@@ -1,15 +1,54 @@
 name: Release
 
-# Al subir una etiqueta v* (por ejemplo v0.9.0) arma la versión portable y la publica como release de GitHub.
+# Arma la versión portable y la publica como release de GitHub, que es lo que baja el botón "Descargar para Windows" de la web:
+# - al subir a main una versión nueva (la <Version> de BoCoach.App.csproj todavía sin su etiqueta v<versión>), así la web
+#   (que también sale de main) y la descarga no se separan;
+# - al subir a mano una etiqueta v* (por ejemplo v0.9.0).
 on:
   push:
+    branches: [main]
     tags: ["v*"]
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Qué versión publicar
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' src/BoCoach.App/BoCoach.App.csproj | head -1)"
+            if [ "$tag" = v ]; then
+              echo "::error::No encontré <Version> en BoCoach.App.csproj"
+              exit 1
+            fi
+            # Un push a main que no cambia la versión (como los de la web) no la vuelve a publicar. Fuera del if, para que
+            # un error de git corte el paso (bash -e) en vez de publicar.
+            existing="$(git ls-remote --tags origin "refs/tags/$tag")"
+            if [ -n "$existing" ]; then
+              echo "La $tag ya está publicada."
+              exit 0
+            fi
+          fi
+          echo "Publico la $tag."
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   portable:
+    needs: version
+    if: needs.version.outputs.tag != ''
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -23,11 +62,13 @@ jobs:
       - name: Versión portable
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          dotnet publish src/BoCoach.App -c Release -r win-x64 -p:Version=$version -o publish/BoCoach
-          Compress-Archive -Path publish/BoCoach -DestinationPath "BoCoach-$env:GITHUB_REF_NAME-win-x64.zip"
+          $tag = "${{ needs.version.outputs.tag }}"
+          dotnet publish src/BoCoach.App -c Release -r win-x64 -p:Version=$($tag.TrimStart('v')) -o publish/BoCoach
+          Compress-Archive -Path publish/BoCoach -DestinationPath "BoCoach-$tag-win-x64.zip"
 
+      # Desde main la etiqueta no existe: la crea la release en el commit que se subió. Una etiqueta creada con el token
+      # del workflow no vuelve a disparar este workflow.
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" "BoCoach-${{ github.ref_name }}-win-x64.zip" --title "BO Coach ${{ github.ref_name }}" --generate-notes
+        run: gh release create "${{ needs.version.outputs.tag }}" "BoCoach-${{ needs.version.outputs.tag }}-win-x64.zip" --target "${{ github.sha }}" --title "BO Coach ${{ needs.version.outputs.tag }}" --generate-notes
