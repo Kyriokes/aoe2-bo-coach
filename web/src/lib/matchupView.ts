@@ -1,4 +1,4 @@
-import { durationLabel, MAP_NAMES, oneVsOne, percent, team, trend, type Cell, type MatchupData } from "./matchups";
+import { MAP_NAMES, oneVsOne, percent, team, trend, type Cell, type MatchupData } from "./matchups";
 
 /**
  * Lo que necesita cada página de /cruces, sacado de las estadísticas: solo los casilleros de esa página, así el
@@ -73,8 +73,6 @@ export function pairCells(data: MatchupData, a: string, b: string): number[] {
 export interface PairSummary {
   general: Cell;
   maps: { key: string | null; name: string; cell: Cell }[];
-  /** La frase de duración con la regla de honestidad, o null si no hay dos franjas con partidas. */
-  trendText: string | null;
   /** El general no tiene partidas: todo sale del modelo. */
   estimated: boolean;
 }
@@ -87,18 +85,37 @@ export function pairSummary(data: MatchupData, a: string, b: string, civName: st
     { key: null, name: "Todos los mapas", cell: general },
     ...data.mapKeys.map((key, i) => ({ key, name: MAP_NAMES[key] ?? key, cell: oneVsOne(data, a, b, i + 1, 0, 0) ?? general })),
   ];
-  const cellOf = (band: number) => oneVsOne(data, a, b, 0, 0, band);
+  return { general, maps, estimated: general.n === 0 };
+}
+
+/**
+ * La frase de duración de lo elegido en el gráfico, con la regla de honestidad (spec 4.5): la tendencia, "sin
+ * diferencia clara" si hay dos franjas con partidas cuyos rangos se tocan, el aviso de estimado si no hay ninguna, o
+ * null si hay una sola. `labelOf` da la etiqueta de cada franja y `where`, lo elegido (selectionPlace).
+ */
+export function durationText(
+  cellOf: (band: number) => Cell | null,
+  civName: string,
+  labelOf: (band: number) => string,
+  where: string | null,
+): string | null {
   const t = trend(cellOf);
-  let trendText: string | null = null;
   if (t) {
-    trendText =
+    return (
       `${civName} ganan más en partidas ${t.favorsShort ? "cortas" : "largas"}: ` +
-      `${percent(t.short.p)} % en ${durationLabel(data, t.shortBand)}, ${percent(t.long.p)} % en ${durationLabel(data, t.longBand)}.`;
-  } else if ([1, 2, 3, 4, 5].filter((band) => (cellOf(band)?.n ?? 0) > 0).length >= 2) {
-    // "Sin diferencia clara", no "parejo": que los rangos se toquen no prueba que no haya diferencia (spec 4.5).
-    trendText = "Sin diferencia clara por duración.";
+      `${percent(t.short.p)} % en ${labelOf(t.shortBand)}, ${percent(t.long.p)} % en ${labelOf(t.longBand)}.`
+    );
   }
-  return { general, maps, trendText, estimated: general.n === 0 };
+  const withGames = [1, 2, 3, 4, 5].filter((band) => (cellOf(band)?.n ?? 0) > 0).length;
+  // "Sin diferencia clara", no "parejo": que los rangos se toquen no prueba que no haya diferencia.
+  if (withGames >= 2) return "Sin diferencia clara por duración.";
+  return withGames === 0 ? mapLine({ p: 0, from: 0, to: 0, n: 0 }, where) : null;
+}
+
+/** Lo elegido en el gráfico para el aviso de estimado: "Nómada", "esa franja de Elo", "Nómada en esa franja de Elo". */
+export function selectionPlace(mapName: string | null, eloBand: number): string | null {
+  if (eloBand <= 0) return mapName;
+  return mapName ? `${mapName} en esa franja de Elo` : "esa franja de Elo";
 }
 
 /** El aviso de un casillero sin partidas (sale del modelo), o null si tiene. */

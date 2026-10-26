@@ -217,7 +217,6 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
         <h2 id="duracion" className="text-lg font-semibold">
           Según cuánto duró la partida
         </h2>
-        {summary.trendText ? <p>{summary.trendText}</p> : null}
         <p className="max-w-3xl text-sm text-faint">
           Es lo que pasó, no una receta: la duración es un resultado de la partida (las que se definen temprano duran poco).
         </p>

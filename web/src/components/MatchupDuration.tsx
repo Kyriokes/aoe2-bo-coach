@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { chanceText, isEven, percent, type Cell } from "@/lib/matchups";
+import { durationText, selectionPlace } from "@/lib/matchupView";
 import type { Choice } from "./MatchupRivals";
 
 const WIDTH = 640;
@@ -41,6 +42,8 @@ export function MatchupDuration({
     return { p: cells[k] / 1000, from: cells[k + 1] / 1000, to: cells[k + 2] / 1000, n: cells[k + 3] };
   };
   const bands = [1, 2, 3, 4, 5].map((band) => ({ band, cell: at(band), label: durations[band - 1] }));
+  // La frase va con lo elegido: con todos los mapas puede haber tendencia y en Nómada ni una partida.
+  const sentence = durationText(at, civName, (band) => durations[band - 1], selectionPlace(map > 0 ? maps[map].label : null, elo));
   const height = TOP + PLOT + BOTTOM;
   const column = (WIDTH - LEFT - RIGHT) / bands.length;
   const x = (i: number) => LEFT + column * (i + 0.5);
@@ -71,6 +74,7 @@ export function MatchupDuration({
           </select>
         </label>
       </div>
+      {sentence ? <p className="text-base">{sentence}</p> : null}
       <div className="overflow-x-auto rounded-md border border-line bg-panel">
         <svg
           viewBox={`0 0 ${WIDTH} ${height}`}

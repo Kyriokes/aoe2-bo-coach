@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { mapLine, matchupSitemapPaths, pairCells, pairSummary, rivalsOf, teamOf } from "./matchupView";
+import { durationLabel, MAP_NAMES, oneVsOne, type MatchupData } from "./matchups";
+import { durationText, mapLine, matchupSitemapPaths, pairCells, pairSummary, rivalsOf, selectionPlace, teamOf } from "./matchupView";
 import { buildMatchups, parseTest, same, type CellFn } from "./matchupsTesting";
 
 const tres = (fn: CellFn) => ({ "britons|franks": fn, "britons|mayan": fn, "franks|mayan": fn });
+
+/** La frase de duración del cruce desde `a` con el mapa y la franja de Elo elegidos, como la arma el gráfico. */
+const frase = (data: MatchupData, a: string, b: string, civName: string, map = 0, elo = 0) =>
+  durationText(
+    (band) => oneVsOne(data, a, b, map, elo, band),
+    civName,
+    (band) => durationLabel(data, band),
+    selectionPlace(map > 0 ? MAP_NAMES[data.mapKeys[map - 1]] : null, elo),
+  );
 
 describe("lo que muestra cada página de cruces", () => {
   it("rivales con sus 30 casilleros", () => {
@@ -39,15 +49,37 @@ describe("lo que muestra cada página de cruces", () => {
       parseTest(buildMatchups({ "britons|franks": (_m, _e, d) => franjas[d] ?? (d === 0 ? [480, 460, 500, 300] : [480, 470, 490, 0]) }, {}));
 
     const cortas = porDuracion({ 1: [540, 491, 587, 50], 5: [420, 380, 460, 40] });
-    expect(pairSummary(cortas, "britons", "franks", "Britanos").trendText).toBe(
+    expect(frase(cortas, "britons", "franks", "Britanos")).toBe(
       "Britanos ganan más en partidas cortas: 54 % en menos de 20 min, 42 % en 55 min o más.",
     );
-    expect(pairSummary(cortas, "franks", "britons", "Francos").trendText).toBe(
+    expect(frase(cortas, "franks", "britons", "Francos")).toBe(
       "Francos ganan más en partidas largas: 46 % en menos de 20 min, 58 % en 55 min o más.",
     );
     const pareja = porDuracion({ 1: [540, 491, 587, 50], 5: [450, 400, 495, 40] });
-    expect(pairSummary(pareja, "britons", "franks", "Britanos").trendText).toBe("Sin diferencia clara por duración.");
-    expect(pairSummary(porDuracion({}), "britons", "franks", "Britanos").trendText).toBeNull();
+    expect(frase(pareja, "britons", "franks", "Britanos")).toBe("Sin diferencia clara por duración.");
+    // Una sola franja con partidas: no hay con qué comparar.
+    expect(frase(porDuracion({ 3: [480, 440, 520, 60] }), "britons", "franks", "Britanos")).toBeNull();
+    expect(frase(porDuracion({}), "britons", "franks", "Britanos")).toBe("Estimado: no hay partidas de este cruce.");
+  });
+
+  it("la frase de duración sigue al mapa y a la franja de Elo elegidos", () => {
+    // Tendencia en todos los mapas; en Nómada (mapa 4) ninguna partida.
+    const data = parseTest(
+      buildMatchups(
+        {
+          "britons|franks": (m, _e, d) =>
+            m === 4 ? [480, 400, 560, 0] : d === 1 ? [540, 491, 587, 50] : d === 5 ? [420, 380, 460, 40] : [480, 460, 500, 300],
+        },
+        {},
+      ),
+    );
+    expect(frase(data, "britons", "franks", "Britanos")).toMatch(/^Britanos ganan más en partidas cortas/);
+    expect(frase(data, "britons", "franks", "Britanos", 4)).toBe("Estimado: no hay partidas de este cruce en Nómada.");
+    expect(frase(data, "britons", "franks", "Britanos", 4, 2)).toBe(
+      "Estimado: no hay partidas de este cruce en Nómada en esa franja de Elo.",
+    );
+    expect(selectionPlace(null, 0)).toBeNull();
+    expect(selectionPlace(null, 3)).toBe("esa franja de Elo");
   });
 
   it("las entradas del sitemap", () => {
