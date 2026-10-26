@@ -29,6 +29,8 @@ export interface PlanBlock {
   from: number;
   to: number;
   missing: "food" | "wood" | "stone" | "gold" | null;
+  /** Lo que falta ya viene en camino (la edad se investiga, el edificio se construye, el aldeano está en la cola). */
+  expected?: boolean;
 }
 
 export interface PlanSample {

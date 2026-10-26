@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
-import type { Analysis, AnalysisResult, Issue, PlanBlock } from "@/lib/coach/types";
+import { stallsByStep } from "@/lib/coach/stalls";
+import type { Analysis, AnalysisResult, Issue } from "@/lib/coach/types";
 import { BLOCK_TEXT } from "@/lib/editor/text";
 import { Timeline } from "./Timeline";
 
@@ -70,10 +71,7 @@ export function BuildOrderView({
 }
 
 function AnalysisView({ analysis }: { analysis: Analysis }) {
-  const blocksByStep = new Map<string, PlanBlock[]>();
-  for (const block of analysis.blocks ?? []) {
-    if (block.to - block.from >= 5) blocksByStep.set(block.step_id, [...(blocksByStep.get(block.step_id) ?? []), block]);
-  }
+  const blocksByStep = stallsByStep(analysis.blocks ?? []);
   const issues = new Map<string, string[]>();
   for (const issue of analysis.issues) {
     const key = issue.step_id ?? "";
