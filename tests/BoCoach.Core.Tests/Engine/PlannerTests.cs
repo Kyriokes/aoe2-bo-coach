@@ -83,6 +83,18 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Sin_quien_lo_construya_dice_que_faltan_aldeanos_aunque_tampoco_alcance()
+    {
+        // Sin leñadores ni madera: lo que lo frena es el constructor (cuando llegue, la madera se junta), no la madera.
+        var start = PlanStart.Standard with { Stock = ResourceAmounts.Zero, IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 3 } };
+        var camp = new Step { Id = "s1", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(camp, 1)], start);
+
+        Assert.Equal(BlockReason.Villagers, Assert.Single(plan.Blocks).Reason);
+    }
+
+    [Fact]
     public void Un_edificio_de_otra_edad_espera_la_edad()
     {
         var plan = Planner.Simulate(Bo(new Step { Id = "s1", Do = StepAction.Build, What = "archery_range" }));

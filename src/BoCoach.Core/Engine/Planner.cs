@@ -476,6 +476,12 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 if (!parallel && item.Unfinished > 0)
                     return; // los mismos constructores hacen un edificio después del otro
 
+                // Primero quién lo construye: sin aldeanos en 'from' lo que frena es esperarlos, no los recursos.
+                if ((parallel || item.HeldBuilders == 0) && !HasBuilders(item.Step.From))
+                {
+                    Block(item, BlockReason.Villagers);
+                    return;
+                }
                 var cost = _civ.Cost(entity, _age);
                 if (!_stock.Covers(cost))
                 {
@@ -553,6 +559,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             item.Remaining = 0;
             Finish(item);
         }
+
+        /// <summary>Si hay alguien para <see cref="TakeVillagers"/>: en 'from', o sin tarea, o en algún recurso.</summary>
+        private bool HasBuilders(GatherSource? from) =>
+            from is { } source ? _villagers[source] > 0 : _idle > 0 || _villagers.Values.Any(v => v > 0);
 
         /// <summary>Saca aldeanos para construir: de 'from' si se indica; si no, los que no tienen tarea y después el recurso con más gente.</summary>
         private int TakeVillagers(GatherSource? from, int wanted)
