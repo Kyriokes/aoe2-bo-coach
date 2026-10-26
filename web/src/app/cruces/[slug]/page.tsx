@@ -155,7 +155,7 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
 function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }) {
   if (!oneVsOne(data, a, b, 0, 0, 0)) notFound();
   const [nameA, nameB] = [civLabel(a), civLabel(b)];
-  const summary = pairSummary(data, a, b, nameA);
+  const summary = pairSummary(data, a, b);
   const { general } = summary;
   const estimated = mapLine(general, null);
   return (

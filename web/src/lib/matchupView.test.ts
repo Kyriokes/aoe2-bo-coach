@@ -33,7 +33,7 @@ describe("lo que muestra cada página de cruces", () => {
 
   it("el resumen del cruce desde a", () => {
     const data = parseTest(buildMatchups(tres((m) => [m === 0 ? 470 : 400 + 10 * m, 430, 490, m === 4 ? 0 : 80]), {}));
-    const resumen = pairSummary(data, "britons", "franks", "Britanos");
+    const resumen = pairSummary(data, "britons", "franks");
 
     expect(resumen.general.p).toBeCloseTo(0.47, 6);
     expect(resumen.maps.map((m) => m.name)).toEqual(["Todos los mapas", "Arabia", "Arena", "Bosque Negro", "Nómada"]);

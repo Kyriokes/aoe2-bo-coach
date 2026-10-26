@@ -77,8 +77,8 @@ export interface PairSummary {
   estimated: boolean;
 }
 
-/** El cruce desde `a` en todos los mapas y todas las franjas de Elo. `civName` es el nombre de `a` ("Britanos"). */
-export function pairSummary(data: MatchupData, a: string, b: string, civName: string): PairSummary {
+/** El cruce desde `a` en todos los mapas y todas las franjas de Elo. */
+export function pairSummary(data: MatchupData, a: string, b: string): PairSummary {
   const general = oneVsOne(data, a, b, 0, 0, 0);
   if (!general) throw new Error(`No hay datos del cruce ${a} contra ${b}.`);
   const maps = [
