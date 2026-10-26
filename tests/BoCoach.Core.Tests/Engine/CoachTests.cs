@@ -415,6 +415,37 @@ public class CoachTests
     }
 
     [Fact]
+    public void Una_baja_del_stock_no_es_el_clic_de_algo_que_todavia_no_se_puede_investigar()
+    {
+        // Partida 20261025-230041 (vikingos): a las 3:53, en la Edad Oscura, dos aldeanos encolados bajaron 100 de
+        // comida y el coach dio por empezada la armadura acolchada (100 de comida, en la herrería, de Feudal). Quedó "en
+        // curso" toda la partida y dejó atrasado el emplumado.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 30, Assign = GatherSource.Wood },
+                new Step { Id = "s2", Do = StepAction.Research, What = "padded_archer_armor" },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        StepState Padded() => coach.Tracker.Steps[1].State;
+
+        coach.Update(At(233, 300, 12));
+        coach.Update(At(233.5, 200, 12));
+        Assert.NotEqual(StepState.InProgress, Padded()); // Edad Oscura
+
+        coach.Update(At(600, 300, 20, "feudal_age_researched"));
+        coach.Update(At(600.5, 200, 20));
+        Assert.NotEqual(StepState.InProgress, Padded()); // Feudal, pero sin herrería
+
+        coach.Update(At(700, 300, 22, "blacksmith_built"));
+        coach.Update(At(700.5, 200, 22));
+        Assert.Equal(StepState.InProgress, Padded());
+    }
+
+    [Fact]
     public void La_cola_vacia_no_cuenta_hasta_que_la_cola_muestra_algo()
     {
         // Partida 20261025-230041: la caja de la cola había quedado corrida sobre el mapa (la calibración de la prueba

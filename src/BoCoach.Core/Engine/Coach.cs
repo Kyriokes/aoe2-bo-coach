@@ -332,7 +332,10 @@ public sealed class Coach
             return false;
         var spent = before - snapshot.Stock;
         var civ = _data.Civ(Tracker.BuildOrder.Civ);
-        var age = LivePlan.Start(Tracker).Age;
+        var start = LivePlan.Start(Tracker);
+        var age = start.Age;
+        // La edad a la que se llegó: la de los pasos hechos o la que avisó el log (una BO sin el paso de la edad).
+        var reached = start.Researched.Select(BuildOrderValidator.AgeOf).OfType<Age>().Append(age).Max();
 
         foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research))
         {
@@ -343,7 +346,7 @@ public sealed class Coach
                 Tracker.ClearStarted(step.Index);
                 return true;
             }
-            if (step.State != StepState.InProgress && Matches(spent, civ.Cost(entity, age)))
+            if (step.State != StepState.InProgress && CanResearchNow(entity, reached) && Matches(spent, civ.Cost(entity, age)))
             {
                 Tracker.MarkStarted(step.Index, snapshot.Time);
                 return true;
@@ -351,6 +354,17 @@ public sealed class Coach
         }
         return false;
     }
+
+    /// <summary>
+    /// Si la investigación se puede hacer ahora: es de esta edad o de una anterior y su edificio está hecho (lo avisó el
+    /// log o está hecho un paso de la BO que lo construye). Una baja del stock igual al costo de algo imposible es otra
+    /// cosa: en la 20261025-230041, dos aldeanos encolados en la Edad Oscura (100 de comida) dejaron "en curso" la
+    /// armadura acolchada toda la partida.
+    /// </summary>
+    private bool CanResearchNow(Entity tech, Age age) =>
+        tech.Age <= age
+        && (tech.MadeIn is not { } building || building == BuildOrderValidator.StartingBuilding || State.Count($"{building}_built") > 0
+            || Tracker.Steps.Any(s => s.Step.Do == StepAction.Build && s.Step.What == building && s.State == StepState.Done));
 
     /// <summary>
     /// Una investigación de la BO que aparece en la cola (avanzando o esperando) ya se pagó: queda en curso aunque la
