@@ -184,6 +184,9 @@ public static class CoachText
         return missing.Count == 0 ? $"Hacé clic en {name}" : $"{name}: faltan {Join(missing)} (guardando para la producción)";
     }
 
+    /// <summary>"Investigá Carretilla (centro urbano)".</summary>
+    public static string TechText(TechReminder tech) => $"Investigá {StepText.Name(tech.Tech)} ({StepText.Name(tech.Building)})";
+
     /// <summary>"Establo parado: poné exploradores en cola" o "Sin establo: los exploradores no tienen dónde salir".</summary>
     public static string GapText(PostureGap gap) => gap.Missing
         ? $"Sin {StepText.Name(gap.Building)}: los {StepText.Name(gap.Unit, 2)} no tienen dónde salir"

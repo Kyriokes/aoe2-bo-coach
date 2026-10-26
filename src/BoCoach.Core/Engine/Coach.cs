@@ -393,7 +393,7 @@ public sealed class Coach
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores
     /// de lectura y un poco más por lo recolectado entre dos capturas.
     /// </summary>
-    private static bool Matches(ResourceAmounts change, ResourceAmounts cost)
+    internal static bool Matches(ResourceAmounts change, ResourceAmounts cost)
     {
         var paid = Enum.GetValues<Resource>().Where(r => cost[r] > 0).ToList();
         return paid.Count > 0 && paid.All(r => change[r] >= cost[r] * 0.85 && change[r] <= cost[r] + Math.Max(10, cost[r] * 0.1));
