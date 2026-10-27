@@ -3748,6 +3748,7 @@
     },
     "khmer": {
       "dat_name": "Khmer",
+      "no_age_buildings": true,
       "names": {
         "en": "Khmer",
         "es": "Jemeres",

@@ -932,7 +932,20 @@ class Extractor:
             if civ_id == CIV_BASE:
                 continue
             civs[clave_de_civ(civ.name)] = self.civ(civ_id, entidades)
+            if self.sube_sin_edificios(civ_id):
+                civs[clave_de_civ(civ.name)]["no_age_buildings"] = True
         return civs
+
+    def sube_sin_edificios(self, civ_id: int) -> bool:
+        """Si la civ sube de edad sin los 2 edificios: cada edad pide una "Shadow Node" que se cumple con la tech de los
+        edificios (120, 135, 142) o con una tech propia de la civ sin requisitos (la 638, "Khmer requirement")."""
+        for edad in ("feudal_age", "castle_age", "imperial_age"):
+            tech = self.dat.techs[ENTIDADES[edad][1]]
+            for nodo in (r for r in tech.required_techs if r >= 0):
+                alternativas = [r for r in self.dat.techs[nodo].required_techs if r >= 0]
+                if self.dat.techs[nodo].required_tech_count == 1 and any(self.dat.techs[r].civ == civ_id for r in alternativas):
+                    return True
+        return False
 
     def exportar(self) -> dict:
         entidades = {clave: self.entidad(clave, tipo, i) for clave, (tipo, i) in ENTIDADES.items()}
