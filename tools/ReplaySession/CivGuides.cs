@@ -199,6 +199,31 @@ internal static class CivGuides
     }
 
     /// <summary>
+    /// Vuelve a convertir la guía de <paramref name="civ"/> que quedó en los fixtures, con el importador de ahora, y la
+    /// guarda con el id, el nombre, la descripción, el autor y las etiquetas de la que ya estaba (cuando cambia el
+    /// importador, sin volver a elegir entre todas las guías). La mejorada se arma después con <c>improve --civ</c>.
+    /// </summary>
+    public static int Reimport(string civ, string[] args)
+    {
+        var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+        var outDir = Text(args, "--out", Path.Combine("build_orders", "civs"));
+        var fixtures = Text(args, "--fixtures", Path.Combine("tests", "fixtures", "buildorderguide"));
+        var path = Path.Combine(outDir, $"{civ}.json");
+        var old = BuildOrderSerializer.Load(path);
+        var import = BuildOrderGuideImporter.Convert(File.ReadAllText(Path.Combine(fixtures, $"{civ}.json")), data, civ);
+        var bo = import.BuildOrder with { Id = old.Id, Civ = civ, Name = old.Name, Author = old.Author, Description = old.Description, Tags = old.Tags };
+        var issues = new BuildOrderValidator(data).Validate(bo);
+        var plan = new Planner(data).Simulate(bo);
+        Console.WriteLine($"{civ}: {bo.Steps.Count} pasos, {(issues.IsValid ? "valida" : "no valida")}, {(plan.Completed ? "se completa" : "no se completa")}");
+        foreach (var warning in issues.Warnings)
+            Console.WriteLine($"    aviso: {warning.Message}");
+        if (!issues.IsValid || !plan.Completed)
+            return 1;
+        BuildOrderSerializer.Save(bo, path);
+        return 0;
+    }
+
+    /// <summary>
     /// La versión mejorada de cada BO importada de la carpeta (<c>&lt;civ&gt;-mejorada.json</c>): el optimizador busca
     /// cambios chicos con el simulador sin cambiar la estrategia. Si no encuentra nada que valga, la mejorada es igual
     /// a la importada y lo dice.

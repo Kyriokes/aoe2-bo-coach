@@ -46,6 +46,9 @@
 //   improve <carpeta> [--civ clave]
 //       Mejora con el simulador cada BO de la carpeta sin cambiar su estrategia (BuildOrderOptimizer) y guarda
 //       <civ>-mejorada.json con lo que cambió y los tiempos antes y después.
+//   reimport <civ> [--out build_orders/civs] [--fixtures tests/fixtures/buildorderguide]
+//       Vuelve a convertir la guía guardada de la civ con el importador de ahora (conserva nombre, descripción y
+//       etiquetas). Después, improve --civ arma la mejorada.
 //   autocalibrate <pantalla.png> [--out regions.json] [--read [--dump carpeta]]
 //       Busca el HUD del mod en una captura de pantalla entera y muestra las cajas y la escala del HUD. --read recorta
 //       cada caja, la lleva a los píxeles de 1080p (como en vivo) y muestra lo que lee; --dump guarda esos recortes
@@ -103,6 +106,7 @@ try
         "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
         "civs" => CivGuides.Civs(args[1], args),
         "improve" => CivGuides.Improve(args[1], args),
+        "reimport" => CivGuides.Reimport(args[1], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
         "hud-preview" => HudPreview.Render(args[1], Layout(args), Text(args, "--fonts", Path.Combine("data", "fonts")), double.Parse(Text(args, "--scale", "1"), CultureInfo.InvariantCulture)),
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),

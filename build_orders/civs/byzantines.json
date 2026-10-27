@@ -453,18 +453,19 @@
     },
     {
       "id": "s53",
-      "do": "research",
-      "what": "imperial_age",
-      "count": 1,
-      "after": []
-    },
-    {
-      "id": "s54",
       "do": "build",
       "what": "university",
       "count": 1,
       "assign": "wood",
       "from": "wood",
+      "after": [],
+      "note": "Agregado al importar: Edad Imperial pide 2 edificios de la edad"
+    },
+    {
+      "id": "s54",
+      "do": "research",
+      "what": "imperial_age",
+      "count": 1,
       "after": [],
       "note": "Investig\u00E1 ballistics"
     }

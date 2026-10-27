@@ -264,6 +264,16 @@
     },
     {
       "id": "s30",
+      "do": "build",
+      "what": "blacksmith",
+      "count": 1,
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar: Edad de los Castillos pide 2 edificios de la edad"
+    },
+    {
+      "id": "s31",
       "do": "research",
       "what": "castle_age",
       "count": 1,

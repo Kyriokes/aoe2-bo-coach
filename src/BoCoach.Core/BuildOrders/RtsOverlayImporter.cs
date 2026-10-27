@@ -68,6 +68,7 @@ public static partial class RtsOverlayImporter
         private readonly List<string> _warnings = [];
         private readonly Dictionary<GatherSource, int> _on = Enum.GetValues<GatherSource>().ToDictionary(s => s, _ => 0);
         private readonly HashSet<string> _camps = [];
+        private readonly HashSet<string> _forAge = [];
         private int _villagers = Engine.PlanStart.Standard.IdleVillagers;
         private int _military;
         private int _cap;
@@ -147,8 +148,40 @@ public static partial class RtsOverlayImporter
         internal void Warn(string warning) => _warnings.Add(warning);
 
         /// <summary>Clic de edad o investigación.</summary>
-        internal void Research(string key) =>
+        internal void Research(string key)
+        {
+            AgeBuildings(key);
             Add(new Step { Do = StepAction.Research, What = key, AtPop = key.EndsWith("_age", StringComparison.Ordinal) ? Population : null });
+        }
+
+        /// <summary>
+        /// Los 2 edificios que pide la edad, si la guía no los hizo antes del clic (la de lituanos sube a Castillos solo con
+        /// el establo; la de bizantinos hace la universidad después del clic en Imperial): los más baratos que falten. El
+        /// juego no deja hacer clic sin ellos terminados. Si la guía lo construye después, ese no se repite.
+        /// </summary>
+        private void AgeBuildings(string tech)
+        {
+            if (BuildOrderValidator.AgeUpRequirement(tech) is not { } req || data.Civ(civ).NoAgeBuildings)
+                return;
+            while (BuildOrderValidator.AgeUpProgress(tech, BuiltKeys()) < 2)
+            {
+                var built = BuiltKeys();
+                var cheapest = req.Buildings
+                    .Where(b => b is not ("dock" or "castle") && !built.Contains(b) && data.CanMake(civ, b) && data.TryGet(b, out _))
+                    .OrderBy(b => (data.Civ(civ).Requires(data.Get(b)) is { } r && !built.Contains(r) ? 1 : 0, Total(data.Civ(civ).Cost(data.Get(b), req.Requires))))
+                    .FirstOrDefault();
+                if (cheapest is null)
+                    return;
+                Build(1, cheapest, $"Agregado al importar: {StepText.Name(tech)} pide 2 edificios de la edad");
+                _forAge.Add(cheapest);
+            }
+        }
+
+        private static double Total(ResourceAmounts cost) => cost.Food + cost.Wood + cost.Gold + cost.Stone;
+
+        private HashSet<string> BuiltKeys() =>
+            _steps.Where(s => s is { Do: StepAction.Build, What: not null })
+                .SelectMany(s => data.TryGet(s.What!, out var e) ? e.CountsAs.Prepend(s.What!) : [s.What!]).ToHashSet();
 
         /// <summary>Unidades que no son aldeanos, con las casas que hagan falta.</summary>
         internal void Train(Entity unit, int count)
@@ -406,6 +439,9 @@ public static partial class RtsOverlayImporter
         internal void Build(int count, string what, string? note = null)
         {
             if (ForCiv(what) is not { } made)
+                return;
+            // Ya lo agregó el importador para subir de edad (la guía lo hace recién después del clic).
+            if (_forAge.Remove(made) && --count == 0)
                 return;
             // Un campamento o molino de la guía cuenta como el de su recurso: el que va después no agrega otro.
             if (what is "lumber_camp" or "mill" or "mining_camp")

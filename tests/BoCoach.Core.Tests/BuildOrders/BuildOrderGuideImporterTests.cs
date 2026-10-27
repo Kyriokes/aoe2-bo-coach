@@ -88,4 +88,20 @@ public class BuildOrderGuideImporterTests
         Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(bo).Warnings, w => w.Message.Contains("terminado"));
         Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
     }
+
+    [Theory]
+    [InlineData("lithuanians", "castle_age")] // sube a Castillos solo con el establo
+    [InlineData("romans", "castle_age")] // solo con la herrería
+    [InlineData("byzantines", "imperial_age")] // la universidad, después del clic
+    public void El_clic_de_edad_lleva_sus_2_edificios_antes(string civ, string age)
+    {
+        var bo = BuildOrderGuideImporter.Convert(Guide(civ), TestData.GameData, civ).BuildOrder;
+
+        var click = bo.Steps.ToList().FindIndex(s => s.What == age);
+        var before = bo.Steps.Take(click).Where(s => s.Do == StepAction.Build).Select(s => s.What!);
+        Assert.Equal(2, BuildOrderValidator.AgeUpProgress(age, before));
+        // Lo que la guía construye después no se repite.
+        Assert.All(bo.Steps.Where(s => s.Do == StepAction.Build && s.What is "university" or "blacksmith" or "market").GroupBy(s => s.What), g => Assert.Single(g));
+        Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
+    }
 }
