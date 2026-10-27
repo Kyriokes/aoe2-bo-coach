@@ -1,5 +1,5 @@
 import { entityName } from "../stepText";
-import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, allowedRange, provides, STARTING_BUILDING, type GameDataLite } from "./constraints";
+import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, STARTING_BUILDING, type GameDataLite } from "./constraints";
 import { paletteItems, type MapInfo, type PaletteItem } from "./gameData";
 import { withArticle } from "./guard";
 import type { EditorStep } from "./model";
@@ -123,7 +123,7 @@ export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: n
   // Si el edificio está más adelante, ya lo frenó el rango ("Recién después de construir..."): acá falta en toda la BO.
   if (step.do !== "build" && producer && !has(producer)) return `falta ${withArticle(producer)} en la BO`;
   const req = step.do === "research" && step.what ? AGE_UP_REQ[step.what] : undefined;
-  if (req && req.buildings.filter(has).length < 2) {
+  if (req && ageUpCount(req, new Set(req.buildings.filter(has))) < 2) {
     return `faltan 2 edificios de ${AGE_LABEL[req.requires]} antes (${req.buildings.map((b) => entityName(b, 1)).join(", ")})`;
   }
   return null;

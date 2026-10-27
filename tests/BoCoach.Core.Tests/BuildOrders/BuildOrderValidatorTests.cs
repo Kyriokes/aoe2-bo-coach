@@ -76,6 +76,27 @@ public class BuildOrderValidatorTests
     }
 
     [Fact]
+    public void Los_chinos_arrancan_con_mas_poblacion()
+    {
+        // D12: los chinos arrancan con 3 aldeanos de más (7 de población con el explorador); antes se contaba desde 4.
+        var bo = Bo(new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 1, Assign = GatherSource.Wood, AtPop = 7 }) with { Civ = "chinese" };
+
+        Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.Message.Contains("nunca llega"));
+    }
+
+    [Fact]
+    public void Imperial_pide_dos_edificios_de_Castillos_o_un_castillo()
+    {
+        static BuildOrder ToImperial(params string[] buildings) => Bo(
+            [Research("f", "feudal_age"), Research("c", "castle_age"),
+             .. buildings.Select((b, i) => Build($"b{i}", b)), Research("imp", "imperial_age")]);
+
+        Assert.Contains(Validator.Validate(ToImperial("university")).Warnings, w => w.StepId == "imp" && w.Message.Contains("hacen falta 2 edificios"));
+        Assert.DoesNotContain(Validator.Validate(ToImperial("university", "monastery")).Warnings, w => w.StepId == "imp");
+        Assert.DoesNotContain(Validator.Validate(ToImperial("castle")).Warnings, w => w.StepId == "imp");
+    }
+
+    [Fact]
     public void Aldeanos_sin_recurso_asignado()
     {
         var error = SingleError(Bo(Villagers("s1", assign: null)));

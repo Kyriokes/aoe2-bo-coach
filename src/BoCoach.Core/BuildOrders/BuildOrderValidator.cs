@@ -42,7 +42,12 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     {
         ["feudal_age"] = (Age.Dark, ["barracks", "mill", "lumber_camp", "mining_camp", "dock"]),
         ["castle_age"] = (Age.Feudal, ["archery_range", "stable", "blacksmith", "market"]),
+        // D12: Imperial pide 2 edificios de Castillos o un castillo solo (que cuenta por los dos).
+        ["imperial_age"] = (Age.Castle, ["university", "monastery", "siege_workshop", "castle"]),
     };
+
+    /// <summary>El edificio que alcanza solo para subir a una edad (el castillo para Imperial).</summary>
+    private static readonly Dictionary<string, string> AgeUpAlone = new() { ["imperial_age"] = "castle" };
 
     private static readonly Dictionary<string, Age> AgeTechs = new()
     {
@@ -54,6 +59,21 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     /// <summary>Los edificios de la edad anterior que pide una edad (2 de ellos), o null si no hay regla cargada.</summary>
     public static (Age Requires, IReadOnlyList<string> Buildings)? AgeUpRequirement(string ageTech) =>
         AgeUpRequirements.TryGetValue(ageTech, out var r) ? (r.Requires, r.Buildings) : null;
+
+    /// <summary>
+    /// Cuántos de los 2 edificios que pide la edad ya están entre <paramref name="builtKeys"/>: cada clave distinta de la
+    /// lista cuenta 1 y el castillo cuenta 2 para Imperial; como mucho 2. 0 si no es una tecnología de edad.
+    /// </summary>
+    public static int AgeUpProgress(string ageTech, IEnumerable<string> builtKeys)
+    {
+        if (!AgeUpRequirements.TryGetValue(ageTech, out var req))
+            return 0;
+        var built = builtKeys.ToHashSet();
+        var count = req.Buildings.Count(built.Contains);
+        if (AgeUpAlone.TryGetValue(ageTech, out var alone) && built.Contains(alone))
+            count++;
+        return Math.Min(2, count);
+    }
 
     /// <summary>La edad a la que lleva una tecnología de edad ("castle_age" → Castillos), o null si no es una.</summary>
     public static Age? AgeOf(string tech) => AgeTechs.TryGetValue(tech, out var age) ? age : null;
@@ -111,7 +131,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         }
 
         // "A N de población" que los pasos anteriores nunca alcanzan: el paso no arranca y el coach espera para siempre.
-        var population = Engine.PlanStart.Standard.Population;
+        var population = Engine.PlanStart.For(gameData.Civ(bo.Civ), gameData).Population;
         for (var i = 0; i < units.Length; i++)
         {
             var step = bo.Steps[i];
@@ -284,7 +304,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         if (step.Do == StepAction.Research && AgeUpRequirements.TryGetValue(step.What, out var req) && age == req.Requires)
         {
             var count = req.Buildings.Count(built.Contains);
-            if (count < 2)
+            if (AgeUpProgress(step.What, built) < 2)
             {
                 warn(id, $"Para {AgeName(AgeTechs[step.What])} hacen falta 2 edificios de {AgeName(req.Requires)} " +
                          $"({string.Join(", ", req.Buildings)}); antes de este paso la BO construye {count}.");

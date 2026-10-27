@@ -19,6 +19,10 @@ const data: GameDataLite = {
     loom: { kind: "tech", age: "dark", made_in: "town_center" },
     feudal_age: { kind: "tech", age: "dark", made_in: "town_center" },
     castle_age: { kind: "tech", age: "feudal", made_in: "town_center" },
+    university: { kind: "building", age: "castle" },
+    monastery: { kind: "building", age: "castle" },
+    castle: { kind: "building", age: "castle" },
+    imperial_age: { kind: "tech", age: "castle", made_in: "town_center" },
   },
   civs: { mapuche: { unavailable: ["stable"] } },
 };
@@ -106,6 +110,13 @@ describe("allowedRange", () => {
     // El asentamiento cuenta como maderero y molino: Feudal puede ir justo después de él.
     const inca = [build("a", "house"), villagers("b"), build("c", "settlement"), research("d", "feudal_age")];
     expect(allowedRange(inca.filter((s) => s.id !== "d"), [inca[3]], data, label).lo).toBe(3);
+  });
+
+  it("(e) Imperial pide 2 edificios de Castillos, o un castillo solo", () => {
+    const two = [research("f", "feudal_age"), research("c", "castle_age"), build("u", "university"), build("m", "monastery")];
+    expect(allowedRange(two, [research("i", "imperial_age")], data, label).lo).toBe(4);
+    const castle = [research("f", "feudal_age"), research("c", "castle_age"), build("k", "castle")];
+    expect(allowedRange(castle, [research("i", "imperial_age")], data, label).lo).toBe(3);
   });
 
   it("(f) los límites caen en bordes de cadena", () => {

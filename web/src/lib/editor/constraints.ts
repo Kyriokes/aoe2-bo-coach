@@ -20,10 +20,18 @@ export const AGE_ORDER: readonly Age[] = ["dark", "feudal", "castle", "imperial"
 export const AGE_OF_TECH: Readonly<Record<string, Age>> = { feudal_age: "feudal", castle_age: "castle", imperial_age: "imperial" };
 
 /** Los edificios de la edad anterior que pide cada edad (2 de ellos). */
-export const AGE_UP_REQ: Readonly<Record<string, { requires: Age; buildings: readonly string[] }>> = {
+export const AGE_UP_REQ: Readonly<Record<string, { requires: Age; buildings: readonly string[]; alone?: string }>> = {
   feudal_age: { requires: "dark", buildings: ["barracks", "mill", "lumber_camp", "mining_camp", "dock"] },
   castle_age: { requires: "feudal", buildings: ["archery_range", "stable", "blacksmith", "market"] },
+  // D12: 2 edificios de Castillos o un castillo solo (cuenta por los dos), como BuildOrderValidator.AgeUpProgress.
+  imperial_age: { requires: "castle", buildings: ["university", "monastery", "siege_workshop", "castle"], alone: "castle" },
 };
+
+/** Cuántos de los 2 edificios que pide la edad hay en `keys` (el edificio `alone` cuenta por dos). */
+export function ageUpCount(req: { buildings: readonly string[]; alone?: string }, keys: ReadonlySet<string>): number {
+  const count = req.buildings.filter((b) => keys.has(b)).length + (req.alone && keys.has(req.alone) ? 1 : 0);
+  return Math.min(2, count);
+}
 
 export const STARTING_BUILDING = "town_center";
 
@@ -168,7 +176,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
     const req = member.do === "research" && member.what ? AGE_UP_REQ[member.what] : undefined;
     if (req) {
       const fromBlock = req.buildings.filter((b) => blockBuilt.has(b));
-      const p = built.findIndex((set) => new Set([...req.buildings.filter((b) => set.has(b)), ...fromBlock]).size >= 2);
+      const p = built.findIndex((set) => ageUpCount(req, new Set([...req.buildings.filter((b) => set.has(b)), ...fromBlock])) >= 2);
       if (p >= 0) {
         const have = req.buildings.filter((b) => built[Math.min(p, n)].has(b) || fromBlock.includes(b));
         raise(p, `Recién con 2 edificios de ${AGE_LABEL[req.requires]} antes (${have.map((b) => entityName(b, 1)).join(", ")})`);
@@ -182,7 +190,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
         others.forEach((s, j) => {
           if (s.do !== "research" || s.what !== tech) return;
           const before = r.buildings.filter((b) => built[j].has(b));
-          if (before.length < 2 && new Set([...before, key]).size >= 2) {
+          if (ageUpCount(r, new Set(before)) < 2 && ageUpCount(r, new Set([...before, key])) >= 2) {
             lower(j, `Antes del clic en ${AGE_LABEL[AGE_OF_TECH[tech]]}: es uno de sus 2 edificios de ${AGE_LABEL[r.requires]}`);
           }
         });
