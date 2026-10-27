@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using BoCoach.Core.Assisted;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 
@@ -21,6 +22,7 @@ public static class BuildOrderAnalysis
         {
             w.WriteStartObject();
             BuildOrder bo;
+            var regenerated = false;
             try
             {
                 bo = BuildOrderSerializer.Parse(json);
@@ -34,7 +36,30 @@ public static class BuildOrderAnalysis
                 return Encoding.UTF8.GetString(stream.ToArray());
             }
 
-            var validation = new BuildOrderValidator(data, events, maps).Validate(bo);
+            var validator = new BuildOrderValidator(data, events, maps);
+            // D12: una BO asistida se genera primero (con su assisted válido) y se analiza la generada, con la comida
+            // finita del mapa como la simula el generador.
+            AssistedResult? assisted = null;
+            var settings = new PlannerSettings();
+            if (bo.Assisted is not null)
+            {
+                var assistedErrors = validator.ValidateAssistedPlan(bo);
+                if (assistedErrors.IsValid)
+                {
+                    var saved = bo;
+                    assisted = new AssistedGenerator(data, maps ?? new Maps([])).Generate(bo);
+                    bo = assisted.BuildOrder;
+                    settings = AssistedGenerator.Settings(data, maps ?? new Maps([]), bo);
+                    regenerated = saved.Steps.Count > 0
+                                  && BuildOrderSerializer.Serialize(saved with { Steps = bo.Steps, Posture = bo.Posture }) != BuildOrderSerializer.Serialize(saved);
+                }
+                else
+                {
+                    bo = bo with { Steps = [] };
+                }
+            }
+
+            var validation = assisted is null && bo.Assisted is not null ? validator.ValidateAssistedPlan(bo) : validator.Validate(bo);
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             WriteBuildOrder(w, bo);
@@ -42,13 +67,49 @@ public static class BuildOrderAnalysis
             WriteIssues(w, validation);
 
             // Una BO con errores puede no simularse (por ejemplo, una entidad que no existe).
-            var plan = validation.IsValid ? new Planner(data).Simulate(bo) : null;
+            var plan = validation.IsValid ? new Planner(data, settings).Simulate(bo) : null;
             WriteSteps(w, bo, plan);
             if (plan is not null)
                 WritePlan(w, plan);
+            if (assisted is not null)
+                WriteAssisted(w, assisted, regenerated);
             w.WriteEndObject();
         }
         return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    /// <summary>
+    /// D12: lo del generador para la web: el porqué de cada paso, la hora de cada objetivo (o el problema), los
+    /// problemas, la versión del generador y si los pasos guardados eran otros (el generador cambió).
+    /// </summary>
+    private static void WriteAssisted(Utf8JsonWriter w, AssistedResult result, bool regenerated)
+    {
+        w.WriteStartObject("assisted");
+        w.WriteNumber("version", AssistedGenerator.Version);
+        w.WriteBoolean("regenerated", regenerated);
+        w.WriteStartObject("reasons");
+        foreach (var step in result.BuildOrder.Steps)
+        {
+            if (result.Reasons.TryGetValue(step.Id, out var why))
+                w.WriteString(step.Id, why);
+        }
+        w.WriteEndObject();
+        w.WriteStartArray("goals");
+        foreach (var goal in result.Goals)
+        {
+            w.WriteStartObject();
+            w.WriteNumber("index", goal.Index);
+            Number(w, "start", goal.Start);
+            Number(w, "end", goal.End);
+            w.WriteString("problem", goal.Problem);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("problems");
+        foreach (var problem in result.Problems)
+            w.WriteStringValue(problem);
+        w.WriteEndArray();
+        w.WriteEndObject();
     }
 
     private static void WriteBuildOrder(Utf8JsonWriter w, BuildOrder bo)

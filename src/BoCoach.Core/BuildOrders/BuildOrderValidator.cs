@@ -330,6 +330,14 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     /// D12: los objetivos del modo asistido. Que la civ no pueda hacer algo no es un error: lo dice el generador como
     /// problema de ese objetivo.
     /// </summary>
+    /// <summary>Solo las reglas de <c>assisted</c> (D12): con errores no se genera (la BO todavía no tiene pasos).</summary>
+    public ValidationResult ValidateAssistedPlan(BuildOrder bo)
+    {
+        var issues = new List<ValidationIssue>();
+        ValidateAssisted(bo.Assisted, (step, message) => issues.Add(new(Severity.Error, step, message)));
+        return new ValidationResult(issues);
+    }
+
     private void ValidateAssisted(AssistedPlan? assisted, Action<string?, string> error)
     {
         if (assisted is null)

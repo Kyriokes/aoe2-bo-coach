@@ -113,4 +113,49 @@ public class BuildOrderAnalysisTests
         Assert.False(r.GetProperty("ok").GetBoolean());
         Assert.StartsWith("JSON inválido", r.GetProperty("error").GetString());
     }
+
+    private static string AssistedJson(int until, string steps = "[]") =>
+        "{ \"schema_version\": 2, \"id\": \"asis\", \"name\": \"Asistida\", \"civ\": \"franks\", \"steps\": " + steps +
+        ", \"assisted\": { \"villagers\": { \"until\": " + until + " }, \"goals\": [ { \"age\": \"feudal_age\" } ] } }";
+
+    // D12 (e): la web llama a Analyze con la BO asistida; el Core genera los pasos y los analiza.
+    [Fact]
+    public void Una_BO_asistida_se_genera_y_se_analiza()
+    {
+        var r = Analyze(AssistedJson(60));
+
+        Assert.True(r.GetProperty("valid").GetBoolean());
+        var steps = r.GetProperty("steps").EnumerateArray().ToList();
+        Assert.NotEmpty(steps);
+        var assisted = r.GetProperty("assisted");
+        Assert.Equal(1, assisted.GetProperty("version").GetInt32());
+        Assert.False(assisted.GetProperty("regenerated").GetBoolean());
+        Assert.All(steps, s => Assert.False(string.IsNullOrEmpty(assisted.GetProperty("reasons").GetProperty(s.GetProperty("id").GetString()!).GetString())));
+        Assert.Equal(JsonValueKind.Number, assisted.GetProperty("goals")[0].GetProperty("end").ValueKind);
+        Assert.Empty(assisted.GetProperty("problems").EnumerateArray());
+        var saved = r.GetProperty("build_order");
+        Assert.Equal(steps.Count, saved.GetProperty("steps").GetArrayLength());
+        Assert.Equal(60, saved.GetProperty("assisted").GetProperty("villagers").GetProperty("until").GetInt32());
+    }
+
+    [Fact]
+    public void Con_assisted_mal_armado_no_se_genera()
+    {
+        var r = Analyze(AssistedJson(0));
+
+        Assert.True(r.GetProperty("ok").GetBoolean());
+        Assert.False(r.GetProperty("valid").GetBoolean());
+        Assert.Contains(r.GetProperty("issues").EnumerateArray(), i => i.GetProperty("message").GetString()!.Contains("assisted.villagers.until"));
+        Assert.Empty(r.GetProperty("steps").EnumerateArray());
+    }
+
+    [Fact]
+    public void Con_pasos_viejos_avisa_que_se_regenero()
+    {
+        var old = Analyze(AssistedJson(60, "[ { \"id\": \"v\", \"do\": \"train\", \"what\": \"villager\", \"count\": 4, \"assign\": \"sheep\" } ]"));
+        Assert.True(old.GetProperty("assisted").GetProperty("regenerated").GetBoolean());
+
+        var generated = Analyze(Analyze(AssistedJson(60)).GetProperty("build_order").GetRawText());
+        Assert.False(generated.GetProperty("assisted").GetProperty("regenerated").GetBoolean());
+    }
 }
