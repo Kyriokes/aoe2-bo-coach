@@ -63,8 +63,12 @@ internal sealed class FoodRule : IGoalRule
             var cost = state.Cost(view, mill);
             if (state.Affordable(view, cost))
             {
-                var from = Builder(view);
-                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = mill, From = from, Assign = from ?? GatherSource.Wood },
+                var from = state.Builder(view);
+                // El que lo hace desde una comida salvaje que se deja va después a la de ahora (no vuelve a la vieja).
+                var assign = from is GatherSource.Sheep or GatherSource.Hunt && state.FoodSource is GatherSource.Hunt or GatherSource.Berries
+                    ? state.FoodSource
+                    : from ?? GatherSource.Wood;
+                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = mill, From = from, Assign = assign },
                     $"{Capitalize(StepText.Name(mill))}: la comida va a {StepText.Source(state.FoodSource)}"));
             }
             else
@@ -76,10 +80,12 @@ internal sealed class FoodRule : IGoalRule
         // Los de una fuente que se acaba (la de antes, o rezagados que llegaron después): a la de ahora.
         foreach (var old in Wild.Where(s => s != state.FoodSource))
         {
-            var on = view.Villagers.GetValueOrDefault(old);
-            if (on == 0 || state.Pending(view).Any(s => s.From == old && (s.Do == StepAction.Move || s is { Do: StepAction.Build, What: "farm" })))
+            // Solo los que no tienen ya un "mover" o una granja pedidos: así las tandas de granjas siguen aunque la
+            // anterior esté en obra (y la regla sigue despertándose mientras el centro urbano investiga).
+            var on = state.Free(view, old);
+            if (on == 0)
                 continue;
-            var seconds = SecondsLeft(view, food, old, on);
+            var seconds = SecondsLeft(view, food, old, view.Villagers.GetValueOrDefault(old));
             var lead = Lead(view, state, state.FoodSource, on);
             if (seconds > lead)
             {
@@ -209,12 +215,6 @@ internal sealed class FoodRule : IGoalRule
         var perSecond = villagers * view.Rates.GetValueOrDefault(source);
         return perSecond > 0 ? remaining / perSecond : double.PositiveInfinity;
     }
-
-    /// <summary>Quién hace un edificio: un leñador; sin leñadores, de donde haya más gente.</summary>
-    private static GatherSource? Builder(PlanView view) =>
-        view.Villagers.GetValueOrDefault(GatherSource.Wood) > 0
-            ? GatherSource.Wood
-            : view.Villagers.Where(v => v.Value > 0).OrderByDescending(v => v.Value).Select(v => (GatherSource?)v.Key).FirstOrDefault();
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 }

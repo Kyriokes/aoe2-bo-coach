@@ -31,9 +31,7 @@ internal sealed class HouseRule : IGoalRule
         }
 
         // Desde la madera; sin leñadores, desde donde haya más gente (o los sin tarea).
-        GatherSource? from = view.Villagers.GetValueOrDefault(GatherSource.Wood) > 0
-            ? GatherSource.Wood
-            : view.Villagers.Where(v => v.Value > 0).OrderByDescending(v => v.Value).Select(v => (GatherSource?)v.Key).FirstOrDefault();
+        var from = state.Builder(view);
         return [state.Add(
             new Step { Id = state.NewId(), Do = StepAction.Build, What = house, From = from, Assign = from ?? GatherSource.Sheep },
             $"Casa: con lo que está en cola la población llega a {projected} de {view.PopulationCap}")];

@@ -188,6 +188,21 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         Assert.Contains(result.Problems, p => p.Contains("granjas"));
     }
 
+    [Theory]
+    [InlineData("aztecs", 20, 2)]
+    [InlineData("any", 20, 3)]
+    [InlineData("franks", 20, 3)]
+    public void Con_pocos_aldeanos_llega_a_las_edades(string civ, int until, int ages)
+    {
+        // Ya no salen aldeanos: el reacomodo no puede pedir mover a los que no hay (trababa la BO para siempre).
+        var goals = new[] { Age("feudal_age"), Age("castle_age"), Age("imperial_age") }.Take(ages).ToArray();
+
+        var result = Generator.Generate(Assisted(civ, until, goals));
+
+        Assert.Empty(result.Problems);
+        AssertConsistent(result);
+    }
+
     [Fact]
     public void El_centro_urbano_no_para()
     {

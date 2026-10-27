@@ -120,6 +120,36 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
         view.Steps.Where(s => s.Step is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Remaining)
         + Added.Where(s => s is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Count);
 
+    /// <summary>
+    /// Los aldeanos de una fuente que todavía se pueden sacar: los que hay menos los que ya se pidió sacar de ahí (los
+    /// "mover" sin hacer, las granjas sin empezar y los constructores que todavía no salieron), de la foto y de esta
+    /// consulta. Un "mover" desde una fuente vacía espera para siempre y frena todo lo que va detrás.
+    /// </summary>
+    public int Free(PlanView view, GatherSource source)
+    {
+        var free = view.Villagers.GetValueOrDefault(source);
+        foreach (var pending in view.Steps.Where(s => s.End is null && s.Step.From == source))
+            free -= Taking(pending.Step, pending.Remaining, pending.Started);
+        foreach (var added in Added.Where(s => s.From == source))
+            free -= Taking(added, added.Count, started: false);
+        return Math.Max(0, free);
+    }
+
+    private static int Taking(Step step, int remaining, bool started) => step.Do switch
+    {
+        StepAction.Move => step.Count,
+        StepAction.Build when step.What == "farm" => remaining, // cada granja se lleva a su granjero
+        StepAction.Build when !started => step.Builders ?? 1,
+        _ => 0,
+    };
+
+    /// <summary>Quién hace un edificio: un leñador libre; si no hay, de donde haya más gente libre; null, los sin tarea.</summary>
+    public GatherSource? Builder(PlanView view) =>
+        Free(view, GatherSource.Wood) > 0
+            ? GatherSource.Wood
+            : view.Villagers.Keys.Select(s => (Source: s, Free: Free(view, s))).Where(x => x.Free > 0)
+                .OrderByDescending(x => x.Free).Select(x => (GatherSource?)x.Source).FirstOrDefault();
+
     /// <summary>La granja de la civ; null si no tiene (los kitanos usan pastos, que game_data no tiene).</summary>
     public string? Farm => CivBuildings.For(Data, Civ, "farm");
 

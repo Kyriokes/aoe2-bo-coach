@@ -46,9 +46,7 @@ internal sealed class AgeRule : IGoalRule
             && Cheapest(view, state, tech) is { } affordable)
         {
             building = affordable;
-            var from = view.Villagers.GetValueOrDefault(GatherSource.Wood) > 0
-                ? GatherSource.Wood
-                : view.Villagers.Where(v => v.Value > 0).OrderByDescending(v => v.Value).Select(v => (GatherSource?)v.Key).FirstOrDefault();
+            var from = state.Builder(view);
             var requirement = BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires;
             steps.Add(state.Add(
                 new Step { Id = state.NewId(), Do = StepAction.Build, What = building, From = from, Assign = from ?? GatherSource.Wood },
@@ -102,7 +100,9 @@ internal sealed class AgeRule : IGoalRule
     /// <summary>
     /// Si ya no salen aldeanos (se llegó a 'until'), los nuevos no pueden ir a lo que falta: si un recurso que pide la
     /// edad (su costo y sus 2 edificios) no se junta en <see cref="RebalanceSeconds"/>, pasa aldeanos desde lo que sobra
-    /// (la comida salvaje si la comida ya alcanza, y como mucho la mitad de los leñadores; nunca los granjeros).
+    /// (la comida salvaje si la comida ya alcanza, y como mucho la mitad de los leñadores; nunca los granjeros). Solo
+    /// mueve a los libres (<see cref="GoalState.Free"/>) y lo que el donante puede dar sin quedar corto, y no pide otro
+    /// reacomodo mientras un "mover" espera en la cola: un "mover" que no se puede hacer frena toda la BO.
     /// </summary>
     private static List<Step> Rebalance(PlanView view, GoalState state, string tech, ResourceAmounts cost)
     {
@@ -110,7 +110,8 @@ internal sealed class AgeRule : IGoalRule
         var villagers = view.Villagers.Values.Sum() + view.IdleVillagers + view.Builders
                         + view.Steps.Where(s => s.Step is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Remaining + s.Unfinished);
         // Un reacomodo cada tanto: los "mover" se cumplen al instante y la consulta se repite en el mismo segundo.
-        if (villagers < state.Plan.Villagers.Until || view.Time - state.RebalancedAt < RebalanceGapSeconds)
+        if (villagers < state.Plan.Villagers.Until || view.Time - state.RebalancedAt < RebalanceGapSeconds
+            || view.Steps.Any(s => s.End is null && s.Step.Do == StepAction.Move))
             return steps;
 
         var need = cost;
@@ -120,33 +121,59 @@ internal sealed class AgeRule : IGoalRule
             need += state.Cost(view, building);
             keys.Add(building);
         }
-        var income = Income(view);
+        var gathered = Gathered(view, RebalanceSeconds);
+        var fromWood = view.Villagers.GetValueOrDefault(GatherSource.Wood) / 2;
         foreach (var (resource, target) in new[] { (Resource.Wood, GatherSource.Wood), (Resource.Gold, GatherSource.Gold), (Resource.Stone, GatherSource.Stone) })
         {
-            var missing = need[resource] - view.Stock[resource] - income[resource] * RebalanceSeconds;
+            var missing = need[resource] - view.Stock[resource] - gathered[resource];
             var rate = view.Rates.GetValueOrDefault(target);
             if (missing <= 0 || rate <= 0)
                 continue;
             var wanted = (int)Math.Ceiling(missing / (rate * RebalanceSeconds));
             foreach (var donor in new[] { GatherSource.Berries, GatherSource.Hunt, GatherSource.Sheep, GatherSource.Wood, GatherSource.Gold, GatherSource.Stone })
             {
-                if (donor == target || wanted <= 0)
+                var donorRate = view.Rates.GetValueOrDefault(donor);
+                var surplus = view.Stock[donor.Resource()] + gathered[donor.Resource()] - need[donor.Resource()];
+                if (donor == target || wanted <= 0 || surplus <= 0 || donorRate <= 0)
                     continue;
-                var surplus = view.Stock[donor.Resource()] + income[donor.Resource()] * RebalanceSeconds - need[donor.Resource()];
-                if (surplus <= 0)
-                    continue;
-                var on = view.Villagers.GetValueOrDefault(donor);
-                var moved = Math.Min(wanted, donor == GatherSource.Wood ? on / 2 : on);
+                var moved = Math.Min(Math.Min(wanted, state.Free(view, donor)), (int)Math.Floor(surplus / (donorRate * RebalanceSeconds)));
+                if (donor == GatherSource.Wood)
+                    moved = Math.Min(moved, fromWood);
                 if (moved <= 0)
                     continue;
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Move, Count = moved, From = donor, Assign = target },
                     $"A {StepText.Source(target)}: faltan {Math.Ceiling(need[resource] - view.Stock[resource]):0} para {StepText.Name(tech)} y ya no salen aldeanos"));
                 wanted -= moved;
+                if (donor == GatherSource.Wood)
+                    fromWood -= moved;
+                gathered = gathered.With(donor.Resource(), gathered[donor.Resource()] - moved * donorRate * RebalanceSeconds)
+                    .With(resource, gathered[resource] + moved * rate * RebalanceSeconds);
             }
         }
         if (steps.Count > 0)
             state.RebalancedAt = view.Time;
         return steps;
+    }
+
+    /// <summary>
+    /// Lo que juntan en <paramref name="seconds"/> los aldeanos de ahora, por recurso: la comida salvaje, como mucho lo
+    /// que queda de ella (si no, una fuente a punto de acabarse parecía sobrar).
+    /// </summary>
+    private static ResourceAmounts Gathered(PlanView view, double seconds)
+    {
+        var gathered = ResourceAmounts.Zero;
+        var wild = 0.0;
+        foreach (var (source, count) in view.Villagers)
+        {
+            var amount = count * view.Rates.GetValueOrDefault(source) * seconds;
+            if (source is GatherSource.Sheep or GatherSource.Hunt or GatherSource.Berries)
+                wild += amount;
+            else
+                gathered = gathered.With(source.Resource(), gathered[source.Resource()] + amount);
+        }
+        if (view.Food is { } food)
+            wild = Math.Min(wild, new[] { GatherSource.Sheep, GatherSource.Hunt, GatherSource.Berries }.Sum(s => Math.Max(0, food.Remaining.GetValueOrDefault(s))));
+        return gathered.With(Resource.Food, gathered.Food + wild);
     }
 
     /// <summary>Lo que se espera entre un reacomodo y el siguiente.</summary>

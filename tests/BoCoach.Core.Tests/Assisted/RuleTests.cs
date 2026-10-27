@@ -128,8 +128,9 @@ public class RuleTests
 
         var steps = new FoodRule().Next(view, state);
 
-        Assert.Equal((StepAction.Build, "mill", GatherSource.Hunt), (steps[0].Do, steps[0].What, steps[0].From));
-        Assert.Equal((StepAction.Move, 6, GatherSource.Hunt, GatherSource.Berries), (steps[1].Do, steps[1].Count, steps[1].From, steps[1].Assign));
+        // Uno de los cazadores hace el molino y después va a las bayas; los otros 5 pasan directo.
+        Assert.Equal((StepAction.Build, "mill", GatherSource.Hunt, GatherSource.Berries), (steps[0].Do, steps[0].What, steps[0].From, steps[0].Assign));
+        Assert.Equal((StepAction.Move, 5, GatherSource.Hunt, GatherSource.Berries), (steps[1].Do, steps[1].Count, steps[1].From, steps[1].Assign));
         Assert.Equal(GatherSource.Berries, state.FoodSource);
     }
 
@@ -143,7 +144,8 @@ public class RuleTests
         var steps = new FoodRule().Next(view, state);
 
         Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "mill" });
-        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 6, From: GatherSource.Hunt, Assign: GatherSource.Farm });
+        // Uno de los cazadores hace el molino: los otros 5, una granja cada uno (el del molino, en la consulta siguiente).
+        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 5, From: GatherSource.Hunt, Assign: GatherSource.Farm });
         Assert.Equal(GatherSource.Farm, state.FoodSource);
     }
 
@@ -276,5 +278,31 @@ public class RuleTests
         var later = State(plan: plan);
         Assert.DoesNotContain(new AgeRule().Next(poor, later), s => s.Do == StepAction.Research);
         Assert.NotNull(later.WakeAt);
+    }
+
+    [Fact]
+    public void El_reacomodo_no_saca_de_donde_ya_se_fueron_todos()
+    {
+        var plan = new AssistedPlan { Villagers = new AssistedVillagers { Until = 18 }, Goals = [new AssistedGoal { Age = "castle_age" }] };
+        var state = State(plan: plan);
+        // En la misma consulta, la regla de la comida ya pasó a los 14 cazadores a las bayas.
+        state.Add(new Step { Id = "m", Do = StepAction.Move, Count = 14, From = GatherSource.Hunt, Assign = GatherSource.Berries }, "a las bayas");
+        var view = new PlanView
+        {
+            Time = 600,
+            Age = Age.Feudal,
+            Population = 19,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Hunt, 14), (GatherSource.Wood, 4)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["blacksmith"] = 1, ["archery_range"] = 1 },
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(900, 0, 0, 0),
+            Rates = Rates,
+        };
+
+        var steps = new AgeRule().Next(view, state);
+
+        Assert.DoesNotContain(steps, s => s.Do == StepAction.Move && s.From == GatherSource.Hunt);
+        Assert.Contains(steps, s => s is { Do: StepAction.Move, From: GatherSource.Wood, Assign: GatherSource.Gold });
     }
 }
