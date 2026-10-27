@@ -75,7 +75,13 @@ internal sealed class AgeRule : IGoalRule
         }
 
         var ready = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: false)) >= 2;
-        if (ready && Affordable(view, cost, ClickLeadSeconds))
+        // El clic se adelanta lo que tarda el aldeano en producción, salvo que mientras espera haya que mover a los de una
+        // comida que se acaba: el "mover" quedaría detrás del clic sin pagar (y si la comida no llegaba al costo, la BO
+        // quedaba trabada para siempre). Lo que se espera juntar cuenta solo la comida salvaje que queda.
+        var lead = FoodRule.ActsWithin(view, state, ClickLeadSeconds + (view.InProduction > 0 ? state.VillagerTime(view.Age) : 0))
+            ? 0
+            : ClickLeadSeconds;
+        if (ready && Affordable(view, cost, lead))
         {
             steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
                 $"Clic en {StepText.Name(tech)}: alcanza el costo"));
@@ -89,7 +95,7 @@ internal sealed class AgeRule : IGoalRule
             state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling(toAffordSeconds / state.VillagerTime(view.Age)), 1, VillagerRule.MaxTramo);
         }
         // Que la consulten cuando alcance, aunque no nazca nadie (ya se llegó a los aldeanos que pide la BO).
-        state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(5, toAffordSeconds - ClickLeadSeconds)));
+        state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(toAffordSeconds - lead))));
         steps.AddRange(Rebalance(view, state, tech, cost));
         return steps;
     }
@@ -226,7 +232,7 @@ internal sealed class AgeRule : IGoalRule
     }
 
     private static bool Affordable(PlanView view, ResourceAmounts cost, double seconds) =>
-        Enum.GetValues<Resource>().All(r => view.Stock[r] + Income(view)[r] * seconds >= cost[r]);
+        Enum.GetValues<Resource>().All(r => view.Stock[r] + Gathered(view, seconds)[r] >= cost[r]);
 
     /// <summary>Cuántos segundos faltan para tener el costo con lo que se junta ahora (sin fin si un recurso no lo junta nadie).</summary>
     private static double? SecondsToAfford(PlanView view, ResourceAmounts cost)

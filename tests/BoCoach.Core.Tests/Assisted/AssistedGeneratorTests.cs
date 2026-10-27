@@ -192,9 +192,13 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     [InlineData("aztecs", 20, 2)]
     [InlineData("any", 20, 3)]
     [InlineData("franks", 20, 3)]
+    [InlineData("any", 13, 3)]
+    [InlineData("britons", 13, 3)]
+    [InlineData("mongols", 13, 3)]
     public void Con_pocos_aldeanos_llega_a_las_edades(string civ, int until, int ages)
     {
-        // Ya no salen aldeanos: el reacomodo no puede pedir mover a los que no hay (trababa la BO para siempre).
+        // Ya no salen aldeanos: el reacomodo no puede pedir mover a los que no hay, y el clic no queda esperando en la
+        // cola delante del "mover" de la comida que se acaba (las dos cosas trababan la BO para siempre).
         var goals = new[] { Age("feudal_age"), Age("castle_age"), Age("imperial_age") }.Take(ages).ToArray();
 
         var result = Generator.Generate(Assisted(civ, until, goals));
