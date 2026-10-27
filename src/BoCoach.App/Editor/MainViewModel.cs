@@ -134,13 +134,15 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasEditor))]
     private void Save()
     {
+        // D12 (f): una BO asistida con los pasos cambiados pasa a manual (ToBuildOrder ya no lleva sus objetivos).
+        var dropped = Editor?.AssistedDropped == true ? "Esta BO era asistida: pasa a manual. " : "";
         if (SaveEditor() is not { } saved)
             return;
         RefreshList();
         Select(Entries.FirstOrDefault(e => e.Path == _app.Library.PathFor(saved)));
-        Status = Editor!.HasErrors
+        Status = dropped + (Editor!.HasErrors
             ? $"Guardada \"{saved.Name}\", pero todavía tiene errores."
-            : $"Guardada \"{saved.Name}\".";
+            : $"Guardada \"{saved.Name}\".");
     }
 
     private BuildOrder? SaveEditor()

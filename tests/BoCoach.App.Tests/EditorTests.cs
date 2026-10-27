@@ -1,5 +1,6 @@
 using BoCoach.App;
 using BoCoach.App.Editor;
+using BoCoach.Core.Assisted;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 
@@ -29,6 +30,36 @@ public sealed class EditorTests : IDisposable
         Assert.NotNull(bo.Targets?.VillagersAtCastle);
 
         Assert.Equal(bo.Targets!.VillagersAtCastle, new BuildOrderEditorViewModel(bo, _data).ToBuildOrder().Targets?.VillagersAtCastle);
+    }
+
+    // D12 (f): una BO asistida generada en la web, abierta en el editor de la app.
+    private BuildOrder AssistedBo() => new AssistedGenerator(_data.GameData, _data.Maps).Generate(new BuildOrder
+    {
+        Id = "asis",
+        Name = "Asistida",
+        Civ = "franks",
+        Assisted = new AssistedPlan { Villagers = new AssistedVillagers { Until = 40 }, Goals = [new AssistedGoal { Age = "feudal_age" }] },
+    }).BuildOrder;
+
+    [Fact]
+    public void Una_BO_asistida_conserva_sus_objetivos_si_no_se_tocan_los_pasos()
+    {
+        var vm = new BuildOrderEditorViewModel(AssistedBo(), _data);
+        vm.Name = "Asistida (copia)";
+
+        Assert.False(vm.AssistedDropped);
+        Assert.NotNull(vm.ToBuildOrder().Assisted);
+    }
+
+    [Fact]
+    public void Cambiar_un_paso_de_una_BO_asistida_la_pasa_a_manual()
+    {
+        var vm = new BuildOrderEditorViewModel(AssistedBo(), _data);
+
+        vm.AddVillagersCommand.Execute(null);
+
+        Assert.True(vm.AssistedDropped);
+        Assert.Null(vm.ToBuildOrder().Assisted);
     }
 
     // D3: las ramas se arman en el editor eligiendo de qué se ven los pasos.
@@ -153,6 +184,20 @@ public sealed class EditorTests : IDisposable
         Assert.Equal("23p Archers", vm.Editor?.Name);
         Assert.Contains(vm.Entries, e => e.BuildOrder?.Name == "23p Archers");
         Assert.Equal("Importada \"23p Archers\".", vm.Status);
+    }
+
+    [Fact]
+    public void Guardar_una_BO_asistida_con_los_pasos_cambiados_avisa_que_pasa_a_manual()
+    {
+        var dialogs = new FakeDialogs { Clipboard = BuildOrderSerializer.Serialize(AssistedBo()) };
+        var vm = new MainViewModel(_data, dialogs);
+        vm.PasteCommand.Execute(null);
+
+        vm.Editor!.AddVillagersCommand.Execute(null);
+        vm.SaveCommand.Execute(null);
+
+        Assert.StartsWith("Esta BO era asistida: pasa a manual.", vm.Status);
+        Assert.Null(BuildOrderSerializer.Load(vm.Entries.First(e => e.BuildOrder?.Name == "Asistida").Path).Assisted);
     }
 
     [Fact]

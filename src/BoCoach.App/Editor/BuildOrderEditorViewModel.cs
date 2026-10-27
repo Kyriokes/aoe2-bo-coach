@@ -34,6 +34,10 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
     private readonly int _schemaVersion;
     private readonly bool _hadPosture;
 
+    /// <summary>D12 (f): los objetivos del modo asistido con que vino la BO, y sus pasos tal como los arma el editor.</summary>
+    private readonly AssistedPlan? _assisted;
+    private readonly string? _assistedSteps;
+
     /// <summary>Aldeanos al llegar a Castillos: el editor no los muestra, pero se guardan como venían.</summary>
     private readonly VillagerDistribution? _villagersAtCastle;
 
@@ -90,9 +94,19 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         BranchBeforeText = "";
         BranchNote = "";
         Steps.CollectionChanged += (_, _) => Changed();
+        _assisted = bo.Assisted;
+        _assistedSteps = _assisted is null ? null : StepsKey(ToSteps(ListOf(MainSteps)));
         _loading = false;
         Refresh();
     }
+
+    /// <summary>
+    /// D12 (f): la BO era asistida y se cambiaron sus pasos: al guardar pasa a manual (se borran los objetivos), así la
+    /// web no pisa el cambio al regenerarla.
+    /// </summary>
+    public bool AssistedDropped => _assisted is not null && StepsKey(ToSteps(ListOf(MainSteps))) != _assistedSteps;
+
+    private static string StepsKey(List<Step> steps) => BuildOrderSerializer.Serialize(new BuildOrder { Name = "pasos", Steps = steps });
 
     public string Id { get; private set; }
 
@@ -272,7 +286,7 @@ public sealed partial class BuildOrderEditorViewModel : ObservableObject
         // Si la BO no traía postura y queda igual a la deducida, no se escribe: así sigue a los pasos si cambian.
         var derived = Posture.Effective(bo).Posture;
         var same = posture.Queue.SequenceEqual(derived.Queue) && posture.NextAge == derived.NextAge;
-        return bo with { Posture = !_hadPosture && same ? null : posture };
+        return bo with { Posture = !_hadPosture && same ? null : posture, Assisted = AssistedDropped ? null : _assisted };
     }
 
     public void MarkSaved(BuildOrder saved)
