@@ -193,7 +193,7 @@ internal sealed class AgeRule : IGoalRule
     /// Lo que juntan en <paramref name="seconds"/> los aldeanos de ahora, por recurso: la comida salvaje, como mucho lo
     /// que queda de ella (si no, una fuente a punto de acabarse parecía sobrar).
     /// </summary>
-    private static ResourceAmounts Gathered(PlanView view, double seconds)
+    internal static ResourceAmounts Gathered(PlanView view, double seconds)
     {
         var gathered = ResourceAmounts.Zero;
         var wild = 0.0;

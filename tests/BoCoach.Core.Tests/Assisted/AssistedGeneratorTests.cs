@@ -274,6 +274,28 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
+    [Theory]
+    [InlineData("armenians", 25, "scouts-castle-scouts")]
+    [InlineData("cumans", 25, "castle-tc")]
+    [InlineData("aztecs", 13, "archers")]
+    [InlineData("britons", 13, "scouts-castle")]
+    public void Con_pocos_aldeanos_se_cumplen_los_objetivos_que_no_son_edades(string civ, int until, string list)
+    {
+        // Revisión del (d): con 'until' alcanzado nadie volvía a consultar ni movía aldeanos a lo que faltaba.
+        AssistedGoal[] goals = list switch
+        {
+            "scouts-castle-scouts" => [Age("feudal_age"), Units("scout_cavalry", 20, 2), Age("castle_age"), Units("scout_cavalry", 10, 2)],
+            "castle-tc" => [Age("feudal_age"), Age("castle_age"), new AssistedGoal { TownCenters = 3 }],
+            "archers" => [Age("feudal_age"), Units("archer", 10, 1), Units("archer", 10, 3)],
+            _ => [Age("feudal_age"), Units("scout_cavalry", 20, 2), Age("castle_age")],
+        };
+
+        var result = Generator.Generate(Assisted(civ, until, goals));
+
+        Assert.Empty(result.Problems);
+        AssertConsistent(result);
+    }
+
     [Fact]
     public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {
