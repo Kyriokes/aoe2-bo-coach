@@ -178,6 +178,17 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Sin_granjas_en_los_datos_no_las_pide_y_lo_avisa()
+    {
+        // Los kitanos usan pastos, que game_data no tiene: la BO no puede pedir granjas (no validaría).
+        var result = Generator.Generate(Assisted("khitans", 60, Age("feudal_age")));
+
+        AssertConsistent(result);
+        Assert.DoesNotContain(result.BuildOrder.Steps, s => s.What == "farm");
+        Assert.Contains(result.Problems, p => p.Contains("granjas"));
+    }
+
+    [Fact]
     public void El_centro_urbano_no_para()
     {
         var result = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age")));

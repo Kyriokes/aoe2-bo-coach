@@ -39,6 +39,8 @@ public sealed class AssistedGenerator(GameData data, Maps maps)
 
         var goals = new List<GoalResult>();
         var problems = new List<string>();
+        if (state.Farm is null)
+            problems.Add("La civ no tiene granjas en los datos del juego (los kitanos usan pastos): cuando se acaba la comida salvaje, los aldeanos van a la madera y la comida no sigue.");
         for (var i = 0; i < plan.Goals.Count; i++)
         {
             var goal = plan.Goals[i];

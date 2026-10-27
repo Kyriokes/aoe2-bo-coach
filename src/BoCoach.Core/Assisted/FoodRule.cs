@@ -94,7 +94,7 @@ internal sealed class FoodRule : IGoalRule
                     $"A {StepText.Source(state.FoodSource)}: {why}"));
                 continue;
             }
-            var farms = Math.Min(on, state.AffordableCount(view, farmCost));
+            var farms = state.Farm is null ? 0 : Math.Min(on, state.AffordableCount(view, farmCost));
             if (farms > 0)
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = "farm", Count = farms, From = old, Assign = GatherSource.Farm },
@@ -126,6 +126,8 @@ internal sealed class FoodRule : IGoalRule
         for (var source = state.FoodSource; source != GatherSource.Farm; source = NextSource(source, food, state))
             sources.Add(source);
         var wild = Wild.Sum(s => view.Villagers.GetValueOrDefault(s));
+        if (state.Farm is null)
+            return;
         var perSecond = Wild.Sum(s => view.Villagers.GetValueOrDefault(s) * view.Rates.GetValueOrDefault(s));
         if (wild == 0 || perSecond <= 0)
             return;

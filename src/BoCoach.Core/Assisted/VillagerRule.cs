@@ -45,7 +45,7 @@ internal sealed class VillagerRule : IGoalRule
                 sustain += state.Cost(view, camp);
         }
         var missing = sustain + state.Planned;
-        var farms = state.AffordableCount(view, state.Cost(view, "farm"));
+        var farms = state.Farm is null ? 0 : state.AffordableCount(view, state.Cost(view, "farm"));
 
         // El reparto, de a uno: las ovejas hasta lo que pide la apertura y después lo que más falta.
         var order = new List<GatherSource>();
@@ -88,7 +88,7 @@ internal sealed class VillagerRule : IGoalRule
             var gathered = Rate(view, source) * Math.Max(0, horizon - (j + 1) * villagerTime);
             missing = missing.With(r, missing[r] - gathered);
             sustain = sustain.With(r, sustain[r] - gathered);
-            if (source is GatherSource.Sheep or GatherSource.Hunt or GatherSource.Berries)
+            if (source is GatherSource.Sheep or GatherSource.Hunt or GatherSource.Berries && state.Farm is not null)
             {
                 // Más adelante va a necesitar su granja: que la madera venga con él.
                 var farm = state.Cost(view, "farm");

@@ -120,6 +120,9 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
         view.Steps.Where(s => s.Step is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Remaining)
         + Added.Where(s => s is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Count);
 
+    /// <summary>La granja de la civ; null si no tiene (los kitanos usan pastos, que game_data no tiene).</summary>
+    public string? Farm => CivBuildings.For(Data, Civ, "farm");
+
     /// <summary>Si la civ necesita casas (los hunos no).</summary>
     public bool MakesHouses => !Civ.Start.NoHouses && CivBuildings.For(Data, Civ, "house") is not null;
 
