@@ -1,4 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { defaultPlan } from "../editor/assisted";
+import { initialState, reduce, toJson } from "../editor/model";
 import type { CoachRuntime } from "./runtime";
 import { startTestCoach } from "./testing";
 import type { Analysis } from "./types";
@@ -29,6 +31,19 @@ describe("el modo asistido en el Core", () => {
 
     expect(result.assisted?.goals[1].problem).toContain("no tienen");
     expect(result.assisted?.goals[0].end).not.toBeNull();
+  });
+
+  it("una BO guardada por la web no avisa que se regeneró al volver a abrirla", () => {
+    // Revisión del (e): la web guardaba los pasos generados sin la postura que escribe el generador.
+    let state = reduce(reduce(initialState(), { type: "new", id: "nueva" }), { type: "setAssisted", assisted: defaultPlan() });
+    state = reduce(state, { type: "setField", field: "civ", value: "franks" });
+    const generated = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: [] }))) as Analysis;
+    state = reduce(state, { type: "generated", analysis: generated, revision: state.revision });
+
+    const reopened = coach.analyze(JSON.stringify(toJson(state))) as Analysis;
+
+    expect(state.bo.posture).toEqual(generated.build_order.posture);
+    expect(reopened.assisted?.regenerated).toBe(false);
   });
 
   it("120 aldeanos hasta Imperial con 5 objetivos: cuánto tarda", () => {

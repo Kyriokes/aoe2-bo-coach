@@ -351,9 +351,15 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       if (action.assisted === undefined) delete bo.assisted;
       return edited(state, { bo });
     }
-    case "generated":
-      return action.revision !== state.revision
-        ? state
-        : { ...state, steps: fromAnalysis(action.analysis).steps, analysis: action.analysis, analyzedRevision: action.revision };
+    case "generated": {
+      if (action.revision !== state.revision) return state;
+      // La postura de cierre también la escribe el generador (spec, sección 2): sin ella, la BO guardada volvía como
+      // "regenerada" al abrirla.
+      const bo = { ...state.bo };
+      const posture = action.analysis.build_order.posture;
+      if (posture === undefined || posture === null) delete bo.posture;
+      else bo.posture = posture;
+      return { ...state, bo, steps: fromAnalysis(action.analysis).steps, analysis: action.analysis, analyzedRevision: action.revision };
+    }
   }
 }
