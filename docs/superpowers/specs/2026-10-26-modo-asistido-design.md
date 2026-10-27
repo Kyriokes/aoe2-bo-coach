@@ -98,7 +98,10 @@ viejas usan la BO como cualquier otra sin saber nada del generador.
 como se escriben las guías ("aldeano 7: campamento maderero"). Si decide esperar algo (las granjas recién cuando se
 acaban las ovejas), el paso que agrega más tarde lleva `at_pop` con la población de ese momento. Así la BO generada,
 simulada de nuevo sin el generador, da exactamente los mismos tiempos: cada paso queda alcanzado en el mismo segundo
-en que el generador lo agregó.
+en que el generador lo agregó. Quien lo fija es el Planner, no el generador (sub-paso b): con `at_pop` si en ese
+segundo nació alguien (la población llegó recién ahí a ese número) y con `at_time` si no (un paso de aldeanos
+agregado cuando arranca un edificio que esperaba madera, por ejemplo). Si lo agregado vuelve a dejar la BO sin pasos
+por arrancar, el Planner pregunta otra vez en el mismo segundo.
 
 **Qué mira en cada decisión, en este orden:**
 
@@ -162,7 +165,8 @@ el coach y el replanificador en vivo siguen así). Prendida en el modo asistido:
   acabaron las ovejas a las 6:10").
 - **Granjas:** cada granjero tiene su granja (el Planner lleva la comida de una granja por granjero; el que llega a la
   granja sin un paso de granjas también trae la suya, y el generador hace siempre una por granjero). El que llega con
-  un paso de granjas pendiente que la hace desde la granja la espera sin juntar (`IdleReason.WaitingFarm`; revisión
+  un paso de granjas ya alcanzado y sin empezar que la hace desde la granja la espera sin juntar (uno que la BO todavía
+  no alcanzó no cuenta: si contara, la BO generada simulada de nuevo daría otra cosa) (`IdleReason.WaitingFarm`; revisión
   del 2026-10-26: con la comida infinita juntaba de una granja que no existía). Al agotarse se
   resiembra sola cobrando la madera de una granja con el costo de la civ (60 sin bonificaciones), antes que cualquier
   otro gasto, como la cola de resiembra del molino. Sin madera, el granjero espera y queda registrado. Las mejoras de

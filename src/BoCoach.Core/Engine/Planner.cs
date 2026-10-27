@@ -525,12 +525,13 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         /// <summary>
         /// Los granjeros sin granja que esperan la suya: los que sobran sobre las granjas hechas, hasta las que quedan por
         /// empezar en pasos de granjas que se hacen desde la granja (así las hace un granjero que todavía no tiene la
-        /// suya). El que llega a la granja sin un paso así trae su granja.
+        /// suya). Solo cuentan los pasos a los que la BO ya llegó: el que llega a la granja sin un paso así trae su granja,
+        /// y una simulación nueva de una BO generada por la política (D12 b) da lo mismo que la de la política.
         /// </summary>
         private int WaitingFarmers()
         {
             var pending = _items
-                .Where(i => i.End is null && i.Step is { Do: StepAction.Build, What: "farm", From: GatherSource.Farm })
+                .Where(i => i.End is null && (i.Reached || i.Started) && i.Step is { Do: StepAction.Build, What: "farm", From: GatherSource.Farm })
                 .Sum(i => i.Remaining);
             return Math.Min(pending, Math.Max(0, _villagers[GatherSource.Farm] - _buildings.GetValueOrDefault("farm")));
         }

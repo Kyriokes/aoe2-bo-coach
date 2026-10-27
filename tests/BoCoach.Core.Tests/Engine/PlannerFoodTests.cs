@@ -193,6 +193,19 @@ public class PlannerFoodTests
     }
 
     [Fact]
+    public void Un_paso_de_granjas_que_todavia_no_llego_no_hace_esperar_al_granjero()
+    {
+        // El granjero llega sin un paso de granjas alcanzado: trae la suya. Si contara el paso de más adelante, una
+        // simulación nueva de una BO generada por la política (D12 b) daría otra cosa que la de la política.
+        var move = new Step { Id = "a-granja", Do = StepAction.Move, Count = 1, From = GatherSource.Sheep, Assign = GatherSource.Farm };
+        var farm = new Step { Id = "granja", Do = StepAction.Build, What = "farm", From = GatherSource.Farm, Assign = GatherSource.Farm };
+
+        var plan = Run(Arabia, Start(GatherSource.Sheep, 1, food: 200, wood: 200), move, Loom(100), farm);
+
+        Assert.DoesNotContain(plan.Idle, i => i.Reason == IdleReason.WaitingFarm && i.From < 100);
+    }
+
+    [Fact]
     public void Los_granjeros_que_se_van_y_vuelven_traen_granja_llena()
     {
         var leave = new Step { Id = "a-madera", Do = StepAction.Move, Count = 1, From = GatherSource.Farm, Assign = GatherSource.Wood, AtTime = 5 };

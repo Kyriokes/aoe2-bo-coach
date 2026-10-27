@@ -28,16 +28,30 @@ public class PlannerPolicyTests
     private sealed class Simple(bool houses, int maxVillagers = 15) : IStepPolicy
     {
         private int _ids;
+        private bool _toBerries;
 
         public IReadOnlyList<Step> Next(PlanView v)
         {
             var steps = new List<Step>();
             if (v.IdleVillagers > 0)
                 steps.Add(new Step { Id = Id("sin-tarea"), Do = StepAction.Move, Count = v.IdleVillagers, Assign = GatherSource.Sheep });
+            // Con la comida finita: los de las ovejas pasan a las bayas cuando se acaban, y cuando se acaban las bayas
+            // cada aldeano nuevo va a la granja con la suya. Los nuevos no van a ovejas que se están acabando.
+            var sheepEnding = v.Food is { } food && food.Remaining[GatherSource.Sheep] < 200;
+            if (sheepEnding && !_toBerries && v.Villagers[GatherSource.Sheep] > 0)
+            {
+                _toBerries = true;
+                steps.Add(new Step { Id = Id("a-bayas"), Do = StepAction.Move, Count = v.Villagers[GatherSource.Sheep], From = GatherSource.Sheep, Assign = GatherSource.Berries });
+            }
             var villagers = v.Villagers.Values.Sum() + v.IdleVillagers + v.Builders;
             var pending = v.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.End is null);
-            if (villagers < maxVillagers && !pending)
-                steps.Add(new Step { Id = Id("aldeano"), Do = StepAction.Train, What = "villager", Assign = v.Villagers[GatherSource.Sheep] < 6 ? GatherSource.Sheep : GatherSource.Wood });
+            if (villagers < maxVillagers && !pending && v.Food is { } f && f.Remaining[GatherSource.Berries] < 200)
+            {
+                steps.Add(new Step { Id = Id("granjero"), Do = StepAction.Train, What = "villager", Assign = GatherSource.Farm });
+                steps.Add(new Step { Id = Id("granja"), Do = StepAction.Build, What = "farm", From = GatherSource.Farm, Assign = GatherSource.Farm });
+            }
+            else if (villagers < maxVillagers && !pending)
+                steps.Add(new Step { Id = Id("aldeano"), Do = StepAction.Train, What = "villager", Assign = v.Villagers[GatherSource.Sheep] < 6 && !sheepEnding ? GatherSource.Sheep : GatherSource.Wood });
             var house = v.Steps.Any(s => s.Step is { Do: StepAction.Build, What: "house" } && s.End is null);
             if (houses && v.PopulationCap - v.Population - v.InProduction <= 2 && !house)
                 steps.Add(new Step { Id = Id("casa"), Do = StepAction.Build, What = "house", Assign = GatherSource.Sheep });
@@ -105,6 +119,22 @@ public class PlannerPolicyTests
         var bo = Generated(withPolicy, civ);
 
         Assert.True(withPolicy.Steps.Count > 10);
+        AssertSame(withPolicy, planner.Simulate(bo));
+        Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(bo).Issues, i => i.Severity == Severity.Error);
+    }
+
+    [Theory]
+    [InlineData("any")]
+    [InlineData("tatars")]
+    [InlineData("poles")]
+    public void Con_comida_finita_la_BO_generada_da_lo_mismo(string civ)
+    {
+        var planner = new Planner(TestData.GameData, new PlannerSettings { Food = FoodSupply.For(TestData.GameData, null) });
+
+        var withPolicy = planner.Simulate(new BuildOrder { Name = "g", Civ = civ }, new Simple(houses: true, maxVillagers: 40));
+        var bo = Generated(withPolicy, civ);
+
+        Assert.Contains(withPolicy.Steps, s => s.Step is { Do: StepAction.Build, What: "farm" });
         AssertSame(withPolicy, planner.Simulate(bo));
         Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(bo).Issues, i => i.Severity == Severity.Error);
     }
