@@ -206,13 +206,18 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
 
     /// <summary>
     /// D12: simula la BO y le pregunta a la política qué agregar mientras tanto (el modo asistido). El resultado trae
-    /// los pasos de la BO y los agregados, en orden, con las condiciones que les puso el Planner.
+    /// los pasos de la BO y los agregados, en orden, con las condiciones que les puso el Planner. Con política, todos
+    /// los pasos de aldeanos van en unidades (aldeanos nuevos, como los que agrega la política): los de la BO se pasan
+    /// de totales a unidades, así la BO generada sale entera con <see cref="LivePlan.CountsToTotals"/>.
     /// </summary>
     public PlanResult Simulate(BuildOrder bo, IStepPolicy? policy)
     {
         var civ = CivOf(bo);
         var units = LivePlan.Units(bo);
-        return Simulate(bo.Steps.Select((s, i) => new PlanItem(s, units[i])).ToList(),
+        var steps = policy is null
+            ? bo.Steps
+            : bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? s with { Count = units[i] } : s).ToList();
+        return Simulate(steps.Select((s, i) => new PlanItem(s, units[i])).ToList(),
             PlanStart.For(civ, data), civ, policy);
     }
 

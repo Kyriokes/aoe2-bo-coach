@@ -210,6 +210,33 @@ public class PlannerPolicyTests
     }
 
     [Fact]
+    public void Con_pasos_en_la_BO_de_entrada_la_BO_generada_da_lo_mismo()
+    {
+        // Revisión del 2026-10-26: los pasos de aldeanos de la BO de entrada vienen en totales ("6 en ovejas" con los 3
+        // iniciales) y los de la política en unidades; pasados todos a totales, "6 en ovejas" se volvía 9.
+        var bo = new BuildOrder
+        {
+            Name = "g",
+            Steps =
+            [
+                new Step { Id = "casas", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+                Villagers("ovejas", 6, GatherSource.Sheep),
+            ],
+        };
+        var added = 0;
+        var policy = new Scripted(v =>
+            added < 3 && v.Steps.Where(s => s.Step.Do == StepAction.Train).All(s => s.End is not null || s.Step.Id == "ovejas" && s.Remaining == 0)
+                ? [Villagers($"madera-{++added}", 2, GatherSource.Wood)]
+                : []);
+
+        var planner = new Planner(TestData.GameData);
+        var plan = planner.Simulate(bo, policy);
+
+        Assert.Equal(3, added);
+        AssertSame(plan, planner.Simulate(Generated(plan, "any")));
+    }
+
+    [Fact]
     public void Sin_comida_finita_la_foto_no_trae_comida()
     {
         var policy = new Scripted(_ => []);

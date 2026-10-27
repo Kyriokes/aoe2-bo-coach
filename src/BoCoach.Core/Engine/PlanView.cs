@@ -12,8 +12,9 @@ namespace BoCoach.Core.Engine;
 public interface IStepPolicy
 {
     /// <summary>
-    /// Lo que agrega en este punto de decisión, al final de la BO; vacío = nada por ahora. El Planner guarda una copia:
-    /// lo que la política cambie después en un paso que ya devolvió no cuenta.
+    /// Lo que agrega en este punto de decisión, al final de la BO; vacío = nada por ahora. Los pasos de aldeanos van en
+    /// unidades (cuántos aldeanos nuevos), como los ve en <see cref="PlanView.Steps"/>. El Planner guarda una copia: lo
+    /// que la política cambie después en un paso que ya devolvió no cuenta.
     /// </summary>
     IReadOnlyList<Step> Next(PlanView view);
 }
