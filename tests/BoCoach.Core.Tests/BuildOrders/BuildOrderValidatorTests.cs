@@ -304,4 +304,28 @@ public class BuildOrderValidatorTests
     }
 
     public static TheoryData<string> Ejemplos() => new(TestData.ExampleBuildOrders);
+
+    [Fact]
+    public void Avisa_un_edificio_sin_el_que_pide_antes()
+    {
+        var result = Validator.Validate(Bo(Research("f", "feudal_age"), Build("r", "archery_range")));
+
+        Assert.Contains(result.Warnings, w => w.StepId == "r" && w.Message.Contains("cuartel"));
+    }
+
+    [Fact]
+    public void El_asentamiento_vale_por_el_molino_de_las_granjas()
+    {
+        var bo = Bo(Build("s", "settlement"), Build("g", "farm")) with { Civ = "incas" };
+
+        Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.StepId == "g");
+    }
+
+    [Fact]
+    public void Los_jemeres_hacen_la_galeria_sin_cuartel()
+    {
+        var bo = Bo(Research("f", "feudal_age"), Build("r", "archery_range")) with { Civ = "khmer" };
+
+        Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.StepId == "r");
+    }
 }

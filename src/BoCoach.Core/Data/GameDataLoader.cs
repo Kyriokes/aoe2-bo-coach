@@ -56,6 +56,8 @@ public static partial class GameDataLoader
         {
             if (entity.MadeIn is not null && !entities.ContainsKey(entity.MadeIn))
                 throw new GameDataException($"'{entity.Key}': made_in '{entity.MadeIn}' no es una entidad conocida.");
+            if (entity.Requires is { } required && (!entities.TryGetValue(required, out var requiredEntity) || requiredEntity.Kind != EntityKind.Building))
+                throw new GameDataException($"'{entity.Key}': requires '{required}' no es un edificio conocido.");
             foreach (var counted in entity.CountsAs)
             {
                 if (!entities.TryGetValue(counted, out var other) || other.Kind != EntityKind.Building)
@@ -124,6 +126,7 @@ public static partial class GameDataLoader
             Gather = gather,
             CountsAs = dto.CountsAs ?? [],
             FarmFood = dto.FarmFood ?? 0,
+            Requires = dto.Requires,
         };
     }
 
@@ -200,6 +203,7 @@ public static partial class GameDataLoader
         {
             Names = dto.Names ?? new Dictionary<string, string>(),
             Unavailable = (dto.Unavailable ?? []).ToHashSet(),
+            NoRequires = (dto.NoRequires ?? []).Select(k => Known(k, "no_requires")).ToHashSet(),
             FoodYields = foodYield,
             FarmUpgradeFoods = dto.FarmUpgradeFood is { } upgrades ? Ages(upgrades, "farm_upgrade_food") : null,
             FarmExtras = dto.FarmExtra is { } extra ? Ages(extra, "farm_extra") : null,
@@ -276,6 +280,7 @@ public static partial class GameDataLoader
         Dictionary<string, Dictionary<string, double>>? AgeResources,
         Dictionary<string, string>? Names,
         List<string>? Unavailable,
+        List<string>? NoRequires,
         Dictionary<string, double[]>? FoodYield,
         double[]? FarmUpgradeFood,
         double[]? FarmExtra);
@@ -294,7 +299,8 @@ public static partial class GameDataLoader
         int PopBonus,
         Dictionary<string, GatherEffectDto>? Gather,
         string[]? CountsAs,
-        double? FarmFood);
+        double? FarmFood,
+        string? Requires);
 
     internal sealed record GatherEffectDto(double? Work, double[]? Carry, double? Speed);
 }

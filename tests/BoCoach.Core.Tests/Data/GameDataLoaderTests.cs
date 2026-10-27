@@ -87,4 +87,26 @@ public class GameDataLoaderTests
 
         Assert.Empty(data.FoodPerObject);
     }
+
+    [Fact]
+    public void Un_requisito_que_no_es_un_edificio_da_error()
+    {
+        var e = Assert.Throws<GameDataException>(() =>
+            GameDataLoader.Parse(Json(TownCenter + """, "stable": { "kind": "building", "dat_id": 101, "time": 50, "age": "feudal", "requires": "dragon" } """)));
+
+        Assert.Contains("requires", e.Message);
+    }
+
+    [Theory]
+    [InlineData("archery_range", "barracks")]
+    [InlineData("stable", "barracks")]
+    [InlineData("siege_workshop", "blacksmith")]
+    [InlineData("market", "mill")]
+    [InlineData("farm", "mill")]
+    [InlineData("barracks", null)]
+    [InlineData("blacksmith", null)]
+    public void Los_edificios_piden_el_suyo_como_en_el_arbol(string building, string? requires)
+    {
+        Assert.Equal(requires, TestData.GameData.Get(building).Requires);
+    }
 }

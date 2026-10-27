@@ -99,7 +99,7 @@ public enum BlockReason
     /// <summary>Faltan recursos para pagarlo.</summary>
     Resources,
 
-    /// <summary>No existe el edificio donde se produce.</summary>
+    /// <summary>No existe el edificio donde se produce, o el que pide un edificio antes de construirlo (el cuartel de la galería).</summary>
     Producer,
 
     /// <summary>No hay aldeanos para construir o mover.</summary>
@@ -751,6 +751,12 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             if (entity.Age > _age)
             {
                 Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
+                return;
+            }
+            if (_civ.Requires(entity) is { } required && _buildings.GetValueOrDefault(required) == 0)
+            {
+                // El juego no deja ponerlo sin el edificio que pide terminado (la galería sin cuartel).
+                Block(item, BlockReason.Producer, expected: BuildingComing(required));
                 return;
             }
 

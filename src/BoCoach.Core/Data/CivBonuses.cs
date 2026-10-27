@@ -75,6 +75,15 @@ public sealed class CivBonuses
     /// </summary>
     public IReadOnlySet<string> Unavailable { get; init; } = new HashSet<string>();
 
+    /// <summary>
+    /// Los edificios que la civ hace sin el que piden las demás (<see cref="Entity.Requires"/>): los jemeres no
+    /// necesitan ninguno, los cumanos hacen el taller de asedio sin herrería.
+    /// </summary>
+    public IReadOnlySet<string> NoRequires { get; init; } = new HashSet<string>();
+
+    /// <summary>El edificio que tiene que estar terminado antes de construir <paramref name="entity"/> con esta civ (null = ninguno).</summary>
+    public string? Requires(Entity entity) => NoRequires.Contains(entity.Key) ? null : entity.Requires;
+
     public CivStart Start { get; }
 
     public bool IsNone => ReferenceEquals(this, None);

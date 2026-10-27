@@ -26,6 +26,13 @@ public sealed record Entity(
     /// </summary>
     public IReadOnlyList<string> CountsAs { get; init; } = [];
 
+    /// <summary>
+    /// El edificio que tiene que estar terminado antes de poder construir este (la galería y el establo, el cuartel; el
+    /// taller de asedio, la herrería; el mercado y la granja, el molino), según los árboles del juego. Vale también lo
+    /// que cuenta como él (<see cref="CountsAs"/>).
+    /// </summary>
+    public string? Requires { get; init; }
+
     /// <summary>Lo que suma (si es una tecnología) a la comida de cada granja nueva o resembrada: collera +75, arado pesado +125.</summary>
     public double FarmFood { get; init; }
 }

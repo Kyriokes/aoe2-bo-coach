@@ -64,7 +64,12 @@ public class PlannerTests
     [Fact]
     public void Las_granjas_se_construyen_en_paralelo()
     {
-        var start = PlanStart.Standard with { Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 3 }, IdleVillagers = 0 };
+        var start = PlanStart.Standard with
+        {
+            Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 3 },
+            IdleVillagers = 0,
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["mill"] = 1 },
+        };
         var farms = new Step { Id = "s1", Do = StepAction.Build, What = "farm", Count = 3, From = GatherSource.Sheep, Assign = GatherSource.Farm };
 
         var plan = Planner.Simulate([new PlanItem(farms, 3)], start);
@@ -167,7 +172,7 @@ public class PlannerTests
             IdleVillagers = 0,
             Stock = new ResourceAmounts(Food: 200, Wood: 500, Stone: 0, Gold: 0),
             Villagers = new Dictionary<GatherSource, int> { [GatherSource.Farm] = 2, [GatherSource.Wood] = 2 },
-            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["farm"] = 2, ["house"] = 2 },
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["mill"] = 1, ["farm"] = 2, ["house"] = 2 },
             PopulationCap = 15,
         };
         var farmers = new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 5, Assign = GatherSource.Farm, Group = "g" };
@@ -201,7 +206,11 @@ public class PlannerTests
     [Fact]
     public void Esperar_la_edad_que_se_investiga_es_una_espera()
     {
-        var start = PlanStart.Standard with { Stock = new ResourceAmounts(Food: 500, Wood: 200, Stone: 200, Gold: 100) };
+        var start = PlanStart.Standard with
+        {
+            Stock = new ResourceAmounts(Food: 500, Wood: 200, Stone: 200, Gold: 100),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["barracks"] = 1 },
+        };
         var feudal = new Step { Id = "s1", Do = StepAction.Research, What = "feudal_age" };
         var range = new Step { Id = "s2", Do = StepAction.Build, What = "archery_range" };
 
@@ -339,5 +348,46 @@ public class PlannerTests
             var built = plan.Buildings.Single(b => b.Id == group.Key).Built ?? 0;
             Assert.All(jobs, j => Assert.True(j.Start >= built - 1e-9));
         }
+    }
+
+    private static PlanStart InFeudal(params string[] buildings) => PlanStart.Standard with
+    {
+        Age = Age.Feudal,
+        Stock = new ResourceAmounts(Food: 1000, Wood: 1000, Stone: 200, Gold: 1000),
+        Villagers = new Dictionary<GatherSource, int> { [GatherSource.Wood] = 3 },
+        IdleVillagers = 0,
+        Buildings = buildings.Append(BuildOrderValidator.StartingBuilding).ToDictionary(b => b, _ => 1),
+    };
+
+    [Fact]
+    public void Una_galeria_sin_cuartel_no_arranca()
+    {
+        var range = new Step { Id = "r", Do = StepAction.Build, What = "archery_range", From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(range, 1)], InFeudal());
+
+        Assert.Null(plan.For("r")!.Start);
+        Assert.Contains(plan.Blocks, b => b.StepId == "r" && b.Reason == BlockReason.Producer);
+    }
+
+    [Fact]
+    public void La_galeria_espera_a_que_se_termine_el_cuartel()
+    {
+        var barracks = new Step { Id = "b", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood };
+        var range = new Step { Id = "r", Do = StepAction.Build, What = "archery_range", From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(barracks, 1), new PlanItem(range, 1)], InFeudal());
+
+        Assert.True(plan.For("r")!.Start >= plan.For("b")!.End, $"galería {plan.For("r")!.Start}, cuartel {plan.For("b")!.End}");
+    }
+
+    [Fact]
+    public void Los_jemeres_hacen_la_galeria_sin_cuartel()
+    {
+        var range = new Step { Id = "r", Do = StepAction.Build, What = "archery_range", From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(range, 1)], InFeudal(), TestData.GameData.Civ("khmer"));
+
+        Assert.NotNull(plan.For("r")!.End);
     }
 }

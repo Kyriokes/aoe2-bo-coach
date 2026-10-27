@@ -109,7 +109,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         foreach (var step in bo.Steps)
         {
             var id = string.IsNullOrWhiteSpace(step.Id) ? null : step.Id;
-            ValidateStep(step, id, age, built, ids, Error, Warn);
+            ValidateStep(step, id, age, built, ids, Error, Warn, gameData.Civ(bo.Civ));
             if (step.What is { } what && step.Do != StepAction.Move && !gameData.CanMake(bo.Civ, what))
                 Error(id, $"La civ {CivName(bo.Civ)} no tiene {StepText.Name(what)} (según su árbol de tecnologías).");
             if (map is not null)
@@ -238,7 +238,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
     private void ValidateStep(
         Step step, string? id, Age age, HashSet<string> built, HashSet<string> ids,
-        Action<string?, string> error, Action<string?, string> warn)
+        Action<string?, string> error, Action<string?, string> warn, CivBonuses? civ = null)
     {
         if (step.Count is < 1 or > MaxCount)
             error(id, $"'count' tiene que estar entre 1 y {MaxCount} (es {step.Count}).");
@@ -296,6 +296,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
         if (entity.MadeIn is { } place && !built.Contains(place))
             warn(id, $"'{step.What}' se hace en '{place}', y la BO no lo construye antes de este paso.");
+        if (step.Do == StepAction.Build && (civ ?? CivBonuses.None).Requires(entity) is { } required && !built.Contains(required))
+            warn(id, $"Para construir {StepText.Name(step.What!)} hace falta {StepText.Name(required)} terminado, y la BO no lo construye antes de este paso.");
 
         if (step.Do == StepAction.Train)
         {
