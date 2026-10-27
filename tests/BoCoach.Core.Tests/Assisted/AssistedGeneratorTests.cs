@@ -401,6 +401,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     [InlineData(20, "FC")]
     [InlineData(60, "F22C30")]
     [InlineData(120, "spec")]
+    [InlineData(60, "FUC")]
     public void En_todas_las_civs_llega_sin_parados_y_da_lo_mismo(int until, string goals)
     {
         // Las civs sin granjas en los datos (kitanos) no pueden sostener la comida.
@@ -408,7 +409,14 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         var failed = new List<string>();
         foreach (var civ in TestData.GameData.Civs.Keys.Where(c => TestData.GameData.CanMake(c, "farm")).Order())
         {
-            var result = Generator.Generate(Assisted(civ, until, Sweeps[goals]));
+            // "FUC": Feudal, 10 de la primera unidad militar de Feudal que la civ tenga, y Castillos.
+            var list = goals != "FUC" ? Sweeps[goals]
+                : new[] { "scout_cavalry", "archer", "spearman" }.FirstOrDefault(u => TestData.GameData.CanMake(civ, u)) is { } unit
+                    ? [Age("feudal_age"), Units(unit, 10, 1), Age("castle_age")]
+                    : null;
+            if (list is null)
+                continue;
+            var result = Generator.Generate(Assisted(civ, until, list));
             var again = new Planner(TestData.GameData, AssistedGenerator.Settings(TestData.GameData, RealMaps, result.BuildOrder))
                 .Simulate(result.BuildOrder);
             var idle = result.Plan.Idle.Where(i => i.Reason == IdleReason.Exhausted).Sum(i => i.Duration * i.Villagers);
@@ -493,10 +501,49 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         Assert.True(sorted[^1] <= 180, $"la peor {sorted[^1]:0} s");
     }
 
+    /// <summary>El ejemplo de la spec (sección 2) entero, con mongoles: los francos no tienen línea de sangre.</summary>
+    private static BuildOrder SpecExample() => WithEco(Assisted("mongols", 120,
+        Age("feudal_age"), Units("scout_cavalry", 20, 2), Age("castle_age", atPop: 32),
+        new AssistedGoal { TownCenters = 3 }, new AssistedGoal { Tech = "bloodlines" }, Age("imperial_age")));
+
+    [Fact]
+    public void El_ejemplo_de_la_spec_entero()
+    {
+        var result = Generator.Generate(SpecExample());
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+        output.WriteLine(string.Join(" · ", result.Goals.Select(g => $"{g.Index}: {(g.End is { } e ? GameClock.Format(e) : "-")}")));
+    }
+
+    [Fact]
+    public void El_criterio_de_salida_con_francos()
+    {
+        // Spec, sección 10: francos, aldeanos hasta 120, Feudal, 20 exploradores con 2 establos, Castillos e Imperial.
+        var result = Generator.Generate(Assisted("franks", 120,
+            Age("feudal_age"), Units("scout_cavalry", 20, 2), Age("castle_age"), Age("imperial_age")));
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Agregar_un_objetivo_al_final_no_atrasa_a_los_de_arriba()
+    {
+        var goals = new[] { Age("feudal_age"), Units("scout_cavalry", 20, 2), Age("castle_age") };
+        var before = Generator.Generate(Assisted("franks", 120, goals));
+        var after = Generator.Generate(Assisted("franks", 120, [.. goals, Age("imperial_age")]));
+
+        for (var i = 0; i < goals.Length; i++)
+            Assert.True(after.Goals[i].End <= before.Goals[i].End + 10, $"objetivo {i}: {after.Goals[i].End} contra {before.Goals[i].End}");
+    }
+
     [Fact]
     public void Genera_rapido()
     {
-        var bo = Assisted("franks", 120, Age("feudal_age"), Age("castle_age"), Age("imperial_age"));
+        var bo = SpecExample();
         Generator.Generate(bo);
 
         var watch = Stopwatch.StartNew();
