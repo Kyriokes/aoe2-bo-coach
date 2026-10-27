@@ -13,6 +13,9 @@ public class PlannerTests
     private static Step Villagers(string id, int count, GatherSource assign = GatherSource.Sheep) =>
         new() { Id = id, Do = StepAction.Train, What = "villager", Count = count, Assign = assign };
 
+    /// <summary>El centro urbano y los 2 edificios de la Edad Oscura terminados, para hacer clic en Feudal.</summary>
+    private static readonly Dictionary<string, int> FeudalBuildings = new() { ["town_center"] = 1, ["mill"] = 1, ["lumber_camp"] = 1 };
+
     private static BuildOrder Load(string file) => BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, file));
 
     [Theory]
@@ -80,7 +83,8 @@ public class PlannerTests
     [Fact]
     public void Espera_recursos_y_dice_cual_falta()
     {
-        var plan = Planner.Simulate(Bo(Villagers("s1", 1), new Step { Id = "s2", Do = StepAction.Research, What = "loom" }, new Step { Id = "s3", Do = StepAction.Research, What = "feudal_age" }));
+        var steps = new[] { Villagers("s1", 1), new Step { Id = "s2", Do = StepAction.Research, What = "loom" }, new Step { Id = "s3", Do = StepAction.Research, What = "feudal_age" } };
+        var plan = Planner.Simulate(steps.Select(s => new PlanItem(s, 1)).ToList(), PlanStart.Standard with { Buildings = FeudalBuildings });
 
         Assert.True(plan.Completed);
         Assert.Contains(plan.Blocks, b => b.StepId == "s3" && b.Reason == BlockReason.Resources && b.Missing == Resource.Food);
@@ -105,7 +109,7 @@ public class PlannerTests
     public void Lo_que_va_despues_del_clic_de_edad_espera_a_que_se_pague()
     {
         // "Clic en Feudal y pasá 3 de ovejas a madera": si todavía no hay 500 de comida, los 3 siguen en las ovejas.
-        var start = PlanStart.Standard with { Stock = ResourceAmounts.Zero, IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 10 } };
+        var start = PlanStart.Standard with { Stock = ResourceAmounts.Zero, IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 10 }, Buildings = FeudalBuildings };
         var feudal = new Step { Id = "s1", Do = StepAction.Research, What = "feudal_age" };
         var move = new Step { Id = "s2", Do = StepAction.Move, Count = 3, From = GatherSource.Sheep, Assign = GatherSource.Wood };
 
@@ -209,7 +213,7 @@ public class PlannerTests
         var start = PlanStart.Standard with
         {
             Stock = new ResourceAmounts(Food: 500, Wood: 200, Stone: 200, Gold: 100),
-            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["barracks"] = 1 },
+            Buildings = new Dictionary<string, int>(FeudalBuildings) { ["barracks"] = 1 },
         };
         var feudal = new Step { Id = "s1", Do = StepAction.Research, What = "feudal_age" };
         var range = new Step { Id = "s2", Do = StepAction.Build, What = "archery_range" };
@@ -389,5 +393,59 @@ public class PlannerTests
         var plan = Planner.Simulate([new PlanItem(range, 1)], InFeudal(), TestData.GameData.Civ("khmer"));
 
         Assert.NotNull(plan.For("r")!.End);
+    }
+
+    private static PlanStart DarkWithCamp() => PlanStart.Standard with
+    {
+        Stock = new ResourceAmounts(Food: 1000, Wood: 1000, Stone: 200, Gold: 1000),
+        Villagers = new Dictionary<GatherSource, int> { [GatherSource.Wood] = 3 },
+        IdleVillagers = 0,
+        Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["lumber_camp"] = 1 },
+    };
+
+    [Fact]
+    public void El_clic_de_edad_espera_que_se_terminen_sus_2_edificios()
+    {
+        // Pedido del usuario: "pasa a Castillos sin haber terminado de construir el mercado". Empezar a construir no habilita.
+        var mill = new Step { Id = "m", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood };
+        var feudal = new Step { Id = "f", Do = StepAction.Research, What = "feudal_age" };
+
+        var plan = Planner.Simulate([new PlanItem(mill, 1), new PlanItem(feudal, 1)], DarkWithCamp());
+
+        Assert.True(plan.For("f")!.Start >= plan.For("m")!.End, $"clic {plan.For("f")!.Start}, molino {plan.For("m")!.End}");
+    }
+
+    [Fact]
+    public void Sin_sus_2_edificios_el_clic_no_arranca()
+    {
+        var feudal = new Step { Id = "f", Do = StepAction.Research, What = "feudal_age" };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1)], DarkWithCamp());
+
+        Assert.Null(plan.For("f")!.Start);
+    }
+
+    [Fact]
+    public void Los_jemeres_suben_sin_edificios()
+    {
+        var feudal = new Step { Id = "f", Do = StepAction.Research, What = "feudal_age" };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1)], PlanStart.Standard with { Stock = new ResourceAmounts(500, 200, 200, 100) }, TestData.GameData.Civ("khmer"));
+
+        Assert.Equal(0, plan.For("f")!.Start);
+    }
+
+    [Theory]
+    [InlineData(1, 35)]
+    [InlineData(2, 27)] // 26,25: el Planner avanza de a 1 s
+    [InlineData(3, 21)]
+    public void Mas_constructores_terminan_antes(int builders, double seconds)
+    {
+        // Cada aldeano de más suma un tercio del ritmo del primero: tiempo × 3 / (n + 2).
+        var mill = new Step { Id = "m", Do = StepAction.Build, What = "mill", Builders = builders, From = GatherSource.Wood, Assign = GatherSource.Wood };
+
+        var plan = Planner.Simulate([new PlanItem(mill, 1)], DarkWithCamp());
+
+        Assert.Equal(seconds, plan.For("m")!.End!.Value, 0);
     }
 }

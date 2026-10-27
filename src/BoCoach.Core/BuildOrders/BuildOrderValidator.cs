@@ -307,7 +307,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
                 error(id, $"'assign' solo tiene sentido para aldeanos, no para '{step.What}'.");
         }
 
-        if (step.Do == StepAction.Research && AgeUpRequirements.TryGetValue(step.What, out var req) && age == req.Requires)
+        if (step.Do == StepAction.Research && AgeUpRequirements.TryGetValue(step.What, out var req) && age == req.Requires && civ?.NoAgeBuildings != true)
         {
             var count = req.Buildings.Count(built.Contains);
             if (AgeUpProgress(step.What, built) < 2)

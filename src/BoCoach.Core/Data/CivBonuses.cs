@@ -81,6 +81,9 @@ public sealed class CivBonuses
     /// </summary>
     public IReadOnlySet<string> NoRequires { get; init; } = new HashSet<string>();
 
+    /// <summary>Si sube de edad sin los 2 edificios que pide cada edad (los jemeres; en el .dat, la tech 638).</summary>
+    public bool NoAgeBuildings { get; init; }
+
     /// <summary>El edificio que tiene que estar terminado antes de construir <paramref name="entity"/> con esta civ (null = ninguno).</summary>
     public string? Requires(Entity entity) => NoRequires.Contains(entity.Key) ? null : entity.Requires;
 

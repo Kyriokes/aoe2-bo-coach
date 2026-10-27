@@ -204,6 +204,7 @@ public static partial class GameDataLoader
             Names = dto.Names ?? new Dictionary<string, string>(),
             Unavailable = (dto.Unavailable ?? []).ToHashSet(),
             NoRequires = (dto.NoRequires ?? []).Select(k => Known(k, "no_requires")).ToHashSet(),
+            NoAgeBuildings = dto.NoAgeBuildings ?? false,
             FoodYields = foodYield,
             FarmUpgradeFoods = dto.FarmUpgradeFood is { } upgrades ? Ages(upgrades, "farm_upgrade_food") : null,
             FarmExtras = dto.FarmExtra is { } extra ? Ages(extra, "farm_extra") : null,
@@ -281,6 +282,7 @@ public static partial class GameDataLoader
         Dictionary<string, string>? Names,
         List<string>? Unavailable,
         List<string>? NoRequires,
+        bool? NoAgeBuildings,
         Dictionary<string, double[]>? FoodYield,
         double[]? FarmUpgradeFood,
         double[]? FarmExtra);

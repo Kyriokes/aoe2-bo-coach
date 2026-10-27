@@ -696,6 +696,14 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
                     return;
                 }
+                if (!_civ.NoAgeBuildings && BuildOrderValidator.AgeUpRequirement(entity.Key) is { } ageUp
+                    && BuildOrderValidator.AgeUpProgress(entity.Key, _buildings.Where(b => b.Value > 0).Select(b => b.Key)) < 2)
+                {
+                    // El juego no deja hacer clic en la edad sin sus 2 edificios terminados: empezar a construirlos no alcanza.
+                    var castle = BuildOrderValidator.AgeUpAloneBuilding(entity.Key);
+                    Block(item, BlockReason.Producer, expected: ageUp.Buildings.Append(castle ?? "").Any(BuildingComing));
+                    return;
+                }
                 if (entity.Pop > 0 && _population + _reserved + entity.Pop > _cap)
                 {
                     Block(item, BlockReason.Population);

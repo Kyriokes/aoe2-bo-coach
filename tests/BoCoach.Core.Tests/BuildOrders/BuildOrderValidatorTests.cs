@@ -328,4 +328,12 @@ public class BuildOrderValidatorTests
 
         Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.StepId == "r");
     }
+
+    [Fact]
+    public void Los_jemeres_suben_sin_avisar_por_los_edificios()
+    {
+        var bo = Bo(Research("f", "feudal_age")) with { Civ = "khmer" };
+
+        Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.Message.Contains("2 edificios"));
+    }
 }
