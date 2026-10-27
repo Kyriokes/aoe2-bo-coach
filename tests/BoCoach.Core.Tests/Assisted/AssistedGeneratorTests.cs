@@ -207,6 +207,40 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
+    [Theory]
+    [InlineData("muisca")]
+    [InlineData("huns")]
+    [InlineData("hindustanis")]
+    [InlineData("japanese")]
+    [InlineData("lithuanians")]
+    public void Nadie_queda_parado_mientras_sube_de_edad(string civ)
+    {
+        // Los edificios de la edad siguiente no se piden antes de llegar a ella: esperarían y frenarían el "mover" de la
+        // comida que se acaba mientras el centro urbano investiga.
+        var result = Generator.Generate(Assisted(civ, 100, Age("feudal_age"), Age("castle_age"), Age("imperial_age")));
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
+
+    [Theory]
+    [InlineData(GatherSource.Hunt)]
+    [InlineData(GatherSource.Berries)]
+    public void Sin_jabali_o_sin_bayas_nadie_queda_parado_subiendo_a_Feudal(GatherSource missing)
+    {
+        var sources = new HashSet<GatherSource> { GatherSource.Sheep, GatherSource.Hunt, GatherSource.Berries, GatherSource.Farm, GatherSource.Wood, GatherSource.Gold, GatherSource.Stone };
+        sources.Remove(missing);
+        var maps = new Maps([new GameMap("raro", "Raro", false, sources, null)]);
+        var bo = Assisted("any", 60, Age("feudal_age")) with { Map = "raro" };
+
+        var result = new AssistedGenerator(TestData.GameData, maps).Generate(bo);
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result, maps);
+    }
+
     [Fact]
     public void El_centro_urbano_no_para()
     {

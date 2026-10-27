@@ -34,9 +34,11 @@ internal sealed class AgeRule : IGoalRule
 
         var steps = new List<Step>();
         var atPop = tech == goal.Age ? goal.AtPop : null;
-        var soon = atPop is { } target
+        // Los 2 edificios se piden recién en la edad que los tiene (los de Feudal, en Feudal): pedidos mientras se sube,
+        // esperan la edad y frenan el "mover" de la comida que se acaba.
+        var soon = view.Age >= BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires && (atPop is { } target
             ? Math.Max(0, target - view.Population) * state.VillagerTime(view.Age) <= RequirementLeadSeconds
-            : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds;
+            : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds);
         if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
             && Cheapest(view, state, tech) is { } building && !state.Affordable(view, state.Cost(view, building)))
         {
