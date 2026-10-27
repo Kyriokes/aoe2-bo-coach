@@ -237,6 +237,50 @@ public class PlannerPolicyTests
     }
 
     [Fact]
+    public void Una_foto_se_arma_a_mano_con_lo_que_hace_falta()
+    {
+        var view = new PlanView { Time = 300, Population = 14, PopulationCap = 15 };
+
+        Assert.Equal(15, view.PopulationCap);
+        Assert.Empty(view.Villagers);
+        Assert.Null(view.Food);
+    }
+
+    [Fact]
+    public void Una_cantidad_menor_a_uno_da_error()
+    {
+        var policy = new Scripted(v => v.Steps.Count == 0 ? [new Step { Id = "cero", Do = StepAction.Train, What = "militia", Count = 0 }] : []);
+
+        var e = Assert.Throws<InvalidOperationException>(() => Run(policy));
+
+        Assert.Contains("'cero'", e.Message);
+    }
+
+    [Fact]
+    public void Un_paso_que_todavia_no_puede_arrancar_no_se_fija()
+    {
+        var policy = new Scripted(v =>
+            v.Steps.Count == 0 ? [Villagers("v", 3, GatherSource.Sheep)]
+            : v.Birth && v.Steps.All(s => s.Step.Id != "telar") ? [new Step { Id = "telar", Do = StepAction.Research, What = "loom", AtTime = 400 }]
+            : []);
+
+        var plan = Run(policy);
+
+        Assert.Null(plan.For("telar")!.Step.AtPop);
+        Assert.Equal(400, plan.For("telar")!.Step.AtTime);
+    }
+
+    [Fact]
+    public void La_foto_dice_lo_que_esta_en_produccion()
+    {
+        var policy = new Scripted(v => v.Steps.Count == 0 ? [Villagers("v", 3, GatherSource.Sheep)] : []);
+
+        Run(policy);
+
+        Assert.Equal(1, policy.Views[1].Steps.Single(s => s.Step.Id == "v").Unfinished);
+    }
+
+    [Fact]
     public void Sin_comida_finita_la_foto_no_trae_comida()
     {
         var policy = new Scripted(_ => []);

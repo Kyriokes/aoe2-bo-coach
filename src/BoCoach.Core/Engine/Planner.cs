@@ -439,6 +439,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     var step = Pin(given with { After = [.. given.After] }, IsVillagers(given) ? _reachedSince : _inOrderSince);
                     if (!_ids.Add(step.Id))
                         throw new InvalidOperationException($"La política agregó un paso con un id que ya existe: '{step.Id}'.");
+                    if (step.Do is StepAction.Train or StepAction.Build && step.Count < 1)
+                        throw new InvalidOperationException($"La política agregó un paso con una cantidad menor a 1: '{step.Id}'.");
                     var item = new ItemSim(step, _items.Count, step.Do is StepAction.Train or StepAction.Build ? step.Count : 1, Lookup(step));
                     _items.Add(item);
                     if (item.Remaining == 0)
@@ -459,7 +461,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         /// </summary>
         private Step Pin(Step step, double? allowedSince)
         {
-            if (allowedSince is not { } since || since >= _time)
+            // Si sus propias condiciones (after, a N de población, a los m:ss) todavía no se cumplen, en una simulación
+            // nueva tampoco podía arrancar antes: no hace falta fijarlo.
+            if (allowedSince is not { } since || since >= _time || !ConditionsMet(step))
                 return step;
             if (_births > 0)
                 step.AtPop = Math.Max(step.AtPop ?? 0, _population);
@@ -469,28 +473,28 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         }
 
         /// <summary>La foto para la política: copias, así no puede tocar la simulación.</summary>
-        private PlanView View(bool ranOut) => new(
-            _time,
-            _stock,
-            _population,
-            _reserved,
-            _cap,
-            _age,
-            new Dictionary<GatherSource, int>(_villagers),
-            _idle,
-            _builders,
-            new Dictionary<string, int>(_buildings),
-            _items.Where(i => i.Step.Do == StepAction.Build && i.Unfinished > 0 && i.Entity is not null)
+        private PlanView View(bool ranOut) => new()
+        {
+            Time = _time,
+            Stock = _stock,
+            Population = _population,
+            InProduction = _reserved,
+            PopulationCap = _cap,
+            Age = _age,
+            Villagers = new Dictionary<GatherSource, int>(_villagers),
+            IdleVillagers = _idle,
+            Builders = _builders,
+            Buildings = new Dictionary<string, int>(_buildings),
+            UnderConstruction = _items.Where(i => i.Step.Do == StepAction.Build && i.Unfinished > 0 && i.Entity is not null)
                 .GroupBy(i => i.Entity!.Key)
                 .ToDictionary(g => g.Key, g => g.Sum(i => i.Unfinished)),
-            [.. _researched],
-            new Dictionary<GatherSource, double>(_rates),
-            _queues.Where(q => q.Value.Count > 0).ToDictionary(q => q.Key, q => q.Value.Count),
-            _busyProducers.Where(b => b.Value > 0).ToDictionary(b => b.Key, b => b.Value),
-            _items.Select(i => new PlanViewStep(i.Step with { After = [.. i.Step.After] }, i.Remaining, i.Reached, i.Started, i.Start, i.End)).ToList(),
-            _births > 0,
-            ranOut)
-        {
+            Researched = [.. _researched],
+            Rates = new Dictionary<GatherSource, double>(_rates),
+            Queued = _queues.Where(q => q.Value.Count > 0).ToDictionary(q => q.Key, q => q.Value.Count),
+            Busy = _busyProducers.Where(b => b.Value > 0).ToDictionary(b => b.Key, b => b.Value),
+            Steps = _items.Select(i => new PlanViewStep(i.Step with { After = [.. i.Step.After] }, i.Remaining, i.Reached, i.Started, i.Start, i.End, i.Unfinished)).ToList(),
+            Birth = _births > 0,
+            RanOut = ranOut,
             Food = _food?.Snapshot(source => _civ.FoodYield(source, _age), WaitingFarmers()),
         };
 

@@ -19,39 +19,63 @@ public interface IStepPolicy
     IReadOnlyList<Step> Next(PlanView view);
 }
 
-/// <summary>Un paso de la BO en la foto: lo que le falta, si la BO ya llegó a él, si arrancó, y cuándo empezó y terminó.</summary>
-public sealed record PlanViewStep(Step Step, int Remaining, bool Reached, bool Started, double? Start, double? End);
+/// <summary>
+/// Un paso de la BO en la foto: lo que le falta encolar o empezar, lo que está en producción o en obra, si la BO ya
+/// llegó a él, si arrancó, y cuándo empezó y terminó.
+/// </summary>
+public sealed record PlanViewStep(Step Step, int Remaining, bool Reached, bool Started, double? Start, double? End, int Unfinished = 0);
 
-/// <summary>Lo que ve la política en un punto de decisión: una foto de la simulación, de solo lectura.</summary>
-/// <param name="Population">Población sin lo que está en producción (<paramref name="InProduction"/>).</param>
-/// <param name="Buildings">Edificios hechos por clave, contando lo que vale por varios (el Settlement).</param>
-/// <param name="UnderConstruction">Edificios en obra por clave.</param>
-/// <param name="Rates">Lo que junta un aldeano por segundo en cada fuente, con la civ, la edad y las tecnologías.</param>
-/// <param name="Queued">Unidades y tecnologías esperando en la cola de cada edificio.</param>
-/// <param name="Busy">Edificios de cada clave trabajando ahora.</param>
-/// <param name="Steps">Todos los pasos hasta ahora, en orden, con su estado.</param>
-/// <param name="Birth">En este segundo nació alguien.</param>
-/// <param name="RanOut">La BO no tiene pasos por arrancar.</param>
-public sealed record PlanView(
-    double Time,
-    ResourceAmounts Stock,
-    int Population,
-    int InProduction,
-    int PopulationCap,
-    Age Age,
-    IReadOnlyDictionary<GatherSource, int> Villagers,
-    int IdleVillagers,
-    int Builders,
-    IReadOnlyDictionary<string, int> Buildings,
-    IReadOnlyDictionary<string, int> UnderConstruction,
-    IReadOnlyList<string> Researched,
-    IReadOnlyDictionary<GatherSource, double> Rates,
-    IReadOnlyDictionary<string, int> Queued,
-    IReadOnlyDictionary<string, int> Busy,
-    IReadOnlyList<PlanViewStep> Steps,
-    bool Birth,
-    bool RanOut)
+/// <summary>
+/// Lo que ve la política en un punto de decisión: una foto de la simulación, de solo lectura. Las propiedades tienen
+/// valores por defecto para poder armar una foto a mano en los tests de cada regla.
+/// </summary>
+public sealed record PlanView
 {
+    public double Time { get; init; }
+
+    public ResourceAmounts Stock { get; init; }
+
+    /// <summary>Población sin lo que está en producción (<see cref="InProduction"/>).</summary>
+    public int Population { get; init; }
+
+    public int InProduction { get; init; }
+
+    public int PopulationCap { get; init; } = 5;
+
+    public Age Age { get; init; } = Age.Dark;
+
+    public IReadOnlyDictionary<GatherSource, int> Villagers { get; init; } = new Dictionary<GatherSource, int>();
+
+    public int IdleVillagers { get; init; }
+
+    public int Builders { get; init; }
+
+    /// <summary>Edificios hechos por clave, contando lo que vale por varios (el Settlement).</summary>
+    public IReadOnlyDictionary<string, int> Buildings { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>Edificios en obra por clave.</summary>
+    public IReadOnlyDictionary<string, int> UnderConstruction { get; init; } = new Dictionary<string, int>();
+
+    public IReadOnlyList<string> Researched { get; init; } = [];
+
+    /// <summary>Lo que junta un aldeano por segundo en cada fuente, con la civ, la edad y las tecnologías.</summary>
+    public IReadOnlyDictionary<GatherSource, double> Rates { get; init; } = new Dictionary<GatherSource, double>();
+
+    /// <summary>Unidades y tecnologías esperando en la cola de cada edificio.</summary>
+    public IReadOnlyDictionary<string, int> Queued { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>Edificios de cada clave trabajando ahora.</summary>
+    public IReadOnlyDictionary<string, int> Busy { get; init; } = new Dictionary<string, int>();
+
+    /// <summary>Todos los pasos hasta ahora, en orden, con su estado.</summary>
+    public IReadOnlyList<PlanViewStep> Steps { get; init; } = [];
+
+    /// <summary>En este segundo nació alguien (sigue en verdadero en las consultas encadenadas del mismo segundo).</summary>
+    public bool Birth { get; init; }
+
+    /// <summary>La BO no tiene pasos por arrancar.</summary>
+    public bool RanOut { get; init; }
+
     /// <summary>La comida que queda, con la comida finita; null con la infinita.</summary>
     public PlanFoodView? Food { get; init; }
 }
