@@ -7,7 +7,8 @@ namespace BoCoach.Core.Assisted;
 /// <summary>
 /// La comida que se acaba (spec, sección 3, regla 2): ovejas, jabalí (si la apertura lo pide), bayas (si la apertura
 /// las pide) y granjas, una por granjero. Con el tiempo justo antes de que se agote la fuente de ahora, los aldeanos
-/// nuevos van a la siguiente y los que estaban pasan; a las granjas, en tandas de lo que alcanza la madera. El molino,
+/// nuevos van a la siguiente y los que estaban pasan; a las granjas, en tandas de lo que alcanza la madera (y si se
+/// acaba sin madera para todas, los que quedarían parados van a juntarla). El molino,
 /// cuando la comida va a las bayas o a las granjas y alcanza para pagarlo.
 /// </summary>
 internal sealed class FoodRule : IGoalRule
@@ -99,10 +100,16 @@ internal sealed class FoodRule : IGoalRule
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = "farm", Count = farms, From = old, Assign = GatherSource.Farm },
                     $"{farms} {(farms == 1 ? "granja" : "granjas")}: {why}"));
             }
-            if (farms < on)
+            if (farms < on && seconds <= FarmLeadSeconds)
+            {
+                // Se acaba ya y no alcanza la madera para todas: los que quedarían parados van a juntarla.
+                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Move, Count = on - farms, From = old, Assign = GatherSource.Wood },
+                    $"A la madera: {why} y no alcanza para {(on - farms == 1 ? "su granja" : "sus granjas")}"));
+            }
+            else if (farms < on)
             {
                 state.Upcoming += farmCost * (on - farms);
-                state.WakeMeAt(view.Time + 15); // la próxima tanda, cuando llegue la madera
+                state.WakeMeAt(view.Time + Math.Min(15, Math.Max(1, seconds - FarmLeadSeconds))); // la próxima tanda, cuando llegue la madera
             }
         }
         return steps;

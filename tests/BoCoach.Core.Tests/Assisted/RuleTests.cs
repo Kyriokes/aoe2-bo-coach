@@ -140,6 +140,27 @@ public class RuleTests
         Assert.Equal(0, state.Upcoming.Wood); // no aparta madera: solo guía el reparto
     }
 
+    [Fact]
+    public void Sin_madera_para_todas_las_granjas_los_demas_van_a_juntarla()
+    {
+        var state = State();
+        state.FoodSource = GatherSource.Farm;
+        var view = new PlanView
+        {
+            Villagers = On((GatherSource.Berries, 10), (GatherSource.Wood, 4)),
+            Buildings = new Dictionary<string, int> { ["mill"] = 1 },
+            Rates = Rates,
+            Food = Food(0, 0, 60), // las bayas se acaban en unos segundos
+            PopulationCap = 200,
+            Stock = new ResourceAmounts(0, 120, 0, 0), // alcanza para 2 granjas
+        };
+
+        var steps = new FoodRule().Next(view, state);
+
+        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 2, From: GatherSource.Berries });
+        Assert.Contains(steps, s => s is { Do: StepAction.Move, Count: 8, From: GatherSource.Berries, Assign: GatherSource.Wood });
+    }
+
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
 
     [Theory]
