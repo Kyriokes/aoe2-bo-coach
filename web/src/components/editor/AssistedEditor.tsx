@@ -28,7 +28,6 @@ import { entityName } from "@/lib/stepText";
 export function AssistedEditor({
   plan,
   analysis,
-  previous,
   strip,
   pending,
   civ,
@@ -41,8 +40,6 @@ export function AssistedEditor({
 }: {
   plan: AssistedPlan;
   analysis: Analysis | null;
-  /** La hora de cada objetivo en el análisis anterior (por lugar), para la diferencia debajo de cada uno. */
-  previous: Map<number, number | null>;
   strip: ChangeStrip | null;
   pending: boolean;
   civ: string;
@@ -65,8 +62,8 @@ export function AssistedEditor({
         <ol className="flex flex-col gap-2">
           {plan.goals.map((goal, i) => {
             const result = goals.find((g) => g.index === i);
-            const before = previous.get(i);
-            const delta = result?.end != null && before != null ? Math.round(result.end - before) : null;
+            // Cuánto se corrió con el último cambio (el mismo objetivo aunque se haya movido, como la franja).
+            const delta = strip?.shifts.find((s) => s.index === i)?.delta ?? null;
             return (
               <li key={i} className="rounded-md border border-line bg-panel p-2">
                 <div className="flex flex-wrap items-center gap-2">

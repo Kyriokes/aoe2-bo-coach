@@ -124,6 +124,8 @@ export function goalLabel(goal: AssistedGoal, buildingOf: (unit: string) => stri
 }
 
 export interface GoalShift {
+  /** El lugar del objetivo en la lista nueva. */
+  index: number;
   label: string;
   before: number | null;
   after: number | null;
@@ -152,13 +154,16 @@ export function diffGoals(
 ): ChangeStrip | null {
   if (!before?.assisted || !after.assisted || !previousPlan) return null;
   const shifts: GoalShift[] = [];
+  const used = new Set<number>();
   plan.goals.forEach((goal, i) => {
-    const old = previousPlan.goals.findIndex((g) => sameKind(g, goal));
+    // El mismo objetivo en la lista anterior (aunque se haya movido), sin usar dos veces el mismo.
+    const old = previousPlan.goals.findIndex((g, j) => !used.has(j) && sameKind(g, goal));
     if (old < 0) return;
+    used.add(old);
     const b = before.assisted!.goals.find((g) => g.index === old)?.end ?? null;
     const a = after.assisted!.goals.find((g) => g.index === i)?.end ?? null;
     if (b === a) return;
-    shifts.push({ label: goalLabel(goal, buildingOf), before: b, after: a, delta: a !== null && b !== null ? Math.round(a - b) : null });
+    shifts.push({ index: i, label: goalLabel(goal, buildingOf), before: b, after: a, delta: a !== null && b !== null ? Math.round(a - b) : null });
   });
   const lines = shifts.map((s) => {
     const from = s.before === null ? "no llegaba" : formatClock(s.before);

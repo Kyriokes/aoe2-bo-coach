@@ -65,6 +65,18 @@ describe("la franja Último cambio", () => {
     expect(strip?.lines).toEqual(["Edad de los Castillos 18:20 a 19:00 (+0:40)", "20 exploradores en 3 establos 18:20 a 17:40 (−0:40)"]);
   });
 
+  it("al mover objetivos, cada uno se compara consigo mismo y dice su lugar nuevo", () => {
+    const before = defaultPlan();
+    const after = moveGoal(before, 1, 0);
+
+    const strip = diffGoals(analysis([589, 1100]), analysis([1150, 620]), "Castillos más arriba", after, before);
+
+    expect(strip?.shifts.map((s) => [s.index, s.delta])).toEqual([
+      [0, 50],
+      [1, 31],
+    ]);
+  });
+
   it("sin análisis anterior no hay franja", () => {
     expect(diffGoals(null, analysis([589]), "x", defaultPlan(), null)).toBeNull();
   });

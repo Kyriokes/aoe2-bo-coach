@@ -91,6 +91,11 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     window.setTimeout(() => setNotice((current) => (current === message ? null : current)), 6000);
   }, []);
 
+  // D12: la franja "Último cambio", lo último que se tocó y el plan del análisis anterior (se borran al cargar otra BO).
+  const [strip, setStrip] = useState<ChangeStrip | null>(null);
+  const changeRef = useRef("");
+  const lastPlanRef = useRef<AssistedPlan | null>(null);
+
   // El estado de ahora, para comparar antes y después de cada edición (las acciones del mismo evento se encadenan).
   const stateRef = useRef(state);
   useEffect(() => {
@@ -141,6 +146,8 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         }
         const result = runtime.analyze(initialJson);
         if (result.ok) {
+          setStrip(null);
+          lastPlanRef.current = null;
           setState((prev) => reduce(prev, { type: "load", analysis: result }));
           if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
         } else showNotice(`No se pudo leer la BO: ${result.error}`);
@@ -174,6 +181,8 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         showNotice(`No se pudo leer la BO: ${result.error}`);
         return;
       }
+      setStrip(null);
+      lastPlanRef.current = null;
       dispatch({ type: "load", analysis: result });
       if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
     },
@@ -183,7 +192,6 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
   // D12: el modo asistido. Cada cambio genera la BO de nuevo en el worker, juntando los toques seguidos; la franja
   // "Último cambio" compara la hora de los objetivos con la del análisis anterior.
   const plan = useMemo(() => (state.bo.assisted === undefined ? null : planFromJson(state.bo.assisted)), [state.bo.assisted]);
-  const [strip, setStrip] = useState<ChangeStrip | null>(null);
   // Una línea vertical por cada objetivo cumplido en la línea de tiempo.
   const goalMarkers = useMemo(
     () =>
@@ -192,9 +200,6 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         .map((g) => ({ t: g.end!, label: goalLabel(plan!.goals[g.index], (unit) => data?.entities[unit]?.made_in), dashed: true })),
     [data, plan, state.analysis],
   );
-  const [previousEnds, setPreviousEnds] = useState(new Map<number, number | null>());
-  const changeRef = useRef("");
-  const lastPlanRef = useRef<AssistedPlan | null>(null);
   const debounce = useRef(debouncer(DEBOUNCE_MS));
   const sequence = useRef(0);
   useEffect(() => {
@@ -209,7 +214,6 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
           if (id !== sequence.current || !result.ok) return;
           const buildingOf = (unit: string) => dataRef.current?.entities[unit]?.made_in;
           setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf));
-          setPreviousEnds(new Map((before?.assisted?.goals ?? []).map((g) => [g.index, g.end])));
           lastPlanRef.current = plan;
           setState((prev) => reduce(prev, { type: "generated", analysis: result, revision }));
         })
@@ -554,7 +558,6 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         <AssistedEditor
           plan={plan}
           analysis={state.analysis}
-          previous={previousEnds}
           strip={strip}
           pending={state.analyzedRevision < state.revision}
           civ={state.bo.civ}
