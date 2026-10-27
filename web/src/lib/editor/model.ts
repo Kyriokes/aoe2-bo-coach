@@ -81,7 +81,11 @@ export type EditorAction =
   | { type: "commit"; steps: EditorStep[]; analysis: Analysis; selected?: string | null }
   | { type: "analyzed"; analysis: Analysis; revision: number }
   | { type: "loadFailed"; message: string }
-  | { type: "setSteps"; steps: EditorStep[]; selected?: string | null };
+  | { type: "setSteps"; steps: EditorStep[]; selected?: string | null }
+  /** D12: cambia los objetivos del modo asistido (undefined: la BO pasa a manual). */
+  | { type: "setAssisted"; assisted: unknown }
+  /** D12: llegó lo que generó el Core para la revisión `revision` (si hubo otra edición después, se ignora). */
+  | { type: "generated"; analysis: Analysis; revision: number };
 
 export const NEW_NAME = "Nueva build order";
 
@@ -342,5 +346,14 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       return action.revision < state.analyzedRevision ? state : { ...state, analysis: action.analysis, analyzedRevision: action.revision };
     case "loadFailed":
       return { ...state, loadError: action.message };
+    case "setAssisted": {
+      const bo = { ...state.bo, assisted: action.assisted };
+      if (action.assisted === undefined) delete bo.assisted;
+      return edited(state, { bo });
+    }
+    case "generated":
+      return action.revision !== state.revision
+        ? state
+        : { ...state, steps: fromAnalysis(action.analysis).steps, analysis: action.analysis, analyzedRevision: action.revision };
   }
 }

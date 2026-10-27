@@ -186,7 +186,9 @@ export function toManual(analysis: Analysis): { bo: EditorBo; steps: EditorStep[
  * Junta los toques seguidos (spec, sección 6: "se espera a que dejen de llegar unos 150 ms"): cada llamada reemplaza
  * a la anterior y corre recién cuando pasan `ms` sin otra.
  */
-export function debouncer(ms: number, timers: { set: typeof setTimeout; clear: typeof clearTimeout } = { set: setTimeout, clear: clearTimeout }) {
+export function debouncer(ms: number) {
+  // setTimeout y clearTimeout se llaman desde globalThis (sueltos, el navegador da "Illegal invocation").
+  const timers = { set: (fn: () => void, wait: number) => globalThis.setTimeout(fn, wait), clear: (id: ReturnType<typeof setTimeout>) => globalThis.clearTimeout(id) };
   let pending: ReturnType<typeof setTimeout> | null = null;
   return {
     schedule(fn: () => void) {

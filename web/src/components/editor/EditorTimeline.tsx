@@ -35,6 +35,7 @@ export function EditorTimeline({
   onSelect,
   onCount,
   isCountEditable,
+  extraMarkers = [],
 }: {
   steps: EditorStep[];
   analysis: Analysis | null;
@@ -54,6 +55,8 @@ export function EditorTimeline({
   onSelect: (stepId: string) => void;
   onCount: (stepId: string, delta: 1 | -1) => void;
   isCountEditable: (stepId: string) => boolean;
+  /** Líneas verticales de más (D12: la hora de cada objetivo cumplido en el modo asistido). */
+  extraMarkers?: Marker[];
 }) {
   const scale = drag ? drag.scale : committedScale;
   const mode = drag ? drag.mode : committedMode;
@@ -74,6 +77,7 @@ export function EditorTimeline({
     shownAnalysis?.feudal_click != null ? { t: shownAnalysis.feudal_click, label: "Feudal", dashed: false } : null,
     shownAnalysis?.castle_click != null ? { t: shownAnalysis.castle_click, label: "Castillos", dashed: false } : null,
     shownAnalysis?.targets.feudal_click_time != null ? { t: shownAnalysis.targets.feudal_click_time, label: "objetivo", dashed: true } : null,
+    ...extraMarkers,
   ].filter((m): m is Marker => m !== null);
   const selectedChain = placed.items.find((i) => i.stepId === selected)?.chainId ?? null;
   const dragged = moving ? placed.items.find((i) => i.chainId === drag.blockId) : undefined;

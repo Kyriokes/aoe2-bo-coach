@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { publishBuildOrder, updateBuildOrder } from "@/app/actions";
 import { loadCoach } from "@/lib/coach/browser";
+import { analyzeAsync } from "@/lib/coach/worker";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
@@ -28,6 +30,7 @@ import {
   villagerNumbers,
   type Inserted,
 } from "@/lib/editor/villagers";
+import { AssistedEditor } from "./AssistedEditor";
 import { BoFields } from "./BoFields";
 import { EditorSummary } from "./EditorSummary";
 import { EditorTimeline } from "./EditorTimeline";
@@ -45,6 +48,11 @@ function newBoId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 10);
 }
 
+/** Una BO nueva en Asistido (D12): la apertura de siempre y los objetivos de ejemplo. */
+function newAssisted(state: EditorState): EditorState {
+  return reduce(reduce(state, { type: "new", id: newBoId() }), { type: "setAssisted", assisted: defaultPlan() });
+}
+
 /** Las acciones después de las cuales los edificios que hace el próximo aldeano vuelven a esperar a su aldeano. */
 const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField"]);
 
@@ -55,7 +63,8 @@ function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
 
 /** Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. */
 function settle(state: EditorState, coach: CoachRuntime | null): EditorState {
-  if (!coach || state.analyzedRevision >= state.revision) return state;
+  // Una BO asistida se genera fuera de la página (en el worker, ver el efecto de BuildOrderEditor): tarda más.
+  if (!coach || state.analyzedRevision >= state.revision || state.bo.assisted !== undefined) return state;
   const result = coach.analyze(JSON.stringify(toJson(state)));
   return result.ok ? reduce(state, { type: "analyzed", analysis: result, revision: state.revision }) : state;
 }
@@ -127,12 +136,14 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
       .then((runtime) => {
         setCoach(runtime);
         if (!initialJson) {
-          setState((prev) => settle(reduce(prev, { type: "new", id: newBoId() }), runtime));
+          setState((prev) => newAssisted(prev));
           return;
         }
         const result = runtime.analyze(initialJson);
-        if (result.ok) setState((prev) => reduce(prev, { type: "load", analysis: result }));
-        else showNotice(`No se pudo leer la BO: ${result.error}`);
+        if (result.ok) {
+          setState((prev) => reduce(prev, { type: "load", analysis: result }));
+          if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
+        } else showNotice(`No se pudo leer la BO: ${result.error}`);
       })
       .catch((error: unknown) => setRuntimeError(error instanceof Error ? error.message : String(error)));
     loadGameData()
@@ -164,9 +175,66 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
         return;
       }
       dispatch({ type: "load", analysis: result });
+      if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
     },
     [coach, dispatch, showNotice],
   );
+
+  // D12: el modo asistido. Cada cambio genera la BO de nuevo en el worker, juntando los toques seguidos; la franja
+  // "Último cambio" compara la hora de los objetivos con la del análisis anterior.
+  const plan = useMemo(() => (state.bo.assisted === undefined ? null : planFromJson(state.bo.assisted)), [state.bo.assisted]);
+  const [strip, setStrip] = useState<ChangeStrip | null>(null);
+  // Una línea vertical por cada objetivo cumplido en la línea de tiempo.
+  const goalMarkers = useMemo(
+    () =>
+      (state.analysis?.assisted?.goals ?? [])
+        .filter((g) => g.end !== null && plan?.goals[g.index])
+        .map((g) => ({ t: g.end!, label: goalLabel(plan!.goals[g.index], (unit) => data?.entities[unit]?.made_in), dashed: true })),
+    [data, plan, state.analysis],
+  );
+  const [previousEnds, setPreviousEnds] = useState(new Map<number, number | null>());
+  const changeRef = useRef("");
+  const lastPlanRef = useRef<AssistedPlan | null>(null);
+  const debounce = useRef(debouncer(DEBOUNCE_MS));
+  const sequence = useRef(0);
+  useEffect(() => {
+    if (!plan || state.analyzedRevision >= state.revision) return;
+    const revision = state.revision;
+    const json = JSON.stringify(toJson({ bo: state.bo, steps: [] }));
+    const before = state.analysis;
+    debounce.current.schedule(() => {
+      const id = ++sequence.current;
+      analyzeAsync(json)
+        .then((result) => {
+          if (id !== sequence.current || !result.ok) return;
+          const buildingOf = (unit: string) => dataRef.current?.entities[unit]?.made_in;
+          setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf));
+          setPreviousEnds(new Map((before?.assisted?.goals ?? []).map((g) => [g.index, g.end])));
+          lastPlanRef.current = plan;
+          setState((prev) => reduce(prev, { type: "generated", analysis: result, revision }));
+        })
+        .catch((error: unknown) => showNotice(`No se pudo generar la BO: ${error instanceof Error ? error.message : String(error)}`));
+    });
+  }, [plan, showNotice, state.analysis, state.analyzedRevision, state.bo, state.revision]);
+
+  const changePlan = useCallback(
+    (next: AssistedPlan, change: string) => {
+      changeRef.current = change;
+      if (lastPlanRef.current === null && plan) lastPlanRef.current = plan;
+      dispatch({ type: "setAssisted", assisted: next });
+    },
+    [dispatch, plan],
+  );
+  /** "Pasar a manual": se quedan los pasos generados y se borran los objetivos (no se vuelve atrás). */
+  const toManualMode = useCallback(() => {
+    if (!state.analysis) return;
+    const { bo, steps } = toManual(state.analysis);
+    const next = settle({ ...state, bo, steps, revision: state.revision + 1 }, coach);
+    stateRef.current = next;
+    setState(next);
+    setStrip(null);
+    lastPlanRef.current = null;
+  }, [coach, state]);
 
   const labels = useMemo(() => new Map(state.analysis?.steps.map((s) => [s.id, s.text]) ?? []), [state.analysis]);
   const label = useCallback((step: EditorStep) => labels.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do), [labels]);
@@ -427,7 +495,17 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
 
   return (
     <div className="flex flex-col gap-4">
-      <LoadMenu editCode={editCode} onLoad={load} onNew={() => dispatch({ type: "new", id: newBoId() })} />
+      <LoadMenu
+        editCode={editCode}
+        onLoad={load}
+        onNew={() => {
+          const next = newAssisted(stateRef.current);
+          stateRef.current = next;
+          setState(next);
+          setStrip(null);
+          lastPlanRef.current = null;
+        }}
+      />
       {!coach || !data ? (
         <p role="status" className="text-sm text-faint">
           Cargando el motor de la app en el navegador…
@@ -441,9 +519,75 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
       <BoFields
         bo={state.bo}
         maps={maps.length > 0 ? maps : [{ key: "any", name: "Cualquiera", water: true, sources: [...SOURCES] }]}
-        onField={(field, value) => (field === "civ" ? changeCiv(value) : dispatch({ type: "setField", field, value }))}
+        onField={(field, value) => {
+          changeRef.current = field === "civ" ? `civ ${value}` : field === "map" ? `mapa ${value}` : field;
+          if (field === "civ" && !plan) changeCiv(value);
+          else dispatch({ type: "setField", field, value });
+        }}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
+      <div role="tablist" aria-label="Modo del editor" className="flex gap-2">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={plan !== null}
+          className={plan ? "button-primary" : "button"}
+          disabled={!plan && state.steps.length > 1}
+          title={!plan && state.steps.length > 1 ? "Una BO manual no vuelve a asistida: los objetivos no se pueden adivinar desde los pasos." : undefined}
+          onClick={() => !plan && dispatch({ type: "setAssisted", assisted: defaultPlan() })}
+        >
+          Asistido
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={plan === null}
+          className={plan ? "button" : "button-primary"}
+          onClick={() => {
+            if (plan && window.confirm("La BO pasa a manual: se quedan los pasos y se borran los objetivos. No se puede volver atrás.")) toManualMode();
+          }}
+        >
+          Manual
+        </button>
+      </div>
+      {plan && data ? (
+        <AssistedEditor
+          plan={plan}
+          analysis={state.analysis}
+          previous={previousEnds}
+          strip={strip}
+          pending={state.analyzedRevision < state.revision}
+          civ={state.bo.civ}
+          data={data}
+          narrow={narrow}
+          steps={state.steps.map((step) => ({ id: step.id, text: textOf(step), reason: state.analysis?.assisted?.reasons[step.id] ?? null }))}
+          onChange={changePlan}
+          onManual={toManualMode}
+          timeline={
+            <EditorTimeline
+              steps={state.steps}
+              analysis={state.analysis}
+              start={start}
+              scale={scale}
+              mode={mode}
+              viewportWidth={width}
+              drag={null}
+              selected={null}
+              timelineRef={timelineRef}
+              data={data}
+              extraMarkers={goalMarkers}
+              onBoxPointerDown={() => {}}
+              onNudge={() => {}}
+              onRemove={() => {}}
+              onSelect={() => {}}
+              onCount={() => {}}
+              isCountEditable={() => false}
+            />
+          }
+        />
+      ) : null}
+      {plan ? null : (
+        <>
       {paletteNow && !narrow ? palettePanel(false) : null}
       <StartCard start={start} opening={opening} map={map} onOpening={changeOpening} />
       <EditorTimeline
@@ -492,7 +636,9 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
           {guideList}
         </>
       )}
-      {narrow && sheetOpen && paletteNow ? (
+        </>
+      )}
+      {!plan && narrow && sheetOpen && paletteNow ? (
         <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/60" onClick={() => setSheetOpen(false)}>
           <div
             role="dialog"
