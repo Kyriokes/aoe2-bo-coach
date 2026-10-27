@@ -213,6 +213,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     [InlineData("hindustanis")]
     [InlineData("japanese")]
     [InlineData("lithuanians")]
+    [InlineData("mapuche")]
     public void Nadie_queda_parado_mientras_sube_de_edad(string civ)
     {
         // Los edificios de la edad siguiente no se piden antes de llegar a ella: esperarían y frenarían el "mover" de la

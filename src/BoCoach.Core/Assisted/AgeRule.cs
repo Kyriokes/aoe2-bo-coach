@@ -77,13 +77,14 @@ internal sealed class AgeRule : IGoalRule
         }
 
         var ready = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: false)) >= 2;
-        // El clic se adelanta lo que tarda el aldeano en producción, salvo que mientras espera haya que mover a los de una
-        // comida que se acaba: el "mover" quedaría detrás del clic sin pagar (y si la comida no llegaba al costo, la BO
-        // quedaba trabada para siempre). Lo que se espera juntar cuenta solo la comida salvaje que queda.
-        var lead = FoodRule.ActsWithin(view, state, ClickLeadSeconds + (view.InProduction > 0 ? state.VillagerTime(view.Age) : 0))
-            ? 0
-            : ClickLeadSeconds;
-        if (ready && Affordable(view, cost, lead))
+        // El clic se adelanta lo que tarda el aldeano en producción, salvo que mientras espera (a juntar el costo o a que
+        // el centro urbano termine su cola) haya que mover a los de una comida que se acaba: el "mover" quedaría detrás
+        // del clic (y si la comida no llegaba al costo, la BO quedaba trabada para siempre). Entonces el clic va recién
+        // con el centro urbano libre y el costo juntado. Lo que se espera juntar cuenta solo la comida salvaje que queda.
+        var queueWait = (view.InProduction + state.QueuedVillagers(view)) * state.VillagerTime(view.Age);
+        var blocksFood = FoodRule.ActsWithin(view, state, Math.Max(queueWait, ClickLeadSeconds));
+        var lead = blocksFood ? 0 : ClickLeadSeconds;
+        if (ready && Affordable(view, cost, lead) && (!blocksFood || queueWait == 0))
         {
             steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
                 $"Clic en {StepText.Name(tech)}: alcanza el costo"));
