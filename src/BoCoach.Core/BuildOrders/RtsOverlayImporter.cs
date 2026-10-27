@@ -411,6 +411,9 @@ public static partial class RtsOverlayImporter
             if (what is "lumber_camp" or "mill" or "mining_camp")
                 _camps.Add(what);
             what = made;
+            // El que pide antes (la galería, el cuartel) si la guía no lo hizo: el juego no deja ponerlo sin él.
+            if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
+                Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
             if (what == "house")
                 _cap += count * HousePop;
             if (what == "farm")
@@ -436,6 +439,10 @@ public static partial class RtsOverlayImporter
                 _cap += HousePop;
             }
         }
+
+        /// <summary>Si algún paso de antes construye el edificio, o uno que vale por él (el asentamiento por el molino).</summary>
+        private bool Built(string key) => _steps.Any(s => s is { Do: StepAction.Build, What: { } what }
+            && (what == key || data.TryGet(what, out var e) && e.CountsAs.Contains(key)));
 
         /// <summary>Los que construyen: los de madera, o si no hay, los del recurso con más aldeanos.</summary>
         private GatherSource Builders() =>

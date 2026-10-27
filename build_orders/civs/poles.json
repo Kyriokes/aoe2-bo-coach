@@ -167,6 +167,15 @@
       "after": []
     },
     {
+      "id": "s25",
+      "do": "build",
+      "what": "barracks",
+      "assign": "wood",
+      "from": "wood",
+      "after": [],
+      "note": "Agregado al importar: galer\u00EDa de tiro pide cuartel antes"
+    },
+    {
       "id": "s19",
       "do": "build",
       "what": "archery_range",

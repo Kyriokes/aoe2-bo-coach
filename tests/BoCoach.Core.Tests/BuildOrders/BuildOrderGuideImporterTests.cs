@@ -76,4 +76,16 @@ public class BuildOrderGuideImporterTests
             Assert.True(farms <= farmers, $"{civ}: {farms} granjas para {farmers} granjeros");
         }
     }
+
+    [Fact]
+    public void La_galeria_sin_cuartel_de_la_guia_lleva_el_cuartel_antes()
+    {
+        // La guía de polacos hace la galería de tiro sin cuartel, y el juego no la deja poner.
+        var bo = BuildOrderGuideImporter.Convert(Guide("poles"), TestData.GameData, "poles").BuildOrder;
+
+        var range = bo.Steps.ToList().FindIndex(s => s.What == "archery_range");
+        Assert.InRange(bo.Steps.ToList().FindIndex(s => s.What == "barracks"), 0, range - 1);
+        Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(bo).Warnings, w => w.Message.Contains("terminado"));
+        Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
+    }
 }
