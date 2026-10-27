@@ -16,9 +16,10 @@ internal sealed class TechRule : IGoalRule
     {
         if (state.ActiveGoal(view) is not { } index || state.Plan.Goals[index] is not { Tech: { } tech })
             return [];
-        if (view.Researched.Contains(tech) || state.Pending(view).Any(s => s.Do == StepAction.Research && s.What == tech))
+        // Ya la pidió otra regla (las mejoras eco) u otro objetivo: se cumple con ese paso.
+        if (view.Steps.Select(s => s.Step).Concat(state.Added).FirstOrDefault(s => s.Do == StepAction.Research && s.What == tech) is { } existing)
         {
-            state.LaunchedGoals.Add(index); // ya estaba (otra regla la pidió)
+            state.Launch(index, existing.Id);
             return [];
         }
         var entity = state.Data.Get(tech);

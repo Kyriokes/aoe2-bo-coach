@@ -24,6 +24,9 @@ internal sealed class TownCenterRule : IGoalRule
         var have = state.Count(view, TownCenter);
         if (have >= total)
         {
+            // Ya los pidió otro objetivo: se cumple con esos pasos.
+            foreach (var build in view.Steps.Select(s => s.Step).Concat(state.Added).Where(s => s is { Do: StepAction.Build, What: TownCenter }))
+                state.Launch(index, build.Id, last: false);
             state.LaunchedGoals.Add(index);
             return [];
         }

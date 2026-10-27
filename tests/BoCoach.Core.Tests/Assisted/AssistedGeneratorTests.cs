@@ -240,6 +240,21 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Un_objetivo_que_ya_pidio_otra_regla_se_cumple_con_ese_paso()
+    {
+        // Revisión del (d): pedir a mano una mejora que las mejoras eco ya compran, o algo ya pedido más arriba, salía
+        // como "No llega".
+        var wheelbarrow = Generator.Generate(WithEco(Assisted("franks", 60, Age("feudal_age"), Age("castle_age"), new AssistedGoal { Tech = "wheelbarrow" })));
+        var twice = Generator.Generate(Assisted("mongols", 60, Age("feudal_age"), new AssistedGoal { Tech = "bloodlines" }, new AssistedGoal { Tech = "bloodlines" }));
+        var centers = Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Age("castle_age"), new AssistedGoal { TownCenters = 3 }, new AssistedGoal { TownCenters = 2 }));
+
+        Assert.Empty(wheelbarrow.Problems);
+        Assert.Empty(twice.Problems);
+        Assert.Equal(twice.Goals[1].End, twice.Goals[2].End);
+        Assert.Empty(centers.Problems);
+    }
+
+    [Fact]
     public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {
         var result = Generator.Generate(Assisted("any", 60, new AssistedGoal { Tech = "loom" }, Age("feudal_age")));
