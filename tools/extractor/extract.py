@@ -339,6 +339,45 @@ def no_disponibles_por_civ(faltan: dict[str, set[tuple[str, int]]], civs: dict) 
     return resultado
 
 
+def cargar_requisitos(carpeta: Path) -> dict[str, str]:
+    """Clave de edificio -> el edificio que pide antes (la galería y el establo, el cuartel; el taller de asedio, la
+    herrería; el mercado y la granja, el molino), según los árboles: un nodo de edificio cuelga de otro que lo habilita
+    ("Link ID" con "Link Node Type" BuildingTech; las torres y murallas cuelgan de su versión anterior, que no es un
+    requisito). El más común entre las civs: a los incas la granja les cuelga del asentamiento, que vale por molino."""
+    claves = {dat_id: clave for clave, (tipo, dat_id) in ENTIDADES.items() if tipo == "building"}
+    votos: dict[str, Counter] = {}
+    for archivo in sorted(carpeta.glob("*.json")):
+        for nodo in json.loads(archivo.read_text(encoding="utf-8")).get("civ_techs_buildings", []):
+            if nodo.get("Link Node Type") != "BuildingTech" or nodo.get("Node Status") == "NotAvailable":
+                continue
+            clave, requisito = claves.get(nodo.get("Node ID")), claves.get(nodo.get("Link ID", -1))
+            if clave and requisito and clave != requisito:
+                votos.setdefault(clave, Counter())[requisito] += 1
+    return {clave: c.most_common(1)[0][0] for clave, c in sorted(votos.items())}
+
+
+def cargar_sin_requisitos(carpeta: Path) -> dict[str, set[tuple[str, int]]]:
+    """Por el civ_id del árbol, los edificios que esa civ hace sin el que piden las demás: el nodo no cuelga de ninguno
+    (los jemeres no necesitan edificios para habilitar otros), o cuelga de uno que no está en los datos ni vale por el
+    de siempre (la granja de los polacos cuelga del folwark, que reemplaza al molino). Pares (tipo, id del .dat), como
+    los de cargar_no_disponibles."""
+    requisitos = cargar_requisitos(carpeta)
+    claves = {dat_id: clave for clave, (tipo, dat_id) in ENTIDADES.items() if tipo == "building"}
+    resultado: dict[str, set[tuple[str, int]]] = {}
+    for archivo in sorted(carpeta.glob("*.json")):
+        arbol = json.loads(archivo.read_text(encoding="utf-8"))
+        civ_id = str(arbol.get("civ_id", archivo.stem)).upper()
+        resultado[civ_id] = set()
+        for nodo in arbol.get("civ_techs_buildings", []):
+            requisito = requisitos.get(claves.get(nodo.get("Node ID")))
+            if requisito is None or nodo.get("Node Status") == "NotAvailable":
+                continue
+            de = claves.get(nodo.get("Link ID", -1))
+            if de != requisito and requisito not in CUENTA_COMO.get(de, []):
+                resultado[civ_id].add(("building", nodo["Node ID"]))
+    return resultado
+
+
 def cargar_edades_de_unidades(carpeta: Path) -> dict[int, str]:
     """Edad en que se entrena cada unidad según los árboles ("Age ID": 1 Oscura a 4 Imperial): la más común entre
     las civs que la tienen. Las habilitaciones del .dat no alcanzan: el camello lo habilita un efecto de cada civ sin
@@ -995,6 +1034,11 @@ def main() -> int:
                                           if (recursos / c / "strings" / "key-value").is_dir()}
     for clave, nombres in nombres_de_civs(dat, textos_por_idioma).items():
         datos["civs"][clave]["names"] = nombres
+    for clave, requisito in cargar_requisitos(args.dat.parent / "CivTechTrees").items():
+        datos["entities"][clave]["requires"] = requisito
+    for clave, claves in no_disponibles_por_civ(cargar_sin_requisitos(args.dat.parent / "CivTechTrees"), datos["civs"]).items():
+        if claves:
+            datos["civs"][clave]["no_requires"] = claves
     for clave, claves in no_disponibles_por_civ(cargar_no_disponibles(args.dat.parent / "CivTechTrees"), datos["civs"]).items():
         datos["civs"][clave]["unavailable"] = claves
 

@@ -388,7 +388,8 @@
         "wood": 60
       },
       "time": 15,
-      "age": "dark"
+      "age": "dark",
+      "requires": "mill"
     },
     "dock": {
       "kind": "building",
@@ -418,7 +419,8 @@
         "wood": 175
       },
       "time": 50,
-      "age": "feudal"
+      "age": "feudal",
+      "requires": "barracks"
     },
     "stable": {
       "kind": "building",
@@ -428,7 +430,8 @@
         "wood": 175
       },
       "time": 50,
-      "age": "feudal"
+      "age": "feudal",
+      "requires": "barracks"
     },
     "blacksmith": {
       "kind": "building",
@@ -448,7 +451,8 @@
         "wood": 175
       },
       "time": 60,
-      "age": "feudal"
+      "age": "feudal",
+      "requires": "mill"
     },
     "monastery": {
       "kind": "building",
@@ -478,7 +482,8 @@
         "wood": 200
       },
       "time": 40,
-      "age": "castle"
+      "age": "castle",
+      "requires": "blacksmith"
     },
     "palisade_wall": {
       "kind": "building",
@@ -3748,6 +3753,13 @@
         "es": "Jemeres",
         "mx": "Jemeres"
       },
+      "no_requires": [
+        "archery_range",
+        "farm",
+        "market",
+        "siege_workshop",
+        "stable"
+      ],
       "unavailable": [
         "camel_rider",
         "eagle_scout",
@@ -4317,6 +4329,9 @@
         "es": "Cumanos",
         "mx": "Cumanos"
       },
+      "no_requires": [
+        "siege_workshop"
+      ],
       "unavailable": [
         "battle_elephant",
         "eagle_scout",
@@ -4770,6 +4785,10 @@
         "es": "Polacos",
         "mx": "Polacos"
       },
+      "no_requires": [
+        "farm",
+        "market"
+      ],
       "unavailable": [
         "battle_elephant",
         "camel_rider",
