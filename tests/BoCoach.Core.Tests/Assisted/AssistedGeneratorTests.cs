@@ -243,17 +243,41 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result, maps);
     }
 
-    [Fact]
-    public void Las_edades_del_ejemplo_de_la_spec_llegan_en_todas_las_civs()
+    private static readonly Dictionary<string, AssistedGoal[]> Sweeps = new()
     {
-        // El ejemplo de la spec (sección 2) sin los objetivos del sub-paso (d): Feudal, Castillos a 32 de población e
-        // Imperial, con aldeanos hasta 120. Las civs sin granjas en los datos (kitanos) no pueden subir de edad.
+        ["FC"] = [Age("feudal_age"), Age("castle_age")],
+        ["FCI"] = [Age("feudal_age"), Age("castle_age"), Age("imperial_age")],
+        ["F22C30"] = [Age("feudal_age", atPop: 22), Age("castle_age", atPop: 30)],
+        // El ejemplo de la spec (sección 2) sin los objetivos del sub-paso (d).
+        ["spec"] = [Age("feudal_age"), Age("castle_age", atPop: 32), Age("imperial_age")],
+    };
+
+    [Theory]
+    [InlineData(13, "FCI")]
+    [InlineData(20, "FC")]
+    [InlineData(60, "F22C30")]
+    [InlineData(120, "spec")]
+    public void En_todas_las_civs_llega_sin_parados_y_da_lo_mismo(int until, string goals)
+    {
+        // Las civs sin granjas en los datos (kitanos) no pueden sostener la comida.
+        var validator = new BuildOrderValidator(TestData.GameData, TestData.Events);
         var failed = new List<string>();
         foreach (var civ in TestData.GameData.Civs.Keys.Where(c => TestData.GameData.CanMake(c, "farm")).Order())
         {
-            var result = Generator.Generate(Assisted(civ, 120, Age("feudal_age"), Age("castle_age", atPop: 32), Age("imperial_age")));
+            var result = Generator.Generate(Assisted(civ, until, Sweeps[goals]));
+            var again = new Planner(TestData.GameData, AssistedGenerator.Settings(TestData.GameData, RealMaps, result.BuildOrder))
+                .Simulate(result.BuildOrder);
+            var idle = result.Plan.Idle.Where(i => i.Reason == IdleReason.Exhausted).Sum(i => i.Duration * i.Villagers);
+            var errors = validator.Validate(result.BuildOrder).Errors.Select(e => e.Message).ToList();
             if (result.Problems.Count > 0)
                 failed.Add($"{civ}: {string.Join("; ", result.Problems)}");
+            if (idle > 0)
+                failed.Add($"{civ}: {idle:0} segundos de aldeanos parados");
+            if (errors.Count > 0)
+                failed.Add($"{civ}: {errors[0]}");
+            if (!again.Steps.Select(s => (s.Step.Id, s.Start, s.End)).SequenceEqual(result.Plan.Steps.Select(s => (s.Step.Id, s.Start, s.End)))
+                || !again.Blocks.SequenceEqual(result.Plan.Blocks) || !again.Timeline.SequenceEqual(result.Plan.Timeline) || !again.Idle.SequenceEqual(result.Plan.Idle))
+                failed.Add($"{civ}: simulada de nuevo da distinto");
         }
 
         Assert.Empty(failed);
