@@ -23,6 +23,12 @@ internal sealed class HouseRule : IGoalRule
         var projected = view.Population + view.InProduction + Queued(view, state);
         if (projected < view.PopulationCap - Margin)
             return [];
+        var cost = state.Cost(view, house);
+        if (!state.Affordable(view, cost))
+        {
+            state.Upcoming += cost; // que el reparto junte la madera; la casa sale cuando alcanza
+            return [];
+        }
 
         // Desde la madera; sin leñadores, desde donde haya más gente (o los sin tarea).
         GatherSource? from = view.Villagers.GetValueOrDefault(GatherSource.Wood) > 0

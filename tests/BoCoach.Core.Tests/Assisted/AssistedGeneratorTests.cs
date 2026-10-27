@@ -100,4 +100,59 @@ public class AssistedGeneratorTests
         Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
         AssertConsistent(result, maps);
     }
+
+    private static AssistedGoal Age(string age, int? atPop = null) => new() { Age = age, AtPop = atPop };
+
+    [Theory]
+    [InlineData("any")]
+    [InlineData("franks")]
+    public void Llega_a_Imperial(string civ)
+    {
+        var result = Generator.Generate(Assisted(civ, 100, Age("feudal_age"), Age("castle_age"), Age("imperial_age")));
+
+        Assert.Empty(result.Problems);
+        Assert.All(result.Goals, g => Assert.NotNull(g.End));
+        Assert.True(result.Goals[0].End < result.Goals[1].Start && result.Goals[1].End < result.Goals[2].Start);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Objetivos_que_todavia_no_se_generan()
+    {
+        var archers = new AssistedGoal { Unit = "archer", Count = 20, Buildings = 2 };
+
+        var result = Generator.Generate(Assisted("any", 60, Age("feudal_age"), archers, Age("castle_age")));
+
+        Assert.Contains("todavía no", result.Goals[1].Problem);
+        Assert.NotNull(result.Goals[0].End);
+        Assert.NotNull(result.Goals[2].End);
+    }
+
+    [Fact]
+    public void Una_edad_a_una_poblacion_que_nunca_llega()
+    {
+        var result = Generator.Generate(Assisted("any", 20, Age("feudal_age", atPop: 60)));
+
+        Assert.Contains("No llega", result.Goals[0].Problem);
+        Assert.Null(result.Goals[0].End);
+    }
+
+    [Fact]
+    public void La_postura_sale_de_los_objetivos()
+    {
+        var result = Generator.Generate(Assisted("any", 50, Age("feudal_age"), Age("castle_age")));
+
+        Assert.Equal("imperial_age", result.BuildOrder.Posture?.NextAge);
+    }
+
+    [Fact]
+    public void Llega_a_Castillos_aunque_ya_no_salgan_aldeanos()
+    {
+        // Con 20 aldeanos el centro urbano deja de producir antes de juntar Castillos: el clic tiene que salir igual.
+        var result = Generator.Generate(Assisted("any", 20, Age("feudal_age"), Age("castle_age")));
+
+        Assert.Empty(result.Problems);
+        Assert.NotNull(result.Goals[1].End);
+        AssertConsistent(result);
+    }
 }

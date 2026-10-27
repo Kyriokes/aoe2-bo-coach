@@ -29,7 +29,16 @@ internal sealed class VillagerRule : IGoalRule
         var k = Math.Max(1, Math.Min(Math.Min(MaxTramo, room), state.VillagersBeforeClick ?? MaxTramo));
         var villagerTime = state.VillagerTime(view.Age);
         var horizon = Math.Clamp(k * villagerTime, 60, 180);
-        var missing = Missing(view, state, horizon, Math.Min(room, (int)(horizon / villagerTime)));
+        // Primero lo que sostiene la producción; después, lo que pide el objetivo (la prioridad de D2: economía sana primero).
+        var sustain = Missing(view, state, horizon, Math.Min(room, (int)(horizon / villagerTime)));
+        // Los campamentos que van a hacer falta: el maderero siempre, el minero si el objetivo pide oro o piedra.
+        foreach (var (key, needed) in new[] { ("lumber_camp", true), ("mining_camp", state.Planned.Gold > 0 || state.Planned.Stone > 0) })
+        {
+            if (needed && !state.HasOrWillHave(view, key) && CivBuildings.For(state.Data, state.Civ, key) is { } camp)
+                sustain += state.Cost(view, camp);
+        }
+        var missing = sustain + state.Planned;
+        var farms = state.AffordableCount(view, state.Cost(view, "farm"));
 
         // El reparto, de a uno: las ovejas hasta lo que pide la apertura y después lo que más falta.
         var order = new List<GatherSource>();
@@ -45,27 +54,51 @@ internal sealed class VillagerRule : IGoalRule
                 source = GatherSource.Sheep;
                 why.TryAdd(source, $"la apertura pide {state.Plan.Opening.Sheep} en las ovejas");
             }
+            else if (Resources.Any(res => sustain[res] > 0))
+            {
+                var resource = Neediest(sustain, view, state);
+                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon) : SourceFor(resource, state);
+                why.TryAdd(source, $"faltan {Math.Ceiling(sustain[resource]):0} de {Name(resource)} en los próximos {GameClock.Format(horizon)} para seguir produciendo");
+            }
             else
             {
                 var resource = Neediest(missing, view, state);
-                source = SourceFor(resource, state);
+                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon) : SourceFor(resource, state);
                 why.TryAdd(source, missing[resource] > 0
-                    ? $"faltan {Math.Ceiling(missing[resource]):0} de {Name(resource)} en los próximos {GameClock.Format(horizon)}"
+                    ? $"faltan {Math.Ceiling(missing[resource]):0} de {Name(resource)} para el objetivo"
                     : "no falta nada: a la madera");
+            }
+            if (source == GatherSource.Farm && counts.GetValueOrDefault(GatherSource.Farm) >= farms)
+            {
+                // Sin madera para otra granja: no se agrega una que quedaría esperando (y frenaría lo que viene).
+                source = GatherSource.Wood;
+                why.TryAdd(source, "sin madera para otra granja: a juntarla");
             }
             if (!counts.ContainsKey(source))
                 order.Add(source);
             counts[source] = counts.GetValueOrDefault(source) + 1;
             var r = source.Resource();
-            missing = missing.With(r, missing[r] - Rate(view, source) * Math.Max(0, horizon - (j + 1) * villagerTime));
+            var gathered = Rate(view, source) * Math.Max(0, horizon - (j + 1) * villagerTime);
+            missing = missing.With(r, missing[r] - gathered);
+            sustain = sustain.With(r, sustain[r] - gathered);
+            if (source is GatherSource.Sheep or GatherSource.Hunt or GatherSource.Berries)
+            {
+                // Más adelante va a necesitar su granja: que la madera venga con él.
+                var farm = state.Cost(view, "farm");
+                missing += farm;
+                sustain += farm;
+            }
         }
 
         var steps = new List<Step>();
         var before = 0;
-        foreach (var source in order)
+        // Primero el recurso que estrena campamento: así su aldeano sale enseguida y el campamento no frena lo que viene.
+        string? Camp(GatherSource source) =>
+            CampFor(view, state, source) is { } camp && state.Affordable(view, state.Cost(view, camp)) ? camp : null;
+        foreach (var source in order.OrderBy(s => Camp(s) is null ? 1 : 0).ToList())
         {
             var n = counts[source];
-            if (CampFor(view, state, source) is { } camp)
+            if (Camp(source) is { } camp)
             {
                 var id = state.NewId();
                 var group = $"g{id}";
@@ -120,13 +153,13 @@ internal sealed class VillagerRule : IGoalRule
             .FirstOrDefault() ?? Resource.Wood;
 
     /// <summary>
-    /// Lo que falta juntar en el horizonte: lo que cuestan los pasos pendientes, lo que avisan otras reglas
-    /// (<see cref="GoalState.Planned"/>), la comida de los aldeanos que se van a entrenar y la madera de las casas que
-    /// van a hacer falta, menos el stock y lo que juntan los aldeanos de ahora.
+    /// Lo que falta juntar en el horizonte para sostener la producción: lo que cuestan los pasos pendientes, lo que va a
+    /// hacer falta (<see cref="GoalState.Upcoming"/>), la comida de los aldeanos que se van a entrenar y la madera de las
+    /// casas que van a hacer falta, menos el stock y lo que juntan los aldeanos de ahora. El objetivo va aparte.
     /// </summary>
     private static ResourceAmounts Missing(PlanView view, GoalState state, double horizon, int villagersInHorizon)
     {
-        var demand = state.Planned;
+        var demand = state.Upcoming;
         foreach (var pending in view.Steps.Where(s => s.End is null && s.Remaining > 0 && !IsVillagers(s.Step)))
             demand += Cost(view, state, pending.Step) * pending.Remaining;
         foreach (var added in state.Added.Where(s => !IsVillagers(s)))

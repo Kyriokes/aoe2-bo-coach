@@ -32,14 +32,25 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     public bool OpeningDone { get; set; }
 
+    /// <summary>Cuándo se reacomodaron aldeanos por última vez (ver <see cref="AgeRule"/>).</summary>
+    public double? RebalancedAt { get; set; }
+
     /// <summary>La fuente de comida a la que van los aldeanos nuevos (ovejas, jabalí, bayas, granjas).</summary>
     public GatherSource FoodSource { get; set; } = GatherSource.Sheep;
 
-    /// <summary>Lo que otra regla avisa que hay que juntar pronto (el costo de la edad que se busca), para el reparto.</summary>
+    /// <summary>Lo que el objetivo activo pide juntar (el costo de la edad que se busca), para el reparto.</summary>
     public ResourceAmounts Planned { get; set; }
+
+    /// <summary>Lo que va a hacer falta para sostener la producción y no está pedido todavía (la madera de las granjas que vienen).</summary>
+    public ResourceAmounts Upcoming { get; set; }
 
     /// <summary>Hasta cuántos aldeanos entran antes del próximo clic de edad (null = sin clic cerca).</summary>
     public int? VillagersBeforeClick { get; set; }
+
+    /// <summary>La hora más cercana a la que alguna regla pidió que la vuelvan a consultar en esta consulta.</summary>
+    public double? WakeAt { get; set; }
+
+    public void WakeMeAt(double time) => WakeAt = WakeAt is { } at ? Math.Min(at, time) : time;
 
     public string NewId() => $"s{++_ids}";
 
@@ -52,6 +63,30 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     /// <summary>Lo que tarda el centro urbano en sacar un aldeano, con la civ.</summary>
     public double VillagerTime(Age age) => Civ.Time(Data.Get("villager"), age) / Civ.WorkRate("town_center", age);
+
+    /// <summary>
+    /// Si alcanza ya para pagar un edificio: el stock menos lo que cuestan los edificios e investigaciones agregados en
+    /// esta consulta. El generador agrega un edificio solo cuando alcanza: en el Planner lo que no es aldeanos arranca en
+    /// orden, y un edificio esperando madera frenaría detrás un "mover" de comida.
+    /// </summary>
+    public bool Affordable(PlanView view, ResourceAmounts cost) => Available(view).Covers(cost);
+
+    /// <summary>Cuántos edificios de ese costo alcanzan ya (por la madera; las granjas).</summary>
+    public int AffordableCount(PlanView view, ResourceAmounts cost) =>
+        cost.Wood <= 0 ? int.MaxValue : (int)Math.Floor(Math.Max(0, Available(view).Wood) / cost.Wood);
+
+    /// <summary>
+    /// Lo que se puede gastar ya: el stock menos lo agregado en esta consulta y menos lo que esperan las reglas de más
+    /// prioridad (<see cref="Upcoming"/>, que corren antes): así una granja de 60 no se come la madera que junta el
+    /// campamento de 100.
+    /// </summary>
+    private ResourceAmounts Available(PlanView view) => view.Stock - Spent(view) - Upcoming;
+
+    public ResourceAmounts Cost(PlanView view, string key) => Civ.Cost(Data.Get(key), view.Age);
+
+    private ResourceAmounts Spent(PlanView view) => Added
+        .Where(s => s.Do is StepAction.Build or StepAction.Research && s.What is { } what && Data.TryGet(what, out _))
+        .Aggregate(ResourceAmounts.Zero, (sum, s) => sum + Cost(view, s.What!) * (s.Do == StepAction.Build ? s.Count : 1));
 
     /// <summary>Si la civ necesita casas (los hunos no).</summary>
     public bool MakesHouses => !Civ.Start.NoHouses && CivBuildings.For(Data, Civ, "house") is not null;

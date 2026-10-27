@@ -25,7 +25,7 @@ public class RuleTests
     [Fact]
     public void La_casa_se_pide_con_tres_lugares()
     {
-        var view = new PlanView { Population = 12, InProduction = 1, PopulationCap = 15, Villagers = On((GatherSource.Wood, 4)), Rates = Rates };
+        var view = new PlanView { Population = 12, InProduction = 1, PopulationCap = 15, Villagers = On((GatherSource.Wood, 4)), Rates = Rates, Stock = new ResourceAmounts(0, 100, 0, 0) };
 
         var house = Assert.Single(new HouseRule().Next(view, State()));
 
@@ -67,7 +67,7 @@ public class RuleTests
             InProduction = 1,
             PopulationCap = 200,
             Villagers = On((GatherSource.Sheep, 6)),
-            Stock = new ResourceAmounts(300, 0, 0, 100),
+            Stock = new ResourceAmounts(300, 100, 0, 100), // alcanza para el campamento
             Rates = Rates,
         };
 
@@ -102,7 +102,7 @@ public class RuleTests
     {
         var state = State();
         state.FoodSource = GatherSource.Hunt;
-        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 50, 750), PopulationCap = 200 };
+        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 30, 750), PopulationCap = 200, Stock = new ResourceAmounts(0, 100, 0, 0) };
 
         var steps = new FoodRule().Next(view, state);
 
@@ -116,12 +116,53 @@ public class RuleTests
     {
         var state = State();
         state.FoodSource = GatherSource.Hunt;
-        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 50, 0), PopulationCap = 200 };
+        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 50, 0), PopulationCap = 200, Stock = new ResourceAmounts(0, 500, 0, 0) };
 
         var steps = new FoodRule().Next(view, state);
 
         Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "mill" });
         Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 6, From: GatherSource.Hunt, Assign: GatherSource.Farm });
         Assert.Equal(GatherSource.Farm, state.FoodSource);
+    }
+
+    private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
+
+    [Theory]
+    [InlineData(350, true)] // faltan 150 de comida: con 6 en ovejas, menos de 90 s
+    [InlineData(0, false)] // todavía falta mucho: los edificios que salen solos suelen alcanzar
+    public void Para_Feudal_faltan_dos_edificios(double food, bool asks)
+    {
+        var view = new PlanView
+        {
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 6), (GatherSource.Wood, 4)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["lumber_camp"] = 1 },
+            Stock = new ResourceAmounts(food, 100, 0, 0),
+            Rates = Rates,
+        };
+
+        var steps = new AgeRule().Next(view, State(plan: ToFeudal));
+
+        Assert.Equal(asks, steps.Any(s => s is { Do: StepAction.Build, What: "mill" }));
+        Assert.DoesNotContain(steps, s => s.Do == StepAction.Research);
+    }
+
+    [Theory]
+    [InlineData(480, true)]
+    [InlineData(300, false)]
+    public void El_clic_va_cuando_alcanza(double food, bool clicks)
+    {
+        var view = new PlanView
+        {
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 6)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["lumber_camp"] = 1, ["mill"] = 1 },
+            Stock = new ResourceAmounts(food, 0, 0, 0),
+            Rates = Rates,
+        };
+
+        var steps = new AgeRule().Next(view, State(plan: ToFeudal));
+
+        Assert.Equal(clicks, steps.Any(s => s is { Do: StepAction.Research, What: "feudal_age" }));
     }
 }
