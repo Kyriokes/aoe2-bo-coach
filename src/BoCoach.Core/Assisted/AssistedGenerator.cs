@@ -50,7 +50,6 @@ public sealed class AssistedGenerator(GameData data, Maps maps)
             double? start = own.Count > 0 ? own.Min(s => s.Start ?? double.MaxValue) : null;
             double? end = own.Count > 0 && own.All(s => s.End is not null) ? own.Max(s => s.End!.Value) : null;
             var problem = state.Skipped.TryGetValue(i, out var skipped) ? skipped
-                : !GoalState.Generated.Contains(GoalState.Kind(goal)) ? "Este objetivo todavía no se puede generar."
                 : end is null ? $"No llega antes de {GameClock.Format(settings.MaxTime)}."
                 : null;
             goals.Add(new GoalResult(i, start == double.MaxValue ? null : start, end, problem));

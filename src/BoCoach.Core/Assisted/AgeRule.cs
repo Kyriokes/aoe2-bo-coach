@@ -234,11 +234,11 @@ internal sealed class AgeRule : IGoalRule
         return income;
     }
 
-    private static bool Affordable(PlanView view, ResourceAmounts cost, double seconds) =>
+    internal static bool Affordable(PlanView view, ResourceAmounts cost, double seconds) =>
         Enum.GetValues<Resource>().All(r => view.Stock[r] + Gathered(view, seconds)[r] >= cost[r]);
 
     /// <summary>Cuántos segundos faltan para tener el costo con lo que se junta ahora (sin fin si un recurso no lo junta nadie).</summary>
-    private static double? SecondsToAfford(PlanView view, ResourceAmounts cost)
+    internal static double? SecondsToAfford(PlanView view, ResourceAmounts cost)
     {
         var income = Income(view);
         var seconds = 0.0;

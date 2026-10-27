@@ -10,7 +10,7 @@ namespace BoCoach.Core.Assisted;
 internal sealed class GoalPolicy(GoalState state, IReadOnlyList<IGoalRule> rules) : IStepPolicy
 {
     public GoalPolicy(GoalState state)
-        : this(state, [new OpeningRule(), new HouseRule(), new CampRule(), new FoodRule(), new AgeRule(), new UnitRule(), new TownCenterRule(), new VillagerRule()])
+        : this(state, [new OpeningRule(), new HouseRule(), new CampRule(), new FoodRule(), new AgeRule(), new UnitRule(), new TownCenterRule(), new TechRule(), new VillagerRule()])
     {
     }
 

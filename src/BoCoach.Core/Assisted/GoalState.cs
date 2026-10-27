@@ -34,16 +34,6 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     private static readonly string[] AgeTechs = ["feudal_age", "castle_age", "imperial_age"];
 
-    /// <summary>
-    /// Los tipos de objetivo que el generador ya arma (los demás se avisan y no frenan a los de abajo). Cada sub-tarea
-    /// del (d) suma el suyo.
-    /// </summary>
-    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age", "unit", "town_centers" };
-
-    /// <summary>El tipo de un objetivo: "age", "unit", "town_centers" o "tech".</summary>
-    public static string Kind(AssistedGoal goal) =>
-        goal.Age is not null ? "age" : goal.Unit is not null ? "unit" : goal.TownCenters is not null ? "town_centers" : "tech";
-
     /// <summary>Los objetivos que no se pueden, con el motivo (por índice): la civ no los tiene, o piden una edad que ningún objetivo de antes pide.</summary>
     public IReadOnlyDictionary<int, string> Skipped => _skipped ??= FindSkipped();
 
@@ -105,11 +95,11 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
         return null;
     }
 
-    /// <summary>Si un objetivo ya agregó todos sus pasos: la edad, con su clic; los salteados y los que todavía no se generan, siempre.</summary>
+    /// <summary>Si un objetivo ya agregó todos sus pasos: la edad, con su clic; los salteados, siempre.</summary>
     public bool Launched(PlanView view, int index)
     {
         var goal = Plan.Goals[index];
-        if (Skipped.ContainsKey(index) || !Generated.Contains(Kind(goal)) || LaunchedGoals.Contains(index))
+        if (Skipped.ContainsKey(index) || LaunchedGoals.Contains(index))
             return true;
         return goal.Age is { } age && Clicked(view, age);
     }
@@ -210,6 +200,39 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// </summary>
     public bool TownCenterFree(PlanView view) =>
         view.Busy.GetValueOrDefault("town_center") < TownCenters(view) && QueuedVillagers(view) == 0;
+
+    /// <summary>
+    /// Si una investigación puede arrancar ya (si no, esperaría en la cola y frenaría lo de detrás): la edad alcanzada,
+    /// el costo en el stock y su edificio libre (un centro urbano libre y sin aldeanos por encolar, o una instancia del
+    /// edificio sin trabajo ni cola).
+    /// </summary>
+    public bool CanResearchNow(PlanView view, string tech)
+    {
+        var entity = Data.Get(tech);
+        if (entity.Age > view.Age || !Affordable(view, Civ.Cost(entity, view.Age)) || entity.MadeIn is not { } building)
+            return false;
+        if (building == BuildOrderValidator.StartingBuilding)
+            return TownCenterFree(view);
+        return view.Buildings.GetValueOrDefault(building) > view.Busy.GetValueOrDefault(building) && view.Queued.GetValueOrDefault(building) == 0;
+    }
+
+    /// <summary>
+    /// Corta el tramo de aldeanos para que un centro urbano quede libre cuando se junte <paramref name="cost"/> (como para
+    /// el clic de edad) y pide que la despierten entonces.
+    /// </summary>
+    public void HoldTownCenterFor(PlanView view, ResourceAmounts cost)
+    {
+        var toAfford = AgeRule.SecondsToAfford(view, cost) ?? 0;
+        var wait = TownCenterWait(view);
+        if (double.IsInfinity(toAfford))
+        {
+            WakeMeAt(view.Time + 30);
+            return;
+        }
+        var before = Math.Clamp((int)Math.Ceiling((toAfford - wait) / VillagerInterval(view)), 0, VillagerRule.MaxTramo * TownCenters(view));
+        VillagersBeforeClick = VillagersBeforeClick is { } other ? Math.Min(other, before) : before;
+        WakeMeAt(view.Time + Math.Max(1, Math.Ceiling(Math.Max(toAfford, wait))));
+    }
 
     /// <summary>Cuánto falta para que un centro urbano quede libre (0 si ya está).</summary>
     public double TownCenterWait(PlanView view) =>

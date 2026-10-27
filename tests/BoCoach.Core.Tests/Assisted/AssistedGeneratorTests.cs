@@ -202,15 +202,39 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Objetivos_que_todavia_no_se_generan()
+    public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {
-        var loom = new AssistedGoal { Tech = "loom" };
+        var result = Generator.Generate(Assisted("any", 60, new AssistedGoal { Tech = "loom" }, Age("feudal_age")));
 
-        var result = Generator.Generate(Assisted("any", 60, Age("feudal_age"), loom, Age("castle_age")));
+        Assert.Empty(result.Problems);
+        Assert.Contains(result.BuildOrder.Steps, s => s is { Do: StepAction.Research, What: "loom" });
+        Assert.NotNull(result.Goals[1].End);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
 
-        Assert.Contains("todavía no", result.Goals[1].Problem);
-        Assert.NotNull(result.Goals[0].End);
-        Assert.NotNull(result.Goals[2].End);
+    [Fact]
+    public void Linea_de_sangre_despues_del_establo()
+    {
+        var result = Generator.Generate(Assisted("mongols", 60, Age("feudal_age"), new AssistedGoal { Tech = "bloodlines" }));
+
+        Assert.Empty(result.Problems);
+        var steps = result.BuildOrder.Steps.ToList();
+        var stable = steps.FindIndex(s => s is { Do: StepAction.Build, What: "stable" });
+        var research = steps.FindIndex(s => s is { Do: StepAction.Research, What: "bloodlines" });
+        Assert.InRange(stable, 0, research - 1);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void La_tecnologia_espera_el_establo_libre()
+    {
+        var result = Generator.Generate(Assisted("mongols", 60,
+            Age("feudal_age"), Units("scout_cavalry", 20, 1), new AssistedGoal { Tech = "bloodlines" }));
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
     }
 
     [Fact]

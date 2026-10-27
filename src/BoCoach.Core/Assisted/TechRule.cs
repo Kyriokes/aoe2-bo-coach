@@ -1,0 +1,57 @@
+using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
+
+namespace BoCoach.Core.Assisted;
+
+/// <summary>
+/// Las tecnologías a pedido (spec, sección 3, regla 3): con el objetivo activo, su edificio si falta (como cualquier
+/// edificio: la edad, el costo y quién lo hace) y la investigación cuando puede arrancar ya (<see cref="GoalState.CanResearchNow"/>).
+/// Mientras no, su costo va al reparto y la regla pide que la despierten; si es del centro urbano, el tramo de aldeanos
+/// se corta para dejarlo libre, como para el clic de edad.
+/// </summary>
+internal sealed class TechRule : IGoalRule
+{
+    public IReadOnlyList<Step> Next(PlanView view, GoalState state)
+    {
+        if (state.ActiveGoal(view) is not { } index || state.Plan.Goals[index] is not { Tech: { } tech })
+            return [];
+        if (view.Researched.Contains(tech) || state.Pending(view).Any(s => s.Do == StepAction.Research && s.What == tech))
+        {
+            state.LaunchedGoals.Add(index); // ya estaba (otra regla la pidió)
+            return [];
+        }
+        var entity = state.Data.Get(tech);
+        var building = entity.MadeIn!;
+        var cost = state.Civ.Cost(entity, view.Age);
+        state.Planned += cost;
+
+        if (building != BuildOrderValidator.StartingBuilding && state.Count(view, building) == 0)
+        {
+            var buildingCost = state.Cost(view, building);
+            if (view.Age >= state.Data.Get(building).Age && state.Affordable(view, buildingCost))
+            {
+                var from = state.Builder(view);
+                return [state.Add(
+                    new Step { Id = state.NewId(), Do = StepAction.Build, What = building, From = from, Assign = from ?? GatherSource.Wood },
+                    $"{Capitalize(StepText.Name(building))} para {StepText.Name(tech)}")];
+            }
+            state.Upcoming += buildingCost;
+            return [];
+        }
+
+        if (state.CanResearchNow(view, tech))
+        {
+            var step = state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
+                $"{Capitalize(StepText.Name(tech))}, como pide el objetivo");
+            state.Launch(index, step.Id);
+            return [step];
+        }
+        if (building == BuildOrderValidator.StartingBuilding)
+            state.HoldTownCenterFor(view, cost);
+        state.WakeMeAt(view.Time + 15);
+        return [];
+    }
+
+    private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+}
