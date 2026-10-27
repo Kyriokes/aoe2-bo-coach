@@ -202,17 +202,24 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
     private readonly PlannerSettings _settings = settings ?? new PlannerSettings();
 
     /// <summary>Simula una BO completa desde el inicio estándar de su civ (vista previa del editor).</summary>
-    public PlanResult Simulate(BuildOrder bo)
+    public PlanResult Simulate(BuildOrder bo) => Simulate(bo, null);
+
+    /// <summary>
+    /// D12: simula la BO y le pregunta a la política qué agregar mientras tanto (el modo asistido). El resultado trae
+    /// los pasos de la BO y los agregados, en orden, con las condiciones que les puso el Planner.
+    /// </summary>
+    public PlanResult Simulate(BuildOrder bo, IStepPolicy? policy)
     {
         var civ = CivOf(bo);
         var units = LivePlan.Units(bo);
         return Simulate(bo.Steps.Select((s, i) => new PlanItem(s, units[i])).ToList(),
-            PlanStart.For(civ, data), civ);
+            PlanStart.For(civ, data), civ, policy);
     }
 
     /// <param name="civ">Bonificaciones de la civ (por defecto, ninguna).</param>
-    public PlanResult Simulate(IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses? civ = null) =>
-        new Simulation(data, _settings, items, start, civ ?? CivBonuses.None).Run();
+    /// <param name="policy">D12: la política que agrega pasos mientras se simula (ver <see cref="IStepPolicy"/>).</param>
+    public PlanResult Simulate(IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses? civ = null, IStepPolicy? policy = null) =>
+        new Simulation(data, _settings, items, start, civ ?? CivBonuses.None, policy).Run();
 
     /// <summary>Las bonificaciones de la civ de la BO ("any" = ninguna).</summary>
     public CivBonuses CivOf(BuildOrder bo) => data.Civ(bo.Civ);
@@ -240,6 +247,23 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         /// <summary>Lo que queda de cada fuente de comida; null con la comida infinita.</summary>
         private readonly FoodStocks? _food;
 
+        /// <summary>D12: la política que agrega pasos; null sin modo asistido.</summary>
+        private readonly IStepPolicy? _policy;
+
+        /// <summary>Los ids de los pasos, para que la política no repita uno.</summary>
+        private readonly HashSet<string> _ids;
+
+        /// <summary>Unidades con población que nacieron en este segundo.</summary>
+        private int _births;
+
+        /// <summary>
+        /// Desde cuándo, al final de la lista de pasos, la BO no tiene pasos por arrancar (<c>inOrder</c>) y desde cuándo
+        /// llegó al último (<c>reached</c>); null si no. Un paso agregado más tarde que eso se fija (ver <see cref="Pin"/>).
+        /// </summary>
+        private double? _inOrderSince;
+
+        private double? _reachedSince;
+
         private double _time;
         private ResourceAmounts _stock;
 
@@ -257,11 +281,13 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         private readonly List<string> _researched;
         private Dictionary<GatherSource, double> _rates = [];
 
-        public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses civ)
+        public Simulation(GameData data, PlannerSettings settings, IReadOnlyList<PlanItem> items, PlanStart start, CivBonuses civ, IStepPolicy? policy)
         {
             _data = data;
             _settings = settings;
             _civ = civ;
+            _policy = policy;
+            _ids = items.Select(i => i.Step.Id).ToHashSet();
             _time = start.Time;
             _stock = start.Stock;
             _population = start.Population;
@@ -332,6 +358,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             var nextSample = _time;
             while (true)
             {
+                _births = 0;
                 CompleteRunning();
                 ReseedFarms();
                 // Los pasos arrancan en orden: cada uno cuando el anterior arrancó. Los aldeanos son la excepción: el
@@ -341,13 +368,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 var inOrder = true;
                 var reached = true;
                 _claimed = ResourceAmounts.Zero;
-                foreach (var item in _items)
-                {
-                    var villagers = IsVillagers(item.Step);
-                    Advance(item, villagers ? reached : inOrder);
-                    inOrder = villagers ? inOrder && Releases(item) : Releases(item);
-                    reached = item.Reached || item.Started || item.End is not null;
-                }
+                for (var i = 0; i < _items.Count; i++)
+                    AdvanceInOrder(_items[i], ref inOrder, ref reached);
+                if (_policy is not null)
+                    AskPolicy(ref inOrder, ref reached);
 
                 if (_time >= nextSample)
                 {
@@ -372,6 +396,95 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 Idle = _idleList,
             };
         }
+
+        private void AdvanceInOrder(ItemSim item, ref bool inOrder, ref bool reached)
+        {
+            var villagers = IsVillagers(item.Step);
+            Advance(item, villagers ? reached : inOrder);
+            inOrder = villagers ? inOrder && Releases(item) : Releases(item);
+            reached = item.Reached || item.Started || item.End is not null;
+        }
+
+        /// <summary>Cuántas veces se le puede preguntar a la política en un mismo segundo.</summary>
+        private const int MaxAsksPerTick = 100;
+
+        /// <summary>
+        /// D12: los puntos de decisión. Se le pregunta a la política si nació alguien, si la BO se acaba de quedar sin
+        /// pasos por arrancar o si todo terminó. Lo que agrega se avanza en este mismo segundo, como si hubiera estado
+        /// en la BO desde el principio; si con eso la BO vuelve a quedarse sin pasos, se le pregunta otra vez.
+        /// </summary>
+        private void AskPolicy(ref bool inOrder, ref bool reached)
+        {
+            var ranOut = inOrder && _inOrderSince is null;
+            _inOrderSince = inOrder ? _inOrderSince ?? _time : null;
+            _reachedSince = reached ? _reachedSince ?? _time : null;
+            if (_births == 0 && !ranOut && _items.Any(i => i.End is null))
+                return;
+
+            for (var asks = 0; ; asks++)
+            {
+                if (asks == MaxAsksPerTick)
+                    throw new InvalidOperationException(
+                        $"La política agregó pasos sin parar a los {GameClock.Format(_time)}: {MaxAsksPerTick} veces en el mismo segundo.");
+                var steps = _policy!.Next(View(inOrder));
+                if (steps.Count == 0)
+                    return;
+                foreach (var given in steps)
+                {
+                    var step = Pin(given with { }, IsVillagers(given) ? _reachedSince : _inOrderSince);
+                    if (!_ids.Add(step.Id))
+                        throw new InvalidOperationException($"La política agregó un paso con un id que ya existe: '{step.Id}'.");
+                    var item = new ItemSim(step, _items.Count, step.Do is StepAction.Train or StepAction.Build ? step.Count : 1, Lookup(step));
+                    _items.Add(item);
+                    if (item.Remaining == 0)
+                        Finish(item);
+                    AdvanceInOrder(item, ref inOrder, ref reached);
+                    _inOrderSince = inOrder ? _time : null;
+                    _reachedSince = reached ? _time : null;
+                }
+                if (!inOrder)
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Un paso agregado en este segundo que, en una simulación nueva de la BO, quedaría alcanzado desde antes
+        /// (<paramref name="allowedSince"/>) se fija para que arranque recién ahora: con la población si en este segundo
+        /// nació alguien (llegó recién ahora a ese número, como en las guías) y con la hora si no.
+        /// </summary>
+        private Step Pin(Step step, double? allowedSince)
+        {
+            if (allowedSince is not { } since || since >= _time)
+                return step;
+            if (_births > 0)
+                step.AtPop = Math.Max(step.AtPop ?? 0, _population);
+            else
+                step.AtTime = Math.Max(step.AtTime ?? 0, (int)Math.Ceiling(_time));
+            return step;
+        }
+
+        /// <summary>La foto para la política: copias, así no puede tocar la simulación.</summary>
+        private PlanView View(bool ranOut) => new(
+            _time,
+            _stock,
+            _population,
+            _reserved,
+            _cap,
+            _age,
+            new Dictionary<GatherSource, int>(_villagers),
+            _idle,
+            _builders,
+            new Dictionary<string, int>(_buildings),
+            _items.Where(i => i.Step.Do == StepAction.Build && i.Unfinished > 0 && i.Entity is not null)
+                .GroupBy(i => i.Entity!.Key)
+                .ToDictionary(g => g.Key, g => g.Sum(i => i.Unfinished)),
+            [.. _researched],
+            new Dictionary<GatherSource, double>(_rates),
+            _queues.Where(q => q.Value.Count > 0).ToDictionary(q => q.Key, q => q.Value.Count),
+            _busyProducers.Where(b => b.Value > 0).ToDictionary(b => b.Key, b => b.Value),
+            _items.Select(i => new PlanViewStep(i.Step with { }, i.Remaining, i.Reached, i.Started, i.Start, i.End)).ToList(),
+            _births > 0,
+            ranOut);
 
         /// <summary>
         /// Si el paso ya deja arrancar al siguiente. Un clic de edad cuenta recién cuando se paga: lo que la BO pone
@@ -580,6 +693,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _busyProducers[producer]--;
             _reserved -= entity.Pop;
             _population += entity.Pop;
+            if (entity.Pop > 0)
+                _births++;
             if (entity.Kind == EntityKind.Tech)
             {
                 _researched.Add(entity.Key);
