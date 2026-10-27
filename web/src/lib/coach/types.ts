@@ -83,6 +83,21 @@ export interface Analysis {
   buildings?: PlanBuilding[];
   /** Cada unidad, tecnología y construcción con su edificio y sus tiempos (D8). */
   jobs?: PlanJob[];
+  /** D12: solo si la BO trae `assisted` y se generó (los pasos de arriba son los generados). */
+  assisted?: AssistedAnalysis;
+}
+
+/** Lo que dice el generador del modo asistido de una BO. */
+export interface AssistedAnalysis {
+  /** La versión del generador: si cambia, la misma BO puede salir con otros pasos. */
+  version: number;
+  /** Los pasos guardados eran otros que los que arma el generador de ahora. */
+  regenerated: boolean;
+  /** El porqué de cada paso generado, por id. */
+  reasons: Record<string, string>;
+  /** Cada objetivo, por su lugar en la lista: cuándo empieza y se cumple, o por qué no. */
+  goals: { index: number; start: number | null; end: number | null; problem: string | null }[];
+  problems: string[];
 }
 
 export type AnalysisResult = Analysis | AnalysisFailure;

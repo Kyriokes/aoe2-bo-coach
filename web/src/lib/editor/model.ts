@@ -48,6 +48,8 @@ export interface EditorBo {
   tags: string[];
   /** Lo que el editor no toca y conserva tal cual: objetivos, postura de cierre y ramas. */
   targets?: unknown;
+  /** D12: los objetivos del modo asistido (el JSON de `assisted`; ver `assisted.ts`). Sin esto, la BO es manual. */
+  assisted?: unknown;
   posture?: unknown;
   branches?: unknown;
 }
@@ -149,6 +151,7 @@ export function fromAnalysis(a: Analysis): { bo: EditorBo; steps: EditorStep[] }
   if (body.targets !== undefined) bo.targets = body.targets;
   if (body.posture !== undefined) bo.posture = body.posture;
   if (body.branches !== undefined) bo.branches = body.branches;
+  if (body.assisted !== undefined && body.assisted !== null) bo.assisted = body.assisted;
   return { bo, steps };
 }
 
@@ -197,6 +200,7 @@ export function toJson(state: Pick<EditorState, "bo" | "steps">): Record<string,
   if (bo.targets !== undefined) json.targets = bo.targets;
   if (bo.posture !== undefined) json.posture = bo.posture;
   if (bo.branches !== undefined) json.branches = bo.branches;
+  if (bo.assisted !== undefined) json.assisted = bo.assisted;
   return json;
 }
 
