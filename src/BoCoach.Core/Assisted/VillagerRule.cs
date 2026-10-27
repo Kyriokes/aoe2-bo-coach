@@ -54,7 +54,7 @@ internal sealed class VillagerRule : IGoalRule
             if (needed && !state.HasOrWillHave(view, key) && CivBuildings.For(state.Data, state.Civ, key) is { } camp)
                 sustain += state.Cost(view, camp);
         }
-        var missing = sustain + state.Planned;
+        var missing = sustain + state.Planned + state.Ahead;
         var farms = state.Farm is null ? 0 : state.AffordableCount(view, state.Cost(view, "farm"));
 
         // El reparto, de a uno: las ovejas hasta lo que pide la apertura y después lo que más falta.
@@ -71,15 +71,15 @@ internal sealed class VillagerRule : IGoalRule
                 source = GatherSource.Sheep;
                 why.TryAdd(source, $"la apertura pide {state.Plan.Opening.Sheep} en las ovejas");
             }
-            else if (missing.Gold > 0 || missing.Stone > 0)
+            else if ((missing - state.Ahead) is var now && (now.Gold > 0 || now.Stone > 0))
             {
                 // El oro y la piedra del costo de la edad van primero: la producción no los usa, así que con lo que la
                 // sostiene primero nunca se juntaban (y el clic a N de población esperaba para siempre).
-                var resource = missing.Gold / Math.Max(1e-6, Rate(view, GatherSource.Gold)) >= missing.Stone / Math.Max(1e-6, Rate(view, GatherSource.Stone))
+                var resource = now.Gold / Math.Max(1e-6, Rate(view, GatherSource.Gold)) >= now.Stone / Math.Max(1e-6, Rate(view, GatherSource.Stone))
                     ? Resource.Gold
                     : Resource.Stone;
                 source = SourceFor(resource, state);
-                why.TryAdd(source, $"faltan {Math.Ceiling(missing[resource]):0} de {Name(resource)} para el objetivo");
+                why.TryAdd(source, $"faltan {Math.Ceiling(now[resource]):0} de {Name(resource)} para el objetivo");
             }
             else if (Resources.Any(res => sustain[res] > 0))
             {

@@ -217,7 +217,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         Assert.Empty(result.Problems);
         var researched = result.BuildOrder.Steps.Where(s => s.Do == StepAction.Research).Select(s => s.What).ToList();
         Assert.Contains("double_bit_axe", researched);
-        Assert.Contains("gold_mining", researched);
+        // La minería de oro, solo con 3 mineros o más: el oro de Castillos lo juntan 2 desde que el reparto lo prevé en la Edad Oscura.
         Assert.Contains("wheelbarrow", researched);
         Assert.DoesNotContain("horse_collar", researched); // a los francos les sale gratis
         Assert.True(researched.IndexOf("loom") is >= 0 and var loom && loom < researched.IndexOf("feudal_age"), string.Join(", ", researched));
@@ -611,6 +611,41 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
 
         for (var i = 0; i < goals.Length; i++)
             Assert.True(after.Goals[i].End <= before.Goals[i].End + 10, $"objetivo {i}: {after.Goals[i].End} contra {before.Goals[i].End}");
+    }
+
+    public static TheoryData<string> KnownBuildOrders()
+    {
+        var data = new TheoryData<string>();
+        foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "civs"), "*.json")
+                     .Concat(Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "build_orders"), "*.json")).Order())
+            data.Add(Path.GetRelativePath(AppContext.BaseDirectory, file));
+        return data;
+    }
+
+    /// <summary>
+    /// Pedido del usuario (2026-10-27): "si le digo que vaya a Castillos lo más rápido posible, de mínima tiene que igualar
+    /// a las BO conocidas". Para Castillos e Imperial, si una BO conocida llega, el asistido con las edades hasta esa como
+    /// objetivos (de a una, y solo la última) llega antes o igual, con la misma civ y la misma comida. Feudal sola todavía
+    /// no: las guías de Feudal rápida suben con 15 a 19 de población y el reparto sigue sacando aldeanos (PLAN.md, D12).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(KnownBuildOrders))]
+    public void Llega_a_cada_edad_no_mas_tarde_que_las_BO_conocidas(string file)
+    {
+        var known = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, file));
+        var plan = new Planner(TestData.GameData, AssistedGenerator.Settings(TestData.GameData, RealMaps, known)).Simulate(known);
+        string[] ages = ["feudal_age", "castle_age", "imperial_age"];
+        for (var i = 1; i < ages.Length; i++)
+        {
+            if (plan.Steps.FirstOrDefault(s => s.Step.What == ages[i])?.End is not { } knownEnd)
+                break;
+            foreach (var goals in new[] { ages.Take(i + 1).Select(a => Age(a)).ToArray(), [Age(ages[i])] })
+            {
+                var result = Generator.Generate(Assisted(known.Civ, 120, goals));
+                var end = result.Plan.Steps.First(s => s.Step.What == ages[i]).End;
+                Assert.True(end <= knownEnd, $"{ages[i]} con {goals.Length} objetivos: {GameClock.Format(end ?? 0)} contra {GameClock.Format(knownEnd)} de la BO");
+            }
+        }
     }
 
     [Fact]

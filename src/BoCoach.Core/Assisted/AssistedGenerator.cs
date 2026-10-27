@@ -24,7 +24,7 @@ public sealed record AssistedResult(
 public sealed class AssistedGenerator(GameData data, Maps maps)
 {
     /// <summary>La versión del generador: si cambia, la misma BO puede salir con otros pasos.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     /// <summary>Cómo simula el modo asistido: con la comida del mapa de la BO.</summary>
     public static PlannerSettings Settings(GameData data, Maps maps, BuildOrder bo) =>

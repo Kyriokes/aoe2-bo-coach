@@ -168,6 +168,13 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// </summary>
     public ResourceAmounts Foreseen { get; set; }
 
+    /// <summary>
+    /// Lo que pide la edad que sigue a la del clic de ahora (la madera de sus 2 edificios, su oro y su piedra): mientras
+    /// se investiga la edad no salen aldeanos, así que los que salen antes del clic ya van a eso. Guía el reparto
+    /// después de lo de ahora, sin apartar stock.
+    /// </summary>
+    public ResourceAmounts Ahead { get; set; }
+
     /// <summary>Hasta cuántos aldeanos entran antes del próximo clic de edad (null = sin clic cerca).</summary>
     public int? VillagersBeforeClick { get; set; }
 

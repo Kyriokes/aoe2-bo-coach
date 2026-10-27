@@ -28,6 +28,7 @@ internal sealed class AgeRule : IGoalRule
         var entity = state.Data.Get(tech);
         var cost = state.Civ.Cost(entity, view.Age);
         state.Planned += cost;
+        state.Ahead += AheadOf(view, state, tech, active);
 
         var steps = new List<Step>();
         var atPop = tech == goal.Age ? goal.AtPop : null;
@@ -100,15 +101,84 @@ internal sealed class AgeRule : IGoalRule
         }
 
         var toAffordSeconds = SecondsToAfford(view, cost) ?? 0;
-        if (ready && !double.IsInfinity(toAffordSeconds))
+        if (!ready && soon)
         {
-            // Los aldeanos que entran antes de juntar el costo, después de los que ya están en la cola.
-            state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling((toAffordSeconds - queueWait) / state.VillagerInterval(view)), 0, VillagerRule.MaxTramo * state.TownCenters(view));
+            // Los edificios que faltan ya se están por pedir: el clic sale cuando se junta su madera y se terminan, y el
+            // tramo de aldeanos de ahora se corta igual (si no, el clic esperaba un tramo entero al centro urbano).
+            toAffordSeconds = ReadySeconds(view, state, tech, cost);
+        }
+        if ((ready || soon) && !double.IsInfinity(toAffordSeconds))
+        {
+            // Los aldeanos que entran antes del clic, después de los que ya están en la cola, sin atrasarlo.
+            var villager = state.Civ.Cost(state.Data.Get("villager"), view.Age);
+            state.VillagersBeforeClick = VillagersBefore(view, state, n =>
+                ready ? SecondsToAfford(view, cost + villager * n) ?? 0 : ReadySeconds(view, state, tech, cost + villager * n), queueWait);
         }
         // Que la consulten cuando alcance, aunque no nazca nadie (ya se llegó a los aldeanos que pide la BO).
         state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(Math.Max(toAffordSeconds, queueWait)))));
         steps.AddRange(Rebalance(view, state, tech, cost, waiting: false));
         return steps;
+    }
+
+    /// <summary>
+    /// Cuántos aldeanos entran antes del clic: se suman mientras terminen antes de que se pueda hacer clic, con su comida
+    /// sumada al costo (<paramref name="readySeconds"/> con n aldeanos): cada uno lo atrasa. Las guías de castillo rápido
+    /// cortan los aldeanos así; antes entraban los que salían mientras se juntaba el costo, y el clic esperaba su comida.
+    /// </summary>
+    private static int VillagersBefore(PlanView view, GoalState state, Func<int, double> readySeconds, double queueWait)
+    {
+        var max = VillagerRule.MaxTramo * state.TownCenters(view);
+        var interval = state.VillagerInterval(view);
+        var n = 0;
+        while (n < max && queueWait + (n + 1) * interval <= readySeconds(n + 1))
+            n++;
+        return n;
+    }
+
+    /// <summary>
+    /// Cuántos segundos faltan para poder hacer clic en <paramref name="tech"/> cuando todavía faltan sus edificios: juntar
+    /// el costo y la madera de los que faltan, y construirlos.
+    /// </summary>
+    private static double ReadySeconds(PlanView view, GoalState state, string tech, ResourceAmounts cost)
+    {
+        var keys = Keys(view, state, pending: true);
+        var total = cost;
+        var build = 0.0;
+        for (var k = BuildOrderValidator.AgeUpProgress(tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
+        {
+            total += state.Cost(view, building);
+            build = Math.Max(build, state.Civ.Time(state.Data.Get(building), view.Age));
+            keys.Add(building);
+        }
+        return Math.Max(SecondsToAfford(view, total) ?? 0, build);
+    }
+
+    /// <summary>
+    /// Lo que va a pedir la edad siguiente a <paramref name="tech"/> si el objetivo activo llega a ella: la madera de sus 2
+    /// edificios más baratos, su oro y su piedra. La comida no: la juntan los que ya están en ella mientras se investiga.
+    /// </summary>
+    private static ResourceAmounts AheadOf(PlanView view, GoalState state, string tech, int active)
+    {
+        var at = Array.IndexOf(AgeTechs, tech);
+        if (at + 1 >= AgeTechs.Length)
+            return ResourceAmounts.Zero;
+        var next = AgeTechs[at + 1];
+        // Camino a la edad del objetivo activo, o si el objetivo que sigue es la edad siguiente (Feudal y después
+        // Castillos): preparar algo de más abajo atrasaría este.
+        var goals = state.Plan.Goals;
+        var within = goals[active].Age is { } goalAge && Array.IndexOf(AgeTechs, goalAge) > at;
+        var following = active + 1 < goals.Count && goals[active + 1].Age == AgeTechs[at + 1] && goals[active + 1].AtPop is null;
+        if (!within && !following)
+            return ResourceAmounts.Zero;
+        var cost = state.Civ.Cost(state.Data.Get(next), view.Age);
+        var ahead = new ResourceAmounts(0, 0, cost.Stone, cost.Gold);
+        var keys = Keys(view, state, pending: true);
+        for (var k = BuildOrderValidator.AgeUpProgress(next, keys); k < 2 && Cheapest(view, state, next, keys) is { } building; k++)
+        {
+            ahead += state.Cost(view, building);
+            keys.Add(building);
+        }
+        return ahead;
     }
 
     /// <summary>

@@ -23,6 +23,7 @@ internal sealed class GoalPolicy(GoalState state, IReadOnlyList<IGoalRule> rules
         state.Planned = default;
         state.Upcoming = default;
         state.Foreseen = default;
+        state.Ahead = default;
         state.VillagersBeforeClick = null;
         foreach (var rule in rules)
             rule.Next(view, state);
