@@ -61,6 +61,16 @@ internal sealed class VillagerRule : IGoalRule
                 source = GatherSource.Sheep;
                 why.TryAdd(source, $"la apertura pide {state.Plan.Opening.Sheep} en las ovejas");
             }
+            else if (missing.Gold > 0 || missing.Stone > 0)
+            {
+                // El oro y la piedra del costo de la edad van primero: la producción no los usa, así que con lo que la
+                // sostiene primero nunca se juntaban (y el clic a N de población esperaba para siempre).
+                var resource = missing.Gold / Math.Max(1e-6, Rate(view, GatherSource.Gold)) >= missing.Stone / Math.Max(1e-6, Rate(view, GatherSource.Stone))
+                    ? Resource.Gold
+                    : Resource.Stone;
+                source = SourceFor(resource, state);
+                why.TryAdd(source, $"faltan {Math.Ceiling(missing[resource]):0} de {Name(resource)} para el objetivo");
+            }
             else if (Resources.Any(res => sustain[res] > 0))
             {
                 var resource = Neediest(sustain, view, state);
