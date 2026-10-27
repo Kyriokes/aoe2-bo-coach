@@ -32,6 +32,12 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     public bool OpeningDone { get; set; }
 
+    /// <summary>
+    /// La población a la que se hace clic en cada edad cuando el objetivo no la fija: la que eligió la búsqueda de
+    /// <see cref="AssistedGenerator"/> (con más aldeanos el clic llega más tarde). Sin la edad, sin parar hasta el costo.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> ClickPops { get; init; } = new Dictionary<string, int>();
+
     private static readonly string[] AgeTechs = ["feudal_age", "castle_age", "imperial_age"];
 
     /// <summary>Los objetivos que no se pueden, con el motivo (por índice): la civ no los tiene, o piden una edad que ningún objetivo de antes pide.</summary>

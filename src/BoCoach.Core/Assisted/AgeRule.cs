@@ -31,7 +31,8 @@ internal sealed class AgeRule : IGoalRule
         state.Ahead += AheadOf(view, state, tech, active);
 
         var steps = new List<Step>();
-        var atPop = tech == goal.Age ? goal.AtPop : null;
+        var fixedPop = tech == goal.Age ? goal.AtPop : null;
+        var atPop = fixedPop ?? (state.ClickPops.TryGetValue(tech, out var chosen) ? chosen : null);
         // Los 2 edificios se piden recién en la edad que los tiene (los de Feudal, en Feudal): pedidos mientras se sube,
         // esperan la edad y frenan el "mover" de la comida que se acaba.
         var soon = view.Age >= BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires && (atPop is { } target
@@ -77,7 +78,9 @@ internal sealed class AgeRule : IGoalRule
             else if (buildings && Affordable(view, cost, 0))
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech, AtPop = pop },
-                    $"Clic en {StepText.Name(tech)} a {pop} de población, como pide el objetivo"));
+                    fixedPop is not null
+                        ? $"Clic en {StepText.Name(tech)} a {pop} de población, como pide el objetivo"
+                        : $"Clic en {StepText.Name(tech)} a {pop} de población: es la que llega antes (con más aldeanos el clic se atrasa)"));
             }
             else
             {

@@ -651,7 +651,8 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         var before = Generator.Generate(Assisted("franks", 120, goals));
         var after = Generator.Generate(Assisted("franks", 120, [.. goals, Age("imperial_age")]));
 
-        for (var i = 0; i < goals.Length; i++)
+        // Menos el que era el último: ese tenía la población de clic buscada (SearchClickPops) y ya no es el último.
+        for (var i = 0; i < goals.Length - 1; i++)
             Assert.True(after.Goals[i].End <= before.Goals[i].End + 10, $"objetivo {i}: {after.Goals[i].End} contra {before.Goals[i].End}");
     }
 
@@ -765,6 +766,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         watch.Stop();
 
         output.WriteLine($"{watch.ElapsedMilliseconds} ms");
-        Assert.True(watch.ElapsedMilliseconds < 250, $"{watch.ElapsedMilliseconds} ms");
+        // Con la búsqueda de la población de clic (2026-10-27) son varias simulaciones: unos 750 ms acá y 1 s en la web.
+        Assert.True(watch.ElapsedMilliseconds < 1500, $"{watch.ElapsedMilliseconds} ms");
     }
 }
