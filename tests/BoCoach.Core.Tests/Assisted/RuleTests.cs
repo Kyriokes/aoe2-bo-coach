@@ -144,10 +144,16 @@ public class RuleTests
 
         var steps = new FoodRule().Next(view, state);
 
+        // Uno de los cazadores hace el molino; sin el molino terminado no hay granjas, así que los otros 5 van a la madera.
         Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "mill" });
-        // Uno de los cazadores hace el molino: los otros 5, una granja cada uno (el del molino, en la consulta siguiente).
-        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 5, From: GatherSource.Hunt, Assign: GatherSource.Farm });
+        Assert.Contains(steps, s => s is { Do: StepAction.Move, Count: 5, From: GatherSource.Hunt, Assign: GatherSource.Wood });
         Assert.Equal(GatherSource.Farm, state.FoodSource);
+
+        // Con el molino hecho, una granja cada uno.
+        state = State();
+        state.FoodSource = GatherSource.Hunt;
+        steps = new FoodRule().Next(view with { Buildings = new Dictionary<string, int> { ["mill"] = 1 } }, state);
+        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 6, From: GatherSource.Hunt, Assign: GatherSource.Farm });
     }
 
     [Theory]
@@ -205,7 +211,10 @@ public class RuleTests
         };
 
         var steps = new AgeRule().Next(view, State("franks", plan));
+        Assert.True(steps.Any(s => s is { Do: StepAction.Build, What: "barracks" }), string.Join(", ", steps.Select(s => $"{s.Do} {s.What}"))); // el establo lo pide
 
+        var withBarracks = view with { Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["blacksmith"] = 1, ["barracks"] = 1 } };
+        steps = new AgeRule().Next(withBarracks, State("franks", plan));
         Assert.True(steps.Any(s => s is { Do: StepAction.Build, What: "stable" }), string.Join(", ", steps.Select(s => $"{s.Do} {s.What}")));
     }
 
@@ -228,11 +237,16 @@ public class RuleTests
             Rates = Rates,
         };
 
-        var first = new UnitRule().Next(View(new() { ["town_center"] = 1 }, []), State("franks", plan));
+        // El establo pide el cuartel terminado: primero el cuartel, y mientras se construye, nada.
+        var barracks = new UnitRule().Next(View(new() { ["town_center"] = 1 }, []), State("franks", plan));
+        Assert.Contains(barracks, s => s is { Do: StepAction.Build, What: "barracks" });
+        Assert.Empty(new UnitRule().Next(View(new() { ["town_center"] = 1 }, new() { ["barracks"] = 1 }), State("franks", plan)));
+
+        var first = new UnitRule().Next(View(new() { ["town_center"] = 1, ["barracks"] = 1 }, []), State("franks", plan));
         Assert.Contains(first, s => s is { Do: StepAction.Build, What: "stable" });
         Assert.DoesNotContain(first, s => s.Do == StepAction.Train);
 
-        var then = new UnitRule().Next(View(new() { ["town_center"] = 1, ["stable"] = 1 }, new() { ["stable"] = 1 }), State("franks", plan));
+        var then = new UnitRule().Next(View(new() { ["town_center"] = 1, ["barracks"] = 1, ["stable"] = 1 }, new() { ["stable"] = 1 }), State("franks", plan));
         Assert.Contains(then, s => s is { Do: StepAction.Train, What: "scout_cavalry", Count: 20 });
         Assert.DoesNotContain(then, s => s.Do == StepAction.Build);
     }

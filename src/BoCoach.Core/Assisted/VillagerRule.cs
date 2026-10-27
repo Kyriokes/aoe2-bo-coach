@@ -55,7 +55,7 @@ internal sealed class VillagerRule : IGoalRule
                 sustain += state.Cost(view, camp);
         }
         var missing = sustain + state.Planned + state.Ahead;
-        var farms = state.Farm is null ? 0 : state.AffordableCount(view, state.Cost(view, "farm"));
+        var farms = !state.FarmsReady(view) ? 0 : state.AffordableCount(view, state.Cost(view, "farm"));
 
         // El reparto, de a uno: las ovejas hasta lo que pide la apertura y después lo que más falta.
         var order = new List<GatherSource>();

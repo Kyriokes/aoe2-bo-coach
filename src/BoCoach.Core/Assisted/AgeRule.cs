@@ -37,20 +37,28 @@ internal sealed class AgeRule : IGoalRule
         var soon = view.Age >= BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires && (atPop is { } target
             ? Math.Max(0, target - view.Population) * state.VillagerInterval(view) <= RequirementLeadSeconds
             : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds);
-        if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
-            && Cheapest(view, state, tech) is { } building && !state.Affordable(view, state.Cost(view, building)))
+        if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2 && Cheapest(view, state, tech) is { } building)
         {
-            state.Upcoming += state.Cost(view, building); // sale cuando alcanza
-        }
-        else if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
-            && Cheapest(view, state, tech) is { } affordable)
-        {
-            building = affordable;
-            var from = state.Builder(view);
-            var requirement = BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires;
-            steps.Add(state.Add(
-                new Step { Id = state.NewId(), Do = StepAction.Build, What = building, From = from, Assign = from ?? GatherSource.Wood },
-                $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}"));
+            // Primero lo que pide antes (el cuartel de la galería); si ya está en obra, se espera a que termine.
+            var first = state.ToBuild(view, building);
+            if (first is null)
+            {
+                state.WakeMeAt(view.Time + 5);
+            }
+            else if (!state.Affordable(view, state.Cost(view, first)))
+            {
+                state.Upcoming += state.Cost(view, first); // sale cuando alcanza
+            }
+            else
+            {
+                var from = state.Builder(view);
+                var requirement = BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires;
+                steps.Add(state.Add(
+                    new Step { Id = state.NewId(), Do = StepAction.Build, What = first, From = from, Assign = from ?? GatherSource.Wood },
+                    first != building
+                        ? $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}, que pide antes {StepText.Name(first)}"
+                        : $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}"));
+            }
         }
 
         if (atPop is { } pop)
@@ -146,7 +154,7 @@ internal sealed class AgeRule : IGoalRule
         var build = 0.0;
         for (var k = BuildOrderValidator.AgeUpProgress(tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
         {
-            total += state.Cost(view, building);
+            total += state.CostWithRequirements(view, building);
             build = Math.Max(build, state.Civ.Time(state.Data.Get(building), view.Age));
             keys.Add(building);
         }
@@ -163,19 +171,16 @@ internal sealed class AgeRule : IGoalRule
         if (at + 1 >= AgeTechs.Length)
             return ResourceAmounts.Zero;
         var next = AgeTechs[at + 1];
-        // Camino a la edad del objetivo activo, o si el objetivo que sigue es la edad siguiente (Feudal y después
-        // Castillos): preparar algo de más abajo atrasaría este.
-        var goals = state.Plan.Goals;
-        var within = goals[active].Age is { } goalAge && Array.IndexOf(AgeTechs, goalAge) > at;
-        var following = active + 1 < goals.Count && goals[active + 1].Age == AgeTechs[at + 1] && goals[active + 1].AtPop is null;
-        if (!within && !following)
+        // Solo camino a la edad del objetivo activo: preparar la de un objetivo de más abajo atrasaba a este hasta 42 s
+        // (spec: agregar un objetivo al final no atrasa a los de arriba).
+        if (state.Plan.Goals[active].Age is not { } goalAge || Array.IndexOf(AgeTechs, goalAge) <= at)
             return ResourceAmounts.Zero;
         var cost = state.Civ.Cost(state.Data.Get(next), view.Age);
         var ahead = new ResourceAmounts(0, 0, cost.Stone, cost.Gold);
         var keys = Keys(view, state, pending: true);
         for (var k = BuildOrderValidator.AgeUpProgress(next, keys); k < 2 && Cheapest(view, state, next, keys) is { } building; k++)
         {
-            ahead += state.Cost(view, building);
+            ahead += state.CostWithRequirements(view, building);
             keys.Add(building);
         }
         return ahead;
@@ -222,7 +227,7 @@ internal sealed class AgeRule : IGoalRule
         var keys = Keys(view, state, pending: true);
         for (var k = BuildOrderValidator.AgeUpProgress(tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
         {
-            need += state.Cost(view, building);
+            need += state.CostWithRequirements(view, building);
             keys.Add(building);
         }
         var gathered = Gathered(view, RebalanceSeconds);
@@ -312,7 +317,7 @@ internal sealed class AgeRule : IGoalRule
     {
         return BuildOrderValidator.AgeUpRequirement(tech)!.Value.Buildings
             .Where(b => b is not ("dock" or "castle") && !keys.Contains(b) && state.Data.CanMake(state.Civ.Key, b) && state.Data.TryGet(b, out _))
-            .Select((b, i) => (b, i, cost: Total(state.Civ.Cost(state.Data.Get(b), view.Age))))
+            .Select((b, i) => (b, i, cost: Total(state.CostWithRequirements(view, b))))
             .OrderBy(x => state.WantedBuildings.Contains(x.b) ? 0 : 1).ThenBy(x => x.cost).ThenBy(x => x.i)
             .Select(x => x.b)
             .FirstOrDefault();

@@ -56,7 +56,7 @@ internal sealed class GoalRebalanceRule : IGoalRule
             };
             var rate = view.Rates.GetValueOrDefault(target);
             var missing = need[resource] - view.Stock[resource] - gathered[resource];
-            if (missing <= 0 || rate <= 0 || target == GatherSource.Farm && state.Farm is null)
+            if (missing <= 0 || rate <= 0 || target == GatherSource.Farm && !state.FarmsReady(view))
                 continue;
             var wanted = (int)Math.Ceiling(missing / (rate * seconds));
             foreach (var donor in Donors)

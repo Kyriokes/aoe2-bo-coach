@@ -81,10 +81,16 @@ internal sealed class UnitRule : IGoalRule
         var have = state.Count(view, building);
         if (have >= wanted)
             return null;
-        var cost = state.Cost(view, building);
-        if (view.Age < state.Data.Get(building).Age)
+        // Primero lo que pide antes (el cuartel de la galería); si ya está en obra, se espera a que termine.
+        if (state.ToBuild(view, building) is not { } target)
         {
-            state.Planned += cost;
+            state.WakeMeAt(view.Time + 5);
+            return null;
+        }
+        var cost = state.Cost(view, target);
+        if (view.Age < state.Data.Get(target).Age)
+        {
+            state.Planned += state.CostWithRequirements(view, building);
             return null;
         }
         if (!state.Affordable(view, cost))
@@ -95,8 +101,10 @@ internal sealed class UnitRule : IGoalRule
         var from = state.Builder(view);
         var count = goal.Count ?? 1;
         return state.Add(
-            new Step { Id = state.NewId(), Do = StepAction.Build, What = building, From = from, Assign = from ?? GatherSource.Wood },
-            $"{Capitalize(StepText.Name(building))} {have + 1} de {wanted} para {count} {StepText.Name(unit, count)}");
+            new Step { Id = state.NewId(), Do = StepAction.Build, What = target, From = from, Assign = from ?? GatherSource.Wood },
+            target != building
+                ? $"{Capitalize(StepText.Name(target))}: {StepText.Name(building)} lo pide antes, para {count} {StepText.Name(unit, count)}"
+                : $"{Capitalize(StepText.Name(building))} {have + 1} de {wanted} para {count} {StepText.Name(unit, count)}");
     }
 
     private static string Capitalize(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];

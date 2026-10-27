@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BoCoach.Core.Assisted;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 
@@ -128,7 +129,7 @@ public class BuildOrderAnalysisTests
         var steps = r.GetProperty("steps").EnumerateArray().ToList();
         Assert.NotEmpty(steps);
         var assisted = r.GetProperty("assisted");
-        Assert.Equal(1, assisted.GetProperty("version").GetInt32());
+        Assert.Equal(AssistedGenerator.Version, assisted.GetProperty("version").GetInt32());
         Assert.False(assisted.GetProperty("regenerated").GetBoolean());
         Assert.All(steps, s => Assert.False(string.IsNullOrEmpty(assisted.GetProperty("reasons").GetProperty(s.GetProperty("id").GetString()!).GetString())));
         Assert.Equal(JsonValueKind.Number, assisted.GetProperty("goals")[0].GetProperty("end").ValueKind);

@@ -217,7 +217,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         Assert.Empty(result.Problems);
         var researched = result.BuildOrder.Steps.Where(s => s.Do == StepAction.Research).Select(s => s.What).ToList();
         Assert.Contains("double_bit_axe", researched);
-        // La minería de oro, solo con 3 mineros o más: el oro de Castillos lo juntan 2 desde que el reparto lo prevé en la Edad Oscura.
+        Assert.Contains("gold_mining", researched);
         Assert.Contains("wheelbarrow", researched);
         Assert.DoesNotContain("horse_collar", researched); // a los francos les sale gratis
         Assert.True(researched.IndexOf("loom") is >= 0 and var loom && loom < researched.IndexOf("feudal_age"), string.Join(", ", researched));
@@ -613,6 +613,35 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
             Assert.True(after.Goals[i].End <= before.Goals[i].End + 10, $"objetivo {i}: {after.Goals[i].End} contra {before.Goals[i].End}");
     }
 
+    /// <summary>
+    /// Pedido del usuario (2026-10-27): "está construyendo una galería de tiro sin cuartel". En todas las civs, con
+    /// arqueros, exploradores y taller de asedio, cada edificio que pide otro (galería y establo el cuartel, taller la
+    /// herrería, granja y mercado el molino) lo tiene terminado antes, y la BO llega a todo.
+    /// </summary>
+    [Fact]
+    public void Ningun_edificio_sale_sin_el_que_pide_antes()
+    {
+        // Sin los kitanos: sin granjas en los datos se quedan sin comida (Sin_granjas_en_los_datos_no_las_pide_y_lo_avisa).
+        foreach (var civ in TestData.GameData.Civs.Keys.Where(c => TestData.GameData.CanMake(c, "farm")).Append("any"))
+        {
+            var result = Generator.Generate(Assisted(civ, 60, Age("feudal_age"), Units("archer", 10, 2), Units("scout_cavalry", 5, 1),
+                Age("castle_age"), Units("battering_ram", 2, 1)));
+            var warnings = new BuildOrderValidator(TestData.GameData, TestData.Events).Validate(result.BuildOrder).Warnings;
+            Assert.DoesNotContain(warnings, w => w.Message.Contains("terminado"));
+            foreach (var step in result.Plan.Steps.Where(s => s.Step.Do == StepAction.Build && s.Start is not null))
+            {
+                var required = TestData.GameData.Civ(civ).Requires(TestData.GameData.Get(step.Step.What!));
+                if (required is null)
+                    continue;
+                var done = result.Plan.Buildings.Where(b => b.Key == required || TestData.GameData.Get(b.Key).CountsAs.Contains(required))
+                    .Select(b => b.Built ?? double.MaxValue).DefaultIfEmpty(double.MaxValue).Min();
+                Assert.True(done <= step.Start, $"{civ}: {step.Step.What} a las {GameClock.Format(step.Start!.Value)} y {required} a las {GameClock.Format(done)}");
+            }
+            // Lo que no se cumple es lo que la civ no tiene (incas sin establo, por ejemplo).
+            Assert.All(result.Goals, g => Assert.True(g.End is not null || g.Problem?.Contains("no tiene") == true, $"{civ}, objetivo {g.Index}: {g.Problem}"));
+        }
+    }
+
     public static TheoryData<string> KnownBuildOrders()
     {
         var data = new TheoryData<string>();
@@ -624,9 +653,10 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
 
     /// <summary>
     /// Pedido del usuario (2026-10-27): "si le digo que vaya a Castillos lo más rápido posible, de mínima tiene que igualar
-    /// a las BO conocidas". Para Castillos e Imperial, si una BO conocida llega, el asistido con las edades hasta esa como
-    /// objetivos (de a una, y solo la última) llega antes o igual, con la misma civ y la misma comida. Feudal sola todavía
-    /// no: las guías de Feudal rápida suben con 15 a 19 de población y el reparto sigue sacando aldeanos (PLAN.md, D12).
+    /// a las BO conocidas". Para Castillos e Imperial, si una BO conocida llega, el asistido con esa edad como único
+    /// objetivo llega antes o igual, con la misma civ y la misma comida. Con las edades de antes como objetivos aparte,
+    /// cada una va primero lo más rápido posible (spec: lo de arriba tiene prioridad) y la última puede llegar más tarde.
+    /// Feudal sola todavía no: las guías de Feudal rápida suben con 15 a 19 de población (PLAN.md, D12).
     /// </summary>
     [Theory]
     [MemberData(nameof(KnownBuildOrders))]
@@ -639,12 +669,9 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         {
             if (plan.Steps.FirstOrDefault(s => s.Step.What == ages[i])?.End is not { } knownEnd)
                 break;
-            foreach (var goals in new[] { ages.Take(i + 1).Select(a => Age(a)).ToArray(), [Age(ages[i])] })
-            {
-                var result = Generator.Generate(Assisted(known.Civ, 120, goals));
-                var end = result.Plan.Steps.First(s => s.Step.What == ages[i]).End;
-                Assert.True(end <= knownEnd, $"{ages[i]} con {goals.Length} objetivos: {GameClock.Format(end ?? 0)} contra {GameClock.Format(knownEnd)} de la BO");
-            }
+            var result = Generator.Generate(Assisted(known.Civ, 120, Age(ages[i])));
+            var end = result.Plan.Steps.First(s => s.Step.What == ages[i]).End;
+            Assert.True(end <= knownEnd, $"{ages[i]}: {GameClock.Format(end ?? 0)} contra {GameClock.Format(knownEnd)} de la BO");
         }
     }
 

@@ -100,7 +100,8 @@ internal sealed class FoodRule : IGoalRule
                     $"A {StepText.Source(state.FoodSource)}: {why}"));
                 continue;
             }
-            var farms = state.Farm is null ? 0 : Math.Min(on, state.AffordableCount(view, farmCost));
+            // Sin el molino terminado no se pueden poner: un paso de granjas esperaría delante de los demás.
+            var farms = !state.FarmsReady(view) ? 0 : Math.Min(on, state.AffordableCount(view, farmCost));
             if (farms > 0)
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = "farm", Count = farms, From = old, Assign = GatherSource.Farm },

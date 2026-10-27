@@ -359,6 +359,35 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     /// <summary>Si el edificio está hecho, en obra o pedido.</summary>
     public bool HasOrWillHave(PlanView view, string key) => view.Buildings.GetValueOrDefault(key) > 0 || Building(view, key);
+
+    /// <summary>
+    /// Lo que hay que construir ahora para llegar a <paramref name="building"/>: él mismo, o el primero que falta de lo
+    /// que pide antes (la galería de tiro pide el cuartel terminado). Null si lo que pide ya está en obra o pedido: el
+    /// paso esperaría delante de los demás y los frenaría.
+    /// </summary>
+    public string? ToBuild(PlanView view, string building)
+    {
+        var key = building;
+        while (Data.TryGet(key, out var entity) && Civ.Requires(entity) is { } required && view.Buildings.GetValueOrDefault(required) == 0)
+        {
+            if (Building(view, required) || view.UnderConstruction.GetValueOrDefault(required) > 0)
+                return null;
+            key = required;
+        }
+        return key;
+    }
+
+    /// <summary>Lo que cuesta <paramref name="building"/> con lo que pide antes y todavía no está ni pedido.</summary>
+    public ResourceAmounts CostWithRequirements(PlanView view, string building)
+    {
+        var cost = Cost(view, building);
+        for (var key = building; Data.TryGet(key, out var entity) && Civ.Requires(entity) is { } required && !HasOrWillHave(view, required); key = required)
+            cost += Cost(view, required);
+        return cost;
+    }
+
+    /// <summary>Si ya se pueden poner granjas: la civ las tiene y lo que piden (el molino) está terminado.</summary>
+    public bool FarmsReady(PlanView view) => Farm is { } farm && ToBuild(view, farm) == farm;
 }
 
 /// <summary>Los edificios de cada civ: lo que construye para cumplir una clave (el asentamiento de los incas, el carro de mulas).</summary>

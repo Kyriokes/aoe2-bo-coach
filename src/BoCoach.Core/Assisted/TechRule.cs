@@ -29,13 +29,21 @@ internal sealed class TechRule : IGoalRule
 
         if (building != BuildOrderValidator.StartingBuilding && state.Count(view, building) == 0)
         {
-            var buildingCost = state.Cost(view, building);
-            if (view.Age >= state.Data.Get(building).Age && state.Affordable(view, buildingCost))
+            // Primero lo que pide antes el edificio (el cuartel del establo); si ya está en obra, se espera.
+            if (state.ToBuild(view, building) is not { } target)
+            {
+                state.WakeMeAt(view.Time + 5);
+                return [];
+            }
+            var buildingCost = state.Cost(view, target);
+            if (view.Age >= state.Data.Get(target).Age && state.Affordable(view, buildingCost))
             {
                 var from = state.Builder(view);
                 return [state.Add(
-                    new Step { Id = state.NewId(), Do = StepAction.Build, What = building, From = from, Assign = from ?? GatherSource.Wood },
-                    $"{Capitalize(StepText.Name(building))} para {StepText.Name(tech)}")];
+                    new Step { Id = state.NewId(), Do = StepAction.Build, What = target, From = from, Assign = from ?? GatherSource.Wood },
+                    target != building
+                        ? $"{Capitalize(StepText.Name(target))}: {StepText.Name(building)} lo pide antes, para {StepText.Name(tech)}"
+                        : $"{Capitalize(StepText.Name(building))} para {StepText.Name(tech)}")];
             }
             state.Upcoming += buildingCost;
             return [];
