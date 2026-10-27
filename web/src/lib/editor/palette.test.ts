@@ -75,7 +75,7 @@ describe("paleta como en el juego", () => {
     expect(unavailableHere(item("man_at_arms"), BO, BO.length, data)).toBeNull();
     expect(unavailableHere(item("stable"), BO, BO.length, data)).toBeNull();
     expect(unavailableHere(item("knight"), BO, BO.length, data)).toBe("Recién después del clic en Castillos");
-    expect(unavailableHere(item("castle_age"), BO, BO.length, data)).toBe("faltan 2 edificios de Feudal antes (galería de tiro, establo, herrería, mercado)");
+    expect(unavailableHere(item("castle_age"), BO, BO.length, data)).toBe("Faltan 2 edificios de Feudal en la BO (galería de tiro, establo, herrería, mercado)");
     expect(unavailableHere(item("scout_cavalry"), BO, BO.length, data)).toBe("falta un establo en la BO");
     const withStable = [...BO, step("s8", { do: "build", what: "stable", from: "wood", assign: "wood" })];
     expect(unavailableHere(item("castle_age"), withStable, withStable.length, data)).toBeNull();

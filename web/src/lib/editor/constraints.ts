@@ -188,6 +188,9 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
       if (p >= 0) {
         const have = req.buildings.filter((b) => built[Math.min(p, n)].has(b) || fromBlock.includes(b));
         raise(p, `Recién con 2 edificios de ${AGE_LABEL[req.requires]} antes (${have.map((b) => entityName(b, 1)).join(", ")})`);
+      } else {
+        // Sin 2 en ninguna parte de la BO no hay lugar: el juego no deja hacer clic (y el simulador lo espera para siempre).
+        raise(n + 1, `Faltan 2 edificios de ${AGE_LABEL[req.requires]} en la BO (${req.buildings.filter((b) => b !== "dock").map((b) => entityName(b, 1)).join(", ")})`);
       }
     }
 

@@ -119,6 +119,14 @@ describe("allowedRange", () => {
     expect(allowedRange(castle, [research("i", "imperial_age")], data, label).lo).toBe(3);
   });
 
+  it("(e) sin 2 edificios de la edad en ningún lado de la BO, el clic no tiene lugar", () => {
+    // Pedido del usuario: "hice una BO que subía a Castillos solo con galería y cuartel" (el cuartel es de la Edad Oscura).
+    const onlyRange = [research("f", "feudal_age"), build("b", "barracks"), build("a", "archery_range")];
+    const range = allowedRange(onlyRange, [research("c", "castle_age")], data, label);
+    expect(range.lo).toBeGreaterThan(range.hi);
+    expect(range.loReason).toBe("Faltan 2 edificios de Feudal en la BO (galería de tiro, establo, herrería, mercado)");
+  });
+
   it("(f) los límites caen en bordes de cadena", () => {
     const range = allowedRange(without("s2"), [bo[2]], data, label);
     // s4+s5 van juntos (índices 3 y 4 de los demás): el índice 4 no es un borde.
