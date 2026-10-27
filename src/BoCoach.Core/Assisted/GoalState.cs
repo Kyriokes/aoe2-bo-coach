@@ -243,7 +243,12 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// esta consulta. El generador agrega un edificio solo cuando alcanza: en el Planner lo que no es aldeanos arranca en
     /// orden, y un edificio esperando madera frenaría detrás un "mover" de comida.
     /// </summary>
-    public bool Affordable(PlanView view, ResourceAmounts cost) => Available(view).Covers(cost);
+    public bool Affordable(PlanView view, ResourceAmounts cost)
+    {
+        // Solo los recursos que pide: lo reservado de madera (las granjas que vienen) no frena lo que se paga con oro.
+        var available = Available(view);
+        return Enum.GetValues<Resource>().All(r => cost[r] <= 0 || available[r] >= cost[r]);
+    }
 
     /// <summary>Cuántos edificios de ese costo alcanzan ya (por la madera; las granjas).</summary>
     public int AffordableCount(PlanView view, ResourceAmounts cost) =>

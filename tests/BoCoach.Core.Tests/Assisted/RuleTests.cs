@@ -286,6 +286,17 @@ public class RuleTests
         Assert.Contains(new AgeRule().Next(view, State("franks", plan)), s => s is { Do: StepAction.Research, What: "castle_age" });
     }
 
+    [Fact]
+    public void Lo_reservado_de_madera_no_frena_lo_que_se_paga_con_oro()
+    {
+        var state = State();
+        state.Upcoming = new ResourceAmounts(0, 500, 0, 0); // las granjas que vienen
+        var view = new PlanView { Stock = new ResourceAmounts(0, 100, 0, 100) };
+
+        Assert.True(state.Affordable(view, new ResourceAmounts(0, 0, 0, 50)));
+        Assert.False(state.Affordable(view, new ResourceAmounts(0, 60, 0, 0)));
+    }
+
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
 
     [Theory]
