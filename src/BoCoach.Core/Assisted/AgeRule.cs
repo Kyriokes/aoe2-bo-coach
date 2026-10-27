@@ -13,9 +13,6 @@ internal sealed class AgeRule : IGoalRule
 {
     private static readonly string[] AgeTechs = ["feudal_age", "castle_age", "imperial_age"];
 
-    /// <summary>Lo que tarda en salir el aldeano que está en producción: lo que se junta antes de que el centro urbano quede libre.</summary>
-    public const double ClickLeadSeconds = 25;
-
     /// <summary>
     /// Cuánto antes de tener el costo se piden los edificios que faltan para la edad: antes, los que salen solos
     /// (campamento, molino) suelen alcanzar, y pedirlos de entrada le saca la madera al resto.
@@ -77,14 +74,12 @@ internal sealed class AgeRule : IGoalRule
         }
 
         var ready = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: false)) >= 2;
-        // El clic se adelanta lo que tarda el aldeano en producción, salvo que mientras espera (a juntar el costo o a que
-        // el centro urbano termine su cola) haya que mover a los de una comida que se acaba: el "mover" quedaría detrás
-        // del clic (y si la comida no llegaba al costo, la BO quedaba trabada para siempre). Entonces el clic va recién
-        // con el centro urbano libre y el costo juntado. Lo que se espera juntar cuenta solo la comida salvaje que queda.
+        // El clic va con el centro urbano libre y el costo juntado: agregado antes, esperaría en la cola (detrás de los
+        // aldeanos o del costo) y frenaría lo que se agrega detrás, como el "mover" de la comida que se acaba (y si la
+        // comida no llegaba al costo, la BO quedaba trabada para siempre). Para que el centro urbano no pare, el último
+        // tramo antes del clic se corta para terminar cuando se junta el costo.
         var queueWait = (view.InProduction + state.QueuedVillagers(view)) * state.VillagerTime(view.Age);
-        var blocksFood = FoodRule.ActsWithin(view, state, Math.Max(queueWait, ClickLeadSeconds));
-        var lead = blocksFood ? 0 : ClickLeadSeconds;
-        if (ready && Affordable(view, cost, lead) && (!blocksFood || queueWait == 0))
+        if (ready && queueWait == 0 && Affordable(view, cost, 0))
         {
             steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
                 $"Clic en {StepText.Name(tech)}: alcanza el costo"));
@@ -94,11 +89,11 @@ internal sealed class AgeRule : IGoalRule
         var toAffordSeconds = SecondsToAfford(view, cost) ?? 0;
         if (ready && !double.IsInfinity(toAffordSeconds))
         {
-            // Que el clic no quede en la cola detrás de un tramo largo de aldeanos.
-            state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling(toAffordSeconds / state.VillagerTime(view.Age)), 1, VillagerRule.MaxTramo);
+            // Los aldeanos que entran antes de juntar el costo, después de los que ya están en la cola.
+            state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling((toAffordSeconds - queueWait) / state.VillagerTime(view.Age)), 0, VillagerRule.MaxTramo);
         }
         // Que la consulten cuando alcance, aunque no nazca nadie (ya se llegó a los aldeanos que pide la BO).
-        state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(toAffordSeconds - lead))));
+        state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(Math.Max(toAffordSeconds, queueWait)))));
         steps.AddRange(Rebalance(view, state, tech, cost));
         return steps;
     }

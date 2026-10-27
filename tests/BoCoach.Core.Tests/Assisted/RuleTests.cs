@@ -208,8 +208,8 @@ public class RuleTests
     }
 
     [Theory]
-    [InlineData(480, true)]
-    [InlineData(300, false)]
+    [InlineData(500, true)]
+    [InlineData(480, false)] // falta poco, pero el clic no espera en la cola: va cuando se puede pagar
     public void El_clic_va_cuando_alcanza(double food, bool clicks)
     {
         var view = new PlanView
