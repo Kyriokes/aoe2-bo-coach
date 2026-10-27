@@ -296,6 +296,22 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
+    [Theory]
+    [InlineData("aztecs", 60)]
+    [InlineData("aztecs", 100)]
+    [InlineData("franks", 100)]
+    public void Con_tres_centros_urbanos_la_tanda_no_pasa_el_tope_de_poblacion(string civ, int until)
+    {
+        // Revisión del (d): con 3 centros urbanos una tanda de hasta 18 topaba con la población, y la granja de esa tanda
+        // (que espera a sus granjeros) frenaba la casa que la destrababa.
+        var result = Generator.Generate(Assisted(civ, until, Age("feudal_age"), Age("castle_age"), new AssistedGoal { TownCenters = 3 }, Age("imperial_age")));
+
+        Assert.Empty(result.Problems);
+        var villagerIds = VillagerSteps(result).Select(s => s.Id).ToHashSet();
+        Assert.Equal(0, result.Plan.Blocks.Where(b => villagerIds.Contains(b.StepId) && b.Reason == BlockReason.Population).Sum(b => b.Duration));
+        AssertConsistent(result);
+    }
+
     [Fact]
     public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {

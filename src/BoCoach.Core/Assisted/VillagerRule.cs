@@ -34,7 +34,15 @@ internal sealed class VillagerRule : IGoalRule
             return [];
 
         var maxTramo = MaxTramo * state.TownCenters(view);
-        var k = Math.Max(1, Math.Min(Math.Min(maxTramo, room), state.VillagersBeforeClick ?? maxTramo));
+        // Que la tanda no pase el tope con las casas que ya vienen: lo que espera población (la granja de un granjero que
+        // no puede nacer) frenaría la casa que la destraba. Sin lugar, se espera a la casa.
+        var popRoom = PopulationRoom(view, state);
+        if (popRoom <= 0)
+        {
+            state.WakeMeAt(view.Time + 10);
+            return [];
+        }
+        var k = Math.Max(1, Math.Min(Math.Min(Math.Min(maxTramo, room), popRoom), state.VillagersBeforeClick ?? maxTramo));
         // Con varios centros urbanos los aldeanos salen más seguido.
         var villagerTime = state.VillagerInterval(view);
         var horizon = Math.Clamp(k * villagerTime, 60, 180);
@@ -166,6 +174,29 @@ internal sealed class VillagerRule : IGoalRule
     }
 
     private static bool IsVillagers(Step step) => step is { Do: StepAction.Train, What: "villager" };
+
+    /// <summary>
+    /// Cuántos aldeanos más entran sin pasar el tope: el tope más lo que dan las casas y centros urbanos en obra o
+    /// pedidos, menos la población, lo que está en producción y lo que falta encolar (también las unidades).
+    /// </summary>
+    private static int PopulationRoom(PlanView view, GoalState state)
+    {
+        if (view.PopulationCap >= BuildOrderValidator.MaxPopulation)
+            return int.MaxValue;
+        var coming = 0;
+        foreach (var key in new[] { CivBuildings.For(state.Data, state.Civ, "house"), "town_center" }.OfType<string>().Distinct())
+        {
+            var bonus = state.Civ.PopBonus(state.Data.Get(key), view.Age);
+            var pending = view.UnderConstruction.GetValueOrDefault(key)
+                          + view.Steps.Where(s => s.End is null && s.Step is { Do: StepAction.Build } && s.Step.What == key).Sum(s => s.Remaining)
+                          + state.Added.Where(s => s.Do == StepAction.Build && s.What == key).Sum(s => s.Count);
+            coming += bonus * pending;
+        }
+        int Pop(Step step) => step.What is { } what && state.Data.TryGet(what, out var e) ? e.Pop : 0;
+        var queued = view.Steps.Where(s => s.End is null && s.Step.Do == StepAction.Train).Sum(s => s.Remaining * Pop(s.Step))
+                     + state.Added.Where(s => s.Do == StepAction.Train).Sum(s => s.Count * Pop(s));
+        return Math.Min(BuildOrderValidator.MaxPopulation, view.PopulationCap + coming) - view.Population - view.InProduction - queued;
+    }
 
     private static double Rate(PlanView view, GatherSource source) => view.Rates.GetValueOrDefault(source);
 
