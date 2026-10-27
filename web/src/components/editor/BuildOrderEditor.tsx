@@ -554,6 +554,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
           Manual
         </button>
       </div>
+      {plan && state.analysis && !state.analysis.valid ? <EditorSummary analysis={state.analysis} /> : null}
       {plan && data ? (
         <AssistedEditor
           plan={plan}
