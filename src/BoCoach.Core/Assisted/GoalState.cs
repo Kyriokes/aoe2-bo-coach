@@ -259,7 +259,15 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// prioridad (<see cref="Upcoming"/>, que corren antes): así una granja de 60 no se come la madera que junta el
     /// campamento de 100.
     /// </summary>
-    private ResourceAmounts Available(PlanView view) => view.Stock - Spent(view) - Upcoming;
+    private ResourceAmounts Available(PlanView view) => view.Stock - Spent(view) - Unpaid(view) - Upcoming;
+
+    /// <summary>
+    /// Lo que deben los edificios de la foto que todavía no arrancaron (la segunda casa de la apertura): si no, un
+    /// edificio nuevo contaba con esa madera, esperaba y frenaba lo de detrás.
+    /// </summary>
+    private ResourceAmounts Unpaid(PlanView view) => view.Steps
+        .Where(s => s.End is null && s.Remaining > 0 && s.Step is { Do: StepAction.Build, What: { } what } && Data.TryGet(what, out _))
+        .Aggregate(ResourceAmounts.Zero, (sum, s) => sum + Cost(view, s.Step.What!) * s.Remaining);
 
     public ResourceAmounts Cost(PlanView view, string key) => Civ.Cost(Data.Get(key), view.Age);
 

@@ -254,6 +254,20 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         Assert.Empty(centers.Problems);
     }
 
+    [Theory]
+    [InlineData("britons")]
+    [InlineData("achaemenids")]
+    public void Una_milicia_antes_de_Feudal_no_frena_la_comida(string civ)
+    {
+        // Revisión del (d): el cuartel contaba como pagable sin la segunda casa de la apertura, que todavía no se pagó;
+        // esperaba la madera y frenaba los campamentos y el "mover" de las ovejas.
+        var result = Generator.Generate(Assisted(civ, 60, Units("militia", 6, 1), Age("feudal_age")));
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
+
     [Fact]
     public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {
