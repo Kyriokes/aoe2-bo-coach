@@ -190,7 +190,7 @@ internal sealed class VillagerRule : IGoalRule
     {
         var demand = state.Upcoming + state.Foreseen;
         foreach (var pending in view.Steps.Where(s => s.End is null && s.Remaining > 0 && !IsVillagers(s.Step)))
-            demand += Cost(view, state, pending.Step) * pending.Remaining;
+            demand += Cost(view, state, pending.Step) * InHorizon(view, state, pending, horizon);
         foreach (var added in state.Added.Where(s => !IsVillagers(s)))
             demand += Cost(view, state, added) * (added.Do is StepAction.Train or StepAction.Build ? added.Count : 1);
 
@@ -209,6 +209,19 @@ internal sealed class VillagerRule : IGoalRule
         foreach (var (source, count) in view.Villagers)
             income = income.With(source.Resource(), income[source.Resource()] + count * Rate(view, source) * horizon);
         return demand - view.Stock - income;
+    }
+
+    /// <summary>
+    /// Cuántas de lo que falta de un paso se pagan en el horizonte: todo, salvo las unidades, que salen de a una por
+    /// edificio (spec, sección 3, regla 5: la producción continua es costo dividido tiempo).
+    /// </summary>
+    private static int InHorizon(PlanView view, GoalState state, PlanViewStep pending, double horizon)
+    {
+        if (pending.Step is not { Do: StepAction.Train, What: { } unit } || !state.Data.TryGet(unit, out var entity) || entity.MadeIn is not { } building)
+            return pending.Remaining;
+        var time = state.Civ.Time(entity, view.Age) / state.Civ.WorkRate(building, view.Age);
+        var buildings = Math.Max(1, view.Buildings.GetValueOrDefault(building));
+        return Math.Min(pending.Remaining, (int)Math.Ceiling(buildings * horizon / time));
     }
 
     private static ResourceAmounts Cost(PlanView view, GoalState state, Step step) =>

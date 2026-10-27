@@ -38,7 +38,7 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// Los tipos de objetivo que el generador ya arma (los demás se avisan y no frenan a los de abajo). Cada sub-tarea
     /// del (d) suma el suyo.
     /// </summary>
-    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age" };
+    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age", "unit" };
 
     /// <summary>El tipo de un objetivo: "age", "unit", "town_centers" o "tech".</summary>
     public static string Kind(AssistedGoal goal) =>
@@ -61,6 +61,35 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     /// <summary>Los objetivos que ya agregaron todos sus pasos (los de edad se miran en los pasos: ver <see cref="Launched"/>).</summary>
     public HashSet<int> LaunchedGoals { get; } = [];
+
+    /// <summary>Los pasos de cada objetivo que no es de edad (por índice), para la hora en que se cumple.</summary>
+    public Dictionary<int, List<string>> GoalSteps { get; } = [];
+
+    /// <summary>Anota un paso de un objetivo y, con <paramref name="last"/>, que ya agregó todos.</summary>
+    public void Launch(int index, string stepId, bool last = true)
+    {
+        if (!GoalSteps.TryGetValue(index, out var ids))
+            GoalSteps[index] = ids = [];
+        ids.Add(stepId);
+        if (last)
+            LaunchedGoals.Add(index);
+    }
+
+    /// <summary>Cuántos edificios de esa clave hay: hechos, en obra y pedidos (en la foto y en esta consulta).</summary>
+    public int Count(PlanView view, string key) =>
+        view.Buildings.GetValueOrDefault(key) + view.UnderConstruction.GetValueOrDefault(key)
+        + view.Steps.Where(s => s.End is null && s.Step is { Do: StepAction.Build } && s.Step.What == key).Sum(s => s.Remaining)
+        + Added.Where(s => s.Do == StepAction.Build && s.What == key).Sum(s => s.Count);
+
+    /// <summary>
+    /// Los edificios que producen sin parar: los centros urbanos y los que entrenan las unidades de los pasos sin
+    /// terminar (para el margen de las casas).
+    /// </summary>
+    public int Producers(PlanView view) =>
+        view.Buildings.GetValueOrDefault("town_center")
+        + view.Steps.Where(s => s.End is null && s.Step is { Do: StepAction.Train } && s.Step.What is { } w && w != "villager")
+            .Select(s => Data.TryGet(s.Step.What!, out var e) ? e.MadeIn : null).OfType<string>().Distinct()
+            .Sum(b => view.Buildings.GetValueOrDefault(b));
 
     /// <summary>
     /// El objetivo que se trabaja ahora: el primero que no arrancó todos sus pasos (spec, sección 3: "un objetivo empieza
@@ -112,7 +141,8 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
                 if (entity.MadeIn is { } building && Data.TryGet(building, out var made))
                 {
                     keys.Add(building);
-                    needs = made.Age;
+                    // El centro urbano del arranque ya está (el que se construye es de Castillos).
+                    needs = building == BuildOrderValidator.StartingBuilding ? Age.Dark : made.Age;
                 }
                 keys.Add(key);
                 needs = entity.Age > needs ? entity.Age : needs;

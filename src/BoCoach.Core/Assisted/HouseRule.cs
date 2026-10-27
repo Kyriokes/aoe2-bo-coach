@@ -21,7 +21,8 @@ internal sealed class HouseRule : IGoalRule
         if (state.Building(view, house))
             return [];
         var projected = view.Population + view.InProduction + Queued(view, state);
-        if (projected < view.PopulationCap - Margin)
+        // El margen crece con lo que produce sin parar: 3 con un centro urbano, uno más por cada otro edificio.
+        if (projected < view.PopulationCap - Margin - Math.Max(0, state.Producers(view) - 1))
             return [];
         var cost = state.Cost(view, house);
         if (!state.Affordable(view, cost))

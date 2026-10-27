@@ -208,6 +208,34 @@ public class RuleTests
         Assert.True(steps.Any(s => s is { Do: StepAction.Build, What: "stable" }), string.Join(", ", steps.Select(s => $"{s.Do} {s.What}")));
     }
 
+    [Fact]
+    public void Las_unidades_esperan_su_primer_edificio()
+    {
+        var plan = new AssistedPlan
+        {
+            Goals = [new AssistedGoal { Age = "feudal_age" }, new AssistedGoal { Unit = "scout_cavalry", Count = 20, Buildings = 2 }],
+        };
+        PlanView View(Dictionary<string, int> built, Dictionary<string, int> building) => new()
+        {
+            Age = Age.Feudal,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 6), (GatherSource.Wood, 10)),
+            Buildings = built,
+            UnderConstruction = building,
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(200, 175, 0, 0),
+            Rates = Rates,
+        };
+
+        var first = new UnitRule().Next(View(new() { ["town_center"] = 1 }, []), State("franks", plan));
+        Assert.Contains(first, s => s is { Do: StepAction.Build, What: "stable" });
+        Assert.DoesNotContain(first, s => s.Do == StepAction.Train);
+
+        var then = new UnitRule().Next(View(new() { ["town_center"] = 1, ["stable"] = 1 }, new() { ["stable"] = 1 }), State("franks", plan));
+        Assert.Contains(then, s => s is { Do: StepAction.Train, What: "scout_cavalry", Count: 20 });
+        Assert.DoesNotContain(then, s => s.Do == StepAction.Build);
+    }
+
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
 
     [Theory]

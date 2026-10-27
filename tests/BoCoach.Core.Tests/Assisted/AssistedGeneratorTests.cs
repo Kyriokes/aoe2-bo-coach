@@ -154,11 +154,45 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Veinte_exploradores_con_dos_establos()
+    {
+        var result = Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Units("scout_cavalry", 20, 2)));
+
+        Assert.Empty(result.Problems);
+        Assert.NotNull(result.Goals[1].End);
+        Assert.Equal(2, result.BuildOrder.Steps.Count(s => s is { Do: StepAction.Build, What: "stable" }));
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Mas_establos_nunca_terminan_mas_tarde()
+    {
+        var ends = new[] { 1, 2, 3 }
+            .Select(n => Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Units("scout_cavalry", 20, n))).Goals[1].End!.Value)
+            .ToList();
+
+        Assert.True(ends[1] <= ends[0] && ends[2] <= ends[1], string.Join(", ", ends.Select(GameClock.Format)));
+    }
+
+    [Fact]
+    public void Dos_objetivos_de_unidades_comparten_los_edificios()
+    {
+        var result = Generator.Generate(Assisted("franks", 60,
+            Age("feudal_age"), Units("scout_cavalry", 10, 2), Age("castle_age"), Units("knight", 10, 2)));
+
+        Assert.Empty(result.Problems);
+        Assert.Equal(2, result.BuildOrder.Steps.Count(s => s is { Do: StepAction.Build, What: "stable" }));
+        Assert.NotNull(result.Goals[3].End);
+        AssertConsistent(result);
+    }
+
+    [Fact]
     public void Objetivos_que_todavia_no_se_generan()
     {
-        var archers = new AssistedGoal { Unit = "archer", Count = 20, Buildings = 2 };
+        var loom = new AssistedGoal { Tech = "loom" };
 
-        var result = Generator.Generate(Assisted("any", 60, Age("feudal_age"), archers, Age("castle_age")));
+        var result = Generator.Generate(Assisted("any", 60, Age("feudal_age"), loom, Age("castle_age")));
 
         Assert.Contains("todavía no", result.Goals[1].Problem);
         Assert.NotNull(result.Goals[0].End);

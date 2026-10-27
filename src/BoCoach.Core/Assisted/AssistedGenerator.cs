@@ -44,12 +44,16 @@ public sealed class AssistedGenerator(GameData data, Maps maps)
         for (var i = 0; i < plan.Goals.Count; i++)
         {
             var goal = plan.Goals[i];
-            var click = goal.Age is { } age ? result.Steps.FirstOrDefault(s => s.Step.Do == StepAction.Research && s.Step.What == age) : null;
+            var own = goal.Age is { } age
+                ? result.Steps.Where(s => s.Step.Do == StepAction.Research && s.Step.What == age).Take(1).ToList()
+                : result.Steps.Where(s => state.GoalSteps.GetValueOrDefault(i)?.Contains(s.Step.Id) == true).ToList();
+            double? start = own.Count > 0 ? own.Min(s => s.Start ?? double.MaxValue) : null;
+            double? end = own.Count > 0 && own.All(s => s.End is not null) ? own.Max(s => s.End!.Value) : null;
             var problem = state.Skipped.TryGetValue(i, out var skipped) ? skipped
                 : !GoalState.Generated.Contains(GoalState.Kind(goal)) ? "Este objetivo todavía no se puede generar."
-                : click?.End is null ? $"No llega antes de {GameClock.Format(settings.MaxTime)}."
+                : end is null ? $"No llega antes de {GameClock.Format(settings.MaxTime)}."
                 : null;
-            goals.Add(new GoalResult(i, click?.Start, click?.End, problem));
+            goals.Add(new GoalResult(i, start == double.MaxValue ? null : start, end, problem));
             if (problem is not null)
                 problems.Add($"{Describe(goal)}: {problem}");
         }
