@@ -1,12 +1,15 @@
 using BoCoach.Core.Assisted;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
+using System.Diagnostics;
+using System.Text.Json;
 using BoCoach.Core.Engine;
+using Xunit.Abstractions;
 
 namespace BoCoach.Core.Tests.Assisted;
 
 /// <summary>D12 (c): el generador del modo asistido de punta a punta.</summary>
-public class AssistedGeneratorTests
+public class AssistedGeneratorTests(ITestOutputHelper output)
 {
     private static readonly Maps RealMaps = Maps.Load(Path.Combine(AppContext.BaseDirectory, "maps.json"));
 
@@ -154,5 +157,81 @@ public class AssistedGeneratorTests
         Assert.Empty(result.Problems);
         Assert.NotNull(result.Goals[1].End);
         AssertConsistent(result);
+    }
+
+    [Theory]
+    [InlineData("franks")]
+    [InlineData("incas")]
+    [InlineData("huns")]
+    [InlineData("chinese")]
+    [InlineData("armenians")]
+    public void La_BO_generada_da_lo_mismo_en_cada_civ(string civ)
+    {
+        var result = Generator.Generate(Assisted(civ, 100, Age("feudal_age"), Age("castle_age"), Age("imperial_age")));
+
+        AssertConsistent(result);
+        Assert.Empty(result.Problems);
+        var built = result.BuildOrder.Steps.Where(s => s.Do == StepAction.Build).Select(s => s.What).ToHashSet();
+        Assert.All(built, b => Assert.True(TestData.GameData.CanMake(civ, b!), $"{civ} no puede hacer {b}"));
+        if (civ == "huns")
+            Assert.DoesNotContain("house", built);
+    }
+
+    [Fact]
+    public void El_centro_urbano_no_para()
+    {
+        var result = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age")));
+
+        var villagerIds = VillagerSteps(result).Select(s => s.Id).ToHashSet();
+        var blocks = result.Plan.Blocks.Where(b => villagerIds.Contains(b.StepId)).ToList();
+        Assert.Equal(0, blocks.Where(b => b.Reason == BlockReason.Population).Sum(b => b.Duration));
+        Assert.True(blocks.Where(b => b.Reason == BlockReason.Resources).Sum(b => b.Duration) <= 25,
+            string.Join(", ", blocks.Select(b => $"{b.StepId} {b.Reason} {b.From}-{b.To}")));
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+    }
+
+    [Fact]
+    public void Contra_las_guias()
+    {
+        var differences = new List<double>();
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "fixtures", "buildorderguide"), "*.json"))
+        {
+            var civ = Path.GetFileNameWithoutExtension(file);
+            using var guide = JsonDocument.Parse(File.ReadAllText(file));
+            var root = guide.RootElement;
+            if (!TestData.GameData.IsKnownCiv(civ)
+                || !root.TryGetProperty("attributes", out var attributes) || attributes.EnumerateArray().All(a => a.GetString() != "fastFeudal")
+                || !root.TryGetProperty("uptime", out var uptime) || !uptime.TryGetProperty("feudalAge", out var feudal)
+                || !GameClock.TryParse(feudal.GetString(), out var up)
+                || !root.TryGetProperty("pop", out var pop) || !pop.TryGetProperty("feudalAge", out var feudalPop))
+                continue;
+
+            var result = Generator.Generate(Assisted(civ, 40, Age("feudal_age", atPop: feudalPop.GetInt32())));
+            var reached = result.Goals[0].End;
+            Assert.NotNull(reached);
+            differences.Add(reached!.Value - up);
+            output.WriteLine($"{civ,-14} pop {feudalPop.GetInt32()}  guía {GameClock.Format(up)}  generada {GameClock.Format(reached.Value)}  ({reached.Value - up:+0;-0} s)");
+        }
+
+        Assert.NotEmpty(differences);
+        var sorted = differences.Select(Math.Abs).Order().ToList();
+        var median = sorted[sorted.Count / 2];
+        output.WriteLine($"{differences.Count} guías, mediana {median:0} s, peor {sorted[^1]:0} s");
+        Assert.True(median <= 60, $"mediana {median:0} s");
+        Assert.True(sorted[^1] <= 180, $"la peor {sorted[^1]:0} s");
+    }
+
+    [Fact]
+    public void Genera_rapido()
+    {
+        var bo = Assisted("franks", 120, Age("feudal_age"), Age("castle_age"), Age("imperial_age"));
+        Generator.Generate(bo);
+
+        var watch = Stopwatch.StartNew();
+        Generator.Generate(bo);
+        watch.Stop();
+
+        output.WriteLine($"{watch.ElapsedMilliseconds} ms");
+        Assert.True(watch.ElapsedMilliseconds < 250, $"{watch.ElapsedMilliseconds} ms");
     }
 }
