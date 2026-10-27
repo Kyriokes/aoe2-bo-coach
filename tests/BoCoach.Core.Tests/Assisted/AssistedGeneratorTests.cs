@@ -165,11 +165,17 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
-    [Fact]
-    public void Mas_establos_nunca_terminan_mas_tarde()
+    [Theory]
+    [InlineData("franks", 60)]
+    [InlineData("britons", 60)]
+    [InlineData("britons", 100)]
+    [InlineData("huns", 40)]
+    [InlineData("huns", 100)]
+    [InlineData("franks", 13)]
+    public void Mas_establos_nunca_terminan_mas_tarde(string civ, int until)
     {
         var ends = new[] { 1, 2, 3 }
-            .Select(n => Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Units("scout_cavalry", 20, n))).Goals[1].End!.Value)
+            .Select(n => Generator.Generate(Assisted(civ, until, Age("feudal_age"), Units("scout_cavalry", 20, n))).Goals[1].End!.Value)
             .ToList();
 
         Assert.True(ends[1] <= ends[0] && ends[2] <= ends[1], string.Join(", ", ends.Select(GameClock.Format)));
