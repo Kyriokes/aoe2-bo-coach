@@ -137,9 +137,20 @@ por arrancar, el Planner pregunta otra vez en el mismo segundo.
    de Feudal. La carretilla y la carreta, que frenan al centro urbano, con 15 aldeanos o más y nunca entre el momento
    en que se junta el costo de una edad y su clic.
 
-**Pasos que salen:** un paso por decisión, con una pasada final que junta pasos de aldeanos seguidos a la misma fuente
-sin condiciones ("Aldeanos 8 a 10 a madera"), como hace `BuildOrderOptimizer.Merge`. El test de equivalencia corre
-después de juntar.
+**Pasos que salen: por tramos** (decisión del usuario del 2026-10-26, después de la revisión del sub-paso b: con un
+paso por aldeano, cada uno salía fijado con `at_pop`, no se podían juntar y la BO se acercaba al tope de 300 pasos).
+- *Cuándo arma un tramo:* cuando ya no quedan aldeanos por encolar de los pasos de aldeanos anteriores, en el
+  nacimiento en que se encola el último (o al arrancar). El centro urbano no para: el aldeano que está saliendo da 25 s
+  de margen.
+- *De qué largo:* los aldeanos que salen hasta lo próximo que el generador va a necesitar hacer (una casa, un
+  campamento, el molino, las granjas, el clic de edad), con un tope de 6. Se reparten por lo que más va a faltar en
+  ese tiempo (regla 5) y sale un paso por recurso, en orden ("Aldeanos 7 a 10 → madera"). El primero lleva la única
+  fijación del tramo; los siguientes quedan alcanzados detrás de él y no la necesitan.
+- *Edificios con el tramo:* el campamento de un recurso nuevo lo construye el primer aldeano que va ahí, como arma el
+  editor manual ("Aldeano 7: campamento maderero → madera", D8 (7)); el molino antes de las bayas o las granjas.
+- No hace falta una pasada que junte pasos: los tramos ya salen juntos.
+- El coach no muestra "a N de población" en un paso de aldeanos (`StepText` los escribe como "N aldeanos en X");
+  "A N de población (vas N-1)" sale solo mientras se termina el aldeano anterior, que es lo que pasa.
 
 **Cuando no se puede:**
 - Un objetivo que la civ no tiene (incas sin establo, `GameData.CanMake`) queda en rojo con el motivo ("Los incas no
@@ -278,8 +289,11 @@ De a uno, como D10, cada uno con su plan en `docs/superpowers/plans/`:
 
 - **(a)** Comida finita en el Planner, como opción, con las cantidades del extractor y de `maps.json`.
 - **(b)** `IStepPolicy` en el Planner, con una política de prueba y el test de equivalencia.
-- **(c)** El generador base: `AssistedPlan`, validador (y el requisito de Imperial), apertura, aldeanos hasta N, casas,
-  comida, campamentos y edades.
+- **(c)** El generador base: `AssistedPlan`, validador (y el requisito de Imperial), apertura, aldeanos hasta N por
+  tramos, casas, comida, campamentos y edades. Antes, lo que pidió la revisión del (b): `PlanView` con propiedades con
+  valores por defecto (para armar fotos a mano en los tests de cada regla), una guarda para cantidades menores a 1 en
+  lo que agrega la política, no fijar un paso cuyas condiciones todavía no se cumplen, y el aviso "la población nunca
+  llega a N" del validador desde el arranque de la civ (no del estándar).
 - **(d)** El resto de los objetivos: unidades con sus edificios, centros urbanos extra, tecnologías a pedido y mejoras
   eco automáticas.
 - **(e)** `Analyze` y la web: pestaña Asistido con la pantalla A, la franja "Último cambio", el celular y "Pasar a
