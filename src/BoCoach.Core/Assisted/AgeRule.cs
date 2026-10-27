@@ -61,7 +61,11 @@ internal sealed class AgeRule : IGoalRule
             if (view.Population < pop)
                 return steps;
             var buildings = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) >= 2;
-            if (buildings && Affordable(view, cost, 0))
+            if (buildings && Affordable(view, cost, 0) && LoomFirst(view, state, tech) is { } loomAtPop)
+            {
+                steps.Add(loomAtPop);
+            }
+            else if (buildings && Affordable(view, cost, 0))
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech, AtPop = pop },
                     $"Clic en {StepText.Name(tech)} a {pop} de población, como pide el objetivo"));
@@ -83,6 +87,11 @@ internal sealed class AgeRule : IGoalRule
         // comida no llegaba al costo, la BO quedaba trabada para siempre). Para que el centro urbano no pare, el último
         // tramo antes del clic se corta para terminar cuando se junta el costo.
         var queueWait = state.TownCenterWait(view);
+        if (ready && state.TownCenterFree(view) && Affordable(view, cost, 0) && LoomFirst(view, state, tech) is { } loom)
+        {
+            steps.Add(loom);
+            return steps;
+        }
         if (ready && state.TownCenterFree(view) && Affordable(view, cost, 0))
         {
             steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
@@ -100,6 +109,22 @@ internal sealed class AgeRule : IGoalRule
         state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(Math.Max(toAffordSeconds, queueWait)))));
         steps.AddRange(Rebalance(view, state, tech, cost, waiting: false));
         return steps;
+    }
+
+    /// <summary>
+    /// Con las mejoras eco, el telar va antes del clic de Feudal (spec, sección 3, regla 6): cuando el clic está por salir
+    /// y el telar no está hecho ni pedido, sale el telar y el clic en la consulta siguiente (la regla pide que la
+    /// despierten cuando termina). Null si no corresponde.
+    /// </summary>
+    private static Step? LoomFirst(PlanView view, GoalState state, string tech)
+    {
+        const string Loom = "loom";
+        if (tech != "feudal_age" || !state.Plan.EcoUpgrades || !state.Data.TryGet(Loom, out var loom) || !state.Data.CanMake(state.Civ.Key, Loom)
+            || view.Researched.Contains(Loom) || state.Pending(view).Any(s => s.Do == StepAction.Research && s.What == Loom)
+            || state.Civ.Cost(loom, view.Age) == ResourceAmounts.Zero || !state.CanResearchNow(view, Loom))
+            return null;
+        state.WakeMeAt(view.Time + Math.Ceiling(state.Civ.Time(loom, view.Age) / state.Civ.WorkRate(BuildOrderValidator.StartingBuilding, view.Age)));
+        return state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = Loom }, "Telar antes de subir a Feudal");
     }
 
     /// <summary>Lo más que se espera juntar un recurso de la edad con los aldeanos de ahora antes de mover leñadores.</summary>

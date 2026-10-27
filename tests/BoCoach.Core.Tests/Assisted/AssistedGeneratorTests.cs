@@ -201,6 +201,44 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(three);
     }
 
+    private static BuildOrder WithEco(BuildOrder bo) => bo with { Assisted = bo.Assisted! with { EcoUpgrades = true } };
+
+    [Fact]
+    public void Con_mejoras_eco_compra_las_de_siempre()
+    {
+        var result = Generator.Generate(WithEco(Assisted("franks", 100, Age("feudal_age"), Age("castle_age"))));
+
+        Assert.Empty(result.Problems);
+        var researched = result.BuildOrder.Steps.Where(s => s.Do == StepAction.Research).Select(s => s.What).ToList();
+        Assert.Contains("double_bit_axe", researched);
+        Assert.Contains("gold_mining", researched);
+        Assert.Contains("wheelbarrow", researched);
+        Assert.DoesNotContain("horse_collar", researched); // a los francos les sale gratis
+        Assert.True(researched.IndexOf("loom") is >= 0 and var loom && loom < researched.IndexOf("feudal_age"), string.Join(", ", researched));
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Con_pocos_aldeanos_no_compra_carretilla()
+    {
+        var result = Generator.Generate(WithEco(Assisted("any", 13, Age("feudal_age"), Age("castle_age"), Age("imperial_age"))));
+
+        Assert.Empty(result.Problems);
+        Assert.DoesNotContain(result.BuildOrder.Steps, s => s is { Do: StepAction.Research, What: "wheelbarrow" or "hand_cart" });
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Las_mejoras_no_atrasan_las_edades_de_mas()
+    {
+        var plain = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age")));
+        var eco = Generator.Generate(WithEco(Assisted("franks", 100, Age("feudal_age"), Age("castle_age"))));
+
+        Assert.True(eco.Goals[1].Start <= plain.Goals[1].Start + 60,
+            $"Castillos {GameClock.Format(eco.Goals[1].Start!.Value)} con mejoras, {GameClock.Format(plain.Goals[1].Start!.Value)} sin");
+    }
+
     [Fact]
     public void El_telar_a_pedido_no_frena_al_centro_urbano()
     {

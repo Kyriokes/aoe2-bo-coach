@@ -286,6 +286,27 @@ public class RuleTests
         Assert.Contains(new AgeRule().Next(view, State("franks", plan)), s => s is { Do: StepAction.Research, What: "castle_age" });
     }
 
+    [Theory]
+    [InlineData(3, true)]
+    [InlineData(2, false)]
+    public void Las_hachas_con_tres_en_la_madera(int lumberjacks, bool researches)
+    {
+        var view = new PlanView
+        {
+            Age = Age.Feudal,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Farm, 8), (GatherSource.Wood, lumberjacks)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["lumber_camp"] = 1, ["mill"] = 1 },
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(100, 50, 0, 0),
+            Rates = Rates,
+        };
+
+        var steps = new EcoRule().Next(view, State(plan: new AssistedPlan { EcoUpgrades = true }));
+
+        Assert.Equal(researches, steps.Any(s => s is { Do: StepAction.Research, What: "double_bit_axe" }));
+    }
+
     [Fact]
     public void Lo_reservado_de_madera_no_frena_lo_que_se_paga_con_oro()
     {
