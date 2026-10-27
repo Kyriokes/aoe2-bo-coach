@@ -21,6 +21,13 @@ internal sealed class FoodStocks(FoodSupply supply)
     /// <summary>Lo que le queda a la fuente (a las granjas, entre todas).</summary>
     public double Remaining(GatherSource source) => source == GatherSource.Farm ? _farms.Sum() : _pools.GetValueOrDefault(source);
 
+    /// <summary>La foto de la comida para la política: lo crudo de cada fuente por lo que rinde para la civ, y las granjas.</summary>
+    public PlanFoodView Snapshot(Func<GatherSource, double> yield, int farmersWaitingFarm) => new(
+        _pools.ToDictionary(p => p.Key, p => p.Value * yield(p.Key)),
+        [.. _farms],
+        _farms.Count(f => f <= 0),
+        farmersWaitingFarm);
+
     /// <summary>Una granja por granjero: los que llegan traen una con <paramref name="farmFood"/>, los que se van se llevan la última.</summary>
     public void SyncFarms(int farmers, double farmFood)
     {

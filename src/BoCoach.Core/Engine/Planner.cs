@@ -484,7 +484,10 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _busyProducers.Where(b => b.Value > 0).ToDictionary(b => b.Key, b => b.Value),
             _items.Select(i => new PlanViewStep(i.Step with { }, i.Remaining, i.Reached, i.Started, i.Start, i.End)).ToList(),
             _births > 0,
-            ranOut);
+            ranOut)
+        {
+            Food = _food?.Snapshot(source => _civ.FoodYield(source, _age), WaitingFarmers()),
+        };
 
         /// <summary>
         /// Si el paso ya deja arrancar al siguiente. Un clic de edad cuenta recién cuando se paga: lo que la BO pone

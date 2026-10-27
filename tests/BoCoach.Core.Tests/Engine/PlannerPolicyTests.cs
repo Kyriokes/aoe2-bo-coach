@@ -160,6 +160,52 @@ public class PlannerPolicyTests
     }
 
     [Fact]
+    public void Sin_comida_finita_la_foto_no_trae_comida()
+    {
+        var policy = new Scripted(_ => []);
+
+        Run(policy);
+
+        Assert.Null(policy.Views[0].Food);
+    }
+
+    [Fact]
+    public void La_foto_trae_lo_que_queda_de_cada_fuente_con_el_rendimiento_de_la_civ()
+    {
+        var policy = new Scripted(_ => []);
+        var start = Open with { IdleVillagers = 0, Villagers = new Dictionary<GatherSource, int> { [GatherSource.Sheep] = 6 } };
+
+        new Planner(TestData.GameData, new PlannerSettings { Food = FoodSupply.For(TestData.GameData, null) })
+            .Simulate([], start, TestData.GameData.Civ("tatars"), policy);
+
+        var food = policy.Views[0].Food!;
+        Assert.Equal(800 * 1.57, food.Remaining[GatherSource.Sheep], 6);
+        Assert.Equal(680, food.Remaining[GatherSource.Hunt], 6);
+        Assert.False(food.Remaining.ContainsKey(GatherSource.Wood));
+    }
+
+    [Fact]
+    public void La_foto_trae_las_granjas_y_los_granjeros_que_esperan()
+    {
+        var policy = new Scripted(_ => []);
+        var start = Open with
+        {
+            IdleVillagers = 0,
+            Villagers = new Dictionary<GatherSource, int> { [GatherSource.Farm] = 2 },
+            Stock = new ResourceAmounts(200, 0, 0, 100),
+        };
+        var supply = FoodSupply.For(TestData.GameData, null) with { FarmFood = 50 };
+        var late = Villagers("v", 1, GatherSource.Sheep) with { AtTime = 275 };
+
+        new Planner(TestData.GameData, new PlannerSettings { Food = supply }).Simulate([new PlanItem(late, 1)], start, null, policy);
+
+        var food = policy.Views.Single(v => v.Birth && v.Time == 300).Food!;
+        Assert.Equal([0.0, 0.0], food.Farms);
+        Assert.Equal(2, food.FarmersWaitingReseed);
+        Assert.Equal(0, food.FarmersWaitingFarm);
+    }
+
+    [Fact]
     public void Cambiar_un_paso_ya_devuelto_no_cambia_la_simulacion()
     {
         Step? given = null;

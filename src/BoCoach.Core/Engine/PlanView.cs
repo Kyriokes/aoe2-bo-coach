@@ -46,4 +46,22 @@ public sealed record PlanView(
     IReadOnlyDictionary<string, int> Busy,
     IReadOnlyList<PlanViewStep> Steps,
     bool Birth,
-    bool RanOut);
+    bool RanOut)
+{
+    /// <summary>La comida que queda, con la comida finita; null con la infinita.</summary>
+    public PlanFoodView? Food { get; init; }
+}
+
+/// <summary>La comida que queda en la foto de la política (solo con la comida finita, D12).</summary>
+/// <param name="Remaining">
+/// Ovejas, caza y bayas: la comida que todavía rinden para la civ en esta edad. Lo que no está no se acaba (madera,
+/// oro, piedra, pesca).
+/// </param>
+/// <param name="Farms">Lo que le queda a la granja de cada granjero, en orden.</param>
+/// <param name="FarmersWaitingReseed">Granjeros con la granja vacía, esperando madera para resembrarla.</param>
+/// <param name="FarmersWaitingFarm">Granjeros sin granja que esperan la de su paso de granjas.</param>
+public sealed record PlanFoodView(
+    IReadOnlyDictionary<GatherSource, double> Remaining,
+    IReadOnlyList<double> Farms,
+    int FarmersWaitingReseed,
+    int FarmersWaitingFarm);
