@@ -25,7 +25,8 @@ jobs:
 
       - run: dotnet restore BoCoach.slnx
       - run: dotnet build BoCoach.slnx -c Release --no-restore
-      - run: dotnet test BoCoach.slnx -c Release --no-build --logger trx --results-directory test-results
+      # --blame-crash: si un proceso de test se cae, el trx dice cuál y en qué test estaba.
+      - run: dotnet test BoCoach.slnx -c Release --no-build --logger trx --results-directory test-results --blame-crash --blame-hang-timeout 10m
 
       # Sin iniciar sesión en GitHub no se ven los logs, pero las anotaciones sí (también por la API pública:
       # check-runs/<job>/annotations): cada test que falla queda como una, con su mensaje.
@@ -33,15 +34,30 @@ jobs:
         if: failure()
         shell: pwsh
         run: |
-          Get-ChildItem test-results -Filter *.trx -Recurse | ForEach-Object {
-            [xml]$trx = Get-Content $_.FullName -Raw
-            $trx.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object {
-              $text = "$($_.testName): $($_.Output.ErrorInfo.Message) $($_.Output.ErrorInfo.StackTrace)"
-              if ($text.Length -gt 1500) { $text = $text.Substring(0, 1500) }
-              $text = $text.Replace('%', '%25').Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error::$text"
+          $ErrorActionPreference = 'Continue'
+          function Note($text) {
+            if ($text.Length -gt 1500) { $text = $text.Substring(0, 1500) }
+            Write-Output ("::error::" + $text.Replace('%', '%25').Replace("`r", '').Replace("`n", '%0A'))
+          }
+          $files = @(Get-ChildItem test-results -Filter *.trx -Recurse -ErrorAction SilentlyContinue)
+          if ($files.Count -eq 0) { Note "No quedó ningún .trx en test-results." }
+          foreach ($file in $files) {
+            try {
+              [xml]$trx = Get-Content $file.FullName -Raw
+              # Lo que no es de un test (un proceso que se cayó, un error al cargar un ensamblado).
+              foreach ($info in @($trx.TestRun.ResultSummary.RunInfos.RunInfo)) {
+                if ($info -and $info.Text) { Note "$($file.Name): $($info.Outcome) $($info.Text)" }
+              }
+              foreach ($result in @($trx.TestRun.Results.UnitTestResult)) {
+                if ($result -and $result.outcome -ne 'Passed') {
+                  Note "$($result.testName) ($($result.outcome)): $($result.Output.ErrorInfo.Message) $($result.Output.ErrorInfo.StackTrace)"
+                }
+              }
+            } catch {
+              Note "$($file.Name): no se pudo leer ($($_.Exception.Message))"
             }
           }
+          exit 0
 
       # La versión portable (BoCoach.exe con .NET adentro + data), para bajarla y probarla en otra PC.
       - run: dotnet publish src/BoCoach.App -c Release -r win-x64 -o publish/BoCoach
