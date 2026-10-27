@@ -34,7 +34,7 @@ internal sealed class AgeRule : IGoalRule
         // Los 2 edificios se piden recién en la edad que los tiene (los de Feudal, en Feudal): pedidos mientras se sube,
         // esperan la edad y frenan el "mover" de la comida que se acaba.
         var soon = view.Age >= BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires && (atPop is { } target
-            ? Math.Max(0, target - view.Population) * state.VillagerTime(view.Age) <= RequirementLeadSeconds
+            ? Math.Max(0, target - view.Population) * state.VillagerInterval(view) <= RequirementLeadSeconds
             : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds);
         if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
             && Cheapest(view, state, tech) is { } building && !state.Affordable(view, state.Cost(view, building)))
@@ -82,8 +82,8 @@ internal sealed class AgeRule : IGoalRule
         // aldeanos o del costo) y frenaría lo que se agrega detrás, como el "mover" de la comida que se acaba (y si la
         // comida no llegaba al costo, la BO quedaba trabada para siempre). Para que el centro urbano no pare, el último
         // tramo antes del clic se corta para terminar cuando se junta el costo.
-        var queueWait = (view.InProduction + state.QueuedVillagers(view)) * state.VillagerTime(view.Age);
-        if (ready && queueWait == 0 && Affordable(view, cost, 0))
+        var queueWait = state.TownCenterWait(view);
+        if (ready && state.TownCenterFree(view) && Affordable(view, cost, 0))
         {
             steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech },
                 $"Clic en {StepText.Name(tech)}: alcanza el costo"));
@@ -94,7 +94,7 @@ internal sealed class AgeRule : IGoalRule
         if (ready && !double.IsInfinity(toAffordSeconds))
         {
             // Los aldeanos que entran antes de juntar el costo, después de los que ya están en la cola.
-            state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling((toAffordSeconds - queueWait) / state.VillagerTime(view.Age)), 0, VillagerRule.MaxTramo);
+            state.VillagersBeforeClick = Math.Clamp((int)Math.Ceiling((toAffordSeconds - queueWait) / state.VillagerInterval(view)), 0, VillagerRule.MaxTramo * state.TownCenters(view));
         }
         // Que la consulten cuando alcance, aunque no nazca nadie (ya se llegó a los aldeanos que pide la BO).
         state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(Math.Max(toAffordSeconds, queueWait)))));

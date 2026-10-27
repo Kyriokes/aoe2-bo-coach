@@ -65,6 +65,7 @@ public class RuleTests
         {
             Population = 7,
             InProduction = 1,
+            Busy = new Dictionary<string, int> { ["town_center"] = 1 },
             PopulationCap = 200,
             Villagers = On((GatherSource.Sheep, 6)),
             Stock = new ResourceAmounts(300, 100, 0, 100), // alcanza para el campamento
@@ -234,6 +235,55 @@ public class RuleTests
         var then = new UnitRule().Next(View(new() { ["town_center"] = 1, ["stable"] = 1 }, new() { ["stable"] = 1 }), State("franks", plan));
         Assert.Contains(then, s => s is { Do: StepAction.Train, What: "scout_cavalry", Count: 20 });
         Assert.DoesNotContain(then, s => s.Do == StepAction.Build);
+    }
+
+    [Fact]
+    public void El_centro_urbano_espera_Castillos_y_su_costo()
+    {
+        var plan = new AssistedPlan
+        {
+            Goals = [new AssistedGoal { Age = "feudal_age" }, new AssistedGoal { Age = "castle_age" }, new AssistedGoal { TownCenters = 3 }],
+        };
+        var castle = new Step { Id = "c", Do = StepAction.Research, What = "castle_age" };
+        var feudal = new PlanView
+        {
+            Age = Age.Feudal,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Farm, 10), (GatherSource.Wood, 10)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1 },
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(0, 600, 200, 0),
+            Rates = Rates,
+            Steps = [new PlanViewStep(castle, 0, true, true, 600, null)],
+        };
+        var state = State("franks", plan);
+
+        Assert.Empty(new TownCenterRule().Next(feudal, state));
+        Assert.Equal(new ResourceAmounts(0, 550, 200, 0), state.Planned);
+
+        var inCastle = feudal with { Age = Age.Castle, Researched = ["feudal_age", "castle_age"], Steps = [new PlanViewStep(castle, 0, true, true, 600, 760)] };
+        var build = Assert.Single(new TownCenterRule().Next(inCastle, State("franks", plan)));
+        Assert.Equal((StepAction.Build, "town_center", 3), (build.Do, build.What, build.Builders));
+    }
+
+    [Fact]
+    public void El_clic_sale_con_un_establo_produciendo()
+    {
+        var plan = new AssistedPlan { Goals = [new AssistedGoal { Age = "feudal_age" }, new AssistedGoal { Age = "castle_age" }] };
+        var view = new PlanView
+        {
+            Age = Age.Feudal,
+            PopulationCap = 200,
+            InProduction = 1,
+            Busy = new Dictionary<string, int> { ["stable"] = 1 },
+            Villagers = On((GatherSource.Farm, 10), (GatherSource.Gold, 4)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["blacksmith"] = 1, ["stable"] = 1 },
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(800, 0, 0, 200),
+            Rates = Rates,
+        };
+
+        Assert.Contains(new AgeRule().Next(view, State("franks", plan)), s => s is { Do: StepAction.Research, What: "castle_age" });
     }
 
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };

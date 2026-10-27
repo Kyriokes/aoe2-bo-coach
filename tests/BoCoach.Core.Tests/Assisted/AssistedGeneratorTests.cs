@@ -188,6 +188,20 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Tres_centros_urbanos_llegan_antes_a_los_aldeanos()
+    {
+        var two = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age")));
+        var three = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age"), new AssistedGoal { TownCenters = 3 }));
+
+        Assert.Empty(three.Problems);
+        Assert.Equal(2, three.BuildOrder.Steps.Count(s => s is { Do: StepAction.Build, What: "town_center" }));
+        double Hundred(AssistedResult r) => r.Plan.Timeline.First(s => s.Villagers >= 100).Time;
+        Assert.True(Hundred(three) < Hundred(two), $"{GameClock.Format(Hundred(three))} contra {GameClock.Format(Hundred(two))}");
+        Assert.DoesNotContain(three.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(three);
+    }
+
+    [Fact]
     public void Objetivos_que_todavia_no_se_generan()
     {
         var loom = new AssistedGoal { Tech = "loom" };

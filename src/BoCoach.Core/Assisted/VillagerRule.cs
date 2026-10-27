@@ -33,8 +33,10 @@ internal sealed class VillagerRule : IGoalRule
         if (room <= 0)
             return [];
 
-        var k = Math.Max(1, Math.Min(Math.Min(MaxTramo, room), state.VillagersBeforeClick ?? MaxTramo));
-        var villagerTime = state.VillagerTime(view.Age);
+        var maxTramo = MaxTramo * state.TownCenters(view);
+        var k = Math.Max(1, Math.Min(Math.Min(maxTramo, room), state.VillagersBeforeClick ?? maxTramo));
+        // Con varios centros urbanos los aldeanos salen más seguido.
+        var villagerTime = state.VillagerInterval(view);
         var horizon = Math.Clamp(k * villagerTime, 60, 180);
         // Primero lo que sostiene la producción; después, lo que pide el objetivo (la prioridad de D2: economía sana primero).
         var sustain = Missing(view, state, horizon, Math.Min(room, (int)(horizon / villagerTime)));
@@ -112,7 +114,9 @@ internal sealed class VillagerRule : IGoalRule
         // Lo que espera a un aldeano nuevo (su campamento, su granja) frena lo que se agrega detrás: si mientras tanto
         // hay que pasar a los de una comida que se acaba, sin campamento (lo hace después CampRule desde los que ya están
         // ahí) y sin granjas para los nuevos (van a la madera, que necesitan las granjas de los que se quedan sin comida).
-        var campsBlock = FoodRule.ActsWithin(view, state, (view.InProduction + 1) * villagerTime);
+        // Con unidades en producción la población no dice cuándo nace el aldeano del campamento: sin campamento.
+        var campsBlock = view.InProduction > view.Busy.GetValueOrDefault("town_center")
+                         || FoodRule.ActsWithin(view, state, (view.InProduction + 1) * villagerTime);
         string? Camp(GatherSource source) =>
             !campsBlock && CampFor(view, state, source) is { } camp && state.Affordable(view, state.Cost(view, camp)) ? camp : null;
         var ordered = order.OrderBy(s => Camp(s) is null ? 1 : 0).ToList();

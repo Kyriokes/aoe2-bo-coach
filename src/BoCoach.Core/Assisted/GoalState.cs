@@ -38,7 +38,7 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// Los tipos de objetivo que el generador ya arma (los demás se avisan y no frenan a los de abajo). Cada sub-tarea
     /// del (d) suma el suyo.
     /// </summary>
-    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age", "unit" };
+    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age", "unit", "town_centers" };
 
     /// <summary>El tipo de un objetivo: "age", "unit", "town_centers" o "tech".</summary>
     public static string Kind(AssistedGoal goal) =>
@@ -198,6 +198,23 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// <summary>Lo que tarda el centro urbano en sacar un aldeano, con la civ.</summary>
     public double VillagerTime(Age age) => Civ.Time(Data.Get("villager"), age) / Civ.WorkRate("town_center", age);
 
+    /// <summary>Los centros urbanos hechos (al menos el inicial).</summary>
+    public int TownCenters(PlanView view) => Math.Max(1, view.Buildings.GetValueOrDefault("town_center"));
+
+    /// <summary>Cada cuánto nace un aldeano con todos los centros urbanos sacando aldeanos.</summary>
+    public double VillagerInterval(PlanView view) => VillagerTime(view.Age) / TownCenters(view);
+
+    /// <summary>
+    /// Si un centro urbano puede empezar algo ya: alguno sin trabajo y sin aldeanos por encolar (si no, los aldeanos de
+    /// la cola lo toman primero). Las unidades de otros edificios no cuentan.
+    /// </summary>
+    public bool TownCenterFree(PlanView view) =>
+        view.Busy.GetValueOrDefault("town_center") < TownCenters(view) && QueuedVillagers(view) == 0;
+
+    /// <summary>Cuánto falta para que un centro urbano quede libre (0 si ya está).</summary>
+    public double TownCenterWait(PlanView view) =>
+        TownCenterFree(view) ? 0 : Math.Max(1, view.Busy.GetValueOrDefault("town_center") - TownCenters(view) + 1 + QueuedVillagers(view)) * VillagerInterval(view);
+
     /// <summary>
     /// Si alcanza ya para pagar un edificio: el stock menos lo que cuestan los edificios e investigaciones agregados en
     /// esta consulta. El generador agrega un edificio solo cuando alcanza: en el Planner lo que no es aldeanos arranca en
@@ -229,18 +246,22 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     public bool TownCenterResearching(PlanView view, out double? until)
     {
         until = null;
-        var busy = false;
+        var researching = 0;
         foreach (var research in view.Steps.Where(s => s.End is null).Select(s => (s.Step, s.Started, s.Start))
                      .Concat(Added.Select(s => (Step: s, Started: false, Start: (double?)null))))
         {
             if (research.Step.Do != StepAction.Research || research.Step.What is not { } what
                 || !Data.TryGet(what, out var entity) || entity.MadeIn != "town_center")
                 continue;
-            busy = true;
+            researching++;
             if (research.Started && research.Start is { } start)
-                until = start + Civ.Time(entity, view.Age) / Civ.WorkRate("town_center", view.Age);
+            {
+                var end = start + Civ.Time(entity, view.Age) / Civ.WorkRate("town_center", view.Age);
+                until = until is { } at ? Math.Min(at, end) : end;
+            }
         }
-        return busy;
+        // Con varios centros urbanos, los que no investigan siguen sacando aldeanos.
+        return researching >= TownCenters(view);
     }
 
     /// <summary>Los aldeanos que faltan encolar: los de los pasos de la foto que no salieron y los agregados ahora.</summary>
