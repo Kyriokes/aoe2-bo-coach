@@ -209,6 +209,7 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
 
     [Theory]
     [InlineData("muisca")]
+    [InlineData("britons")]
     [InlineData("huns")]
     [InlineData("hindustanis")]
     [InlineData("japanese")]
