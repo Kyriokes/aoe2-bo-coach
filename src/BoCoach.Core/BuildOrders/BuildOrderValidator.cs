@@ -158,6 +158,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         }
 
         ValidateTargets(bo.Targets, Error);
+        ValidateAssisted(bo.Assisted, Error);
         ValidatePosture(bo.Posture, age, Warn);
         ValidateBranches(bo.Branches, Error, Warn);
         return new ValidationResult(issues);
@@ -320,6 +321,51 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             error(id, "Falta 'assign': ¿a qué recurso van los aldeanos?");
         if (step.From is not null && step.From == step.Assign)
             error(id, $"'from' y 'assign' son el mismo recurso ({step.From}).");
+    }
+
+    /// <summary>
+    /// D12: los objetivos del modo asistido. Que la civ no pueda hacer algo no es un error: lo dice el generador como
+    /// problema de ese objetivo.
+    /// </summary>
+    private void ValidateAssisted(AssistedPlan? assisted, Action<string?, string> error)
+    {
+        if (assisted is null)
+            return;
+        if (assisted.Villagers.Until is < 1 or > MaxPopulation)
+            error(null, $"assisted.villagers.until tiene que estar entre 1 y {MaxPopulation} (es {assisted.Villagers.Until}).");
+        if (assisted.Opening.Sheep is < 0 or > 20)
+            error(null, $"assisted.opening.sheep tiene que estar entre 0 y 20 (es {assisted.Opening.Sheep}).");
+        if (assisted.Opening.Berries is not ("auto" or "no"))
+            error(null, $"assisted.opening.berries tiene que ser \"auto\" o \"no\" (es \"{assisted.Opening.Berries}\").");
+
+        for (var i = 0; i < assisted.Goals.Count; i++)
+        {
+            var goal = assisted.Goals[i];
+            var where = $"assisted.goals[{i}]";
+            var kinds = new[] { goal.Age is not null, goal.Unit is not null, goal.TownCenters is not null, goal.Tech is not null }.Count(k => k);
+            if (kinds != 1)
+            {
+                error(null, $"{where}: tiene que tener exactamente uno de 'age', 'unit', 'town_centers' o 'tech' (tiene {kinds}).");
+                continue;
+            }
+            if (goal.Age is { } ageTech && !AgeTechs.ContainsKey(ageTech))
+                error(null, $"{where}: '{ageTech}' no es una edad (feudal_age, castle_age o imperial_age).");
+            if (goal.AtPop is < 1 or > MaxPopulation)
+                error(null, $"{where}: 'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {goal.AtPop}).");
+            if (goal.Unit is { } unit)
+            {
+                if (!gameData.TryGet(unit, out var entity) || entity.Kind != EntityKind.Unit)
+                    error(null, $"{where}: '{unit}' no es una unidad conocida.");
+                if (goal.Count is not { } count || count < 1 || count > MaxCount)
+                    error(null, $"{where}: 'count' tiene que estar entre 1 y {MaxCount}.");
+                if (goal.Buildings is < 1 or > 10)
+                    error(null, $"{where}: 'buildings' tiene que estar entre 1 y 10 (es {goal.Buildings}).");
+            }
+            if (goal.TownCenters is < 2 or > 10)
+                error(null, $"{where}: 'town_centers' tiene que estar entre 2 y 10 (es {goal.TownCenters}).");
+            if (goal.Tech is { } tech && (!gameData.TryGet(tech, out var techEntity) || techEntity.Kind != EntityKind.Tech))
+                error(null, $"{where}: '{tech}' no es una tecnología conocida.");
+        }
     }
 
     private static void ValidateTargets(Targets? targets, Action<string?, string> error)

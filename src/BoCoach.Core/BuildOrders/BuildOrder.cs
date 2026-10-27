@@ -56,6 +56,12 @@ public sealed record BuildOrder
     /// atacan, perdiste aldeanos). Opcional y sin subir <see cref="SchemaVersion"/>, como la postura.
     /// </summary>
     public IReadOnlyList<Branch>? Branches { get; set; }
+
+    /// <summary>
+    /// D12: los objetivos del modo asistido, de los que salen los pasos (ver <see cref="AssistedPlan"/>). Opcional y sin
+    /// subir <see cref="SchemaVersion"/>; null es una BO manual.
+    /// </summary>
+    public AssistedPlan? Assisted { get; set; }
 }
 
 public sealed record Step
