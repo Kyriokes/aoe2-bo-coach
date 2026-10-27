@@ -81,4 +81,47 @@ public class RuleTests
         Assert.NotNull(builder.Group);
         Assert.Equal(builder.Group, camp.Group);
     }
+
+    private static PlanFoodView Food(double sheep, double hunt, double berries) => new(
+        new Dictionary<GatherSource, double> { [GatherSource.Sheep] = sheep, [GatherSource.Hunt] = hunt, [GatherSource.Berries] = berries }, [], 0, 0);
+
+    [Fact]
+    public void Las_ovejas_que_se_acaban_pasan_al_jabali()
+    {
+        var state = State();
+        var view = new PlanView { Villagers = On((GatherSource.Sheep, 6)), Rates = Rates, Food = Food(30, 680, 750), PopulationCap = 200 };
+
+        var move = Assert.Single(new FoodRule().Next(view, state));
+
+        Assert.Equal((StepAction.Move, 6, GatherSource.Sheep, GatherSource.Hunt), (move.Do, move.Count, move.From, move.Assign));
+        Assert.Equal(GatherSource.Hunt, state.FoodSource);
+    }
+
+    [Fact]
+    public void Antes_de_las_bayas_el_molino()
+    {
+        var state = State();
+        state.FoodSource = GatherSource.Hunt;
+        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 50, 750), PopulationCap = 200 };
+
+        var steps = new FoodRule().Next(view, state);
+
+        Assert.Equal((StepAction.Build, "mill", GatherSource.Hunt), (steps[0].Do, steps[0].What, steps[0].From));
+        Assert.Equal((StepAction.Move, 6, GatherSource.Hunt, GatherSource.Berries), (steps[1].Do, steps[1].Count, steps[1].From, steps[1].Assign));
+        Assert.Equal(GatherSource.Berries, state.FoodSource);
+    }
+
+    [Fact]
+    public void Sin_bayas_en_el_mapa_va_a_las_granjas()
+    {
+        var state = State();
+        state.FoodSource = GatherSource.Hunt;
+        var view = new PlanView { Villagers = On((GatherSource.Hunt, 6)), Rates = Rates, Food = Food(0, 50, 0), PopulationCap = 200 };
+
+        var steps = new FoodRule().Next(view, state);
+
+        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "mill" });
+        Assert.Contains(steps, s => s is { Do: StepAction.Build, What: "farm", Count: 6, From: GatherSource.Hunt, Assign: GatherSource.Farm });
+        Assert.Equal(GatherSource.Farm, state.FoodSource);
+    }
 }

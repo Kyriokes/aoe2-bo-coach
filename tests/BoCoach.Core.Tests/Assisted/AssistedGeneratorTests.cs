@@ -72,4 +72,32 @@ public class AssistedGeneratorTests
     {
         Assert.Throws<ArgumentException>(() => Generator.Generate(new BuildOrder { Name = "manual" }));
     }
+
+    [Theory]
+    [InlineData("any")]
+    [InlineData("tatars")]
+    [InlineData("poles")]
+    public void Con_la_comida_de_Arabia_nadie_queda_parado(string civ)
+    {
+        var result = Generator.Generate(Assisted(civ, 60));
+
+        Assert.Equal(60, result.Plan.Timeline[^1].Villagers);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        Assert.Contains(result.BuildOrder.Steps, s => s is { Do: StepAction.Build, What: "farm" });
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Un_mapa_sin_jabali_ni_bayas_va_directo_a_las_granjas()
+    {
+        var maps = new Maps([new GameMap("pelado", "Pelado", false,
+            new HashSet<GatherSource> { GatherSource.Sheep, GatherSource.Farm, GatherSource.Wood, GatherSource.Gold, GatherSource.Stone }, null)]);
+        var bo = Assisted("any", 40) with { Map = "pelado" };
+
+        var result = new AssistedGenerator(TestData.GameData, maps).Generate(bo);
+
+        Assert.DoesNotContain(result.BuildOrder.Steps, s => s.Assign is GatherSource.Hunt or GatherSource.Berries);
+        Assert.DoesNotContain(result.Plan.Idle, i => i.Reason == IdleReason.Exhausted);
+        AssertConsistent(result, maps);
+    }
 }

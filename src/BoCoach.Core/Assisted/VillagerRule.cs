@@ -78,7 +78,18 @@ internal sealed class VillagerRule : IGoalRule
                 n--;
                 before++;
             }
-            if (n > 0)
+            if (n > 0 && source == GatherSource.Farm)
+            {
+                // A las granjas, cada uno con la suya: la hace el granjero que todavía no tiene granja.
+                var id = state.NewId();
+                var group = $"g{id}";
+                steps.Add(state.Add(new Step { Id = id, Do = StepAction.Train, What = "villager", Count = n, Assign = source, Group = group },
+                    $"{n} {(n == 1 ? "aldeano" : "aldeanos")} a la granja: {why[source]}"));
+                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Build, What = "farm", Count = n, From = source, Assign = source, Group = group },
+                    $"{n} {(n == 1 ? "granja" : "granjas")}, una por granjero"));
+                before += n;
+            }
+            else if (n > 0)
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Train, What = "villager", Count = n, Assign = source },
                     $"{n} {(n == 1 ? "aldeano" : "aldeanos")} a {StepText.Source(source)}: {why[source]}"));

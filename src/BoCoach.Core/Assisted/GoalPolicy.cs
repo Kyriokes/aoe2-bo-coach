@@ -10,13 +10,14 @@ namespace BoCoach.Core.Assisted;
 internal sealed class GoalPolicy(GoalState state, IReadOnlyList<IGoalRule> rules) : IStepPolicy
 {
     public GoalPolicy(GoalState state)
-        : this(state, [new OpeningRule(), new HouseRule(), new VillagerRule()])
+        : this(state, [new OpeningRule(), new HouseRule(), new FoodRule(), new VillagerRule()])
     {
     }
 
     public IReadOnlyList<Step> Next(PlanView view)
     {
         state.Added.Clear();
+        state.Planned = default;
         foreach (var rule in rules)
             rule.Next(view, state);
         return [.. state.Added];
