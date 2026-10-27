@@ -24,6 +24,12 @@ internal sealed class FoodRule : IGoalRule
     /// <summary>Con cuánta anticipación (además del adelanto) se cuenta la madera de las granjas que vienen en el reparto.</summary>
     public const double FarmWoodHorizon = 60;
 
+    /// <summary>
+    /// Con cuánta anticipación se cuenta la madera de las granjas de todos los que juntan comida salvaje (ovejas, jabalí
+    /// y bayas en cadena): así el reparto manda aldeanos a la madera antes de que se acabe todo junto.
+    /// </summary>
+    public const double FarmForesightSeconds = 240;
+
     private static readonly GatherSource[] Wild = [GatherSource.Sheep, GatherSource.Hunt, GatherSource.Berries];
 
     public IReadOnlyList<Step> Next(PlanView view, GoalState state)
@@ -43,14 +49,12 @@ internal sealed class FoodRule : IGoalRule
             var lead = Lead(view, state, next, on);
             if (seconds <= lead)
                 state.FoodSource = next;
-            else
+            else if (!double.IsInfinity(seconds))
             {
-                if (!double.IsInfinity(seconds))
-                    state.WakeMeAt(view.Time + seconds - lead); // aunque no nazca nadie (el centro urbano investiga una edad)
-                if (next == GatherSource.Farm && seconds <= lead + FarmWoodHorizon)
-                    state.Upcoming += farmCost * on; // la madera de las granjas que vienen, para el reparto
+                state.WakeMeAt(view.Time + seconds - lead); // aunque no nazca nadie (el centro urbano investiga una edad)
             }
         }
+        ForeseeFarms(view, state, food, farmCost);
 
         if (state.FoodSource is GatherSource.Berries or GatherSource.Farm && !state.HasOrWillHave(view, "mill")
             && CivBuildings.For(state.Data, state.Civ, "mill") is { } mill)
@@ -102,6 +106,28 @@ internal sealed class FoodRule : IGoalRule
             }
         }
         return steps;
+    }
+
+    /// <summary>
+    /// La madera de las granjas que vienen, para el reparto (<see cref="GoalState.Foreseen"/>): si lo que queda de comida
+    /// salvaje (la fuente de ahora y las que siguen en la apertura) se junta en <see cref="FarmForesightSeconds"/> o
+    /// menos, una granja por cada aldeano en ella que todavía no la tiene pedida.
+    /// </summary>
+    private static void ForeseeFarms(PlanView view, GoalState state, PlanFoodView food, ResourceAmounts farmCost)
+    {
+        var sources = new List<GatherSource>();
+        for (var source = state.FoodSource; source != GatherSource.Farm; source = NextSource(source, food, state))
+            sources.Add(source);
+        var wild = Wild.Sum(s => view.Villagers.GetValueOrDefault(s));
+        var perSecond = Wild.Sum(s => view.Villagers.GetValueOrDefault(s) * view.Rates.GetValueOrDefault(s));
+        if (wild == 0 || perSecond <= 0)
+            return;
+        var left = Wild.Where(s => s != state.FoodSource && view.Villagers.GetValueOrDefault(s) > 0 || sources.Contains(s))
+            .Sum(s => Math.Max(0, food.Remaining.GetValueOrDefault(s)));
+        if (left / perSecond > FarmForesightSeconds)
+            return;
+        var asked = state.Pending(view).Where(s => s is { Do: StepAction.Build, What: "farm" }).Sum(s => s.Count);
+        state.Foreseen += farmCost * Math.Max(0, wild - asked);
     }
 
     /// <summary>Cuánto antes de que se acabe la fuente se pasa a la siguiente: a las granjas, con el tiempo de juntar su madera.</summary>

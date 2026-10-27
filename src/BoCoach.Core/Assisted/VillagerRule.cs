@@ -161,12 +161,12 @@ internal sealed class VillagerRule : IGoalRule
 
     /// <summary>
     /// Lo que falta juntar en el horizonte para sostener la producción: lo que cuestan los pasos pendientes, lo que va a
-    /// hacer falta (<see cref="GoalState.Upcoming"/>), la comida de los aldeanos que se van a entrenar y la madera de las
+    /// hacer falta (<see cref="GoalState.Upcoming"/> y <see cref="GoalState.Foreseen"/>), la comida de los aldeanos que se van a entrenar y la madera de las
     /// casas que van a hacer falta, menos el stock y lo que juntan los aldeanos de ahora. El objetivo va aparte.
     /// </summary>
     private static ResourceAmounts Missing(PlanView view, GoalState state, double horizon, int villagersInHorizon)
     {
-        var demand = state.Upcoming;
+        var demand = state.Upcoming + state.Foreseen;
         foreach (var pending in view.Steps.Where(s => s.End is null && s.Remaining > 0 && !IsVillagers(s.Step)))
             demand += Cost(view, state, pending.Step) * pending.Remaining;
         foreach (var added in state.Added.Where(s => !IsVillagers(s)))

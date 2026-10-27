@@ -125,6 +125,21 @@ public class RuleTests
         Assert.Equal(GatherSource.Farm, state.FoodSource);
     }
 
+    [Theory]
+    [InlineData(300, 750, 17 * 60)] // la comida salvaje se acaba en menos de 4 minutos: hace falta una granja por aldeano
+    [InlineData(3000, 3000, 0)] // falta mucho: todavía no
+    public void La_madera_de_las_granjas_se_prevé(double hunt, double berries, double wood)
+    {
+        var state = State();
+        state.FoodSource = GatherSource.Hunt;
+        var view = new PlanView { Villagers = On((GatherSource.Hunt, 17), (GatherSource.Wood, 4)), Rates = Rates, Food = Food(0, hunt, berries), PopulationCap = 200 };
+
+        new FoodRule().Next(view, state);
+
+        Assert.Equal(wood, state.Foreseen.Wood);
+        Assert.Equal(0, state.Upcoming.Wood); // no aparta madera: solo guía el reparto
+    }
+
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
 
     [Theory]

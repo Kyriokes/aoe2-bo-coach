@@ -44,6 +44,12 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
     /// <summary>Lo que va a hacer falta para sostener la producción y no está pedido todavía (la madera de las granjas que vienen).</summary>
     public ResourceAmounts Upcoming { get; set; }
 
+    /// <summary>
+    /// Lo que va a hacer falta más adelante (la madera de las granjas de todos los que juntan comida salvaje): guía el
+    /// reparto de los aldeanos nuevos, pero no aparta stock como <see cref="Upcoming"/>.
+    /// </summary>
+    public ResourceAmounts Foreseen { get; set; }
+
     /// <summary>Hasta cuántos aldeanos entran antes del próximo clic de edad (null = sin clic cerca).</summary>
     public int? VillagersBeforeClick { get; set; }
 
