@@ -386,6 +386,35 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
         return cost;
     }
 
+    /// <summary>
+    /// Cuántos aldeanos van a estar en la fuente con lo pedido: los que están, más los que van (aldeanos nuevos, "mover",
+    /// constructores que vuelven ahí), menos los que se van a otra.
+    /// </summary>
+    public int Heading(PlanView view, GatherSource source)
+    {
+        var heading = view.Villagers.GetValueOrDefault(source);
+        foreach (var step in view.Steps.Where(s => s.End is null))
+            heading += Toward(step.Step, source, step.Step is { Do: StepAction.Train, What: "villager" } ? step.Remaining + step.Unfinished : step.Step.Count);
+        foreach (var step in Added)
+            heading += Toward(step, source, step.Count);
+        return heading;
+    }
+
+    /// <summary>Cuántos suma (o resta) un paso a lo que va a haber en la fuente.</summary>
+    private static int Toward(Step step, GatherSource source, int count)
+    {
+        var builders = step.Builders ?? 1;
+        return step.Do switch
+        {
+            StepAction.Train when step.What == "villager" && step.Assign == source => count,
+            StepAction.Move when step.Assign == source => step.Count,
+            StepAction.Move when step.From == source => -step.Count,
+            StepAction.Build when step.Assign == source && step.From != source => step.What == "farm" ? count : builders,
+            StepAction.Build when step.From == source && step.Assign != source => -(step.What == "farm" ? count : builders),
+            _ => 0,
+        };
+    }
+
     /// <summary>Si ya se pueden poner granjas: la civ las tiene y lo que piden (el molino) está terminado.</summary>
     public bool FarmsReady(PlanView view) => Farm is { } farm && ToBuild(view, farm) == farm;
 }

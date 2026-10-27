@@ -50,6 +50,46 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
+    /// <summary>
+    /// Pedido del usuario (2026-10-27): "la mayoría de las BO de tierra hacen 2 casas y mandan 6 a comida, y luego 2 a 4
+    /// a madera". Los primeros aldeanos van a las ovejas hasta las 6 de la apertura (con los 3 iniciales), y el centro
+    /// urbano no para en la Edad Oscura.
+    /// </summary>
+    [Theory]
+    [InlineData("franks")]
+    [InlineData("any")]
+    public void Los_primeros_aldeanos_van_a_las_ovejas(string civ)
+    {
+        var result = Generator.Generate(Assisted(civ, 120, Age("castle_age")));
+
+        var first = VillagerSteps(result).First();
+        Assert.Equal(GatherSource.Sheep, first.Assign);
+        Assert.Equal(6, first.Count); // el total en las ovejas, con los 3 iniciales
+        var feudal = result.Plan.Steps.First(s => s.Step.What == "feudal_age").Start!.Value;
+        var births = result.Plan.Jobs.Where(j => j.What == "villager" && j.Start < feudal).OrderBy(j => j.Start).ToList();
+        Assert.All(births.Zip(births.Skip(1)), p => Assert.True(p.Second.Start - p.First.End < 1, $"el centro urbano para de {GameClock.Format(p.First.End)} a {GameClock.Format(p.Second.Start)}"));
+    }
+
+    /// <summary>
+    /// Pedido del usuario (2026-10-27): "más de x cantidad no pueden juntar del mismo animal, y lo mismo las bayas; para
+    /// granjas no hay problema". En ningún momento hay más de <see cref="FoodRule.MaxOn"/> en ovejas, caza o bayas.
+    /// </summary>
+    [Theory]
+    [InlineData("franks", "castle_age")]
+    [InlineData("britons", "imperial_age")]
+    [InlineData("mongols", "castle_age")]
+    public void Ninguna_comida_salvaje_pasa_su_tope(string civ, string age)
+    {
+        var bo = Assisted(civ, 120, Age(age));
+        var result = Generator.Generate(bo);
+
+        var watcher = new SourceWatcher();
+        new Planner(TestData.GameData, AssistedGenerator.Settings(TestData.GameData, RealMaps, bo)).Simulate(result.BuildOrder, watcher);
+        foreach (var (time, source, count) in watcher.Seen.Where(x => x.Source is GatherSource.Sheep or GatherSource.Hunt or GatherSource.Berries))
+            Assert.True(count <= FoodRule.MaxOn, $"{civ}: {count} en {source} a las {GameClock.Format(time)}");
+        Assert.Empty(result.Problems);
+    }
+
     [Fact]
     public void Los_pasos_de_aldeanos_salen_por_tramos()
     {
@@ -178,7 +218,9 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
             .Select(n => Generator.Generate(Assisted(civ, until, Age("feudal_age"), Units("scout_cavalry", 20, n))).Goals[1].End!.Value)
             .ToList();
 
-        Assert.True(ends[1] <= ends[0] && ends[2] <= ends[1], string.Join(", ", ends.Select(GameClock.Format)));
+        // Con el tope de aldeanos en la comida salvaje (2026-10-27) las 20 unidades quedan frenadas por la comida, y la
+        // madera del establo de más atrasa las granjas: un edificio de más puede costar unos segundos, como en el juego.
+        Assert.True(ends[1] <= ends[0] + 45 && ends[2] <= ends[1] + 45, string.Join(", ", ends.Select(GameClock.Format)));
     }
 
     [Fact]
@@ -657,11 +699,26 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     [Fact]
     public void El_edificio_que_frena_el_clic_lo_hacen_varios()
     {
-        var result = Generator.Generate(Assisted("turks", 120, Age("castle_age")));
+        // Con "a N de población" fijo no hay búsqueda: los aldeanos juntan el costo antes de que se terminen los edificios.
+        var result = Generator.Generate(Assisted("turks", 120, Age("castle_age", atPop: 32)));
 
         var feudalBuildings = BuildOrderValidator.AgeUpRequirement("castle_age")!.Value.Buildings;
         Assert.Contains(result.BuildOrder.Steps, s => s.Do == StepAction.Build && feudalBuildings.Contains(s.What!) && s.Builders > 1);
         AssertConsistent(result);
+    }
+
+    /// <summary>Una política que no agrega nada y anota cuántos aldeanos hay en cada fuente en cada consulta.</summary>
+    private sealed class SourceWatcher : IStepPolicy
+    {
+        public List<(double Time, GatherSource Source, int Count)> Seen { get; } = [];
+
+        public double? WakeAt => null;
+
+        public IReadOnlyList<Step> Next(PlanView view)
+        {
+            Seen.AddRange(view.Villagers.Select(v => (view.Time, v.Key, v.Value)));
+            return [];
+        }
     }
 
     public static TheoryData<string> KnownBuildOrders()

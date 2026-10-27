@@ -61,7 +61,7 @@ internal sealed class VillagerRule : IGoalRule
         var order = new List<GatherSource>();
         var counts = new Dictionary<GatherSource, int>();
         var why = new Dictionary<GatherSource, string>();
-        var sheep = Heading(view, state, GatherSource.Sheep);
+        var sheep = state.Heading(view, GatherSource.Sheep);
         for (var j = 0; j < k; j++)
         {
             GatherSource source;
@@ -84,13 +84,13 @@ internal sealed class VillagerRule : IGoalRule
             else if (Resources.Any(res => sustain[res] > 0))
             {
                 var resource = Neediest(sustain, view, state);
-                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon) : SourceFor(resource, state);
+                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon, counts) : SourceFor(resource, state);
                 why.TryAdd(source, $"faltan {Math.Ceiling(sustain[resource]):0} de {Name(resource)} en los próximos {GameClock.Format(horizon)} para seguir produciendo");
             }
             else
             {
                 var resource = Neediest(missing, view, state);
-                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon) : SourceFor(resource, state);
+                source = resource == Resource.Food ? FoodRule.TargetFor(view, state, horizon, counts) : SourceFor(resource, state);
                 why.TryAdd(source, missing[resource] > 0
                     ? $"faltan {Math.Ceiling(missing[resource]):0} de {Name(resource)} para el objetivo"
                     : "no falta nada: a la madera");
@@ -127,7 +127,10 @@ internal sealed class VillagerRule : IGoalRule
                          || FoodRule.ActsWithin(view, state, (view.InProduction + 1) * villagerTime);
         string? Camp(GatherSource source) =>
             !campsBlock && CampFor(view, state, source) is { } camp && state.Affordable(view, state.Cost(view, camp)) ? camp : null;
-        var ordered = order.OrderBy(s => Camp(s) is null ? 1 : 0).ToList();
+        // Las ovejas de la apertura van primero, antes que el aldeano que hace un campamento: como las guías (2 casas, 6 a
+        // las ovejas y después la madera), y sin comida el centro urbano paraba a los 2 minutos.
+        var opening = why.GetValueOrDefault(GatherSource.Sheep)?.StartsWith("la apertura", StringComparison.Ordinal) == true;
+        var ordered = order.OrderBy(s => opening && s == GatherSource.Sheep ? 0 : Camp(s) is null ? 2 : 1).ToList();
         if (ordered.IndexOf(GatherSource.Farm) is var farmAt and >= 0
             && FoodRule.ActsWithin(view, state, (view.InProduction + ordered.Take(farmAt).Sum(s => counts[s]) + 1) * villagerTime))
         {
@@ -263,34 +266,6 @@ internal sealed class VillagerRule : IGoalRule
         step.What is { } what && state.Data.TryGet(what, out var entity) ? state.Civ.Cost(entity, view.Age) : ResourceAmounts.Zero;
 
     /// <summary>Los aldeanos que van a terminar en esa fuente: los que ya están y los que mandan los pasos pendientes.</summary>
-    private static int Heading(PlanView view, GoalState state, GatherSource source)
-    {
-        var heading = view.Villagers.GetValueOrDefault(source);
-        foreach (var step in view.Steps.Where(s => s.End is null))
-        {
-            if (step.Step.Assign != source)
-                continue;
-            heading += step.Step.Do switch
-            {
-                StepAction.Train when IsVillagers(step.Step) => step.Remaining + step.Unfinished,
-                StepAction.Build when step.Step.From != source => step.Step.Builders ?? 1,
-                StepAction.Move => step.Step.Count,
-                _ => 0,
-            };
-        }
-        foreach (var step in state.Added.Where(s => s.Assign == source))
-        {
-            heading += step.Do switch
-            {
-                StepAction.Train when IsVillagers(step) => step.Count,
-                StepAction.Build when step.From != source => step.Builders ?? 1,
-                StepAction.Move => step.Count,
-                _ => 0,
-            };
-        }
-        return heading;
-    }
-
     /// <summary>El campamento que le falta a un recurso (madera: maderero; oro y piedra: minero), con el de la civ; null si no hace falta.</summary>
     private static string? CampFor(PlanView view, GoalState state, GatherSource source)
     {

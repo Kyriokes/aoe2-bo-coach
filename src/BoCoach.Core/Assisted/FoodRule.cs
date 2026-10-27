@@ -33,6 +33,28 @@ internal sealed class FoodRule : IGoalRule
 
     private static readonly GatherSource[] Wild = [GatherSource.Sheep, GatherSource.Hunt, GatherSource.Berries];
 
+    /// <summary>
+    /// Lo más que juntan a la vez de una comida salvaje (las ovejas, el jabalí o los arbustos de bayas): más no entran
+    /// alrededor del animal o de los arbustos (pedido del usuario). Las granjas no tienen tope.
+    /// </summary>
+    public const int MaxOn = 8;
+
+    /// <summary>Cuántos más entran en la fuente (sin tope en las granjas).</summary>
+    public static int Room(PlanView view, GoalState state, GatherSource source) =>
+        Wild.Contains(source) ? Math.Max(0, MaxOn - state.Heading(view, source)) : int.MaxValue;
+
+    /// <summary>La fuente de ahora y las que siguen en la apertura, hasta las granjas.</summary>
+    private static IEnumerable<GatherSource> Chain(PlanFoodView food, GoalState state)
+    {
+        var source = state.FoodSource;
+        yield return source;
+        while (source != GatherSource.Farm)
+        {
+            source = NextSource(source, food, state);
+            yield return source;
+        }
+    }
+
     public IReadOnlyList<Step> Next(PlanView view, GoalState state)
     {
         if (view.Food is not { } food)
@@ -57,7 +79,7 @@ internal sealed class FoodRule : IGoalRule
         }
         ForeseeFarms(view, state, food, farmCost);
 
-        if (state.FoodSource is GatherSource.Berries or GatherSource.Farm && !state.HasOrWillHave(view, "mill")
+        if ((state.FoodSource is GatherSource.Berries or GatherSource.Farm || state.Heading(view, GatherSource.Berries) > 0) && !state.HasOrWillHave(view, "mill")
             && CivBuildings.For(state.Data, state.Civ, "mill") is { } mill)
         {
             var cost = state.Cost(view, mill);
@@ -94,12 +116,18 @@ internal sealed class FoodRule : IGoalRule
                 continue;
             }
             var why = $"{Capitalize(StepText.Source(old))} se acaba a las {GameClock.Format(view.Time + seconds)}";
-            if (state.FoodSource != GatherSource.Farm)
+            // A la comida salvaje que sigue, hasta su tope; lo que no entra, a la siguiente y después a las granjas.
+            foreach (var target in Chain(food, state).Where(t => Wild.Contains(t) && t != old && food.Remaining.GetValueOrDefault(t) > 0))
             {
-                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Move, Count = on, From = old, Assign = state.FoodSource },
-                    $"A {StepText.Source(state.FoodSource)}: {why}"));
-                continue;
+                var moved = Math.Min(on, Room(view, state, target));
+                if (moved <= 0)
+                    continue;
+                steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Move, Count = moved, From = old, Assign = target },
+                    $"A {StepText.Source(target)}: {why}"));
+                on -= moved;
             }
+            if (on == 0)
+                continue;
             // Sin el molino terminado no se pueden poner: un paso de granjas esperaría delante de los demás.
             var farms = !state.FarmsReady(view) ? 0 : Math.Min(on, state.AffordableCount(view, farmCost));
             if (farms > 0)
@@ -188,12 +216,23 @@ internal sealed class FoodRule : IGoalRule
     /// A qué fuente de comida mandar un aldeano nuevo que sale dentro de <paramref name="horizon"/> segundos: la de ahora,
     /// o la que sigue si la de ahora se acaba antes.
     /// </summary>
-    public static GatherSource TargetFor(PlanView view, GoalState state, double horizon)
+    public static GatherSource TargetFor(PlanView view, GoalState state, double horizon, IReadOnlyDictionary<GatherSource, int>? added = null)
     {
         var current = state.FoodSource;
         if (view.Food is not { } food || current == GatherSource.Farm)
             return current;
-        return SecondsLeft(view, food, current, view.Villagers.GetValueOrDefault(current)) <= horizon ? NextSource(current, food, state) : current;
+        // La de ahora si no se acaba en el horizonte y entra; si no, la siguiente con lugar (hasta su tope).
+        foreach (var source in Chain(food, state))
+        {
+            if (source == GatherSource.Farm)
+                return source;
+            var ending = source == current
+                ? SecondsLeft(view, food, current, view.Villagers.GetValueOrDefault(current)) <= horizon
+                : food.Remaining.GetValueOrDefault(source) <= 0;
+            if (!ending && Room(view, state, source) - (added?.GetValueOrDefault(source) ?? 0) > 0)
+                return source;
+        }
+        return GatherSource.Farm;
     }
 
     /// <summary>La fuente que sigue a la de ahora: jabalí y bayas si la apertura los pide y el mapa los tiene; si no, granjas.</summary>
