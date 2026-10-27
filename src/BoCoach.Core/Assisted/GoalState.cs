@@ -88,6 +88,32 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
         .Where(s => s.Do is StepAction.Build or StepAction.Research && s.What is { } what && Data.TryGet(what, out _))
         .Aggregate(ResourceAmounts.Zero, (sum, s) => sum + Cost(view, s.What!) * (s.Do == StepAction.Build ? s.Count : 1));
 
+    /// <summary>
+    /// Si el centro urbano investiga o tiene una investigación esperando (las edades): mientras, no salen aldeanos. Con
+    /// la investigación en curso, <paramref name="until"/> es la hora en que termina; si espera, null.
+    /// </summary>
+    public bool TownCenterResearching(PlanView view, out double? until)
+    {
+        until = null;
+        var busy = false;
+        foreach (var research in view.Steps.Where(s => s.End is null).Select(s => (s.Step, s.Started, s.Start))
+                     .Concat(Added.Select(s => (Step: s, Started: false, Start: (double?)null))))
+        {
+            if (research.Step.Do != StepAction.Research || research.Step.What is not { } what
+                || !Data.TryGet(what, out var entity) || entity.MadeIn != "town_center")
+                continue;
+            busy = true;
+            if (research.Started && research.Start is { } start)
+                until = start + Civ.Time(entity, view.Age) / Civ.WorkRate("town_center", view.Age);
+        }
+        return busy;
+    }
+
+    /// <summary>Los aldeanos que faltan encolar: los de los pasos de la foto que no salieron y los agregados ahora.</summary>
+    public int QueuedVillagers(PlanView view) =>
+        view.Steps.Where(s => s.Step is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Remaining)
+        + Added.Where(s => s is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Count);
+
     /// <summary>Si la civ necesita casas (los hunos no).</summary>
     public bool MakesHouses => !Civ.Start.NoHouses && CivBuildings.For(Data, Civ, "house") is not null;
 

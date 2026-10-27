@@ -33,13 +33,16 @@ internal sealed class AgeRule : IGoalRule
         state.Planned += cost;
 
         var steps = new List<Step>();
-        var soon = SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds;
-        if ((soon || goal.AtPop is not null) && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
+        var atPop = tech == goal.Age ? goal.AtPop : null;
+        var soon = atPop is { } target
+            ? Math.Max(0, target - view.Population) * state.VillagerTime(view.Age) <= RequirementLeadSeconds
+            : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds;
+        if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
             && Cheapest(view, state, tech) is { } building && !state.Affordable(view, state.Cost(view, building)))
         {
             state.Upcoming += state.Cost(view, building); // sale cuando alcanza
         }
-        else if ((soon || goal.AtPop is not null) && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
+        else if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2
             && Cheapest(view, state, tech) is { } affordable)
         {
             building = affordable;
@@ -52,12 +55,24 @@ internal sealed class AgeRule : IGoalRule
                 $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}"));
         }
 
-        var atPop = tech == goal.Age ? goal.AtPop : null;
         if (atPop is { } pop)
         {
-            if (BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) >= 2)
+            // El clic se agrega cuando se llega a la población y alcanza el costo: agregado antes, esperaría en la cola y
+            // frenaría lo de detrás (las casas, sin las que no se llega nunca, o el "mover" de la comida que se acaba).
+            // Hasta la población los tramos no la pasan; después el centro urbano espera el costo, como en las guías.
+            state.VillagersBeforeClick = Math.Max(0, pop - view.Population - view.InProduction - state.QueuedVillagers(view));
+            if (view.Population < pop || BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2)
+                return steps;
+            if (Affordable(view, cost, 0))
+            {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech, AtPop = pop },
                     $"Clic en {StepText.Name(tech)} a {pop} de población, como pide el objetivo"));
+            }
+            else
+            {
+                state.WakeMeAt(view.Time + (SecondsToAfford(view, cost) is { } wait && !double.IsInfinity(wait) ? Math.Max(1, Math.Ceiling(wait)) : 15));
+                steps.AddRange(Rebalance(view, state, tech, cost));
+            }
             return steps;
         }
 

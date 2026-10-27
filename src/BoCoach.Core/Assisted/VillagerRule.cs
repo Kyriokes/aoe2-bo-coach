@@ -19,8 +19,15 @@ internal sealed class VillagerRule : IGoalRule
     public IReadOnlyList<Step> Next(PlanView view, GoalState state)
     {
         var villagerSteps = view.Steps.Where(s => IsVillagers(s.Step)).ToList();
-        if (villagerSteps.Any(s => s.Remaining > 0) || state.Added.Any(IsVillagers))
+        if (villagerSteps.Any(s => s.Remaining > 0) || state.Added.Any(IsVillagers) || state.VillagersBeforeClick == 0)
             return [];
+        // Mientras investiga una edad no salen aldeanos (spec, sección 3, regla 5): un tramo encolado esperaría al centro
+        // urbano y frenaría lo que viene detrás (un "mover" de la caza que se acaba). El tramo se arma cuando termina.
+        if (state.TownCenterResearching(view, out var researchEnd))
+        {
+            state.WakeMeAt(researchEnd ?? view.Time + 5);
+            return [];
+        }
         var total = view.Villagers.Values.Sum() + view.IdleVillagers + view.Builders + villagerSteps.Sum(s => s.Unfinished);
         var room = state.Plan.Villagers.Until - total;
         if (room <= 0)

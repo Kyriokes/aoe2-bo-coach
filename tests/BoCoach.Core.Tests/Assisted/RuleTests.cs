@@ -165,4 +165,58 @@ public class RuleTests
 
         Assert.Equal(clicks, steps.Any(s => s is { Do: StepAction.Research, What: "feudal_age" }));
     }
+
+    [Fact]
+    public void Mientras_el_centro_urbano_investiga_no_arma_tramo()
+    {
+        var feudal = new Step { Id = "s9", Do = StepAction.Research, What = "feudal_age" };
+        var view = new PlanView
+        {
+            Time = 400,
+            Population = 20,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 10), (GatherSource.Wood, 9)),
+            Stock = new ResourceAmounts(0, 300, 0, 100),
+            Rates = Rates,
+            Steps = [new PlanViewStep(feudal, 0, true, true, 380, null)],
+        };
+        var state = State();
+
+        Assert.Empty(new VillagerRule().Next(view, state));
+        Assert.Equal(380 + TestData.GameData.Get("feudal_age").Time, state.WakeAt);
+    }
+
+    [Fact]
+    public void El_clic_a_N_de_poblacion_va_cuando_se_llega()
+    {
+        var plan = new AssistedPlan { Goals = [new AssistedGoal { Age = "feudal_age", AtPop = 22 }] };
+        PlanView View(int population, int inProduction) => new()
+        {
+            Population = population,
+            InProduction = inProduction,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, population - 5), (GatherSource.Wood, 4)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["lumber_camp"] = 1, ["mill"] = 1 },
+            Stock = new ResourceAmounts(500, 100, 0, 0),
+            Rates = Rates,
+        };
+
+        var early = State(plan: plan);
+        Assert.DoesNotContain(new AgeRule().Next(View(18, 1), early), s => s.Do == StepAction.Research);
+        Assert.Equal(3, early.VillagersBeforeClick); // 18 + 1 en producción + 3 = 22
+
+        var waiting = State(plan: plan);
+        Assert.DoesNotContain(new AgeRule().Next(View(21, 1), waiting), s => s.Do == StepAction.Research);
+        Assert.Equal(0, waiting.VillagersBeforeClick);
+        Assert.Empty(new VillagerRule().Next(View(21, 1), waiting));
+
+        var click = Assert.Single(new AgeRule().Next(View(22, 0), State(plan: plan)), s => s.Do == StepAction.Research);
+        Assert.Equal(22, click.AtPop);
+
+        // Sin el costo, el clic no queda esperando en la cola (frenaría el "mover" de la comida que se acaba).
+        var poor = View(22, 0) with { Stock = new ResourceAmounts(300, 100, 0, 0) };
+        var later = State(plan: plan);
+        Assert.DoesNotContain(new AgeRule().Next(poor, later), s => s.Do == StepAction.Research);
+        Assert.NotNull(later.WakeAt);
+    }
 }
