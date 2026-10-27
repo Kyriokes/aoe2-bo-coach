@@ -37,7 +37,7 @@ internal sealed class AgeRule : IGoalRule
         var soon = view.Age >= BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires && (atPop is { } target
             ? Math.Max(0, target - view.Population) * state.VillagerInterval(view) <= RequirementLeadSeconds
             : SecondsToAfford(view, cost) is { } toAfford && toAfford <= RequirementLeadSeconds);
-        if (soon && BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2 && Cheapest(view, state, tech) is { } building)
+        if (soon && Progress(state, tech, Keys(view, state, pending: true)) < 2 && Cheapest(view, state, tech) is { } building)
         {
             // Primero lo que pide antes (el cuartel de la galería); si ya está en obra, se espera a que termine.
             var first = state.ToBuild(view, building);
@@ -54,7 +54,7 @@ internal sealed class AgeRule : IGoalRule
                 var from = state.Builder(view);
                 var requirement = BuildOrderValidator.AgeUpRequirement(tech)!.Value.Requires;
                 steps.Add(state.Add(
-                    new Step { Id = state.NewId(), Do = StepAction.Build, What = first, From = from, Assign = from ?? GatherSource.Wood },
+                    new Step { Id = state.NewId(), Do = StepAction.Build, What = first, From = from, Assign = from ?? GatherSource.Wood, Builders = BuildersFor(view, state, first, cost) },
                     first != building
                         ? $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}, que pide antes {StepText.Name(first)}"
                         : $"Para {StepText.Name(tech)} hacen falta 2 edificios de {AgeName(requirement)}: {StepText.Name(building)}"));
@@ -69,7 +69,7 @@ internal sealed class AgeRule : IGoalRule
             state.VillagersBeforeClick = Math.Max(0, pop - view.Population - view.InProduction - state.QueuedVillagers(view));
             if (view.Population < pop)
                 return steps;
-            var buildings = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) >= 2;
+            var buildings = Progress(state, tech, Finished(view, state)) >= 2;
             if (buildings && Affordable(view, cost, 0) && LoomFirst(view, state, tech) is { } loomAtPop)
             {
                 steps.Add(loomAtPop);
@@ -90,7 +90,8 @@ internal sealed class AgeRule : IGoalRule
             return steps;
         }
 
-        var ready = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: false)) >= 2;
+        // Con los 2 edificios terminados: empezar a construirlos no habilita el clic (el Planner lo espera, como el juego).
+        var ready = Progress(state, tech, Finished(view, state)) >= 2;
         // El clic va con el centro urbano libre y el costo juntado: agregado antes, esperaría en la cola (detrás de los
         // aldeanos o del costo) y frenaría lo que se agrega detrás, como el "mover" de la comida que se acaba (y si la
         // comida no llegaba al costo, la BO quedaba trabada para siempre). Para que el centro urbano no pare, el último
@@ -109,13 +110,13 @@ internal sealed class AgeRule : IGoalRule
         }
 
         var toAffordSeconds = SecondsToAfford(view, cost) ?? 0;
-        if (!ready && soon)
+        if (!ready && (soon || Progress(state, tech, Keys(view, state, pending: true)) >= 2))
         {
             // Los edificios que faltan ya se están por pedir: el clic sale cuando se junta su madera y se terminan, y el
             // tramo de aldeanos de ahora se corta igual (si no, el clic esperaba un tramo entero al centro urbano).
             toAffordSeconds = ReadySeconds(view, state, tech, cost);
         }
-        if ((ready || soon) && !double.IsInfinity(toAffordSeconds))
+        if ((ready || soon || Progress(state, tech, Keys(view, state, pending: true)) >= 2) && !double.IsInfinity(toAffordSeconds))
         {
             // Los aldeanos que entran antes del clic, después de los que ya están en la cola, sin atrasarlo.
             var villager = state.Civ.Cost(state.Data.Get("villager"), view.Age);
@@ -127,6 +128,24 @@ internal sealed class AgeRule : IGoalRule
         steps.AddRange(Rebalance(view, state, tech, cost, waiting: false));
         return steps;
     }
+
+    /// <summary>
+    /// Cuántos aldeanos construyen un edificio de la edad: los justos para que termine cuando se junta el costo del clic
+    /// (cada uno de más suma un tercio del ritmo del primero: tiempo × 3 / (n + 2)), de 1 a <see cref="MaxBuilders"/>.
+    /// Con uno solo, el clic de un castillo rápido esperaba al mercado.
+    /// </summary>
+    private static int? BuildersFor(PlanView view, GoalState state, string building, ResourceAmounts cost)
+    {
+        var seconds = state.Civ.Time(state.Data.Get(building), view.Age) / state.Civ.BuildRate(view.Age);
+        var afford = SecondsToAfford(view, cost) ?? 0;
+        if (double.IsInfinity(afford) || seconds <= afford)
+            return null;
+        var builders = (int)Math.Ceiling(3 * seconds / Math.Max(1, afford) - 2);
+        return builders <= 1 ? null : Math.Min(MaxBuilders, builders);
+    }
+
+    /// <summary>Lo más que se pone a construir un edificio de la edad.</summary>
+    public const int MaxBuilders = 4;
 
     /// <summary>
     /// Cuántos aldeanos entran antes del clic: se suman mientras terminen antes de que se pueda hacer clic, con su comida
@@ -152,11 +171,19 @@ internal sealed class AgeRule : IGoalRule
         var keys = Keys(view, state, pending: true);
         var total = cost;
         var build = 0.0;
-        for (var k = BuildOrderValidator.AgeUpProgress(tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
+        for (var k = Progress(state, tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
         {
             total += state.CostWithRequirements(view, building);
             build = Math.Max(build, state.Civ.Time(state.Data.Get(building), view.Age));
             keys.Add(building);
+        }
+        // Lo que les falta a los de la edad que están en obra (la duración con sus constructores, desde que empezaron).
+        var requirement = BuildOrderValidator.AgeUpRequirement(tech)!.Value.Buildings.Append(BuildOrderValidator.AgeUpAloneBuilding(tech) ?? "");
+        foreach (var underway in view.Steps.Where(s => s is { Start: { } started, End: null, Step: { Do: StepAction.Build, What: { } what } } && requirement.Contains(what)))
+        {
+            var entity = state.Data.Get(underway.Step.What!);
+            var seconds = state.Civ.Time(entity, view.Age) * 3.0 / ((underway.Step.Builders ?? 1) + 2) / state.Civ.BuildRate(view.Age);
+            build = Math.Max(build, underway.Start!.Value + seconds - view.Time);
         }
         return Math.Max(SecondsToAfford(view, total) ?? 0, build);
     }
@@ -178,7 +205,7 @@ internal sealed class AgeRule : IGoalRule
         var cost = state.Civ.Cost(state.Data.Get(next), view.Age);
         var ahead = new ResourceAmounts(0, 0, cost.Stone, cost.Gold);
         var keys = Keys(view, state, pending: true);
-        for (var k = BuildOrderValidator.AgeUpProgress(next, keys); k < 2 && Cheapest(view, state, next, keys) is { } building; k++)
+        for (var k = Progress(state, next, keys); k < 2 && Cheapest(view, state, next, keys) is { } building; k++)
         {
             ahead += state.CostWithRequirements(view, building);
             keys.Add(building);
@@ -225,7 +252,7 @@ internal sealed class AgeRule : IGoalRule
 
         var need = cost;
         var keys = Keys(view, state, pending: true);
-        for (var k = BuildOrderValidator.AgeUpProgress(tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
+        for (var k = Progress(state, tech, keys); k < 2 && Cheapest(view, state, tech, keys) is { } building; k++)
         {
             need += state.CostWithRequirements(view, building);
             keys.Add(building);
@@ -289,6 +316,22 @@ internal sealed class AgeRule : IGoalRule
     public const double RebalanceGapSeconds = 30;
 
     private static bool Clicked(PlanView view, GoalState state, string tech) => state.Clicked(view, tech);
+
+    /// <summary>Cuántos de los 2 edificios de la edad hay entre <paramref name="keys"/>; los jemeres suben sin ninguno.</summary>
+    private static int Progress(GoalState state, string tech, IEnumerable<string> keys) =>
+        state.Civ.NoAgeBuildings ? 2 : BuildOrderValidator.AgeUpProgress(tech, keys);
+
+    /// <summary>Los edificios terminados, con lo que cuenta como ellos.</summary>
+    private static HashSet<string> Finished(PlanView view, GoalState state)
+    {
+        var keys = view.Buildings.Where(b => b.Value > 0).Select(b => b.Key).ToHashSet();
+        foreach (var key in keys.ToList())
+        {
+            if (state.Data.TryGet(key, out var entity))
+                keys.UnionWith(entity.CountsAs);
+        }
+        return keys;
+    }
 
     /// <summary>Los edificios hechos y en obra (y los pedidos, con <paramref name="pending"/>), con lo que cuenta como ellos.</summary>
     private static HashSet<string> Keys(PlanView view, GoalState state, bool pending)

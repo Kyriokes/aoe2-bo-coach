@@ -637,9 +637,31 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
                     .Select(b => b.Built ?? double.MaxValue).DefaultIfEmpty(double.MaxValue).Min();
                 Assert.True(done <= step.Start, $"{civ}: {step.Step.What} a las {GameClock.Format(step.Start!.Value)} y {required} a las {GameClock.Format(done)}");
             }
+            // Pedido del usuario: "pasa a Castillos sin haber terminado de construir el mercado". El clic, con los 2 terminados.
+            foreach (var click in result.Plan.Steps.Where(s => s.Step is { Do: StepAction.Research, What: "feudal_age" or "castle_age" or "imperial_age" } && s.Start is not null))
+            {
+                var finished = result.Plan.Buildings.Where(b => b.Built <= click.Start)
+                    .SelectMany(b => TestData.GameData.Get(b.Key).CountsAs.Prepend(b.Key));
+                Assert.True(TestData.GameData.Civ(civ).NoAgeBuildings || BuildOrderValidator.AgeUpProgress(click.Step.What!, finished) == 2,
+                    $"{civ}: clic en {click.Step.What} a las {GameClock.Format(click.Start!.Value)} sin sus 2 edificios terminados");
+            }
             // Lo que no se cumple es lo que la civ no tiene (incas sin establo, por ejemplo).
             Assert.All(result.Goals, g => Assert.True(g.End is not null || g.Problem?.Contains("no tiene") == true, $"{civ}, objetivo {g.Index}: {g.Problem}"));
         }
+    }
+
+    /// <summary>
+    /// Pedido del usuario: "revisá que agregar más de un aldeano a la construcción acelere el proceso". En un castillo
+    /// rápido el último edificio de Feudal frena el clic: lo construyen varios.
+    /// </summary>
+    [Fact]
+    public void El_edificio_que_frena_el_clic_lo_hacen_varios()
+    {
+        var result = Generator.Generate(Assisted("turks", 120, Age("castle_age")));
+
+        var feudalBuildings = BuildOrderValidator.AgeUpRequirement("castle_age")!.Value.Buildings;
+        Assert.Contains(result.BuildOrder.Steps, s => s.Do == StepAction.Build && feudalBuildings.Contains(s.What!) && s.Builders > 1);
+        AssertConsistent(result);
     }
 
     public static TheoryData<string> KnownBuildOrders()
