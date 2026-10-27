@@ -190,6 +190,26 @@ public class PlannerPolicyTests
     }
 
     [Fact]
+    public void Cambiar_el_after_de_un_paso_ya_devuelto_no_cambia_la_simulacion()
+    {
+        // Revisión del 2026-10-26: la copia era superficial y la lista de 'after' quedaba compartida.
+        var deps = new List<string>();
+        var policy = new Scripted(v =>
+        {
+            if (v.Steps.Count == 0)
+                return [new Step { Id = "campamento", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood, After = deps }, Villagers("v", 2, GatherSource.Sheep)];
+            if (deps.Count == 0)
+                deps.Add("nunca");
+            return [];
+        });
+
+        var plan = new Planner(TestData.GameData).Simulate(new BuildOrder { Name = "g" }, policy);
+
+        Assert.Empty(plan.For("campamento")!.Step.After);
+        Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(Generated(plan, "any")).Issues, i => i.Severity == Severity.Error);
+    }
+
+    [Fact]
     public void Sin_comida_finita_la_foto_no_trae_comida()
     {
         var policy = new Scripted(_ => []);

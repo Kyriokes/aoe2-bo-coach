@@ -11,7 +11,10 @@ namespace BoCoach.Core.Engine;
 /// </summary>
 public interface IStepPolicy
 {
-    /// <summary>Lo que agrega en este punto de decisión, al final de la BO; vacío = nada por ahora.</summary>
+    /// <summary>
+    /// Lo que agrega en este punto de decisión, al final de la BO; vacío = nada por ahora. El Planner guarda una copia:
+    /// lo que la política cambie después en un paso que ya devolvió no cuenta.
+    /// </summary>
     IReadOnlyList<Step> Next(PlanView view);
 }
 

@@ -431,7 +431,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     return;
                 foreach (var given in steps)
                 {
-                    var step = Pin(given with { }, IsVillagers(given) ? _reachedSince : _inOrderSince);
+                    var step = Pin(given with { After = [.. given.After] }, IsVillagers(given) ? _reachedSince : _inOrderSince);
                     if (!_ids.Add(step.Id))
                         throw new InvalidOperationException($"La política agregó un paso con un id que ya existe: '{step.Id}'.");
                     var item = new ItemSim(step, _items.Count, step.Do is StepAction.Train or StepAction.Build ? step.Count : 1, Lookup(step));
@@ -482,7 +482,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             new Dictionary<GatherSource, double>(_rates),
             _queues.Where(q => q.Value.Count > 0).ToDictionary(q => q.Key, q => q.Value.Count),
             _busyProducers.Where(b => b.Value > 0).ToDictionary(b => b.Key, b => b.Value),
-            _items.Select(i => new PlanViewStep(i.Step with { }, i.Remaining, i.Reached, i.Started, i.Start, i.End)).ToList(),
+            _items.Select(i => new PlanViewStep(i.Step with { After = [.. i.Step.After] }, i.Remaining, i.Reached, i.Started, i.Start, i.End)).ToList(),
             _births > 0,
             ranOut)
         {
