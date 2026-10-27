@@ -243,6 +243,44 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Las_edades_del_ejemplo_de_la_spec_llegan_en_todas_las_civs()
+    {
+        // El ejemplo de la spec (sección 2) sin los objetivos del sub-paso (d): Feudal, Castillos a 32 de población e
+        // Imperial, con aldeanos hasta 120. Las civs sin granjas en los datos (kitanos) no pueden subir de edad.
+        var failed = new List<string>();
+        foreach (var civ in TestData.GameData.Civs.Keys.Where(c => TestData.GameData.CanMake(c, "farm")).Order())
+        {
+            var result = Generator.Generate(Assisted(civ, 120, Age("feudal_age"), Age("castle_age", atPop: 32), Age("imperial_age")));
+            if (result.Problems.Count > 0)
+                failed.Add($"{civ}: {string.Join("; ", result.Problems)}");
+        }
+
+        Assert.Empty(failed);
+    }
+
+    [Theory]
+    [InlineData("any")]
+    [InlineData("mayan")]
+    [InlineData("mongols")]
+    [InlineData("britons")]
+    [InlineData("franks")]
+    public void Feudal_a_22_y_Castillos_a_N_de_poblacion_llegan(string civ)
+    {
+        // Los números de un fast castle: el centro urbano espera en N el costo de Castillos (con su oro).
+        var failed = new List<int>();
+        for (var n = 24; n <= 34; n++)
+        {
+            var result = Generator.Generate(Assisted(civ, 60, Age("feudal_age", atPop: 22), Age("castle_age", atPop: n)));
+            if (result.Problems.Count > 0)
+                failed.Add(n);
+            else
+                AssertConsistent(result);
+        }
+
+        Assert.Empty(failed);
+    }
+
+    [Fact]
     public void El_centro_urbano_no_para()
     {
         var result = Generator.Generate(Assisted("franks", 100, Age("feudal_age"), Age("castle_age")));

@@ -58,17 +58,21 @@ internal sealed class AgeRule : IGoalRule
             // frenaría lo de detrás (las casas, sin las que no se llega nunca, o el "mover" de la comida que se acaba).
             // Hasta la población los tramos no la pasan; después el centro urbano espera el costo, como en las guías.
             state.VillagersBeforeClick = Math.Max(0, pop - view.Population - view.InProduction - state.QueuedVillagers(view));
-            if (view.Population < pop || BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) < 2)
+            if (view.Population < pop)
                 return steps;
-            if (Affordable(view, cost, 0))
+            var buildings = BuildOrderValidator.AgeUpProgress(tech, Keys(view, state, pending: true)) >= 2;
+            if (buildings && Affordable(view, cost, 0))
             {
                 steps.Add(state.Add(new Step { Id = state.NewId(), Do = StepAction.Research, What = tech, AtPop = pop },
                     $"Clic en {StepText.Name(tech)} a {pop} de población, como pide el objetivo"));
             }
             else
             {
-                state.WakeMeAt(view.Time + (SecondsToAfford(view, cost) is { } wait && !double.IsInfinity(wait) ? Math.Max(1, Math.Ceiling(wait)) : 15));
-                steps.AddRange(Rebalance(view, state, tech, cost));
+                // El centro urbano espera el costo o un edificio: no nace nadie, así que la regla pide que la despierten,
+                // y aunque no se haya llegado a 'until' pasa gente a lo que falta.
+                var wait = buildings ? SecondsToAfford(view, cost) : null;
+                state.WakeMeAt(view.Time + (wait is { } w && !double.IsInfinity(w) ? Math.Max(1, Math.Ceiling(w)) : 15));
+                steps.AddRange(Rebalance(view, state, tech, cost, waiting: true));
             }
             return steps;
         }
@@ -94,7 +98,7 @@ internal sealed class AgeRule : IGoalRule
         }
         // Que la consulten cuando alcance, aunque no nazca nadie (ya se llegó a los aldeanos que pide la BO).
         state.WakeMeAt(view.Time + (double.IsInfinity(toAffordSeconds) || !ready ? 30 : Math.Max(1, Math.Ceiling(Math.Max(toAffordSeconds, queueWait)))));
-        steps.AddRange(Rebalance(view, state, tech, cost));
+        steps.AddRange(Rebalance(view, state, tech, cost, waiting: false));
         return steps;
     }
 
@@ -102,19 +106,20 @@ internal sealed class AgeRule : IGoalRule
     public const double RebalanceSeconds = 120;
 
     /// <summary>
-    /// Si ya no salen aldeanos (se llegó a 'until'), los nuevos no pueden ir a lo que falta: si un recurso que pide la
+    /// Si ya no salen aldeanos (se llegó a 'until', o el centro urbano espera el clic a N de población:
+    /// <paramref name="waiting"/>), los nuevos no pueden ir a lo que falta: si un recurso que pide la
     /// edad (su costo y sus 2 edificios) no se junta en <see cref="RebalanceSeconds"/>, pasa aldeanos desde lo que sobra
     /// (la comida salvaje si la comida ya alcanza, y como mucho la mitad de los leñadores; nunca los granjeros). Solo
     /// mueve a los libres (<see cref="GoalState.Free"/>) y lo que el donante puede dar sin quedar corto, y no pide otro
     /// reacomodo mientras un "mover" espera en la cola: un "mover" que no se puede hacer frena toda la BO.
     /// </summary>
-    private static List<Step> Rebalance(PlanView view, GoalState state, string tech, ResourceAmounts cost)
+    private static List<Step> Rebalance(PlanView view, GoalState state, string tech, ResourceAmounts cost, bool waiting)
     {
         var steps = new List<Step>();
         var villagers = view.Villagers.Values.Sum() + view.IdleVillagers + view.Builders
                         + view.Steps.Where(s => s.Step is { Do: StepAction.Train, What: "villager" }).Sum(s => s.Remaining + s.Unfinished);
         // Un reacomodo cada tanto: los "mover" se cumplen al instante y la consulta se repite en el mismo segundo.
-        if (villagers < state.Plan.Villagers.Until || view.Time - state.RebalancedAt < RebalanceGapSeconds
+        if (!waiting && villagers < state.Plan.Villagers.Until || view.Time - state.RebalancedAt < RebalanceGapSeconds
             || view.Steps.Any(s => s.End is null && s.Step.Do == StepAction.Move))
             return steps;
 
