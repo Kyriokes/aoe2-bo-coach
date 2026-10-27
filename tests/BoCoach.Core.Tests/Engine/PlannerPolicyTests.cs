@@ -341,4 +341,65 @@ public class PlannerPolicyTests
 
         AssertSame(Run(steady), Run(changing));
     }
+
+    /// <summary>Una política que pide que la despierten a una hora y ahí agrega una casa.</summary>
+    private sealed class Waking : IStepPolicy
+    {
+        public List<double> Times { get; } = [];
+
+        public double? WakeAt { get; private set; }
+
+        public IReadOnlyList<Step> Next(PlanView view)
+        {
+            Times.Add(view.Time);
+            if (view.Steps.Count == 0)
+            {
+                WakeAt = 300;
+                return [Villagers("v", 1, GatherSource.Sheep)];
+            }
+            if (view.Time >= 300 && view.Steps.All(s => s.Step.Id != "casa"))
+            {
+                WakeAt = null;
+                return [new Step { Id = "casa", Do = StepAction.Build, What = "house", From = GatherSource.Sheep, Assign = GatherSource.Sheep }];
+            }
+            return [];
+        }
+    }
+
+    [Fact]
+    public void La_politica_puede_pedir_que_la_despierten()
+    {
+        var policy = new Waking();
+        var planner = new Planner(TestData.GameData);
+
+        var plan = planner.Simulate(new BuildOrder { Name = "g" }, policy);
+
+        Assert.Contains(300.0, policy.Times);
+        Assert.Equal(300, plan.For("casa")!.Start);
+        Assert.Equal(300, plan.For("casa")!.Step.AtTime);
+        AssertSame(plan, planner.Simulate(Generated(plan, "any")));
+    }
+
+    /// <summary>Pide que la despierten a los 300 s pero no agrega nada más.</summary>
+    private sealed class Sleepy : IStepPolicy
+    {
+        public double? WakeAt { get; private set; }
+
+        public IReadOnlyList<Step> Next(PlanView view)
+        {
+            WakeAt = view.Time < 300 ? 300 : null;
+            return view.Steps.Count == 0 ? [Villagers("v", 1, GatherSource.Sheep)] : [];
+        }
+    }
+
+    [Fact]
+    public void Despertarse_sin_agregar_nada_no_cambia_el_resultado()
+    {
+        var planner = new Planner(TestData.GameData);
+
+        var plan = planner.Simulate(new BuildOrder { Name = "g" }, new Sleepy());
+
+        AssertSame(plan, planner.Simulate(Generated(plan, "any")));
+        Assert.Equal(25, plan.Timeline[^1].Time);
+    }
 }

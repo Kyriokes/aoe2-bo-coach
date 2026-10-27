@@ -361,6 +361,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         public PlanResult Run()
         {
             var nextSample = _time;
+            // D12: si la política pidió que la despierten, la simulación sigue después de que termina todo; si hasta el
+            // final no agrega nada más, el resultado es el del momento en que terminó (el de la BO generada).
+            PlanResult? whenDone = null;
             while (true)
             {
                 _births = 0;
@@ -383,22 +386,35 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                     Sample();
                     nextSample += _settings.SampleEvery;
                 }
-                if (_items.All(i => i.End is not null) || _time >= _settings.MaxTime)
+                var done = _items.All(i => i.End is not null);
+                var waking = _policy?.WakeAt is { } wake && wake > _time;
+                if (!done)
+                    whenDone = null;
+                else if (waking)
+                    whenDone ??= Result(final: true);
+                if (done && !waking || _time >= _settings.MaxTime)
                     break;
 
                 Gather();
                 _time += Tick;
             }
-            Sample();
+            return whenDone ?? Result(final: true);
+        }
 
+        /// <summary>El resultado hasta ahora, con una última muestra de este segundo (copias: la simulación puede seguir).</summary>
+        private PlanResult Result(bool final)
+        {
+            var timeline = new List<PlanSample>(_timeline);
+            if (final)
+                timeline.Add(new PlanSample(_time, _stock, _population, _cap, _villagers.Values.Sum() + _idle + _builders));
             return new PlanResult(
                 _items.Select(i => new StepEstimate(i.Step, i.Start, i.End, i.PaidAt is not null)).ToList(),
-                _blocks,
-                _timeline)
+                [.. _blocks],
+                timeline)
             {
-                Jobs = _jobs,
-                Buildings = _buildingList,
-                Idle = _idleList,
+                Jobs = [.. _jobs],
+                Buildings = [.. _buildingList],
+                Idle = [.. _idleList],
             };
         }
 
@@ -423,7 +439,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             var ranOut = inOrder && _inOrderSince is null;
             _inOrderSince = inOrder ? _inOrderSince ?? _time : null;
             _reachedSince = reached ? _reachedSince ?? _time : null;
-            if (_births == 0 && !ranOut && _items.Any(i => i.End is null))
+            var woke = _policy!.WakeAt is { } wake && _time >= wake;
+            if (_births == 0 && !ranOut && !woke && _items.Any(i => i.End is null))
                 return;
 
             for (var asks = 0; ; asks++)

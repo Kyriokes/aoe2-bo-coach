@@ -17,6 +17,13 @@ public interface IStepPolicy
     /// que la política cambie después en un paso que ya devolvió no cuenta.
     /// </summary>
     IReadOnlyList<Step> Next(PlanView view);
+
+    /// <summary>
+    /// La hora a la que la política pide que la vuelvan a consultar aunque no nazca nadie (null = no hace falta): por
+    /// ejemplo, cuando se acaba una fuente de comida mientras el centro urbano investiga una edad. Lo que agregue
+    /// entonces se fija con la hora.
+    /// </summary>
+    double? WakeAt => null;
 }
 
 /// <summary>
