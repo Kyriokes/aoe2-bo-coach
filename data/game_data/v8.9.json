@@ -729,6 +729,23 @@
         }
       }
     },
+    "two_man_saw": {
+      "kind": "tech",
+      "dat_id": 221,
+      "dat_name": "Two Man Saw",
+      "cost": {
+        "food": 300,
+        "wood": 200
+      },
+      "time": 100,
+      "made_in": "lumber_camp",
+      "age": "imperial",
+      "gather": {
+        "wood": {
+          "work": 1.1
+        }
+      }
+    },
     "horse_collar": {
       "kind": "tech",
       "dat_id": 14,
@@ -762,6 +779,19 @@
         }
       },
       "farm_food": 125.0
+    },
+    "crop_rotation": {
+      "kind": "tech",
+      "dat_id": 12,
+      "dat_name": "Crop rotation",
+      "cost": {
+        "food": 250,
+        "wood": 250
+      },
+      "time": 70,
+      "made_in": "mill",
+      "age": "imperial",
+      "farm_food": 175.0
     },
     "gold_mining": {
       "kind": "tech",
@@ -1069,6 +1099,7 @@
         "bloodlines",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
@@ -1113,6 +1144,12 @@
           {},
           {},
           {}
+        ],
+        "crop_rotation": [
+          {},
+          {},
+          {},
+          {}
         ]
       },
       "times": {
@@ -1123,6 +1160,12 @@
           0.0
         ],
         "heavy_plow": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "crop_rotation": [
           0.0,
           0.0,
           0.0,
@@ -1143,7 +1186,8 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "two_man_saw"
       ]
     },
     "goths": {
@@ -1342,6 +1386,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "mule_cart",
         "settlement",
@@ -1452,6 +1497,24 @@
             "wood": 85
           }
         ],
+        "two_man_saw": [
+          {
+            "food": 300,
+            "wood": 200
+          },
+          {
+            "food": 285,
+            "wood": 190
+          },
+          {
+            "food": 270,
+            "wood": 180
+          },
+          {
+            "food": 255,
+            "wood": 170
+          }
+        ],
         "horse_collar": [
           {
             "food": 75,
@@ -1486,6 +1549,24 @@
           {
             "food": 106,
             "wood": 106
+          }
+        ],
+        "crop_rotation": [
+          {
+            "food": 250,
+            "wood": 250
+          },
+          {
+            "food": 237,
+            "wood": 237
+          },
+          {
+            "food": 225,
+            "wood": 225
+          },
+          {
+            "food": 213,
+            "wood": 213
           }
         ],
         "gold_mining": [
@@ -1810,6 +1891,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "mangonel",
@@ -1980,6 +2062,7 @@
       },
       "unavailable": [
         "battle_elephant",
+        "crop_rotation",
         "eagle_scout",
         "mule_cart",
         "settlement",
@@ -2026,6 +2109,7 @@
       },
       "unavailable": [
         "battle_elephant",
+        "crop_rotation",
         "eagle_scout",
         "mule_cart",
         "settlement",
@@ -2168,10 +2252,12 @@
       },
       "unavailable": [
         "battle_elephant",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
-        "settlement"
+        "settlement",
+        "two_man_saw"
       ]
     },
     "celts": {
@@ -2202,11 +2288,13 @@
         "bloodlines",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "spanish": {
@@ -2242,6 +2330,7 @@
         "battle_elephant",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "crossbowman",
         "eagle_scout",
         "gold_shaft_mining",
@@ -2422,7 +2511,8 @@
         "scout_cavalry",
         "settlement",
         "stable",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "mayan": {
@@ -2564,6 +2654,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "house",
@@ -2734,6 +2825,7 @@
         "battle_elephant",
         "bloodlines",
         "camel_rider",
+        "crop_rotation",
         "demolition_raft",
         "eagle_scout",
         "mangonel",
@@ -2820,6 +2912,7 @@
       "unavailable": [
         "battering_ram",
         "battle_elephant",
+        "crop_rotation",
         "eagle_scout",
         "knight",
         "mule_cart",
@@ -3045,7 +3138,8 @@
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "magyars": {
@@ -3235,6 +3329,7 @@
       "unavailable": [
         "battle_elephant",
         "bloodlines",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
@@ -3532,7 +3627,8 @@
         "eagle_scout",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "berbers": {
@@ -3641,7 +3737,8 @@
         "eagle_scout",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "khmer": {
@@ -3656,7 +3753,8 @@
         "eagle_scout",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "malay": {
@@ -3719,7 +3817,8 @@
         "hand_cannoneer",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "burmese": {
@@ -3736,6 +3835,12 @@
           {},
           {},
           {}
+        ],
+        "two_man_saw": [
+          {},
+          {},
+          {},
+          {}
         ]
       },
       "times": {
@@ -3746,6 +3851,12 @@
           0.0
         ],
         "bow_saw": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "two_man_saw": [
           0.0,
           0.0,
           0.0,
@@ -3826,6 +3937,20 @@
             "food": 150
           }
         ],
+        "two_man_saw": [
+          {
+            "food": 300
+          },
+          {
+            "food": 300
+          },
+          {
+            "food": 300
+          },
+          {
+            "food": 300
+          }
+        ],
         "horse_collar": [
           {
             "food": 75
@@ -3852,6 +3977,20 @@
           },
           {
             "food": 125
+          }
+        ],
+        "crop_rotation": [
+          {
+            "food": 250
+          },
+          {
+            "food": 250
+          },
+          {
+            "food": 250
+          },
+          {
+            "food": 250
           }
         ],
         "gold_mining": [
@@ -3936,6 +4075,12 @@
           25.0,
           25.0
         ],
+        "two_man_saw": [
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
         "horse_collar": [
           10.0,
           10.0,
@@ -3947,6 +4092,12 @@
           20.0,
           20.0,
           20.0
+        ],
+        "crop_rotation": [
+          35.0,
+          35.0,
+          35.0,
+          35.0
         ],
         "gold_mining": [
           15.0,
@@ -4101,7 +4252,8 @@
         "hand_cannoneer",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "tatars": {
@@ -4124,7 +4276,8 @@
         "eagle_scout",
         "mule_cart",
         "settlement",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "two_man_saw"
       ]
     },
     "cumans": {
@@ -4278,6 +4431,24 @@
             "wood": 100
           }
         ],
+        "two_man_saw": [
+          {
+            "food": 180,
+            "wood": 200
+          },
+          {
+            "food": 180,
+            "wood": 200
+          },
+          {
+            "food": 180,
+            "wood": 200
+          },
+          {
+            "food": 180,
+            "wood": 200
+          }
+        ],
         "horse_collar": [
           {
             "food": 45,
@@ -4312,6 +4483,24 @@
           {
             "food": 75,
             "wood": 125
+          }
+        ],
+        "crop_rotation": [
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
           }
         ],
         "gold_mining": [
@@ -4526,6 +4715,7 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
+        "two_man_saw",
         "watch_tower"
       ]
     },
@@ -4590,7 +4780,8 @@
         "mill",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "bohemians": {
@@ -4693,6 +4884,7 @@
         "bloodlines",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "eagle_scout",
         "mule_cart",
         "settlement",
@@ -4804,6 +4996,7 @@
         "bloodlines",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "eagle_scout",
         "gold_shaft_mining",
         "knight",
@@ -4862,7 +5055,8 @@
         "knight",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "romans": {
@@ -4944,7 +5138,8 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "two_man_saw"
       ]
     },
     "armenians": {
@@ -4977,6 +5172,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "lumber_camp",
@@ -4984,7 +5180,8 @@
         "monastery",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "two_man_saw"
       ]
     },
     "georgians": {
@@ -5003,7 +5200,8 @@
         "mining_camp",
         "monastery",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "achaemenids": {
@@ -5051,7 +5249,8 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
-        "transport_ship"
+        "transport_ship",
+        "two_man_saw"
       ]
     },
     "athenians": {
@@ -5171,6 +5370,7 @@
         "battle_elephant",
         "bloodlines",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "knight",
@@ -5191,6 +5391,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "knight",
@@ -5215,7 +5416,8 @@
         "knight",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "jurchens": {
@@ -5272,6 +5474,7 @@
       "unavailable": [
         "battle_elephant",
         "bloodlines",
+        "crop_rotation",
         "eagle_scout",
         "farm",
         "gold_shaft_mining",
@@ -5304,7 +5507,8 @@
         "scale_barding_armor",
         "settlement",
         "steppe_lancer",
-        "transport_ship"
+        "transport_ship",
+        "two_man_saw"
       ]
     },
     "thracians": {
@@ -5317,6 +5521,7 @@
       "unavailable": [
         "battle_elephant",
         "camel_rider",
+        "crop_rotation",
         "demolition_raft",
         "dock",
         "eagle_scout",
@@ -5327,7 +5532,8 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
-        "transport_ship"
+        "transport_ship",
+        "two_man_saw"
       ]
     },
     "puru": {
@@ -5462,7 +5668,8 @@
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     },
     "tupi": {
@@ -5521,6 +5728,7 @@
         "bloodlines",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
         "husbandry",
@@ -5610,12 +5818,14 @@
         "battle_elephant",
         "camel_rider",
         "cavalry_archer",
+        "crop_rotation",
         "demolition_raft",
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "two_man_saw"
       ]
     }
   }

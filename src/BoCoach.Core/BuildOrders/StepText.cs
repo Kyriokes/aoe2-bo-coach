@@ -60,6 +60,8 @@ public static class StepText
         ["bow_saw"] = ("Sierra de arco", "Sierra de arco"),
         ["horse_collar"] = ("Collera", "Collera"),
         ["heavy_plow"] = ("Arado pesado", "Arado pesado"),
+        ["crop_rotation"] = ("Rotación de cultivos", "Rotación de cultivos"),
+        ["two_man_saw"] = ("Sierra de dos manos", "Sierra de dos manos"),
         ["gold_mining"] = ("Minería de oro", "Minería de oro"),
         ["gold_shaft_mining"] = ("Pozo de oro", "Pozo de oro"),
         ["stone_mining"] = ("Minería de piedra", "Minería de piedra"),

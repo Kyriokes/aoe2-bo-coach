@@ -139,6 +139,17 @@ public class GameDataTests
         Assert.Equal(0, V89.Get("wheelbarrow").FarmFood);
     }
 
+    // D12 (d): las mejoras eco de Imperial que faltaban.
+    [Fact]
+    public void Rotacion_de_cultivos_y_sierra_de_dos_manos()
+    {
+        var crop = V89.Get("crop_rotation");
+        Assert.Equal((EntityKind.Tech, Age.Imperial, "mill", 175.0), (crop.Kind, crop.Age, crop.MadeIn, crop.FarmFood));
+        var saw = V89.Get("two_man_saw");
+        Assert.Equal((EntityKind.Tech, Age.Imperial, "lumber_camp"), (saw.Kind, saw.Age, saw.MadeIn));
+        Assert.True(saw.Gather.ContainsKey(GatherSource.Wood));
+    }
+
     // D12: las bonificaciones de civ sobre lo que rinde la comida (recursos 216, 268, 219, 69 y 237 del .dat).
     [Theory]
     [InlineData("tatars", GatherSource.Sheep, 1.57)]
