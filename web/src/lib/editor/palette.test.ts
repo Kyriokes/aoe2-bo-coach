@@ -82,6 +82,13 @@ describe("paleta como en el juego", () => {
     expect(unavailableHere(item("scout_cavalry"), withStable, BO.length, data)).toBe("Recién después de construir establo: ahí se hace");
   });
 
+  it("un edificio que pide otro antes no está si ese no está (la galería sin cuartel), salvo para la civ que no lo pide", () => {
+    const noBarracks = BO.filter((s) => s.id !== "s5" && s.id !== "s7");
+    expect(unavailableHere(item("archery_range"), noBarracks, noBarracks.length, data)).toBe("falta un cuartel en la BO");
+    expect(unavailableHere(item("archery_range"), BO, BO.length, data)).toBeNull();
+    expect(unavailableHere(item("archery_range"), noBarracks, noBarracks.length, data, "khmer")).toBeNull();
+  });
+
   it("el buscador encuentra sin tildes y por el principio de cada palabra", () => {
     const items = allItems(bar);
     expect(searchPalette(items, "galeria").map((i) => i.key)).toEqual(["archery_range"]);

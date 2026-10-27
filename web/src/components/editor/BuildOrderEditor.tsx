@@ -260,7 +260,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     return chain ? chain.to + 1 : state.steps.length;
   }, [state.selected, state.steps]);
   // La paleta en ese lugar: solo lo que se puede agregar ahí.
-  const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data) : null), [palette, data, state.steps, insertIndex]);
+  const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data, state.bo.civ) : null), [palette, data, state.steps, insertIndex, state.bo.civ]);
   const paletteAll = useMemo(() => (palette ? allItems(palette) : []), [palette]);
 
   // El arranque de la partida (con la civ) y lo que hacen los aldeanos iniciales: el primer paso de la BO.

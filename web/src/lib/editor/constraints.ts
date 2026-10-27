@@ -40,13 +40,15 @@ export interface EntityLite {
   age: Age;
   made_in?: string;
   counts_as?: string[];
+  /** El edificio que tiene que estar antes para poder construir este (la galería, el cuartel). */
+  requires?: string;
   cost?: Partial<Record<"food" | "wood" | "gold" | "stone", number>>;
 }
 
 /** Lo que el editor necesita de game_data.json. */
 export interface GameDataLite {
   entities: Record<string, EntityLite>;
-  civs?: Record<string, { unavailable?: string[] }>;
+  civs?: Record<string, { unavailable?: string[]; no_requires?: string[] }>;
 }
 
 /** Índices de inserción entre los demás pasos donde puede caer la caja; `lo > hi` si no puede ir a ningún lado. */
@@ -66,6 +68,12 @@ export function canMake(data: GameDataLite, civ: string, key: string) {
   if (unavailable.includes(key)) return false;
   const madeIn = data.entities[key]?.made_in;
   return madeIn === undefined || !unavailable.includes(madeIn);
+}
+
+/** El edificio que pide antes `key` con esa civ (como CivBonuses.Requires): los jemeres no piden ninguno. */
+export function requiresOf(data: GameDataLite, civ: string, key: string) {
+  const requires = data.entities[key]?.requires;
+  return requires && !data.civs?.[civ.toLowerCase()]?.no_requires?.includes(key) ? requires : undefined;
 }
 
 /** Lo que construye un paso de construir: el edificio y lo que vale por otros (asentamiento, carro de mulas). */

@@ -1,5 +1,5 @@
 import { entityName } from "../stepText";
-import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, STARTING_BUILDING, type GameDataLite } from "./constraints";
+import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, requiresOf, STARTING_BUILDING, type GameDataLite } from "./constraints";
 import { paletteItems, type MapInfo, type PaletteItem } from "./gameData";
 import { withArticle } from "./guard";
 import type { EditorStep } from "./model";
@@ -107,9 +107,9 @@ export function allItems(bar: PaletteBar): PaletteItem[] {
  * Por qué una caja no se puede agregar en el índice de inserción `index` de la BO, o null si se puede. Son las reglas
  * de las cajas que se arrastran (edad, `after`, edificio que la produce, 2 edificios para subir de edad) más lo que el
  * juego no deja aunque el validador solo avise: investigar dos veces lo mismo, entrenar o investigar sin el edificio
- * antes, y subir de edad sin sus 2 edificios.
+ * antes, construir sin el que pide antes (la galería sin cuartel) y subir de edad sin sus 2 edificios.
  */
-export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: number, data: GameDataLite): string | null {
+export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: number, data: GameDataLite, civ = "any"): string | null {
   const step: EditorStep = { ...item.step, id: "\u0000paleta", after: [], withPrevious: false };
   if (step.do === "research" && steps.some((s) => s.do === "research" && s.what === step.what)) return "ya está en la BO";
   const range = allowedRange(steps, [step], data);
@@ -122,6 +122,8 @@ export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: n
   const producer = step.what ? data.entities[step.what]?.made_in : undefined;
   // Si el edificio está más adelante, ya lo frenó el rango ("Recién después de construir..."): acá falta en toda la BO.
   if (step.do !== "build" && producer && !has(producer)) return `falta ${withArticle(producer)} en la BO`;
+  const required = step.do === "build" && step.what ? requiresOf(data, civ, step.what) : undefined;
+  if (required && !has(required)) return `falta ${withArticle(required)} en la BO`;
   const req = step.do === "research" && step.what ? AGE_UP_REQ[step.what] : undefined;
   if (req && ageUpCount(req, new Set(req.buildings.filter(has))) < 2) {
     return `faltan 2 edificios de ${AGE_LABEL[req.requires]} antes (${req.buildings.map((b) => entityName(b, 1)).join(", ")})`;
@@ -137,11 +139,11 @@ export interface PaletteHere {
 }
 
 /** La paleta en un lugar de la BO: esconde lo que no se puede agregar ahí y guarda el motivo. */
-export function paletteHere(bar: PaletteBar, steps: EditorStep[], index: number, data: GameDataLite): PaletteHere {
+export function paletteHere(bar: PaletteBar, steps: EditorStep[], index: number, data: GameDataLite, civ = "any"): PaletteHere {
   const hidden = new Map<string, string>();
   const keep = (list: PaletteItem[]) =>
     list.filter((item) => {
-      const reason = unavailableHere(item, steps, index, data);
+      const reason = unavailableHere(item, steps, index, data, civ);
       if (reason) hidden.set(item.key, reason);
       return reason === null;
     });

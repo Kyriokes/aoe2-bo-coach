@@ -46,7 +46,7 @@ export function neverStartsReason(analysis: Analysis, block: EditorStep[], data:
   const wait = lastWait(analysis, block);
   const step = block.find((s) => s.id === wait?.step_id) ?? block[0];
   if (wait?.reason === "producer" && step?.what) {
-    const producer = data?.entities[step.what]?.made_in;
+    const producer = data?.entities[step.what]?.made_in ?? data?.entities[step.what]?.requires;
     if (producer) return `falta ${withArticle(producer)} en la BO: agregalo antes`;
   }
   return waitReason(analysis, block, data) ?? "el paso anterior tampoco termina";
