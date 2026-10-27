@@ -107,6 +107,17 @@ public class PostureTests
     }
 
     [Fact]
+    public void Para_Imperial_el_castillo_solo_alcanza()
+    {
+        // En el juego un castillo vale por los 2 edificios de Castillos (el validador lo cuenta así desde D12).
+        var coach = new PostureCoach(Scouts22, Data);
+        var view = coach.View(State(1500, new ResourceAmounts(500, 100, 0, 100), "stable_built", "castle_built"), [], Age.Castle, Data.Civ("any"));
+
+        Assert.Equal("imperial_age", view.NextAge);
+        Assert.Equal(0, view.NextAgeBuildingsMissing);
+    }
+
+    [Fact]
     public void Para_Castillos_faltan_dos_edificios_de_Feudal_y_lo_que_cuesta_guardando_para_la_produccion()
     {
         var coach = new PostureCoach(Scouts, Data);

@@ -115,7 +115,12 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
             foreach (var r in Enum.GetValues<Resource>())
                 missing = missing.With(r, Math.Max(0, need[r] - state.Stock[r]));
             if (BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
-                buildingsMissing = Math.Max(0, 2 - requirement.Buildings.Sum(b => Built(state, b)));
+            {
+                // El castillo cuenta doble para Imperial: solo ya alcanza.
+                var built = requirement.Buildings.Sum(b => Built(state, b))
+                            + (BuildOrderValidator.AgeUpAloneBuilding(next) is { } alone && Built(state, alone) > 0 ? 1 : 0);
+                buildingsMissing = Math.Max(0, 2 - built);
+            }
         }
         return new PostureView(posture.Queue, _posture.Derived, gaps, next, missing, buildingsMissing,
             next is not null && queue?.Any(i => i.Key == next) == true) { NextAgeNeed = needed };

@@ -75,6 +75,9 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         return Math.Min(2, count);
     }
 
+    /// <summary>El edificio que por sí solo vale por los 2 que pide la edad (el castillo para Imperial), o null.</summary>
+    public static string? AgeUpAloneBuilding(string ageTech) => AgeUpAlone.GetValueOrDefault(ageTech);
+
     /// <summary>La edad a la que lleva una tecnología de edad ("castle_age" → Castillos), o null si no es una.</summary>
     public static Age? AgeOf(string tech) => AgeTechs.TryGetValue(tech, out var age) ? age : null;
 
