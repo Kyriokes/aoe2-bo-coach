@@ -402,4 +402,37 @@ public class PlannerPolicyTests
         AssertSame(plan, planner.Simulate(Generated(plan, "any")));
         Assert.Equal(25, plan.Timeline[^1].Time);
     }
+
+    /// <summary>Mueve a la madera al principio y pide despertarse a los 100 s, cuando mueve a uno al oro (un paso instantáneo).</summary>
+    private sealed class LateMove : IStepPolicy
+    {
+        public double? WakeAt { get; private set; }
+
+        public IReadOnlyList<Step> Next(PlanView view)
+        {
+            if (view.Steps.Count == 0)
+            {
+                WakeAt = 100;
+                return [new Step { Id = "a", Do = StepAction.Move, Count = 3, Assign = GatherSource.Wood }];
+            }
+            if (view.Time >= 100 && view.Steps.All(s => s.Step.Id != "b"))
+            {
+                WakeAt = null;
+                return [new Step { Id = "b", Do = StepAction.Move, Count = 1, From = GatherSource.Wood, Assign = GatherSource.Gold }];
+            }
+            return [];
+        }
+    }
+
+    [Fact]
+    public void Un_paso_instantaneo_agregado_al_despertar_queda_en_el_resultado()
+    {
+        var planner = new Planner(TestData.GameData);
+
+        var plan = planner.Simulate(new BuildOrder { Name = "g" }, new LateMove());
+
+        Assert.Equal(["a", "b"], plan.Steps.Select(s => s.Step.Id));
+        Assert.Equal(100, plan.Steps[1].End);
+        AssertSame(plan, planner.Simulate(Generated(plan, "any")));
+    }
 }

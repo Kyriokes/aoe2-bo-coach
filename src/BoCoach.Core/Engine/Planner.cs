@@ -364,6 +364,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             // D12: si la política pidió que la despierten, la simulación sigue después de que termina todo; si hasta el
             // final no agrega nada más, el resultado es el del momento en que terminó (el de la BO generada).
             PlanResult? whenDone = null;
+            var whenDoneItems = 0;
             while (true)
             {
                 _births = 0;
@@ -388,10 +389,14 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 }
                 var done = _items.All(i => i.End is not null);
                 var waking = _policy?.WakeAt is { } wake && wake > _time;
-                if (!done)
+                // Lo agregado después (al despertar) cuenta aunque termine en el mismo segundo: un "mover" es instantáneo.
+                if (!done || _items.Count != whenDoneItems)
                     whenDone = null;
-                else if (waking)
-                    whenDone ??= Result(final: true);
+                if (done && waking && whenDone is null)
+                {
+                    whenDone = Result(final: true);
+                    whenDoneItems = _items.Count;
+                }
                 if (done && !waking || _time >= _settings.MaxTime)
                     break;
 
