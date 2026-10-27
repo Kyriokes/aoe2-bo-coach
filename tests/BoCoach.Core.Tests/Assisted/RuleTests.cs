@@ -82,6 +82,28 @@ public class RuleTests
         Assert.Equal(builder.Group, camp.Group);
     }
 
+    [Fact]
+    public void El_campamento_no_frena_la_comida_que_se_acaba()
+    {
+        // El campamento del aldeano nuevo espera a que nazca; lo que se agregue después (pasar a los de la caza que se
+        // acaba) esperaría detrás. Entonces el campamento lo hace después CampRule, desde los que ya están en la madera.
+        var view = new PlanView
+        {
+            Population = 10,
+            InProduction = 1,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 6), (GatherSource.Hunt, 3)),
+            Stock = new ResourceAmounts(300, 100, 0, 100),
+            Rates = Rates,
+            Food = Food(600, 50, 750),
+        };
+
+        var steps = new VillagerRule().Next(view, State()).ToList();
+
+        Assert.Contains(steps, s => s is { Do: StepAction.Train, Assign: GatherSource.Wood });
+        Assert.DoesNotContain(steps, s => s.Do == StepAction.Build);
+    }
+
     private static PlanFoodView Food(double sheep, double hunt, double berries) => new(
         new Dictionary<GatherSource, double> { [GatherSource.Sheep] = sheep, [GatherSource.Hunt] = hunt, [GatherSource.Berries] = berries }, [], 0, 0);
 

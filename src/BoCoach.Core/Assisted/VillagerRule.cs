@@ -100,8 +100,12 @@ internal sealed class VillagerRule : IGoalRule
         var steps = new List<Step>();
         var before = 0;
         // Primero el recurso que estrena campamento: así su aldeano sale enseguida y el campamento no frena lo que viene.
+        // Si mientras espera ese aldeano hay que pasar a los de una comida que se acaba, sin campamento: lo hace después
+        // CampRule desde los que ya están ahí (el paso esperando frenaría el "mover" que va detrás).
+        var campWait = (view.InProduction + 1) * villagerTime;
+        var campsBlock = FoodRule.ActsWithin(view, state, campWait);
         string? Camp(GatherSource source) =>
-            CampFor(view, state, source) is { } camp && state.Affordable(view, state.Cost(view, camp)) ? camp : null;
+            !campsBlock && CampFor(view, state, source) is { } camp && state.Affordable(view, state.Cost(view, camp)) ? camp : null;
         foreach (var source in order.OrderBy(s => Camp(s) is null ? 1 : 0).ToList())
         {
             var n = counts[source];

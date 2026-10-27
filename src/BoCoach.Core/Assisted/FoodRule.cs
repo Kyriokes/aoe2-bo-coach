@@ -156,6 +156,26 @@ internal sealed class FoodRule : IGoalRule
     }
 
     /// <summary>
+    /// Si dentro de <paramref name="seconds"/> va a hacer falta pasar a los de alguna comida salvaje que se acaba (un
+    /// "mover" o sus granjas): lo que se agregue después de un paso que espera quedaría frenado detrás de él.
+    /// </summary>
+    public static bool ActsWithin(PlanView view, GoalState state, double seconds)
+    {
+        if (view.Food is not { } food)
+            return false;
+        foreach (var source in Wild)
+        {
+            var on = view.Villagers.GetValueOrDefault(source);
+            if (on == 0)
+                continue;
+            var target = source == state.FoodSource ? NextSource(source, food, state) : state.FoodSource;
+            if (SecondsLeft(view, food, source, on) - Lead(view, state, target, on) <= seconds)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// A qué fuente de comida mandar un aldeano nuevo que sale dentro de <paramref name="horizon"/> segundos: la de ahora,
     /// o la que sigue si la de ahora se acaba antes.
     /// </summary>
