@@ -1,0 +1,75 @@
+using BoCoach.Core.Assisted;
+using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
+using BoCoach.Core.Engine;
+
+namespace BoCoach.Core.Tests.Assisted;
+
+/// <summary>D12 (c): el generador del modo asistido de punta a punta.</summary>
+public class AssistedGeneratorTests
+{
+    private static readonly Maps RealMaps = Maps.Load(Path.Combine(AppContext.BaseDirectory, "maps.json"));
+
+    private static readonly AssistedGenerator Generator = new(TestData.GameData, RealMaps);
+
+    private static BuildOrder Assisted(string civ, int until, params AssistedGoal[] goals) => new()
+    {
+        Name = "Asistida",
+        Civ = civ,
+        Assisted = new AssistedPlan { Villagers = new AssistedVillagers { Until = until }, Goals = goals },
+    };
+
+    /// <summary>La BO generada, simulada de nuevo sin la política, da lo mismo, y valida sin errores.</summary>
+    private static void AssertConsistent(AssistedResult result, Maps? maps = null)
+    {
+        var again = new Planner(TestData.GameData, AssistedGenerator.Settings(TestData.GameData, maps ?? RealMaps, result.BuildOrder))
+            .Simulate(result.BuildOrder);
+        Assert.Equal(result.Plan.Steps.Select(s => (s.Step.Id, s.Start, s.End)), again.Steps.Select(s => (s.Step.Id, s.Start, s.End)));
+        Assert.Equal(result.Plan.Blocks, again.Blocks);
+        Assert.Equal(result.Plan.Timeline, again.Timeline);
+        Assert.Equal(result.Plan.Idle, again.Idle);
+        Assert.Empty(new BuildOrderValidator(TestData.GameData, TestData.Events).Validate(result.BuildOrder).Errors);
+    }
+
+    private static IEnumerable<Step> VillagerSteps(AssistedResult result) =>
+        result.BuildOrder.Steps.Where(s => s is { Do: StepAction.Train, What: "villager" });
+
+    [Theory]
+    [InlineData("any")]
+    [InlineData("franks")]
+    public void Genera_aldeanos_hasta_N_con_casas(string civ)
+    {
+        var result = Generator.Generate(Assisted(civ, 18));
+
+        Assert.Equal(18, result.Plan.Timeline[^1].Villagers);
+        var villagerIds = VillagerSteps(result).Select(s => s.Id).ToHashSet();
+        Assert.DoesNotContain(result.Plan.Blocks, b => villagerIds.Contains(b.StepId) && b.Reason == BlockReason.Population && b.Duration > 5);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Los_pasos_de_aldeanos_salen_por_tramos()
+    {
+        var result = Generator.Generate(Assisted("any", 18));
+
+        var units = LivePlan.Units(result.BuildOrder);
+        var counts = result.BuildOrder.Steps.Select((s, i) => (s, n: units[i])).Where(x => LivePlan.IsVillagerTarget(x.s)).Select(x => x.n).ToList();
+        Assert.True(counts.Count <= 9, $"{counts.Count} pasos de aldeanos para 15 aldeanos");
+        Assert.All(counts, n => Assert.InRange(n, 1, 6));
+    }
+
+    [Fact]
+    public void Until_chico_no_entrena_de_mas()
+    {
+        var result = Generator.Generate(Assisted("any", 5));
+
+        Assert.Equal(5, result.Plan.Timeline[^1].Villagers);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Sin_assisted_da_error()
+    {
+        Assert.Throws<ArgumentException>(() => Generator.Generate(new BuildOrder { Name = "manual" }));
+    }
+}
