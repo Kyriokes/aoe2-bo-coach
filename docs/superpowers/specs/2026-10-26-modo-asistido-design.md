@@ -101,7 +101,9 @@ simulada de nuevo sin el generador, da exactamente los mismos tiempos: cada paso
 en que el generador lo agregó. Quien lo fija es el Planner, no el generador (sub-paso b): con `at_pop` si en ese
 segundo nació alguien (la población llegó recién ahí a ese número) y con `at_time` si no (un paso de aldeanos
 agregado cuando arranca un edificio que esperaba madera, por ejemplo). Si lo agregado vuelve a dejar la BO sin pasos
-por arrancar, el Planner pregunta otra vez en el mismo segundo.
+por arrancar, el Planner pregunta otra vez en el mismo segundo. También pregunta a la hora que la política pide (`IStepPolicy.WakeAt`, decidido en el sub-paso c):
+mientras el centro urbano investiga una edad no nace nadie y la comida igual se acaba, o el costo de la edad se junta
+sin que nazca nadie; lo que agrega entonces lleva `at_time`.
 
 **Qué mira en cada decisión, en este orden:**
 
