@@ -119,6 +119,40 @@ public class AssistedGeneratorTests(ITestOutputHelper output)
         AssertConsistent(result);
     }
 
+    private static AssistedGoal Units(string unit, int count, int buildings) => new() { Unit = unit, Count = count, Buildings = buildings };
+
+    [Fact]
+    public void Un_objetivo_que_la_civ_no_tiene_se_saltea()
+    {
+        var result = Generator.Generate(Assisted("incas", 60, Age("feudal_age"), Units("scout_cavalry", 5, 1), Age("castle_age")));
+
+        Assert.Contains("Los incas no tienen", result.Goals[1].Problem);
+        Assert.Contains("establo", result.Goals[1].Problem);
+        Assert.NotNull(result.Goals[2].End);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void Una_unidad_sin_su_edad_antes_es_un_problema()
+    {
+        var result = Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Units("knight", 5, 1)));
+
+        Assert.Contains("Pedí antes la Edad de los Castillos", result.Goals[1].Problem);
+        Assert.NotNull(result.Goals[0].End);
+        AssertConsistent(result);
+    }
+
+    [Fact]
+    public void La_postura_sale_de_la_edad_mas_alta_y_de_la_ultima_unidad()
+    {
+        var imperialFirst = Generator.Generate(Assisted("franks", 60, Age("imperial_age"), Age("feudal_age")));
+        Assert.Null(imperialFirst.BuildOrder.Posture?.NextAge);
+
+        var scouts = Generator.Generate(Assisted("franks", 60, Age("feudal_age"), Units("scout_cavalry", 10, 1), Age("castle_age")));
+        Assert.Equal("scout_cavalry", scouts.BuildOrder.Posture!.Queue[^1]); // los aldeanos van solo si no se llegó a 'until'
+        Assert.Equal("imperial_age", scouts.BuildOrder.Posture.NextAge);
+    }
+
     [Fact]
     public void Objetivos_que_todavia_no_se_generan()
     {

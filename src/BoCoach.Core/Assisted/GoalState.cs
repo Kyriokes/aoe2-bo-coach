@@ -32,6 +32,104 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
 
     public bool OpeningDone { get; set; }
 
+    private static readonly string[] AgeTechs = ["feudal_age", "castle_age", "imperial_age"];
+
+    /// <summary>
+    /// Los tipos de objetivo que el generador ya arma (los demás se avisan y no frenan a los de abajo). Cada sub-tarea
+    /// del (d) suma el suyo.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Generated = new HashSet<string> { "age" };
+
+    /// <summary>El tipo de un objetivo: "age", "unit", "town_centers" o "tech".</summary>
+    public static string Kind(AssistedGoal goal) =>
+        goal.Age is not null ? "age" : goal.Unit is not null ? "unit" : goal.TownCenters is not null ? "town_centers" : "tech";
+
+    /// <summary>Los objetivos que no se pueden, con el motivo (por índice): la civ no los tiene, o piden una edad que ningún objetivo de antes pide.</summary>
+    public IReadOnlyDictionary<int, string> Skipped => _skipped ??= FindSkipped();
+
+    private Dictionary<int, string>? _skipped;
+
+    /// <summary>Los edificios que piden los objetivos (el de cada unidad y tecnología): para subir de edad se prefieren.</summary>
+    public IReadOnlySet<string> WantedBuildings => _wanted ??= Plan.Goals
+        .Select((g, i) => (g, i))
+        .Where(x => !Skipped.ContainsKey(x.i) && (x.g.Unit ?? x.g.Tech) is { } key && Data.TryGet(key, out _))
+        .Select(x => Data.Get((x.g.Unit ?? x.g.Tech)!).MadeIn)
+        .OfType<string>()
+        .ToHashSet();
+
+    private HashSet<string>? _wanted;
+
+    /// <summary>Los objetivos que ya agregaron todos sus pasos (los de edad se miran en los pasos: ver <see cref="Launched"/>).</summary>
+    public HashSet<int> LaunchedGoals { get; } = [];
+
+    /// <summary>
+    /// El objetivo que se trabaja ahora: el primero que no arrancó todos sus pasos (spec, sección 3: "un objetivo empieza
+    /// a trabajarse cuando el anterior ya arrancó todos sus pasos"). Null si arrancaron todos.
+    /// </summary>
+    public int? ActiveGoal(PlanView view)
+    {
+        for (var i = 0; i < Plan.Goals.Count; i++)
+        {
+            if (!Launched(view, i))
+                return i;
+        }
+        return null;
+    }
+
+    /// <summary>Si un objetivo ya agregó todos sus pasos: la edad, con su clic; los salteados y los que todavía no se generan, siempre.</summary>
+    public bool Launched(PlanView view, int index)
+    {
+        var goal = Plan.Goals[index];
+        if (Skipped.ContainsKey(index) || !Generated.Contains(Kind(goal)) || LaunchedGoals.Contains(index))
+            return true;
+        return goal.Age is { } age && Clicked(view, age);
+    }
+
+    /// <summary>Si la edad ya se investigó o tiene su clic en la BO.</summary>
+    public bool Clicked(PlanView view, string ageTech) =>
+        view.Researched.Contains(ageTech)
+        || view.Steps.Any(s => s.Step is { Do: StepAction.Research } && s.Step.What == ageTech)
+        || Added.Any(s => s.Do == StepAction.Research && s.What == ageTech);
+
+    private Dictionary<int, string> FindSkipped()
+    {
+        var skipped = new Dictionary<int, string>();
+        var civName = Civ.Names.TryGetValue("mx", out var name) ? name.ToLowerInvariant() : "esta civ";
+        var highest = Age.Dark;
+        for (var i = 0; i < Plan.Goals.Count; i++)
+        {
+            var goal = Plan.Goals[i];
+            if (goal.Age is { } ageTech)
+            {
+                if (BuildOrderValidator.AgeOf(ageTech) is { } reached && reached > highest)
+                    highest = reached;
+                continue;
+            }
+            var keys = new List<string>();
+            var needs = Age.Dark;
+            if ((goal.Unit ?? goal.Tech) is { } key && Data.TryGet(key, out var entity))
+            {
+                if (entity.MadeIn is { } building && Data.TryGet(building, out var made))
+                {
+                    keys.Add(building);
+                    needs = made.Age;
+                }
+                keys.Add(key);
+                needs = entity.Age > needs ? entity.Age : needs;
+            }
+            else if (goal.TownCenters is not null)
+            {
+                keys.Add("town_center");
+                needs = Data.Get("town_center").Age;
+            }
+            if (keys.FirstOrDefault(k => !Data.CanMake(Civ.Key, k)) is { } missing)
+                skipped[i] = $"Los {civName} no tienen {StepText.Name(missing, missing == goal.Unit ? 2 : 1)}.";
+            else if (needs > highest)
+                skipped[i] = $"Pedí antes la {StepText.Name(AgeTechs[(int)needs - 1])}.";
+        }
+        return skipped;
+    }
+
     /// <summary>Cuándo se reacomodaron aldeanos por última vez (ver <see cref="AgeRule"/>).</summary>
     public double? RebalancedAt { get; set; }
 

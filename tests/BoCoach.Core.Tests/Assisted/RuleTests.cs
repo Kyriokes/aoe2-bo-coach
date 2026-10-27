@@ -185,6 +185,29 @@ public class RuleTests
         Assert.Contains(steps, s => s is { Do: StepAction.Move, Count: 8, From: GatherSource.Berries, Assign: GatherSource.Wood });
     }
 
+    [Fact]
+    public void Para_Castillos_prefiere_el_establo_que_piden_los_objetivos()
+    {
+        var plan = new AssistedPlan
+        {
+            Goals = [new AssistedGoal { Age = "castle_age" }, new AssistedGoal { Unit = "knight", Count = 10, Buildings = 1 }],
+        };
+        var view = new PlanView
+        {
+            Age = Age.Feudal,
+            PopulationCap = 200,
+            Villagers = On((GatherSource.Sheep, 6), (GatherSource.Wood, 10)),
+            Buildings = new Dictionary<string, int> { ["town_center"] = 1, ["blacksmith"] = 1 },
+            Researched = ["feudal_age"],
+            Stock = new ResourceAmounts(750, 400, 0, 200),
+            Rates = Rates,
+        };
+
+        var steps = new AgeRule().Next(view, State("franks", plan));
+
+        Assert.True(steps.Any(s => s is { Do: StepAction.Build, What: "stable" }), string.Join(", ", steps.Select(s => $"{s.Do} {s.What}")));
+    }
+
     private static AssistedPlan ToFeudal => new() { Goals = [new AssistedGoal { Age = "feudal_age" }] };
 
     [Theory]

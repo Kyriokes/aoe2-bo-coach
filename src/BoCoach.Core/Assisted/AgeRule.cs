@@ -21,8 +21,8 @@ internal sealed class AgeRule : IGoalRule
 
     public IReadOnlyList<Step> Next(PlanView view, GoalState state)
     {
-        var goal = state.Plan.Goals.FirstOrDefault(g => g.Age is { } age && AgeTechs.Contains(age) && !Clicked(view, state, age));
-        if (goal is null)
+        // Solo si el objetivo que se trabaja ahora es una edad (las intermedias que hagan falta se clican en orden).
+        if (state.ActiveGoal(view) is not { } active || state.Plan.Goals[active] is not { Age: { } goalAge } goal || !AgeTechs.Contains(goalAge))
             return [];
         var tech = AgeTechs.Take(Array.IndexOf(AgeTechs, goal.Age) + 1).First(t => !Clicked(view, state, t));
         var entity = state.Data.Get(tech);
@@ -188,10 +188,7 @@ internal sealed class AgeRule : IGoalRule
     /// <summary>Lo que se espera entre un reacomodo y el siguiente.</summary>
     public const double RebalanceGapSeconds = 30;
 
-    private static bool Clicked(PlanView view, GoalState state, string tech) =>
-        view.Researched.Contains(tech)
-        || view.Steps.Any(s => s.Step is { Do: StepAction.Research } && s.Step.What == tech)
-        || state.Added.Any(s => s.Do == StepAction.Research && s.What == tech);
+    private static bool Clicked(PlanView view, GoalState state, string tech) => state.Clicked(view, tech);
 
     /// <summary>Los edificios hechos y en obra (y los pedidos, con <paramref name="pending"/>), con lo que cuenta como ellos.</summary>
     private static HashSet<string> Keys(PlanView view, GoalState state, bool pending)
@@ -209,7 +206,10 @@ internal sealed class AgeRule : IGoalRule
         return keys;
     }
 
-    /// <summary>El edificio más barato de los que pide la edad que falta y la civ puede hacer (sin el muelle ni el castillo).</summary>
+    /// <summary>
+    /// El edificio que falta para la edad (sin el muelle ni el castillo) que la civ puede hacer: primero los que piden los
+    /// objetivos (el establo de los exploradores para Castillos), después el más barato.
+    /// </summary>
     private static string? Cheapest(PlanView view, GoalState state, string tech) =>
         Cheapest(view, state, tech, Keys(view, state, pending: true));
 
@@ -218,7 +218,7 @@ internal sealed class AgeRule : IGoalRule
         return BuildOrderValidator.AgeUpRequirement(tech)!.Value.Buildings
             .Where(b => b is not ("dock" or "castle") && !keys.Contains(b) && state.Data.CanMake(state.Civ.Key, b) && state.Data.TryGet(b, out _))
             .Select((b, i) => (b, i, cost: Total(state.Civ.Cost(state.Data.Get(b), view.Age))))
-            .OrderBy(x => x.cost).ThenBy(x => x.i)
+            .OrderBy(x => state.WantedBuildings.Contains(x.b) ? 0 : 1).ThenBy(x => x.cost).ThenBy(x => x.i)
             .Select(x => x.b)
             .FirstOrDefault();
     }
