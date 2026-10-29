@@ -305,6 +305,26 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     }
 
     /// <summary>
+    /// Los íconos de la cola empiezan en x 0, y 50 a 1080p (con el panel viejo y con el diseño propio). La caja por
+    /// defecto empezaba en x 6, y 52, y escalada por 1,0146 en y 53: el ícono salía cortado arriba y a la izquierda y
+    /// no se reconocía (partidas 20261028-232628 y 20261029-181856: la cola solo leyó el telar y la carretilla, nunca
+    /// los aldeanos ni los arqueros de las dos galerías).
+    /// </summary>
+    [Fact]
+    public void Con_la_captura_real_del_usuario_la_caja_de_la_cola_lee_el_aldeano()
+    {
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "hud-layout-20261024-1080p.png"));
+        var icons = IconLibrary.Load(Path.Combine(AppContext.BaseDirectory, "icons", "production_queue.json"));
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        var box = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
+        var queue = icons.Read(screen.Crop(box).AtHudScale(found.Scale));
+        Assert.Equal("villager", Assert.Single(queue).Key);
+    }
+
+    /// <summary>
     /// El aviso de inactivos del overlay es un marco rojo alrededor de la celda de inactivos, de un rojo a menos de 45
     /// por canal del casillero de comida y más ancho que él: no puede ganarle el lugar de ancla (su alto no es el de
     /// un casillero).
