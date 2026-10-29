@@ -114,6 +114,32 @@ public class TrackerTests
     }
 
     [Fact]
+    public void El_HUD_no_cumple_un_paso_cuyo_total_ya_se_paso_antes_en_la_BO()
+    {
+        // Partida 20261028-232628 (británicos mejorada): "5 en bayas" va después de sacar 6 de las ovejas y la caza, y
+        // su total de comida (6) es menos que el de pasos anteriores. A las 0:52, con 5 o 6 en comida y nadie movido,
+        // el HUD lo daba por hecho, y con él a todos los "Mover" de antes.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 6, Assign = GatherSource.Sheep },
+                new Step { Id = "s2", Do = StepAction.Move, Count = 3, From = GatherSource.Sheep, Assign = GatherSource.Wood },
+                new Step { Id = "s3", Do = StepAction.Train, What = "villager", Count = 2, Assign = GatherSource.Berries },
+            ],
+        };
+        var tracker = new Tracker(bo, TestData.GameData);
+        var partida = new Partida().Events("villager_created", 3).Hud(new ResourceAmounts(Food: 6, Wood: 0, Stone: 0, Gold: 0));
+        tracker.Update(partida.State);
+        partida.Hud(new ResourceAmounts(Food: 6, Wood: 0, Stone: 0, Gold: 0), dt: 3);
+        tracker.Update(partida.State);
+
+        Assert.Equal(0, tracker.Steps[2].Completed);
+        Assert.NotEqual(StepState.Done, tracker.Steps[1].State);
+    }
+
+    [Fact]
     public void La_produccion_militar_empezada_no_frena_la_BO()
     {
         // Como la guía de arqueros: 12 + 12 arqueros y después la economía. Partida 20261018-021924: el coach quedaba

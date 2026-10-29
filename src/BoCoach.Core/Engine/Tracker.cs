@@ -94,7 +94,7 @@ public sealed class Tracker
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
         _units = LivePlan.Units(bo);
         _actor = bo.Steps.Select(Actor).ToArray();
-        _hudTarget = bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? HudTarget(bo, i, s.Assign!.Value.Resource()) : null).ToArray();
+        _hudTarget = HudTargets(bo);
         _capTarget = CapTargets(bo, data);
         Recompute();
     }
@@ -122,8 +122,28 @@ public sealed class Tracker
 
     private readonly int?[] _capTarget;
 
-    private static (Resource, int)? HudTarget(BuildOrder bo, int index, Resource resource) =>
-        (resource, LivePlan.PlannedVillagers(bo, index).Where(v => v.Key.Resource() == resource).Sum(v => v.Value));
+    /// <summary>
+    /// Para cada paso de aldeanos: el total que la BO tiene en su recurso al terminarlo, solo si es más que lo que tuvo
+    /// en cualquier paso anterior. Si la BO antes sacó gente de ese recurso, el HUD ya muestra ese total desde mucho
+    /// antes: en la 20261028-232628 (británicos mejorada), "5 en bayas" pedía 6 en comida después de mover 6 de las
+    /// ovejas y la caza, y a las 0:52 lo daba por hecho, y con él a todos los "Mover" de antes. Esos pasos se cuentan
+    /// por el log, como sin el HUD.
+    /// </summary>
+    private static (Resource Resource, int Total)?[] HudTargets(BuildOrder bo)
+    {
+        var targets = new (Resource, int)?[bo.Steps.Count];
+        var peak = new Dictionary<Resource, int>();
+        for (var i = 0; i < bo.Steps.Count; i++)
+        {
+            var totals = LivePlan.PlannedVillagers(bo, i).GroupBy(v => v.Key.Resource()).ToDictionary(g => g.Key, g => g.Sum(v => v.Value));
+            if (LivePlan.IsVillagerTarget(bo.Steps[i]) && bo.Steps[i].Assign!.Value.Resource() is var resource
+                && totals.GetValueOrDefault(resource) is var total && total > peak.GetValueOrDefault(resource))
+                targets[i] = (resource, total);
+            foreach (var (r, t) in totals)
+                peak[r] = Math.Max(peak.GetValueOrDefault(r), t);
+        }
+        return targets;
+    }
 
     public BuildOrder BuildOrder => _bo;
     public IReadOnlyList<StepProgress> Steps => _steps;
