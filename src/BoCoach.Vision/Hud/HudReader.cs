@@ -215,28 +215,33 @@ public sealed class HudReader(HudFonts fonts)
             return PopulationFrom(_modPopulation.Read(right), villagers);
         }
 
+        // El reloj sigue con " (Normal - 1.7)…": vale el "hh:mm:ss" del principio, aunque lo de después toque el
+        // borde de la caja.
+        static double? TimeAtStart(GlyphReading reading) =>
+            ModClockTime.Match(reading.Text) is { Success: true } time && GameClock.TryParse(time.Value, out var seconds) ? seconds : null;
+
         double? clockSeconds = null;
         if (image(RegionNames.Clock) is { } clockImage)
         {
+            var clockClipped = false;
             if (_modClock is not null && ModPanel.HasBlackBackground(clockImage))
             {
-                // El reloj del mod sigue con " (Normal - 1.7)…": vale el "hh:mm:ss" del principio, aunque lo de
-                // después toque el borde de la caja.
                 var reading = _modClock.Read(clockImage.Stretched(PauseGain));
-                var time = ModClockTime.Match(reading.Text);
-                if (time.Success && GameClock.TryParse(time.Value, out var seconds))
-                    clockSeconds = seconds;
-                else if (reading.Clipped)
-                    clipped.Add(RegionNames.Clock);
+                clockSeconds = TimeAtStart(reading);
+                clockClipped = reading.Clipped;
             }
-            else
+            // Desde el parche del 2026-10-27 el mod ubica el reloj pero no dibuja el negro de atrás (partida
+            // 20261028-232628): con la textura y la sombra de las letras la caja igual parece negra, la letra del mod
+            // no lee nada y la de siempre lee bien el reloj grande sobre la textura.
+            if (clockSeconds is null)
             {
                 var reading = _clock.Read(clockImage);
-                if (reading.Clipped)
-                    clipped.Add(RegionNames.Clock);
-                if (reading.IsUsable && reading.Text.Contains(':') && GameClock.TryParse(reading.Text, out var seconds))
-                    clockSeconds = seconds;
+                clockSeconds = TimeAtStart(reading)
+                    ?? (reading.IsUsable && reading.Text.Contains(':') && GameClock.TryParse(reading.Text, out var seconds) ? seconds : null);
+                clockClipped |= reading.Clipped;
             }
+            if (clockSeconds is null && clockClipped)
+                clipped.Add(RegionNames.Clock);
         }
 
         var food = Stock(Resource.Food, RegionNames.Food);
