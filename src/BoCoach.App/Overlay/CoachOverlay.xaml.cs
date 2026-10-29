@@ -23,17 +23,14 @@ public partial class CoachOverlay : Window
     }
 
     /// <summary>
-    /// Lo ubica arriba a la derecha de la zona del juego (lejos del log de eventos, que está a la izquierda). Con
-    /// <paramref name="lowered"/> (sin reloj: menú o pantalla de carga), abajo a la derecha, así no tapa el mapa de la
-    /// pantalla de carga (D4).
+    /// Lo ubica arriba a la derecha de la zona del juego (lejos del log de eventos, que está a la izquierda), siempre en
+    /// el mismo lugar: también en la pantalla de carga.
     /// </summary>
-    public void PlaceOver(PixelRect area, bool lowered = false)
+    public void PlaceOver(PixelRect area)
     {
         var scale = VisualTreeHelperScale();
         var width = (int)Math.Ceiling(Width * scale);
-        var height = (int)Math.Ceiling(ActualHeight * scale);
-        var y = lowered ? area.Y + area.Height - height - RightMargin : area.Y + (int)(area.Height * TopFraction);
-        OverlayWindows.MoveTo(this, area.X + area.Width - width - RightMargin, y);
+        OverlayWindows.MoveTo(this, area.X + area.Width - width - RightMargin, area.Y + (int)(area.Height * TopFraction));
     }
 
     /// <summary>Píxeles físicos por unidad de WPF en el monitor de la ventana (1 a 100 %, 1,25 a 125 %...).</summary>

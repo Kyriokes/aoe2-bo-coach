@@ -19,11 +19,8 @@ public interface ICoachHost
 {
     void ShowOverlay(OverlayViewModel overlay, PixelRect area);
 
-    /// <summary>
-    /// Vuelve a ubicar el overlay (la ventana del juego se movió o cambió de tamaño). <paramref name="lowered"/>: sin
-    /// reloj, abajo a la derecha.
-    /// </summary>
-    void PlaceOverlay(PixelRect area, bool lowered = false);
+    /// <summary>Vuelve a ubicar el overlay (la ventana del juego se movió o cambió de tamaño).</summary>
+    void PlaceOverlay(PixelRect area);
 
     void SetOverlayVisible(bool visible);
 
@@ -47,7 +44,6 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private readonly Func<IFrameSource> _liveFrames;
     private LiveCoach? _coach;
     private Vision.Loading.LoadingReading? _loading;
-    private bool _lowered;
     private BuildOrderSuggestion? _suggestion;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -439,19 +435,6 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>
-    /// Segundos sin reloj para bajar el overlay (la pantalla de carga se lee antes: ver LiveCoach). Con medio segundo,
-    /// una captura sin leer cada tanto lo hacía saltar de arriba a abajo (tercera prueba del HUD propio, 2026-10-25).
-    /// </summary>
-    public const double LoweredAfterSeconds = 2;
-
-    /// <summary>
-    /// Si el overlay va abajo a la derecha: solo fuera de la partida (pantalla de carga), así no tapa el mapa de esa
-    /// pantalla. En plena partida queda arriba aunque no se lea el reloj: abajo tapaba el minimapa (pedido del usuario,
-    /// 2026-10-26).
-    /// </summary>
-    internal static bool Lowered(CoachFrame frame) => !frame.InGame && frame.SecondsWithoutClock >= LoweredAfterSeconds;
-
     /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
     public const double SuggestionSeconds = 60;
 
@@ -636,11 +619,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // La sugerencia vale durante la carga y el primer minuto de partida.
         if ((_suggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null) && frame.View.Time > SuggestionSeconds)
             (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null);
-        var lowered = Lowered(frame);
-        if (frame.Area is { IsEmpty: false } area && (area != _placedOver || lowered != _lowered))
+        // El panel no se mueve nunca: siempre arriba a la derecha, también en la pantalla de carga. Abajo tapaba el
+        // mapa y el minimapa cuando en plena partida se perdía el reloj; mejor que moleste en la carga que en el juego
+        // (pedido del usuario, 2026-10-29).
+        if (frame.Area is { IsEmpty: false } area && area != _placedOver)
         {
-            (_placedOver, _lowered) = (area, lowered);
-            _host.PlaceOverlay(area, lowered);
+            _placedOver = area;
+            _host.PlaceOverlay(area);
         }
         FrameApplied?.Invoke(frame);
     }

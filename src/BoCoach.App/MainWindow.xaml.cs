@@ -172,9 +172,9 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _cursor = new CursorReminder(overlay);
     }
 
-    public void PlaceOverlay(PixelRect area, bool lowered = false)
+    public void PlaceOverlay(PixelRect area)
     {
-        _overlay?.PlaceOver(area, lowered);
+        _overlay?.PlaceOver(area);
         _resources?.PlaceOver(area);
     }
 

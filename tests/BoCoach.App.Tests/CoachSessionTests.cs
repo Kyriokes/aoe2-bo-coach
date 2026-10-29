@@ -36,9 +36,9 @@ public sealed class CoachSessionTests : IDisposable
         public bool Closed { get; private set; }
 
         public void ShowOverlay(OverlayViewModel overlay, PixelRect area) => (Shown, Visible, Closed) = (overlay, true, false);
-        public void PlaceOverlay(PixelRect area, bool lowered = false) => Lowered = lowered;
+        public void PlaceOverlay(PixelRect area) => Placed.Add(area);
 
-        public bool Lowered { get; private set; }
+        public List<PixelRect> Placed { get; } = [];
 
         public (IReadOnlyList<string> Summary, string Path)? Report { get; private set; }
 
@@ -165,15 +165,12 @@ public sealed class CoachSessionTests : IDisposable
             PlayerName = "Kyriokes",
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
-        for (var i = 0; i < 2; i++)
-            await session.LiveCoach!.StepAsync();
-        // Un segundo sin reloj no mueve el overlay: una captura sin leer cada tanto lo hacía saltar de arriba a abajo
-        // (tercera prueba del HUD propio, 2026-10-25, con la caja del reloj justa).
-        Assert.False(host.Lowered);
-        for (var i = 0; i < 4; i++)
+        for (var i = 0; i < 6; i++)
             await session.LiveCoach!.StepAsync();
 
-        Assert.True(host.Lowered); // sin reloj, el overlay baja
+        // El panel no baja en la pantalla de carga ni sin reloj: queda donde lo puso ShowOverlay, arriba a la derecha
+        // (abajo tapaba el mapa en plena partida; pedido del usuario, 2026-10-29).
+        Assert.Empty(host.Placed);
         // El jugador juega con japoneses: desde D7 la biblioteca tiene una BO de cada civ (importada y mejorada) y gana
         // la mejorada de la suya.
         Assert.StartsWith("Sugerida: Fast Men-at-Arms (mejorada) (de tu civ", session.Overlay!.BoSuggestion);
@@ -210,18 +207,6 @@ public sealed class CoachSessionTests : IDisposable
         overlay.Apply(Frame(view with { Posture = null, Suggestion = null, Techs = [] }, withoutClock: 10));
         Assert.NotNull(overlay.Warning);
         Assert.True(overlay.ShowPanel);
-    }
-
-    // El panel baja solo fuera de la partida (la pantalla de carga, para no tapar el mapa). En plena partida queda
-    // arriba a la derecha aunque no se lea el reloj: abajo tapaba el minimapa (pedido del usuario, 2026-10-26).
-    [Fact]
-    public void En_plena_partida_el_panel_no_baja_aunque_no_se_lea_el_reloj()
-    {
-        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(300, new ResourceAmounts(100, 200, 200, 100), 23, 25));
-
-        Assert.False(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 20) with { InGame = true }));
-        Assert.False(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 1)));
-        Assert.True(CoachSessionViewModel.Lowered(Frame(view, withoutClock: 3)));
     }
 
     // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
