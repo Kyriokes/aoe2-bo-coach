@@ -61,7 +61,7 @@ public class CoachTextLanesTests
     [Fact]
     public void LaneLines_sin_nada_no_devuelve_renglones()
     {
-        var view = new CoachView(0, 0, 200, null, null, [], [], ResourceAmounts.Zero, null, [], null, 1, 1)
+        var view = new CoachView(0, 0, 200, null, null, [], ResourceAmounts.Zero, null, [], null, 1, 1)
         {
             Lanes = Lanes.All.Select(l => new LaneView(l, null, ResourceAmounts.Zero, null)).ToList(),
         };

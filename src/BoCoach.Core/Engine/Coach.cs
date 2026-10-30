@@ -22,7 +22,6 @@ public sealed record CoachView(
     int PopulationCap,
     StepProgress? Current,
     StepProgress? Next,
-    IReadOnlyList<StepProgress> Late,
     IReadOnlyList<RunningStep> Running,
     ResourceAmounts Missing,
     double? CurrentEta,
@@ -424,7 +423,7 @@ public sealed class Coach
         var previous = _lastQueueKeys;
         _lastQueueKeys = snapshot.Queue?.Select(i => i.Key).ToHashSet() ?? [];
         var started = false;
-        foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready or StepState.Late))
+        foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready))
         {
             if (step.Step.What is { } tech && _lastQueueKeys.Contains(tech) && previous.Contains(tech))
             {
@@ -619,8 +618,6 @@ public sealed class Coach
             State.PopulationCap,
             current,
             Tracker.Next,
-            // En el gris (unidades ajenas a la par de las de la BO) lo militar no queda atrasado.
-            Tracker.Late.Where(s => !(Abandonment.Gray && s.Step is { Do: StepAction.Train } train && train.What != "villager")).ToList(),
             Tracker.InProgress.Select(s => new RunningStep(s, _plan?.For(s.Step.Id)?.End))
                 .Concat(Tracker.Producing.Select(s => new RunningStep(s, null)))
                 .Concat(Tracker.Silent.Select(s => new RunningStep(s, null))).ToList(),
@@ -723,7 +720,6 @@ public sealed class Coach
         State.PopulationCap,
         null,
         null,
-        [],
         Tracker.InProgress.Select(s => new RunningStep(s, _plan?.For(s.Step.Id)?.End)).ToList(),
         ResourceAmounts.Zero,
         null,

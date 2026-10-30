@@ -683,7 +683,11 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             suggestions++;
         shown = view.Suggestion;
         var lines = CoachText.Lines(view, data);
-        var text = string.Join(" | ", new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).Concat(lines.Running).Concat([lines.Late.Count > 0 ? "Atrasado: " + string.Join("; ", lines.Late) : null, lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
+        // Como el overlay: los renglones de las líneas con la BO en curso; el paso de antes con una rama, abandonada o terminada.
+        var head = lines.Lanes.Count > 0 && view.Abandoned is null && view.Branch is null && !view.Finished
+            ? lines.Lanes.Select(l => $"{l.Label}: {l.Text}{(l.Tone == LaneTone.Waiting ? " [espera]" : l.Tone == LaneTone.Fallback ? " [fallback]" : "")}").ToList()
+            : new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).OfType<string>().ToList();
+        var text = string.Join(" | ", head.Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
         if (text == last)
             continue;
         last = text;

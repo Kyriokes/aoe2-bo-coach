@@ -40,7 +40,6 @@ public class TrackerTests
 
         Assert.True(tracker.Finished);
         Assert.Null(tracker.Current);
-        Assert.Empty(tracker.Late);
         Assert.Empty(tracker.Extras);
         Assert.All(tracker.Steps, s => Assert.False(s.Manual));
     }
@@ -164,7 +163,7 @@ public class TrackerTests
 
         Assert.Equal("s3", tracker.Current?.Step.Id);
         Assert.Equal(["s1", "s2"], tracker.Producing.Select(s => s.Step.Id));
-        var view = new CoachView(0, 0, 0, tracker.Current, null, [], tracker.Producing.Select(s => new RunningStep(s, null)).ToList(), ResourceAmounts.Zero, null, [], null, 0, 3);
+        var view = new CoachView(0, 0, 0, tracker.Current, null, tracker.Producing.Select(s => new RunningStep(s, null)).ToList(), ResourceAmounts.Zero, null, [], null, 0, 3);
         Assert.Equal("Seguí produciendo arqueros: 1/6", CoachText.Lines(view, TestData.GameData).Running.Single());
     }
 
@@ -371,7 +370,6 @@ public class TrackerTests
         Assert.Equal(StepState.Done, StateOf(tracker, "s4"));
         Assert.Contains(StateOf(tracker, "s2"), Open);
         Assert.Contains(StateOf(tracker, "s3"), Open);
-        Assert.Empty(tracker.Late);
         Assert.Equal("s2", tracker.Current?.Step.Id);
     }
 
@@ -420,7 +418,6 @@ public class TrackerTests
         tracker.MarkStarted(ids.IndexOf("s15"), 194);
 
         Assert.Equal("s5", tracker.Current?.Step.Id);
-        Assert.Empty(tracker.Late);
         Assert.NotEqual(StepState.Done, tracker.Steps[ids.IndexOf("s11")].State);   // la granja del paso mixto
     }
 

@@ -35,7 +35,6 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     /// <summary>Paso mixto: las otras metas del paso actual.</summary>
     [ObservableProperty] public partial IReadOnlyList<string> Goals { get; set; } = [];
     [ObservableProperty] public partial string? Next { get; set; }
-    [ObservableProperty] public partial IReadOnlyList<string> Late { get; set; } = [];
     /// <summary>Los renglones fijos de las líneas (spec 2026-10-30). Con ellos no se muestran paso actual, después ni atrasados.</summary>
     [ObservableProperty] public partial IReadOnlyList<LaneLine> Lanes { get; set; } = [];
 
@@ -118,7 +117,6 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Running = ShowLanes ? lines.Running.Where(r => !r.StartsWith("Seguí produciendo", StringComparison.Ordinal)).ToList() : lines.Running;
         Goals = lines.Goals;
         Next = lines.Next;
-        Late = lines.Late.Select(l => $"Atrasado: {l}").ToList();
         Deviation = lines.Deviation;
         Behind = lines.Behind;
         Suggestion = lines.Suggestion;

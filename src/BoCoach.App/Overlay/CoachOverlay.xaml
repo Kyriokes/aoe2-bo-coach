@@ -102,18 +102,9 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <!-- Siguiente y atrasados: solo sin las líneas (rama, BO abandonada o terminada) -->
-                <StackPanel Visibility="{Binding ShowStep, Converter={StaticResource BoolToVisibility}}">
+                <!-- Siguiente: solo sin las líneas (rama, BO abandonada o terminada) -->
                 <TextBlock Text="{Binding Next}" Foreground="#C9C1B6" Margin="0,4,0,0"
-                           Visibility="{Binding Next, Converter={StaticResource NotEmptyToVisibility}}" />
-                <ItemsControl ItemsSource="{Binding Late}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="#F0A060" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                </StackPanel>
+                           Visibility="{Binding ShowStep, Converter={StaticResource BoolToVisibility}}" />
 
                 <!-- Objetivo de la BO -->
                 <TextBlock Text="{Binding Deviation}" Margin="0,6,0,0"

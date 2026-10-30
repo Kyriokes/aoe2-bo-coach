@@ -13,9 +13,6 @@ public enum StepState
 
     Done,
 
-    /// <summary>Ya no se asigna (spec 2026-10-30: lo salteado queda primero en su línea). Se saca con la vista vieja.</summary>
-    Late,
-
     /// <summary>Ya se pagó y se está haciendo (por ejemplo, la investigación de una edad), pero no terminó.</summary>
     InProgress,
 
@@ -216,8 +213,6 @@ public sealed class Tracker
 
     /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
     private bool SameGroup(int i, int j) => _bo.Steps[i].Group is { } g && g == _bo.Steps[j].Group;
-
-    public IEnumerable<StepProgress> Late => _steps.Where(s => s.State == StepState.Late);
 
     public IEnumerable<StepProgress> InProgress => _steps.Where(s => s.State == StepState.InProgress);
 

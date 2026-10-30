@@ -152,7 +152,6 @@ public class BuildOrderAbandonmentTests
         Assert.All(view.Lanes, l => Assert.Null(l.Step)); // cada línea a su fallback
         Assert.Null(view.Current);
         Assert.Null(view.Next);
-        Assert.Empty(view.Late);
         Assert.Equal(new ResourceAmounts(8, 10, 0, 2), view.Distribution); // la GD es lo que hay
         var lines = CoachText.Lines(view, TestData.GameData);
         Assert.Equal("BO abandonada: seguí con lo básico", lines.Current);

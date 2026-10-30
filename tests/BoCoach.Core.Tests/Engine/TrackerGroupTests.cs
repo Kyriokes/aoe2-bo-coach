@@ -50,7 +50,6 @@ public class TrackerGroupTests
         Play(tracker, state, 40, "house_built");
 
         Assert.Equal(StepState.Done, tracker.Steps[1].State);
-        Assert.NotEqual(StepState.Late, tracker.Steps[0].State);
         Assert.Equal("a", tracker.Current?.Step.Id);
         Assert.Equal("c", tracker.Next?.Step.Id);
     }

@@ -663,7 +663,6 @@ public class PartidaDeScoutsGrabadaTests(Xunit.Abstractions.ITestOutputHelper ou
         // exploradores, el paso siguiente.
         Assert.All(steps.Values, s => Assert.Equal(StepState.Done, s.State));
         Assert.Null(coach.View.Current);
-        Assert.Empty(coach.Tracker.Late);
 
         // La sugerencia de aldeanos no salta a cada captura (en esta partida cambia 17 veces en 18 minutos).
         Assert.InRange(changes.Count, 1, 25);
