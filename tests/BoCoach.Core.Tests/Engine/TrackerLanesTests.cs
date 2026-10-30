@@ -192,4 +192,34 @@ public class TrackerLanesTests
 
         Assert.Null(tracker.LaneStep(Lane.Villagers));
     }
+
+    [Fact]
+    public void Advance_de_Investigar_da_por_hecho_el_paso_de_esa_linea()
+    {
+        var bo = Bo(Villagers("v1", 3, GatherSource.Wood), Research("loom", "loom"), Build("house", "house"));
+        var tracker = new Tracker(bo, TestData.GameData);
+
+        tracker.Advance(Lane.Research);
+
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "loom")].State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[Index(bo, "v1")].State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[Index(bo, "house")].State);
+
+        tracker.Skip(Lane.Build);
+
+        Assert.Equal(StepState.Skipped, tracker.Steps[Index(bo, "house")].State);
+        Assert.Equal("v1", tracker.LaneStep(Lane.Villagers)?.Step.Id);
+    }
+
+    [Fact]
+    public void Advance_sin_linea_da_por_hecho_lo_primero_que_falta()
+    {
+        var bo = Bo(Build("house", "house"), Research("loom", "loom"));
+        var tracker = new Tracker(bo, TestData.GameData);
+
+        tracker.Advance();
+
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "house")].State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[Index(bo, "loom")].State);
+    }
 }

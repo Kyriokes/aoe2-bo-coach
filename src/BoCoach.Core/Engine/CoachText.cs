@@ -78,9 +78,10 @@ public static class CoachText
     /// <summary>
     /// Un renglón por línea, en el orden de <see cref="Lanes.All"/>, solo las que tienen algo que decir: su paso (blanco,
     /// o amarillo con lo que espera) o su fallback en gris (GD, casa, tecnología que falta, edificio de la postura).
-    /// La producción militar en marcha va en Producir ("Seguí produciendo arqueros: 3/6").
+    /// La producción militar en marcha va en Producir ("Seguí produciendo arqueros: 3/6"). Sin <paramref name="data"/>
+    /// no avisa "sin lugar" (el panel de la app no la tiene).
     /// </summary>
-    public static IReadOnlyList<LaneLine> LaneLines(CoachView view, GameData data)
+    public static IReadOnlyList<LaneLine> LaneLines(CoachView view, GameData? data)
     {
         var lines = new List<LaneLine>();
         foreach (var lane in view.Lanes)
@@ -111,7 +112,7 @@ public static class CoachText
     };
 
     /// <summary>Por qué espera el paso de una línea ("faltan 40 de madera (0:35)", "a 20 de población"), o null si se puede ya.</summary>
-    private static string? Waiting(CoachView view, LaneView lane, GameData data)
+    private static string? Waiting(CoachView view, LaneView lane, GameData? data)
     {
         var step = lane.Step!.Step;
         if (lane.Lane != Lane.Villagers)
@@ -128,7 +129,7 @@ public static class CoachText
             return $"a {pop} de población (vas {view.Population})";
         if (step.AtTime is { } time && view.Time < time)
             return $"a los {GameClock.Format(time)}";
-        if (step.What is { } what && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
+        if (step.What is { } what && data is not null && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
             return "sin lugar: hacé una casa";
         return null;
     }

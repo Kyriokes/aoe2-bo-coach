@@ -43,6 +43,19 @@ public sealed class LiveReadingViewModelTests : IDisposable
         Assert.Equal("36:30", panel.Clock);
     }
 
+    // Spec 2026-10-30: el panel muestra los mismos renglones que el overlay.
+    [Fact]
+    public void El_panel_muestra_las_lineas()
+    {
+        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(30, PlanStart.Standard.Stock, 4, 5));
+        var hud = new HudState(RealTime: 1, Clock: 30, 200, 200, 100, 200, 3, 0, Age.Dark, [], []);
+        var panel = new LiveReadingViewModel();
+
+        panel.Apply(Frame(view, hud));
+
+        Assert.Equal(CoachText.LaneLines(view, _data.GameData).Select(l => $"{l.Label}: {l.Text}"), panel.Lanes);
+    }
+
     [Fact]
     public void El_panel_dice_contra_quien_se_juega_segun_la_pantalla_de_carga()
     {

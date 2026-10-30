@@ -274,23 +274,25 @@ public sealed class Tracker
         }
     }
 
-    /// <summary>Hotkey "avanzar": da por hecho el paso actual.</summary>
-    public void Advance()
+    /// <summary>
+    /// Hotkey "avanzar": da por hecho el paso de esa línea, o sin línea lo primero que falta (<see cref="Current"/>).
+    /// </summary>
+    public void Advance(Lane? lane = null)
     {
-        if (Current is { } current)
+        if ((lane is { } l ? LaneStep(l) : Current) is { } target)
         {
-            _manualDone[current.Index] = _state.Time;
-            _noImplicit.Remove(current.Index);
+            _manualDone[target.Index] = _state.Time;
+            _noImplicit.Remove(target.Index);
             Recompute();
         }
     }
 
-    /// <summary>Hotkey "saltear": marca el paso actual como salteado.</summary>
-    public void Skip()
+    /// <summary>Hotkey "saltear": marca como salteado el paso de esa línea, o sin línea lo primero que falta.</summary>
+    public void Skip(Lane? lane = null)
     {
-        if (Current is { } current)
+        if ((lane is { } l ? LaneStep(l) : Current) is { } target)
         {
-            _skipped[current.Index] = _state.Time;
+            _skipped[target.Index] = _state.Time;
             Recompute();
         }
     }

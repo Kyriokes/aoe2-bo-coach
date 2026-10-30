@@ -98,6 +98,16 @@ public sealed class CoachSessionTests : IDisposable
     }
 
     [Fact]
+    public void Ya_esta_y_Saltear_eligen_la_linea_y_por_defecto_lo_primero_que_falta()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+
+        Assert.Equal(["Lo primero que falta", "Aldeanos", "Construir", "Investigar", "Producir"], session.LaneChoices.Select(c => c.Name));
+        Assert.Null(session.SelectedLane.Lane);
+    }
+
+    [Fact]
     public void Los_recordatorios_en_el_mouse_se_guardan_con_los_ajustes()
     {
         var path = Path.Combine(_library.FullName, "settings.json");

@@ -35,6 +35,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
     [ObservableProperty] public partial string Population { get; set; } = "—";
     [ObservableProperty] public partial string Age { get; set; } = "—";
     [ObservableProperty] public partial string Step { get; set; } = "";
+
+    /// <summary>Los renglones de las líneas, como en el overlay ("Investigar: Telar · faltan 50 de oro").</summary>
+    [ObservableProperty] public partial IReadOnlyList<string> Lanes { get; set; } = [];
     [ObservableProperty] public partial string Problems { get; set; } = "";
     [ObservableProperty] public partial string Usage { get; set; } = "";
     [ObservableProperty] public partial string FoodFloor { get; set; } = "";
@@ -93,6 +96,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
             var items => $"Cola de producción: {string.Join(", ", items.Select(i => i.Waiting ? $"{QueueName(i.Key)} (espera)" : QueueName(i.Key)))}",
         };
         Game = GameText(frame);
+        Lanes = Core.Engine.CoachText.LaneLines(view, null).Select(l => $"{l.Label}: {l.Text}").ToList();
         Step = view.Abandoned is { } reason ? $"BO abandonada: {reason} (\"◀ Atrás\" la retoma)"
             : view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})"
             : view.Posture is { } posture ? $"BO terminada. {Core.Engine.CoachText.PostureTitle(posture)}{(posture.Derived ? " (deducida de la BO)" : "")}"

@@ -62,6 +62,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <param name="settingsPath">Dónde se guardan los ajustes (máximo de aldeanos); null para no guardarlos (tests).</param>
     public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames, string? settingsPath = null)
     {
+        SelectedLane = LaneChoices[0];
         var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
         MaxVillagers = settings.MaxVillagers;
         CursorReminders = settings.CursorReminders;
@@ -558,14 +559,23 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Status = "Coach detenido.";
     }
 
+    /// <summary>Una opción del selector de línea de "Ya está" y "Saltear" (null = lo primero que falta).</summary>
+    public sealed record LaneChoice(string Name, Lane? Lane);
+
+    public IReadOnlyList<LaneChoice> LaneChoices { get; } =
+        [new("Lo primero que falta", null), new("Aldeanos", Lane.Villagers), new("Construir", Lane.Build), new("Investigar", Lane.Research), new("Producir", Lane.Produce)];
+
+    /// <summary>Sobre qué línea actúan "Ya está" y "Saltear" (botones del panel y atajos).</summary>
+    [ObservableProperty] public partial LaneChoice SelectedLane { get; set; }
+
     [RelayCommand]
-    private void Advance() => _coach?.Advance();
+    private void Advance() => _coach?.Advance(SelectedLane.Lane);
 
     [RelayCommand]
     private void Back() => _coach?.Back();
 
     [RelayCommand]
-    private void Skip() => _coach?.Skip();
+    private void Skip() => _coach?.Skip(SelectedLane.Lane);
 
     [RelayCommand]
     private void TogglePause()

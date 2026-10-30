@@ -161,6 +161,9 @@
                     <DockPanel Margin="0,6,0,0">
                         <!-- Lo mismo que Ctrl+Alt+← / → / ↓ desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                            <ComboBox ItemsSource="{Binding DataContext.LaneChoices, ElementName=LivePanel}" SelectedItem="{Binding DataContext.SelectedLane, ElementName=LivePanel}"
+                                      DisplayMemberPath="Name" Margin="0,0,4,0" Padding="4,1"
+                                      ToolTip="Sobre qué línea actúan Ya está y Saltear (también los atajos)" />
                             <Button Content="◀ Atrás" Command="{Binding DataContext.BackCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
                                     ToolTip="Deshace lo último que se completó o salteó (Ctrl+Alt+← desde el juego)" />
                             <Button Content="Ya está ▶" Command="{Binding DataContext.AdvanceCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
@@ -170,6 +173,13 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Lanes}" Margin="0,2,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
                                Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
                     <TextBlock Text="{Binding Usage}" Foreground="#A39A8F" FontSize="11" />

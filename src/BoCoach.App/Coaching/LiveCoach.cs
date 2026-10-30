@@ -256,11 +256,11 @@ public sealed class LiveCoach : IDisposable
 
     public void Dispose() => Stop();
 
-    public void Advance() => Correct(c => c.Advance());
+    public void Advance(Lane? lane = null) => Correct(c => c.Advance(lane));
 
     public void Back() => Correct(c => c.Back());
 
-    public void Skip() => Correct(c => c.Skip());
+    public void Skip(Lane? lane = null) => Correct(c => c.Skip(lane));
 
     /// <summary>Procesa una captura. Público para poder probar el loop sin temporizador.</summary>
     public async Task<bool> StepAsync()

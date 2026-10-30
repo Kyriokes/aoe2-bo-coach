@@ -336,9 +336,9 @@ public sealed class Coach
     /// Atajo "avanzar": da por hecho el paso actual (con una rama en curso, la cierra). Con la BO terminada, descarta
     /// la primera tecnología que falta ("Ya está": el coach arrancó con la partida empezada y no vio que se hizo).
     /// </summary>
-    public CoachView Advance() => _branches.View() is not null ? Correct(() => _branches.Dismiss())
+    public CoachView Advance(Lane? lane = null) => _branches.View() is not null ? Correct(() => _branches.Dismiss())
         : Finished ? Correct(() => _techs.Dismiss())
-        : Correct(Tracker.Advance);
+        : Correct(() => Tracker.Advance(lane));
 
     /// <summary>La BO terminó (queda la postura de cierre) y no hay una rama en curso.</summary>
     private bool Finished => Tracker.Current is null && _postureView is not null && _branches.View() is null;
@@ -352,7 +352,7 @@ public sealed class Coach
         : Correct(Tracker.Back);
 
     /// <summary>Atajo "saltear": marca el paso actual como salteado (con una rama en curso, la cierra).</summary>
-    public CoachView Skip() => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(Tracker.Skip);
+    public CoachView Skip(Lane? lane = null) => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(() => Tracker.Skip(lane));
 
     private CoachView Correct(Action action)
     {
