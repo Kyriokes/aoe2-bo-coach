@@ -687,7 +687,9 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
         var head = lines.Lanes.Count > 0 && view.Abandoned is null && view.Branch is null && !view.Finished
             ? lines.Lanes.Select(l => $"{l.Label}: {l.Text}{(l.Tone == LaneTone.Waiting ? " [espera]" : l.Tone == LaneTone.Fallback ? " [fallback]" : "")}").ToList()
             : new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).OfType<string>().ToList();
-        var text = string.Join(" | ", head.Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
+        var running = lines.Lanes.Count > 0 && head.Count > 0 && head[0] != lines.Current
+            ? lines.Running.Where(r => !r.StartsWith("Seguí produciendo", StringComparison.Ordinal)) : lines.Running;
+        var text = string.Join(" | ", head.Concat(running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
         if (text == last)
             continue;
         last = text;

@@ -11,7 +11,11 @@ public sealed record RunningStep(StepProgress Progress, double? EndsAt);
 /// El renglón de una línea (spec 2026-10-30): su paso, lo que le falta juntar y cuándo estima el Planner que se puede
 /// hacer. <see cref="Step"/> null = la línea no tiene paso de la BO y va al fallback (GD, casa, tecnologías, postura).
 /// </summary>
-public sealed record LaneView(Lane Lane, StepProgress? Step, ResourceAmounts Missing, double? Eta);
+public sealed record LaneView(Lane Lane, StepProgress? Step, ResourceAmounts Missing, double? Eta)
+{
+    /// <summary>Pasos de la línea que quedaron atrás (<see cref="Tracker.LaneBehind"/>): se muestran aparte.</summary>
+    public IReadOnlyList<StepProgress> Behind { get; init; } = [];
+}
 
 /// <summary>Lo que muestra el overlay en un instante.</summary>
 /// <param name="Missing">Lo que falta juntar para el paso actual (cero si ya alcanza).</param>
@@ -121,7 +125,8 @@ public sealed record CoachView(
 
     /// <summary>
     /// Sin paso de aldeanos en la BO: a qué recurso mandar el próximo aldeano según la GD (el que más le falta contra lo
-    /// que hay), o, si la GD no pide ninguno, el de más demanda sin cubrir por el stock. null si no hay a dónde.
+    /// que hay); si la GD no pide ninguno, el de más demanda sin cubrir por el stock, el que más se gasta o el que más
+    /// aldeanos tiene en la GD. null solo sin ninguna lectura.
     /// </summary>
     public Resource? VillagerGuide { get; init; }
 }
@@ -651,9 +656,9 @@ public sealed class Coach
         };
     }
 
-    private LaneView LaneViewOf(Lane lane) => Tracker.LaneStep(lane) is { } step
+    private LaneView LaneViewOf(Lane lane) => (Tracker.LaneStep(lane) is { } step
         ? new LaneView(lane, step, MissingFor(step), _plan?.For(step.Step.Id)?.Start)
-        : new LaneView(lane, null, ResourceAmounts.Zero, null);
+        : new LaneView(lane, null, ResourceAmounts.Zero, null)) with { Behind = Tracker.LaneBehind(lane) };
 
     /// <summary>Lo que falta juntar para un paso: su costo con la civ en la edad del jugador menos el stock.</summary>
     private ResourceAmounts MissingFor(StepProgress step)
@@ -682,8 +687,13 @@ public sealed class Coach
             var (best, gap) = resources.Select(r => (r, report.Demand[r] - State.Stock[r])).MaxBy(x => x.Item2);
             if (gap > 0)
                 return best;
+            // No falta nada: el que más se gasta. El renglón de Aldeanos no puede quedar sin decir a dónde (pedido del
+            // usuario: "estoy haciendo el 26, el 27, y no sé a qué recursos mandarlos").
+            var (most, rate) = resources.Select(r => (r, report.Demand[r])).MaxBy(x => x.Item2);
+            if (rate > 0)
+                return most;
         }
-        return null;
+        return (_guide ?? Distribution(Economy?.FoodFloor ?? 0)) is { } split ? resources.MaxBy(r => split[r]) : null;
     }
 
     private IReadOnlyList<GameSignal> RecentSignals() => Signals.All.Where(s => State.Time - s.Time < SignalSeconds).ToList();

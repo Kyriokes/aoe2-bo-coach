@@ -68,4 +68,26 @@ public class CoachTextLanesTests
 
         Assert.Empty(CoachText.LaneLines(view, TestData.GameData));
     }
+
+    [Fact]
+    public void Lo_que_quedo_atras_se_muestra_aparte()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "mill1", Do = StepAction.Build, What = "mill", Assign = GatherSource.Berries },
+                new Step { Id = "mill2", Do = StepAction.Build, What = "mill", Assign = GatherSource.Berries },
+                new Step { Id = "house", Do = StepAction.Build, What = "house", Assign = GatherSource.Wood },
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+            ],
+        };
+        var view = new Coach(bo, TestData.GameData, TestData.Events).Update(At(100, PlanStart.Standard.Stock, "mill_built", "house_built"));
+
+        var lines = CoachText.Lines(view, TestData.GameData);
+
+        Assert.Contains("Quedó sin hacer: Construir 1 molino → bayas", lines.Running);
+        Assert.Contains(lines.Lanes, l => l.Lane == Lane.Build && l.Text.Contains("campamento"));
+    }
 }

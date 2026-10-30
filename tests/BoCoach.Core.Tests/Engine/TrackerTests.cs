@@ -168,18 +168,19 @@ public class TrackerTests
     }
 
     [Fact]
-    public void Paso_salteado_queda_primero_en_su_linea_y_no_se_pierde()
+    public void Paso_salteado_queda_aparte_en_su_linea_y_no_se_pierde()
     {
         var tracker = NewTracker();
-        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4). Sin "atrasados" (spec
-        // 2026-10-30): el campamento queda primero en Construir y los aldeanos siguen en su línea.
+        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4): Construir sigue después de
+        // la casa y el campamento queda aparte ("Quedó sin hacer"); los aldeanos siguen en su línea.
         var partida = new Partida().Play(Scouts, 0, 2).Event("house_built");
 
         tracker.Update(partida.State);
 
         Assert.Contains(StateOf(tracker, "s4"), Open);
         Assert.Equal(StepState.Done, StateOf(tracker, "s5"));
-        Assert.Equal("s4", tracker.LaneStep(Lane.Build)?.Step.Id);
+        Assert.Equal("s8", tracker.LaneStep(Lane.Build)?.Step.Id);
+        Assert.Equal(["s4"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
         Assert.Equal("s6", tracker.LaneStep(Lane.Villagers)?.Step.Id);
 
         partida.Event("lumber_camp_built");

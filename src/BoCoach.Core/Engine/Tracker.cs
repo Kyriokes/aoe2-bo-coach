@@ -150,8 +150,41 @@ public sealed class Tracker
     /// El renglón de una línea: su primer paso abierto, en el orden de la BO, que es elegible (<see cref="IsEligible"/>)
     /// y no es producción en marcha ni una granja suelta. Null si la línea no tiene ninguno (el coach usa el fallback).
     /// </summary>
-    public StepProgress? LaneStep(Lane lane) =>
-        _steps.FirstOrDefault(s => Lanes.Of(s.Step) == lane && IsOpen(s) && !IsProducing(s) && !IsSilent(s) && _eligible[s.Index]);
+    public StepProgress? LaneStep(Lane lane)
+    {
+        var shown = _steps.Where(s => Lanes.Of(s.Step) == lane && Shown(s)).ToList();
+        return shown.FirstOrDefault(s => !IsBehind(s)) ?? shown.FirstOrDefault(); // si todo quedó atrás, el primero
+    }
+
+    /// <summary>
+    /// Pasos de la línea que quedaron atrás (<see cref="IsBehind"/>). No traban el renglón: en la 20261029-220928 un
+    /// segundo molino que nunca se hizo tapaba Construir toda la partida. Se muestran aparte ("Quedó sin hacer").
+    /// </summary>
+    public IReadOnlyList<StepProgress> LaneBehind(Lane lane)
+    {
+        var row = LaneStep(lane);
+        return _steps.Where(s => Lanes.Of(s.Step) == lane && Shown(s) && IsBehind(s) && s.Index != row?.Index).ToList();
+    }
+
+    private bool Shown(StepProgress s) => IsOpen(s) && !IsProducing(s) && !IsSilent(s) && _eligible[s.Index];
+
+    /// <summary>
+    /// Un paso quedó atrás si, desde que se pudo hacer, el log confirmó (o se empezó) uno posterior de su línea que no
+    /// es de su mismo paso mixto. No si está a medias (las galerías 1/2) ni si es de aldeanos (se cuentan por el total).
+    /// El emplumado que recién se puede con la herrería no queda atrás de la collera hecha antes.
+    /// </summary>
+    private bool IsBehind(StepProgress s)
+    {
+        var lane = Lanes.Of(s.Step);
+        if (lane == Lane.Villagers || s.Completed > 0 || !_eligibleSince.TryGetValue(s.Index, out var since))
+            return false;
+        return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index)
+            && (_allocated.ContainsKey(o.Index) || _started.ContainsKey(o.Index))
+            && (o.DoneAt ?? o.StartedAt) is { } at && at >= since);
+    }
+
+    /// <summary>Desde cuándo cada paso es elegible (se borra si deja de serlo).</summary>
+    private readonly Dictionary<int, double> _eligibleSince = [];
 
     /// <summary>La edad a la que llegó el jugador: la de los clics de edad hechos (pasos o log). Uno en curso no cuenta.</summary>
     public Age Age { get; private set; } = Age.Dark;
@@ -468,6 +501,13 @@ public sealed class Tracker
         }
         Age = age;
         _eligible = Enumerable.Range(0, n).Select(i => Eligible(_bo.Steps[i])).ToArray();
+        for (var i = 0; i < n; i++)
+        {
+            if (!_eligible[i])
+                _eligibleSince.Remove(i);
+            else
+                _eligibleSince.TryAdd(i, _state.Time);
+        }
 
         bool Eligible(Step step)
         {

@@ -214,6 +214,8 @@ public static class CoachText
         var running = view.Running.Where(r => !goalIndexes.Contains(r.Progress.Index) && !Producing(r)).Select(r => Running(r, view.Time))
             .Concat(view.Running.Where(Producing).GroupBy(r => r.Progress.Step.What!)
                 .Select(g => $"Seguí produciendo {StepText.Name(g.Key, 2)}: {g.Sum(r => r.Progress.Completed)}/{g.Sum(r => r.Progress.Required)}"))
+            // Lo que quedó atrás en una línea (ya se hizo algo posterior): no traba el renglón, va aparte.
+            .Concat(view.Lanes.SelectMany(l => l.Behind).Take(2).Select(s => $"Quedó sin hacer: {StepText.Describe(s.Step)}"))
             .ToList();
         if (view.Abandoned is { } reason)
         {

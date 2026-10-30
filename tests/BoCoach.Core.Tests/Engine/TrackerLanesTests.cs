@@ -222,4 +222,18 @@ public class TrackerLanesTests
         Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "house")].State);
         Assert.NotEqual(StepState.Done, tracker.Steps[Index(bo, "loom")].State);
     }
+
+    // Partida 20261029-220928 con la copia vieja de la BO (dos molinos): el segundo molino nunca se hizo y tapaba el
+    // renglón de Construir toda la partida. Si ya se hizo un paso posterior de la línea, el renglón sigue desde ahí y
+    // lo de antes queda aparte ("Quedó sin hacer").
+    [Fact]
+    public void Lo_que_quedo_atras_en_la_linea_no_la_traba()
+    {
+        var bo = Bo(Build("mill1", "mill"), Build("mill2", "mill"), Build("house", "house"), Build("camp", "lumber_camp"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("mill_built").Event("house_built").State);
+
+        Assert.Equal("camp", tracker.LaneStep(Lane.Build)?.Step.Id);
+        Assert.Equal(["mill2"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
+    }
 }

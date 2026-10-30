@@ -74,4 +74,19 @@ public class CoachLanesTests
         Assert.Null(view.StepTarget);
         Assert.NotNull(view.VillagerGuide);
     }
+
+    // El usuario: "estoy haciendo el 26, el 27, y no sé a qué recursos mandarlos". Aunque no falte nada, el renglón de
+    // Aldeanos siempre dice a dónde (el recurso que más se gasta).
+    [Fact]
+    public void Sin_pasos_de_aldeanos_y_sin_faltantes_igual_dice_a_donde()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Villagers("v1", 3, GatherSource.Wood), new Step { Id = "x", Do = StepAction.Research, What = "loom" }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var rich = new ResourceAmounts(5000, 5000, 5000, 5000);
+        coach.Update(At(100, rich, "villager_created", "villager_created", "villager_created") with { Villagers = 6, VillagersOn = new ResourceAmounts(3, 3, 0, 0) });
+        var view = coach.Update(At(110, rich) with { Villagers = 6, VillagersOn = new ResourceAmounts(3, 3, 0, 0) });
+
+        Assert.Null(view.Lanes.Single(l => l.Lane == Lane.Villagers).Step);
+        Assert.NotNull(view.VillagerGuide);
+    }
 }
