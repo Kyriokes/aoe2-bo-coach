@@ -155,9 +155,12 @@ public class TrackerTests
             ],
         };
         var tracker = new Tracker(bo, TestData.GameData);
+        // En Feudal y con la galería (sin eso los arqueros no se muestran: spec 2026-10-30).
+        var partida = new Partida().Event("feudal_age_researched").Event("archery_range_built");
+        tracker.Update(partida.State);
         Assert.Equal("s1", tracker.Current?.Step.Id); // todavía no salió ninguno: hay que empezar
 
-        tracker.Update(new Partida().Event("archer_created").State);
+        tracker.Update(partida.Event("archer_created").State);
 
         Assert.Equal("s3", tracker.Current?.Step.Id);
         Assert.Equal(["s1", "s2"], tracker.Producing.Select(s => s.Step.Id));

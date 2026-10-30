@@ -153,7 +153,33 @@ public sealed class Tracker
     /// <summary>
     /// Paso a mostrar en grande: el primero pendiente que no quedó atrasado ni es producción militar ya empezada.
     /// </summary>
-    public StepProgress? Current => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s));
+    public StepProgress? Current => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s) && _eligible[s.Index]);
+
+    /// <summary>
+    /// El renglón de una línea: su primer paso abierto, en el orden de la BO, que es elegible (<see cref="IsEligible"/>)
+    /// y no es producción en marcha ni una granja suelta. Null si la línea no tiene ninguno (el coach usa el fallback).
+    /// </summary>
+    public StepProgress? LaneStep(Lane lane) =>
+        _steps.FirstOrDefault(s => Lanes.Of(s.Step) == lane && IsOpen(s) && !IsProducing(s) && !IsSilent(s) && _eligible[s.Index]);
+
+    /// <summary>La edad a la que llegó el jugador: la de los clics de edad hechos (pasos o log). Uno en curso no cuenta.</summary>
+    public Age Age { get; private set; } = Age.Dark;
+
+    /// <summary>
+    /// Hay al menos uno de ese edificio: el centro urbano del arranque, uno que avisó el log (o que dedujo
+    /// <see cref="SnapshotBuilder"/>), o un paso de la BO que lo construye y quedó hecho.
+    /// </summary>
+    public bool Built(string building) => _built.Contains(building);
+
+    /// <summary>
+    /// El paso se puede mostrar: es de la edad del jugador o de una anterior, existe el edificio que lo hace (o el que
+    /// pide para construirse), los pasos de su <c>after</c> están hechos y, si es un clic de edad, están los 2 edificios
+    /// que pide. No mira recursos, población ni hora: con eso se muestra esperando.
+    /// </summary>
+    public bool IsEligible(int index) => _eligible[index];
+
+    private bool[] _eligible = [];
+    private HashSet<string> _built = [];
 
     /// <summary>
     /// Producción militar en marcha ("12 arqueros" con alguno ya hecho): sigue sola en sus edificios mientras la
@@ -442,6 +468,47 @@ public sealed class Tracker
                 doneAt[i] = progressAfter;
         }
 
+        // 2b. Edad, edificios y qué pasos se pueden mostrar (spec 2026-10-30: nada de otra edad ni sin su edificio).
+        var civ = _data.Civ(_bo.Civ);
+        _built = [BuildOrderValidator.StartingBuilding];
+        var age = Age.Dark;
+        foreach (var e in _state.Events)
+        {
+            if (EventConventions.Parse(e.EventId) is not { } parsed)
+                continue;
+            if (parsed.Action == StepAction.Build)
+                _built.Add(parsed.What);
+            else if (parsed.Action == StepAction.Research && BuildOrderValidator.AgeOf(parsed.What) is { } reached && reached > age)
+                age = reached;
+        }
+        for (var i = 0; i < n; i++)
+        {
+            if (!IsDone(i) || _bo.Steps[i].What is not { } what)
+                continue;
+            if (_bo.Steps[i].Do == StepAction.Build)
+                _built.Add(what);
+            else if (_bo.Steps[i].Do == StepAction.Research && BuildOrderValidator.AgeOf(what) is { } reached && reached > age)
+                age = reached;
+        }
+        Age = age;
+        _eligible = Enumerable.Range(0, n).Select(i => Eligible(_bo.Steps[i])).ToArray();
+
+        bool Eligible(Step step)
+        {
+            if (step.After.Any(dep => _bo.Steps.Select((s, j) => (s, j)).Any(x => x.s.Id == dep && !IsDone(x.j))))
+                return false;
+            if (step.What is null || !_data.TryGet(step.What, out var entity))
+                return true;
+            // La edad de game_data ya es la de antes para un clic de edad (feudal_age es de la Edad Oscura).
+            if (entity.Age > age)
+                return false;
+            if (step.Do is StepAction.Train or StepAction.Research && entity.MadeIn is { } producer && !_built.Contains(producer))
+                return false;
+            if (step.Do == StepAction.Build && civ.Requires(entity) is { } required && !_built.Contains(required))
+                return false;
+            return BuildOrderValidator.AgeUpRequirement(step.What) is null || BuildOrderValidator.AgeUpProgress(step.What, _built) >= 2;
+        }
+
         // 3. Estado final de cada paso.
         var steps = new StepProgress[n];
         for (var i = 0; i < n; i++)
@@ -492,8 +559,10 @@ public sealed class Tracker
 
         bool IsReady(Step step, int i, int done)
         {
-            if (step.After.Any(dep => _bo.Steps.Select((s, j) => (s, j)).Any(x => x.s.Id == dep && !IsDone(x.j))))
+            if (!_eligible[i])
                 return false;
+            // La población y la hora no esconden el paso (como los recursos, se espera mostrándolo): "Feudal a 20 de
+            // población" se ve antes de llegar a 20.
             if (step.AtPop is { } pop && _state.Population < pop)
                 return false;
             if (step.AtTime is { } t && _state.Time < t)
