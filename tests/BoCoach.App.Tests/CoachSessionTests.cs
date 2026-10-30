@@ -81,6 +81,22 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(overlay.ShowCursorReminder);
     }
 
+    // Spec 2026-10-30: un renglón fijo por línea, en orden, sin los que no tienen nada que decir.
+    [Fact]
+    public void El_overlay_muestra_un_renglon_por_linea()
+    {
+        var coach = new Coach(Scouts, _data.GameData, _data.Events);
+        var view = coach.Update(new GameSnapshot(30, PlanStart.Standard.Stock, 4, 5));
+        var overlay = new OverlayViewModel(_data.GameData, Scouts.Name);
+
+        overlay.Apply(Frame(view));
+
+        Assert.True(overlay.ShowLanes);
+        Assert.NotEmpty(overlay.Lanes);
+        Assert.Equal(overlay.Lanes.Select(l => l.Lane).Order(), overlay.Lanes.Select(l => l.Lane));
+        Assert.Equal(CoachText.LaneLines(view, _data.GameData), overlay.Lanes);
+    }
+
     [Fact]
     public void Los_recordatorios_en_el_mouse_se_guardan_con_los_ajustes()
     {

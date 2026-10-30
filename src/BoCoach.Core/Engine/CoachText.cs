@@ -29,7 +29,21 @@ public sealed record CoachLines(
 
     /// <summary>Con <see cref="Compact"/>, lo que pide hacer algo, lo más urgente primero. Vacía: no se muestra nada.</summary>
     public IReadOnlyList<CardLine> Card { get; init; } = [];
+
+    /// <summary>Los renglones fijos de las líneas (<see cref="CoachText.LaneLines"/>).</summary>
+    public IReadOnlyList<LaneLine> Lanes { get; init; } = [];
 }
+
+/// <summary>Color de un renglón de línea: se puede hacer ya (blanco), espera recursos o población (amarillo), fallback (gris).</summary>
+public enum LaneTone
+{
+    Now,
+    Waiting,
+    Fallback,
+}
+
+/// <summary>El renglón fijo de una línea en el overlay (spec 2026-10-30): "Investigar · Hacha de doble filo · faltan 40 de madera".</summary>
+public sealed record LaneLine(Lane Lane, string Label, string Text, LaneTone Tone);
 
 /// <summary>Un renglón de la tarjeta chica de la BO terminada.</summary>
 public sealed record CardLine(string Text, CardKind Kind);
@@ -61,6 +75,87 @@ public enum CardKind
 
 public static class CoachText
 {
+    /// <summary>
+    /// Un renglón por línea, en el orden de <see cref="Lanes.All"/>, solo las que tienen algo que decir: su paso (blanco,
+    /// o amarillo con lo que espera) o su fallback en gris (GD, casa, tecnología que falta, edificio de la postura).
+    /// La producción militar en marcha va en Producir ("Seguí produciendo arqueros: 3/6").
+    /// </summary>
+    public static IReadOnlyList<LaneLine> LaneLines(CoachView view, GameData data)
+    {
+        var lines = new List<LaneLine>();
+        foreach (var lane in view.Lanes)
+        {
+            var label = LaneLabel(lane.Lane);
+            if (lane.Step is { } step)
+            {
+                var waiting = Waiting(view, lane, data);
+                var text = waiting is null ? Goal(step) : $"{Goal(step)} · {waiting}";
+                lines.Add(new LaneLine(lane.Lane, label, text, waiting is null ? LaneTone.Now : LaneTone.Waiting));
+            }
+            else if (Fallback(view, lane.Lane) is { } fallback)
+            {
+                lines.Add(fallback.Producing
+                    ? new LaneLine(lane.Lane, label, fallback.Text, LaneTone.Now)
+                    : new LaneLine(lane.Lane, label, fallback.Text, LaneTone.Fallback));
+            }
+        }
+        return lines;
+    }
+
+    private static string LaneLabel(Lane lane) => lane switch
+    {
+        Lane.Villagers => "Aldeanos",
+        Lane.Build => "Construir",
+        Lane.Research => "Investigar",
+        _ => "Producir",
+    };
+
+    /// <summary>Por qué espera el paso de una línea ("faltan 40 de madera (0:35)", "a 20 de población"), o null si se puede ya.</summary>
+    private static string? Waiting(CoachView view, LaneView lane, GameData data)
+    {
+        var step = lane.Step!.Step;
+        if (lane.Lane != Lane.Villagers)
+        {
+            var missing = Enum.GetValues<Resource>().Where(r => lane.Missing[r] >= 1)
+                .Select(r => $"{Math.Ceiling(lane.Missing[r]):0} de {Suggestion.Name(r)}").ToList();
+            if (missing.Count > 0)
+            {
+                var eta = lane.Eta is { } at && at - view.Time >= 5 ? $" ({GameClock.Format(at - view.Time)})" : "";
+                return $"faltan {Join(missing)}{eta}";
+            }
+        }
+        if (step.AtPop is { } pop && view.Population < pop)
+            return $"a {pop} de población (vas {view.Population})";
+        if (step.AtTime is { } time && view.Time < time)
+            return $"a los {GameClock.Format(time)}";
+        if (step.What is { } what && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
+            return "sin lugar: hacé una casa";
+        return null;
+    }
+
+    private static (string Text, bool Producing)? Fallback(CoachView view, Lane lane)
+    {
+        switch (lane)
+        {
+            case Lane.Villagers when view.VillagerGuide is { } resource:
+                return ($"Aldeano → {Suggestion.Name(resource)}, según lo que falta", false);
+            case Lane.Build when view.NeedsHouse:
+                return ($"Casa: quedan {Math.Max(0, view.PopulationCap - view.Population)} lugares", false);
+            case Lane.Research when view.Techs.Count > 0:
+                return (TechText(view.Techs[0]), false);
+            case Lane.Produce:
+                var producing = view.Running.Where(r => r.Progress.State != StepState.InProgress && r.Progress.Step is { Do: StepAction.Train, What: not null })
+                    .GroupBy(r => r.Progress.Step.What!).FirstOrDefault();
+                if (producing is not null)
+                    return ($"Seguí produciendo {StepText.Name(producing.Key, 2)}: {producing.Sum(r => r.Progress.Completed)}/{producing.Sum(r => r.Progress.Required)}", true);
+                if (view.Posture?.Gaps.FirstOrDefault() is { } gap)
+                    return (GapText(gap), false);
+                return null;
+            default:
+                return null;
+        }
+    }
+
     /// <summary>Desvío (en segundos) a partir del cual el objetivo se muestra como atrasado.</summary>
     public const double BehindThreshold = 15;
 
@@ -84,7 +179,7 @@ public static class CoachText
         }
         if (view.Compact)
             lines = lines with { Compact = true, Card = Card(view, lines) };
-        return lines;
+        return lines with { Lanes = LaneLines(view, data) };
     }
 
     /// <summary>
