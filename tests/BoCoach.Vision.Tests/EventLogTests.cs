@@ -96,6 +96,39 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(["villager_created", "mill_built", "villager_created"], news);
     }
 
+    /// <summary>
+    /// Partida 20261029-220928, capturas 1355 a 1363: con "House Built" y "Archer Created" en el log, termina el
+    /// emplumado y sale otro arquero casi juntos. El log queda "House Built", "Fletching Research Complete",
+    /// "Archer Created" (el arquero repetido se movió al final). Alinear la lista nueva con la vieja tomaba el arquero
+    /// de abajo como el mismo de antes y el emplumado, en el medio, se perdía: el paso quedó en curso toda la partida.
+    /// Un mensaje que no estaba no puede aparecer en el medio: desde ahí todo es nuevo.
+    /// </summary>
+    [Fact]
+    public void Un_mensaje_nuevo_que_queda_arriba_de_uno_repetido_cuenta()
+    {
+        var tracker = new EventLogTracker();
+
+        var news = Run(tracker,
+            ["house_built", "archer_created"], ["house_built", "archer_created"],
+            ["house_built", "archer_created", "fletching_researched"],
+            ["house_built", "fletching_researched", "archer_created"], ["house_built", "fletching_researched", "archer_created"]);
+
+        Assert.Equal(["house_built", "archer_created", "fletching_researched", "archer_created"], news);
+    }
+
+    /// <summary>Un renglón leído como otro evento en el medio (el de antes desapareció de su lugar) no hace nuevo lo de abajo.</summary>
+    [Fact]
+    public void Un_renglon_del_medio_leido_como_otro_evento_no_hace_nuevo_lo_de_abajo()
+    {
+        var tracker = new EventLogTracker();
+
+        var news = Run(tracker,
+            ["dock_built", "mill_built", "house_built"], ["dock_built", "mill_built", "house_built"],
+            ["dock_built", "market_built", "house_built"], ["dock_built", "market_built", "house_built"]);
+
+        Assert.Equal(["dock_built", "mill_built", "house_built"], news);
+    }
+
     [Fact]
     public void Dos_mensajes_iguales_seguidos_son_dos_eventos()
     {

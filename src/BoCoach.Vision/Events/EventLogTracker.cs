@@ -77,12 +77,22 @@ public sealed class EventLogTracker
             }
         }
 
+        // Los mensajes nuevos solo entran por abajo. Si entre dos coincidencias seguidas de la lista vieja aparece algo
+        // en la nueva, es un mensaje nuevo y lo que coincide debajo es un repetido que se movió al final (en la
+        // 20261029-220928 el emplumado entre "House Built" y el "Archer Created" que se movió): todo eso es nuevo. Si
+        // también falta algo de la vieja en ese tramo, es un renglón leído como otro y no cuenta. Lo que aparece arriba
+        // de la primera coincidencia no: en el golden del log daba hasta 15 eventos de más (renglones que no se habían
+        // leído antes), así que la carretilla de la captura 1402, arriba del arquero que se movió, se sigue perdiendo.
         var lastMatched = -1;
+        var lastMatchedPrevious = -1;
         for (int i = 0, j = 0; i < n && j < m;)
         {
             if (previous[i] == current[j] && lcs[i, j] == lcs[i + 1, j + 1] + 1)
             {
+                if (lastMatched >= 0 && j > lastMatched + 1 && i == lastMatchedPrevious + 1)
+                    return current.Skip(lastMatched + 1).ToList();
                 lastMatched = j;
+                lastMatchedPrevious = i;
                 i++;
                 j++;
             }
