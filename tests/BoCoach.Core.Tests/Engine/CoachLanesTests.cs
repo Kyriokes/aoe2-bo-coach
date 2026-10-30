@@ -89,4 +89,30 @@ public class CoachLanesTests
         Assert.Null(view.Lanes.Single(l => l.Lane == Lane.Villagers).Step);
         Assert.NotNull(view.VillagerGuide);
     }
+
+    // Revisión de la rama: con lo que queda de la BO en la edad siguiente (subiendo de edad), el coach decía "BO
+    // terminada" y achicaba el panel.
+    [Fact]
+    public void Subiendo_de_edad_con_lo_demas_de_la_edad_siguiente_no_dice_BO_terminada()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", Assign = GatherSource.Wood },
+                new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+                new Step { Id = "range", Do = StepAction.Build, What = "archery_range", Assign = GatherSource.Wood },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, new ResourceAmounts(600, 200, 200, 200), "lumber_camp_built", "barracks_built"));
+        coach.Update(At(300.5, new ResourceAmounts(100, 200, 200, 200)));
+        var view = coach.Update(At(330, new ResourceAmounts(120, 220, 200, 200)));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.Null(view.Posture);
+        Assert.False(view.Compact);
+    }
 }

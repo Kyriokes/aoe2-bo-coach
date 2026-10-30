@@ -111,10 +111,9 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Current = lines.Current;
         Status = lines.Status;
         StatusReady = view.Current?.State == StepState.Ready || view.Posture?.NextAgeReady == true;
-        ShowLanes = lines.Lanes.Count > 0 && view.Abandoned is null && view.Branch is null && !view.Finished;
+        ShowLanes = lines.LanesShown;
         Lanes = lines.Lanes;
-        // La producción en marcha ya está en el renglón de Producir.
-        Running = ShowLanes ? lines.Running.Where(r => !r.StartsWith("Seguí produciendo", StringComparison.Ordinal)).ToList() : lines.Running;
+        Running = lines.Running;
         Goals = lines.Goals;
         Next = lines.Next;
         Deviation = lines.Deviation;

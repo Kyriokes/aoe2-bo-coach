@@ -90,4 +90,27 @@ public class CoachTextLanesTests
         Assert.Contains("Quedó sin hacer: Construir 1 molino → bayas", lines.Running);
         Assert.Contains(lines.Lanes, l => l.Lane == Lane.Build && l.Text.Contains("campamento"));
     }
+
+    // Revisión de la rama: con otra unidad en el renglón de Producir, "Seguí produciendo" no se puede perder.
+    [Fact]
+    public void Seguir_produciendo_queda_en_curso_si_Producir_muestra_otro_paso()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "a", Do = StepAction.Train, What = "archer", Count = 6 },
+                new Step { Id = "m", Do = StepAction.Train, What = "militia", Count = 3 },
+            ],
+        };
+        var view = new Coach(bo, TestData.GameData, TestData.Events).Update(At(700, PlanStart.Standard.Stock,
+            "feudal_age_researched", "barracks_built", "archery_range_built", "archer_created"));
+
+        var lines = CoachText.Lines(view, TestData.GameData);
+
+        Assert.True(lines.LanesShown);
+        Assert.Contains(lines.Lanes, l => l.Lane == Lane.Produce && l.Text.Contains("milicia"));
+        Assert.Contains(lines.Running, r => r.StartsWith("Seguí produciendo arqueros"));
+    }
 }

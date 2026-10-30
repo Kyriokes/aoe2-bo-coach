@@ -236,4 +236,60 @@ public class TrackerLanesTests
         Assert.Equal("camp", tracker.LaneStep(Lane.Build)?.Step.Id);
         Assert.Equal(["mill2"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
     }
+
+    // Revisión de la rama: los jemeres suben de edad sin edificios.
+    [Fact]
+    public void Los_jemeres_hacen_clic_de_edad_sin_edificios()
+    {
+        var bo = Bo(Research("feudal", "feudal_age")) with { Civ = "khmer" };
+        var tracker = new Tracker(bo, TestData.GameData);
+
+        Assert.True(tracker.IsEligible(0));
+    }
+
+    [Fact]
+    public void Un_paso_salteado_cuenta_para_los_que_dependen_de_el()
+    {
+        var bo = Bo(Build("h", "house"), Research("loom", "loom") with { After = ["h"] });
+        var tracker = new Tracker(bo, TestData.GameData);
+
+        tracker.Skip(Lane.Build);
+
+        Assert.True(tracker.IsEligible(Index(bo, "loom")));
+    }
+
+    [Fact]
+    public void La_edad_se_deduce_de_lo_que_ya_se_hizo_aunque_el_log_no_lea_el_aviso()
+    {
+        var bo = Bo(Research("feudal", "feudal_age"), Research("axe", "double_bit_axe"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("lumber_camp_built").Event("archery_range_built").State);
+
+        Assert.Equal(Age.Feudal, tracker.Age);
+        Assert.True(tracker.IsEligible(Index(bo, "axe")));
+    }
+
+    [Fact]
+    public void Saltear_el_clic_de_edad_pasa_a_la_edad_siguiente()
+    {
+        var bo = Bo(Research("feudal", "feudal_age"), Research("axe", "double_bit_axe"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("lumber_camp_built").Event("barracks_built").State);
+
+        tracker.Skip(Lane.Research);
+
+        Assert.Equal(Age.Feudal, tracker.Age);
+    }
+
+    [Fact]
+    public void El_asentamiento_hecho_sin_aviso_cuenta_como_sus_edificios()
+    {
+        var bo = Bo(Build("s", "settlement")) with { Civ = "incas" };
+        var tracker = new Tracker(bo, TestData.GameData);
+
+        tracker.Advance(Lane.Build);
+
+        Assert.True(tracker.Built("mill"));
+        Assert.True(tracker.Built("lumber_camp"));
+    }
 }

@@ -345,7 +345,7 @@ public sealed class Coach
         : Correct(() => Tracker.Advance(lane));
 
     /// <summary>La BO terminó (queda la postura de cierre) y no hay una rama en curso.</summary>
-    private bool Finished => Tracker.Current is null && _postureView is not null && _branches.View() is null;
+    private bool Finished => !Tracker.HasOpenSteps && _postureView is not null && _branches.View() is null;
 
     /// <summary>
     /// Atajo "retroceder": deshace lo último que se completó o salteó. Con la BO abandonada, la retoma (lo ajeno y el
@@ -702,7 +702,7 @@ public sealed class Coach
     /// La postura de cierre, cuando no queda paso actual (la cola, si se leyó hace poco). Pueden quedar abiertos lo que
     /// el juego no avisa (granjas) y la producción militar a medias: esos nunca se cierran solos.
     /// </summary>
-    private PostureView? PostureView() => Tracker.Current is null
+    private PostureView? PostureView() => !Tracker.HasOpenSteps
         ? _posture.View(State, FreshQueue, LivePlan.Start(Tracker).Age, _data.Civ(Tracker.BuildOrder.Civ))
         : null;
 

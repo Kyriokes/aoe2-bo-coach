@@ -31,6 +31,9 @@ public sealed record CoachLines(
 
     /// <summary>Los renglones fijos de las líneas (<see cref="CoachText.LaneLines"/>).</summary>
     public IReadOnlyList<LaneLine> Lanes { get; init; } = [];
+
+    /// <summary>El overlay muestra las líneas (la BO en curso, sin rama ni abandonada); si no, el título de antes.</summary>
+    public bool LanesShown { get; init; }
 }
 
 /// <summary>Color de un renglón de línea: se puede hacer ya (blanco), espera recursos o población (amarillo), fallback (gris).</summary>
@@ -102,6 +105,8 @@ public static class CoachText
         return lines;
     }
 
+    private const string ProducingPrefix = "Seguí produciendo";
+
     private static string LaneLabel(Lane lane) => lane switch
     {
         Lane.Villagers => "Aldeanos",
@@ -147,7 +152,7 @@ public static class CoachText
                 var producing = view.Running.Where(r => r.Progress.State != StepState.InProgress && r.Progress.Step is { Do: StepAction.Train, What: not null })
                     .GroupBy(r => r.Progress.Step.What!).FirstOrDefault();
                 if (producing is not null)
-                    return ($"Seguí produciendo {StepText.Name(producing.Key, 2)}: {producing.Sum(r => r.Progress.Completed)}/{producing.Sum(r => r.Progress.Required)}", true);
+                    return ($"{ProducingPrefix} {StepText.Name(producing.Key, 2)}: {producing.Sum(r => r.Progress.Completed)}/{producing.Sum(r => r.Progress.Required)}", true);
                 if (view.Posture?.Gaps.FirstOrDefault() is { } gap)
                     return (GapText(gap), false);
                 return null;
@@ -179,7 +184,12 @@ public static class CoachText
         }
         if (view.Compact)
             lines = lines with { Compact = true, Card = Card(view, lines) };
-        return lines with { Lanes = LaneLines(view, data) };
+        var lanes = LaneLines(view, data);
+        var shown = lanes.Count > 0 && view.Abandoned is null && view.Branch is null && !view.Finished;
+        // Con las líneas, la producción en marcha va en el renglón de Producir solo si ese renglón la usa.
+        var produce = shown ? lanes.FirstOrDefault(l => l.Lane == Lane.Produce && l.Text.StartsWith(ProducingPrefix, StringComparison.Ordinal)) : null;
+        var running = produce is null ? lines.Running : lines.Running.Where(r => r != produce.Text).ToList();
+        return lines with { Lanes = lanes, LanesShown = shown, Running = running };
     }
 
     /// <summary>
@@ -251,7 +261,7 @@ public static class CoachText
         if (view.Current is not { } current)
         {
             return new CoachLines(
-                view.Finished ? "BO terminada" : "Sin pasos pendientes",
+                view.Finished ? "BO terminada" : "Lo que sigue espera la próxima edad o un edificio",
                 null,
                 null,
                 running,

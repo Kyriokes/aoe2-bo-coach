@@ -186,7 +186,16 @@ public sealed class Tracker
     /// <summary>Desde cuándo cada paso es elegible (se borra si deja de serlo).</summary>
     private readonly Dictionary<int, double> _eligibleSince = [];
 
-    /// <summary>La edad a la que llegó el jugador: la de los clics de edad hechos (pasos o log). Uno en curso no cuenta.</summary>
+    /// <summary>
+    /// Quedan pasos de la BO por hacer, se puedan mostrar o no (subiendo de edad, lo que sigue es de la edad siguiente y
+    /// la BO no terminó). No cuentan lo que el juego no avisa ni la producción en marcha, que nunca se cierran solos.
+    /// </summary>
+    public bool HasOpenSteps => _steps.Any(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s));
+
+    /// <summary>
+    /// La edad a la que llegó el jugador: la de los clics de edad hechos (pasos o log) o salteados, o la de lo que ya se
+    /// hizo (una galería dice Feudal). Un clic en curso no cuenta.
+    /// </summary>
     public Age Age { get; private set; } = Age.Dark;
 
     /// <summary>
@@ -481,23 +490,31 @@ public sealed class Tracker
         var civ = _data.Civ(_bo.Civ);
         _built = [BuildOrderValidator.StartingBuilding];
         var age = Age.Dark;
+        // Lo hecho dice la edad aunque el log no haya leído su aviso: una galería es de Feudal, así que se llegó.
+        void Reached(StepAction action, string what)
+        {
+            if (action == StepAction.Build)
+            {
+                _built.Add(what);
+                if (_data.TryGet(what, out var building))
+                    _built.UnionWith(building.CountsAs); // el asentamiento de los incas
+            }
+            if (action == StepAction.Research && BuildOrderValidator.AgeOf(what) is { } clicked && clicked > age)
+                age = clicked;
+            else if (_data.TryGet(what, out var entity) && entity.Age > age)
+                age = entity.Age;
+        }
         foreach (var e in _state.Events)
         {
-            if (EventConventions.Parse(e.EventId) is not { } parsed)
-                continue;
-            if (parsed.Action == StepAction.Build)
-                _built.Add(parsed.What);
-            else if (parsed.Action == StepAction.Research && BuildOrderValidator.AgeOf(parsed.What) is { } reached && reached > age)
-                age = reached;
+            if (EventConventions.Parse(e.EventId) is { } parsed)
+                Reached(parsed.Action, parsed.What);
         }
         for (var i = 0; i < n; i++)
         {
-            if (!IsDone(i) || _bo.Steps[i].What is not { } what)
-                continue;
-            if (_bo.Steps[i].Do == StepAction.Build)
-                _built.Add(what);
-            else if (_bo.Steps[i].Do == StepAction.Research && BuildOrderValidator.AgeOf(what) is { } reached && reached > age)
-                age = reached;
+            // Lo salteado a mano cuenta como hecho: un clic de edad salteado pasa a la edad siguiente y un edificio
+            // salteado no deja ocultos para siempre a los que lo piden (la BO nunca terminaba).
+            if ((IsDone(i) || _skipped.ContainsKey(i)) && _bo.Steps[i].What is { } what)
+                Reached(_bo.Steps[i].Do, what);
         }
         Age = age;
         _eligible = Enumerable.Range(0, n).Select(i => Eligible(_bo.Steps[i])).ToArray();
@@ -511,7 +528,8 @@ public sealed class Tracker
 
         bool Eligible(Step step)
         {
-            if (step.After.Any(dep => _bo.Steps.Select((s, j) => (s, j)).Any(x => x.s.Id == dep && !IsDone(x.j))))
+            // Un paso salteado cuenta como hecho para los que dependen de él.
+            if (step.After.Any(dep => _bo.Steps.Select((s, j) => (s, j)).Any(x => x.s.Id == dep && !IsDone(x.j) && !_skipped.ContainsKey(x.j))))
                 return false;
             if (step.What is null || !_data.TryGet(step.What, out var entity))
                 return true;
@@ -522,7 +540,8 @@ public sealed class Tracker
                 return false;
             if (step.Do == StepAction.Build && civ.Requires(entity) is { } required && !_built.Contains(required))
                 return false;
-            return BuildOrderValidator.AgeUpRequirement(step.What) is null || BuildOrderValidator.AgeUpProgress(step.What, _built) >= 2;
+            // Los jemeres suben sin edificios (game_data no_age_buildings).
+            return civ.NoAgeBuildings || BuildOrderValidator.AgeUpRequirement(step.What) is null || BuildOrderValidator.AgeUpProgress(step.What, _built) >= 2;
         }
 
         // 3. Estado final de cada paso.
