@@ -149,6 +149,7 @@ public class BuildOrderAbandonmentTests
             with { Villagers = 20, VillagersOn = new ResourceAmounts(8, 10, 0, 2) });
 
         Assert.NotNull(view.Abandoned);
+        Assert.All(view.Lanes, l => Assert.Null(l.Step)); // cada línea a su fallback
         Assert.Null(view.Current);
         Assert.Null(view.Next);
         Assert.Empty(view.Late);

@@ -7,6 +7,12 @@ namespace BoCoach.Core.Engine;
 /// <summary>Un paso ya pagado que se está haciendo, y cuándo estima el Planner que termina.</summary>
 public sealed record RunningStep(StepProgress Progress, double? EndsAt);
 
+/// <summary>
+/// El renglón de una línea (spec 2026-10-30): su paso, lo que le falta juntar y cuándo estima el Planner que se puede
+/// hacer. <see cref="Step"/> null = la línea no tiene paso de la BO y va al fallback (GD, casa, tecnologías, postura).
+/// </summary>
+public sealed record LaneView(Lane Lane, StepProgress? Step, ResourceAmounts Missing, double? Eta);
+
 /// <summary>Lo que muestra el overlay en un instante.</summary>
 /// <param name="Missing">Lo que falta juntar para el paso actual (cero si ya alcanza).</param>
 /// <param name="CurrentEta">Cuándo estima el Planner que se puede hacer el paso actual (reloj de partida).</param>
@@ -110,6 +116,15 @@ public sealed record CoachView(
 
     /// <summary>Con la BO terminada, las tecnologías que faltan (<see cref="TechReminders"/>).</summary>
     public IReadOnlyList<TechReminder> Techs { get; init; } = [];
+
+    /// <summary>Un renglón por línea, en el orden de <see cref="Engine.Lanes.All"/>.</summary>
+    public IReadOnlyList<LaneView> Lanes { get; init; } = [];
+
+    /// <summary>
+    /// Sin paso de aldeanos en la BO: a qué recurso mandar el próximo aldeano según la GD (el que más le falta contra lo
+    /// que hay), o, si la GD no pide ninguno, el de más demanda sin cubrir por el stock. null si no hay a dónde.
+    /// </summary>
+    public Resource? VillagerGuide { get; init; }
 }
 
 /// <summary>
@@ -268,7 +283,7 @@ public sealed class Coach
             : bo;
         var candidate = Economy is { } report
             ? GuideDistribution.Adjust(start, State.Stock, report.Demand, report.NominalRates, _economySettings.Horizon,
-                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves, StepTarget(Tracker.Current))
+                foodFloor, _economySettings.ShortageThreshold, _economySettings.MaxMoves, StepTarget(Tracker.LaneStep(Lane.Villagers)))
             : start;
         if (_guide is not { } shown || Total(shown) != Total(candidate) || candidate == shown)
         {
@@ -549,7 +564,10 @@ public sealed class Coach
     {
         if (current is null)
             return null;
-        var last = Tracker.CurrentGoals.Select(g => g.Index).DefaultIfEmpty(current.Index).Max();
+        // Si es parte de un paso mixto, hasta la última meta de aldeanos del grupo.
+        var last = current.Step.Group is { } group
+            ? Tracker.Steps.Where(s => s.Step.Group == group && Lanes.Of(s.Step) == Lane.Villagers).Max(s => s.Index)
+            : current.Index;
         var perResource = new Dictionary<Resource, double>();
         foreach (var (source, count) in LivePlan.PlannedVillagers(Tracker.BuildOrder, last))
             perResource[source.Resource()] = perResource.GetValueOrDefault(source.Resource()) + count;
@@ -590,13 +608,8 @@ public sealed class Coach
         if (Abandonment.Abandoned)
             return AbandonedView();
         var current = Tracker.Current;
-        var missing = ResourceAmounts.Zero;
-        if (current?.Step.What is { } what && current.Step.Do != StepAction.Move && _data.TryGet(what, out var entity))
-        {
-            var cost = _data.Civ(Tracker.BuildOrder.Civ).Cost(entity, LivePlan.Start(Tracker).Age);
-            foreach (var r in Enum.GetValues<Resource>())
-                missing = missing.With(r, Math.Max(0, cost[r] - State.Stock[r]));
-        }
+        var villagers = Tracker.LaneStep(Lane.Villagers);
+        var missing = current is null ? ResourceAmounts.Zero : MissingFor(current);
 
         var eta = current is null ? null : _plan?.For(current.Step.Id)?.Start;
         var deviations = _plan is null ? [] : LivePlan.Deviations(Tracker.BuildOrder, _plan).ToList();
@@ -623,8 +636,8 @@ public sealed class Coach
             SourceVillagers = SourceVillagers(current),
             Distribution = _guide ?? Distribution(Economy?.FoodFloor ?? 0),
             BoDistribution = Distribution(Economy?.FoodFloor ?? 0),
-            StepTarget = StepTarget(current),
-            NowTarget = NowTarget(current, Distribution(Economy?.FoodFloor ?? 0), StepTarget(current)),
+            StepTarget = StepTarget(villagers),
+            NowTarget = NowTarget(villagers, Distribution(Economy?.FoodFloor ?? 0), StepTarget(villagers)),
             Actual = State.VillagersOn ?? (_villagers is null ? null : Actual()),
             ActualFromHud = State.VillagersOn is not null,
             FoodFloor = Economy?.FoodFloor ?? 0,
@@ -636,7 +649,44 @@ public sealed class Coach
             Branch = _branches.View(),
             Compact = Finished && State.Time - _postureSince >= FinishedNoticeSeconds,
             Techs = Finished ? _techs.Shown : [],
+            Lanes = Engine.Lanes.All.Select(LaneViewOf).ToList(),
+            VillagerGuide = villagers is null ? VillagerGuide() : null,
         };
+    }
+
+    private LaneView LaneViewOf(Lane lane) => Tracker.LaneStep(lane) is { } step
+        ? new LaneView(lane, step, MissingFor(step), _plan?.For(step.Step.Id)?.Start)
+        : new LaneView(lane, null, ResourceAmounts.Zero, null);
+
+    /// <summary>Lo que falta juntar para un paso: su costo con la civ en la edad del jugador menos el stock.</summary>
+    private ResourceAmounts MissingFor(StepProgress step)
+    {
+        var missing = ResourceAmounts.Zero;
+        if (step.Step.What is { } what && step.Step.Do != StepAction.Move && _data.TryGet(what, out var entity))
+        {
+            var cost = _data.Civ(Tracker.BuildOrder.Civ).Cost(entity, LivePlan.Start(Tracker).Age);
+            foreach (var r in Enum.GetValues<Resource>())
+                missing = missing.With(r, Math.Max(0, cost[r] - State.Stock[r]));
+        }
+        return missing;
+    }
+
+    private Resource? VillagerGuide()
+    {
+        var resources = Enum.GetValues<Resource>();
+        if ((_guide ?? Distribution(Economy?.FoodFloor ?? 0)) is { } guide && (State.VillagersOn ?? Actual()) is { } actual)
+        {
+            var (best, gap) = resources.Select(r => (r, guide[r] - actual[r])).MaxBy(x => x.Item2);
+            if (gap > 0)
+                return best;
+        }
+        if (Economy is { } report)
+        {
+            var (best, gap) = resources.Select(r => (r, report.Demand[r] - State.Stock[r])).MaxBy(x => x.Item2);
+            if (gap > 0)
+                return best;
+        }
+        return null;
     }
 
     private IReadOnlyList<GameSignal> RecentSignals() => Signals.All.Where(s => State.Time - s.Time < SignalSeconds).ToList();
@@ -693,5 +743,7 @@ public sealed class Coach
         TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
         Signals = RecentSignals(),
         Branch = _branches.View(),
+        Lanes = Engine.Lanes.All.Select(lane => new LaneView(lane, null, ResourceAmounts.Zero, null)).ToList(),
+        VillagerGuide = VillagerGuide(),
     };
 }
