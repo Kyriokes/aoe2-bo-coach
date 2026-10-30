@@ -21,6 +21,17 @@ public class ProductionQueueTests
         Assert.Equal(expected, string.Join(" ", Library.Read(Frame(frame, "20261018-132830"))));
     }
 
+    // Partida 20261029-211516 (coreanos, v0.9.44 con la caja de la cola en x 0): la carretilla y Castillos esperando,
+    // amarillos, se leían como la Feudal en espera.
+    [Theory]
+    [InlineData(1064, "villager archer archer")]
+    [InlineData(1558, "villager archer archer wheelbarrow…")]
+    [InlineData(1812, "villager archer archer castle_age…")]
+    public void Distingue_las_investigaciones_que_esperan(int frame, string expected)
+    {
+        Assert.Equal(expected, string.Join(" ", Library.Read(Frame(frame, "20261029-211516"))));
+    }
+
     // Partida 20261018-021924, mirando las capturas (y el log para saber qué se investigaba).
     [Theory]
     [InlineData(330, "loom villager…")]                        // 4:00, el aldeano espera detrás del telar (amarillo)
