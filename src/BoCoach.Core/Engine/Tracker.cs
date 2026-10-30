@@ -13,10 +13,7 @@ public enum StepState
 
     Done,
 
-    /// <summary>
-    /// Se terminó (o se empezó) un paso posterior que hace el mismo actor, y este sigue sin empezar. No se pierde:
-    /// se muestra aparte.
-    /// </summary>
+    /// <summary>Ya no se asigna (spec 2026-10-30: lo salteado queda primero en su línea). Se saca con la vista vieja.</summary>
     Late,
 
     /// <summary>Ya se pagó y se está haciendo (por ejemplo, la investigación de una edad), pero no terminó.</summary>
@@ -49,9 +46,8 @@ public sealed record ExtraAction(GameEvent Event);
 /// Sigue en qué paso de la BO está el jugador. Se recalcula entero en cada <see cref="Update"/> a partir de
 /// los eventos, las correcciones manuales y el estado del jugador, así que el resultado no depende del orden
 /// en que se llamó.
-/// <para>Cada paso lo hace un "actor": el edificio que entrena o investiga (centro urbano, cuartel...) o los
-/// aldeanos que construyen. Los actores trabajan en paralelo, así que un paso queda atrasado solo si el mismo
-/// actor ya terminó uno posterior: construir el campamento antes de tiempo no atrasa los aldeanos del centro urbano.</para>
+/// <para>Cada paso cae en una línea (<see cref="Lanes"/>) y cada línea avanza sola: lo que se salteó queda primero en
+/// su línea (<see cref="LaneStep"/>) en vez de "atrasado" (spec 2026-10-30, coach por líneas paralelas).</para>
 /// </summary>
 public sealed class Tracker
 {
@@ -59,7 +55,6 @@ public sealed class Tracker
     private readonly GameData _data;
     private readonly EventCatalog? _events;
     private readonly string?[] _confirmEvent;
-    private readonly string[] _actor;
     private readonly Dictionary<int, double> _manualDone = [];
     private readonly Dictionary<int, double> _skipped = [];
     private readonly Dictionary<int, double> _started = [];
@@ -93,7 +88,6 @@ public sealed class Tracker
         _events = events;
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
         _units = LivePlan.Units(bo);
-        _actor = bo.Steps.Select(Actor).ToArray();
         _hudTarget = HudTargets(bo);
         _capTarget = CapTargets(bo, data);
         Recompute();
@@ -219,15 +213,6 @@ public sealed class Tracker
     public StepProgress? Next => Current is { } current
         ? _steps.Where(s => IsOpen(s) && !IsProducing(s)).FirstOrDefault(s => s.Index > current.Index && !SameGroup(s.Index, current.Index))
         : null;
-
-    /// <summary>
-    /// Hacer el paso j del mismo actor deja atrás al paso i. No si i entrena y j no: el centro urbano que investiga el
-    /// telar antes de tiempo sigue sacando aldeanos después (en la 20261018-132830, el telar a las 3:14 dejaba
-    /// "atrasados" a los aldeanos de caza y de bayas). Tampoco lo que el juego no avisa (granjas): no se sabe si se hizo.
-    /// </summary>
-    private bool Skips(int i, int j) =>
-        (_bo.Steps[i].Do != StepAction.Train || _bo.Steps[j].Do == StepAction.Train)
-        && !(EventConventions.EventFor(_bo.Steps[i]) is { } id && EventConventions.Unannounced.Contains(id));
 
     /// <summary>Son metas del mismo paso mixto: se hacen a la vez, así que su orden no dice nada.</summary>
     private bool SameGroup(int i, int j) => _bo.Steps[i].Group is { } g && g == _bo.Steps[j].Group;
@@ -374,12 +359,6 @@ public sealed class Tracker
 
     private int Required(int index) => _units[index];
 
-    /// <summary>Quién hace el paso: el edificio que lo produce, o los aldeanos si es construir o mover.</summary>
-    private string Actor(Step step) =>
-        step.Do is StepAction.Train or StepAction.Research && step.What is not null && _data.TryGet(step.What, out var entity)
-            ? entity.MadeIn ?? ""
-            : "aldeanos";
-
     private static bool IsOpen(StepProgress s) => s.State is StepState.Pending or StepState.Ready;
 
     private void Recompute()
@@ -457,9 +436,9 @@ public sealed class Tracker
                 continue;
             }
             // Una investigación empezada da por hechas las granjas sueltas de antes (el clic en Castillos con las granjas
-            // pendientes), pero no lo de un paso mixto: el telar se puede pagar temprano sin haber hecho la granja.
-            var loose = _bo.Steps[i].Group is null && mates.Count == 0 && EventConventions.EventFor(_bo.Steps[i]) is { } ev
-                && EventConventions.Unannounced.Contains(ev);
+            // pendientes), pero no lo de un paso mixto: el telar se puede pagar temprano sin haber hecho la granja. Vale
+            // cualquier línea: lo que nada confirma (granjas, un mensaje que el log no lee) quedaría abierto para siempre.
+            var loose = _bo.Steps[i].Group is null && EventConventions.EventFor(_bo.Steps[i]) is { } ev && EventConventions.Unannounced.Contains(ev);
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
                 .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || (loose && _started.ContainsKey(j))))
                 .Select(j => FirstProgressTime(j, doneAt))
@@ -542,10 +521,6 @@ public sealed class Tracker
             else if (_started.ContainsKey(i))
             {
                 state = StepState.InProgress;
-            }
-            else if (completed[i] == 0 && Enumerable.Range(i + 1, n - i - 1).Any(j => _actor[j] == _actor[i] && !SameGroup(i, j) && Skips(i, j) && (IsDone(j) || _started.ContainsKey(j))))
-            {
-                state = StepState.Late;
             }
             else
             {

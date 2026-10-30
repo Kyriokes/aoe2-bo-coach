@@ -169,24 +169,25 @@ public class TrackerTests
     }
 
     [Fact]
-    public void Paso_salteado_queda_atrasado_y_no_se_pierde()
+    public void Paso_salteado_queda_primero_en_su_linea_y_no_se_pierde()
     {
         var tracker = NewTracker();
-        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4).
+        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4). Sin "atrasados" (spec
+        // 2026-10-30): el campamento queda primero en Construir y los aldeanos siguen en su línea.
         var partida = new Partida().Play(Scouts, 0, 2).Event("house_built");
 
         tracker.Update(partida.State);
 
-        Assert.Equal(StepState.Late, StateOf(tracker, "s4"));
+        Assert.Contains(StateOf(tracker, "s4"), Open);
         Assert.Equal(StepState.Done, StateOf(tracker, "s5"));
-        Assert.Equal("s6", tracker.Current?.Step.Id);
-        Assert.Contains(tracker.Late, s => s.Step.Id == "s4");
+        Assert.Equal("s4", tracker.LaneStep(Lane.Build)?.Step.Id);
+        Assert.Equal("s6", tracker.LaneStep(Lane.Villagers)?.Step.Id);
 
         partida.Event("lumber_camp_built");
         tracker.Update(partida.State);
 
         Assert.Equal(StepState.Done, StateOf(tracker, "s4"));
-        Assert.Empty(tracker.Late);
+        Assert.Equal("s8", tracker.LaneStep(Lane.Build)?.Step.Id);
     }
 
     [Fact]
@@ -394,15 +395,17 @@ public class TrackerTests
     }
 
     [Fact]
-    public void Empezar_una_investigacion_atrasa_la_anterior_del_mismo_edificio()
+    public void Empezar_una_investigacion_deja_la_anterior_primera_en_su_linea()
     {
         var tracker = NewTracker();
         tracker.Update(new Partida().Play(Scouts, 0, 10).State);
 
-        // Hace clic en Feudal sin haber investigado el telar (los dos se hacen en el centro urbano).
+        // Hace clic en Feudal sin haber investigado el telar (los dos se hacen en el centro urbano): el telar sigue
+        // primero en Investigar (spec 2026-10-30, sin "atrasados").
         tracker.MarkStarted(Index("s13"), 520);
 
-        Assert.Equal(StepState.Late, StateOf(tracker, "s12"));
+        Assert.Contains(StateOf(tracker, "s12"), Open);
+        Assert.Equal("s12", tracker.LaneStep(Lane.Research)?.Step.Id);
     }
 
     [Fact]
@@ -462,11 +465,12 @@ public class TrackerTests
         Assert.Equal("s41", tracker.Current?.Step.Id);
         Assert.Contains(tracker.Silent, s => s.Step.Id == "s40");
 
-        // Hace clic en Castillos sin la carretilla: las granjas ya están, la carretilla queda atrasada.
+        // Hace clic en Castillos sin la carretilla: las granjas ya están, la carretilla queda primera en Investigar.
         tracker.MarkStarted(archers.Steps.Select(s => s.Id).ToList().IndexOf("s42"), 1226);
 
         Assert.Equal(StepState.Done, tracker.Steps[farms].State);
         Assert.Empty(tracker.Silent);
-        Assert.Equal(StepState.Late, tracker.Steps[farms + 1].State);
+        Assert.Contains(tracker.Steps[farms + 1].State, Open);
+        Assert.Equal(tracker.Steps[farms + 1].Step.Id, tracker.LaneStep(Lane.Research)?.Step.Id);
     }
 }

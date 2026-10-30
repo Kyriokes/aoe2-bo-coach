@@ -140,4 +140,56 @@ public class TrackerLanesTests
 
         Assert.True(tracker.IsEligible(Index(bo, "feudal")));
     }
+
+    [Fact]
+    public void El_hacha_esperando_madera_no_frena_a_los_aldeanos()
+    {
+        var bo = Bo(Villagers("v1", 2, GatherSource.Wood), Research("axe", "double_bit_axe"), Villagers("v2", 2, GatherSource.Gold));
+        var tracker = new Tracker(bo, TestData.GameData);
+        var partida = new Partida { Stock = ResourceAmounts.Zero }.Event("feudal_age_researched").Event("lumber_camp_built").Events("villager_created", 4);
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Pending, tracker.Steps[Index(bo, "axe")].State);
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "v1")].State);
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "v2")].State);
+        Assert.Null(tracker.LaneStep(Lane.Villagers));
+        Assert.Equal("axe", tracker.LaneStep(Lane.Research)?.Step.Id);
+    }
+
+    [Fact]
+    public void Un_edificio_hecho_antes_marca_su_paso_y_la_linea_sigue_en_el_primero()
+    {
+        var bo = Bo(Build("house", "house"), Build("camp", "lumber_camp"), Build("mill", "mill"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("mill_built").State);
+
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "mill")].State);
+        Assert.Contains(tracker.Steps[Index(bo, "house")].State, new[] { StepState.Pending, StepState.Ready });
+        Assert.Contains(tracker.Steps[Index(bo, "camp")].State, new[] { StepState.Pending, StepState.Ready });
+        Assert.Equal("house", tracker.LaneStep(Lane.Build)?.Step.Id);
+    }
+
+    [Fact]
+    public void Paso_mixto_partido()
+    {
+        var bo = Bo(
+            Villagers("v1", 3, GatherSource.Sheep),
+            Villagers("v2", 2, GatherSource.Berries) with { Group = "g1" },
+            Build("mill", "mill") with { Group = "g1" });
+        var tracker = new Tracker(bo, TestData.GameData);
+        var partida = new Partida().Events("villager_created", 3);
+        tracker.Update(partida.State);
+
+        Assert.Equal("v2", tracker.LaneStep(Lane.Villagers)?.Step.Id);
+        Assert.Equal("mill", tracker.LaneStep(Lane.Build)?.Step.Id);
+
+        tracker.Update(partida.Event("mill_built").State);
+
+        Assert.Equal(StepState.Done, tracker.Steps[Index(bo, "mill")].State);
+        Assert.Equal("v2", tracker.LaneStep(Lane.Villagers)?.Step.Id);
+
+        tracker.Update(partida.Events("villager_created", 2).State);
+
+        Assert.Null(tracker.LaneStep(Lane.Villagers));
+    }
 }
