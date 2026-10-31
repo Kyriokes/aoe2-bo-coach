@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { listBuildOrders } from "@/lib/data";
+import { listBuildOrders, type BuildOrderSummary } from "@/lib/data";
 import { filterValue, pageNumber } from "@/lib/filters";
 import { error, publishFromApp } from "./appApi";
 
@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
     sort: params.get("orden") === "recientes" ? "recientes" : "votos",
     page: pageNumber(params.get("pagina") ?? undefined),
   });
-  return Response.json({ items, has_more: hasMore });
+  return Response.json({ items: items.map(publicSummary), has_more: hasMore });
+}
+
+/** Lo que se publica de cada BO: sin los UUID de la fila ni de la cuenta (la app no los usa y permiten enumerar cuentas). */
+export function publicSummary(bo: BuildOrderSummary) {
+  const { code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, author, uploader } = bo;
+  return { code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, author, uploader };
 }
 
 /** POST /api/bo: la app publica una BO nueva. Cuerpo: { build_order, feudal_click?, castle_click? }. */
