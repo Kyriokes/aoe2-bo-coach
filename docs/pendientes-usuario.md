@@ -16,6 +16,8 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 ## Auditoría (2026-10-31)
 
+0l. **Correr la migración de la auditoría antes de pedir el push a `main`** (31/10, `docs/auditoria-2026-10-31.md`, M2 y B1). Sin ella la web nueva anda igual (no pide columnas nuevas), pero los topes del JSON y el arreglo del alta quedan solo en el repo. (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`, **SQL Editor**. (2) "New query", pegá entero `web/supabase/migrations/20261031200000_columnas_del_json.sql` y tocá **Run**: tiene que decir "Success. No rows returned". (3) Para verificar: en la web, guardá una BO desde "Armar una BO" y fijate que en la biblioteca sale con su nombre y civ como siempre. Las BO ya publicadas no cambian (la restricción del autor es `not valid`: vale solo para lo nuevo).
+
 0k. **Apagar el proveedor de email en Supabase** (31/10, `docs/auditoria-2026-10-31.md`, M1). La web entra solo con
 Discord y Google, pero en el proyecto el email está prendido: cualquiera con la clave pública puede crear cuentas con
 correos descartables y publicar 150 BO por día por cuenta. (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`.
