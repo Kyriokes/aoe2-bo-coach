@@ -93,7 +93,9 @@ public sealed class Tracker
     /// <summary>
     /// Para cada paso que construye algo que da población (casas): el tope que la BO espera al terminarlo. Si el tope
     /// del juego ya llegó, el paso está hecho aunque el log no lo haya avisado (un "House Built" repetido no agrega
-    /// renglón) o las casas se hayan hecho antes: el usuario tenía 35/55 y el coach seguía pidiendo una casa.
+    /// renglón) o las casas se hayan hecho antes: el usuario tenía 35/55 y el coach seguía pidiendo una casa. Solo las
+    /// casas (o lo que cuenta como casa): los centros urbanos los avisa el log, y en la 20261030-203917 las casas de más
+    /// daban por hechos a las 15:01, en Feudal, los 2 centros urbanos del final de la BO.
     /// </summary>
     private static int?[] CapTargets(BuildOrder bo, GameData data)
     {
@@ -106,7 +108,8 @@ public sealed class Tracker
             if (step.Do != StepAction.Build || step.What is not { } what || !data.TryGet(what, out var entity) || civ.PopBonus(entity, Age.Dark) <= 0)
                 continue;
             cap = Math.Min(BuildOrderValidator.MaxPopulation, cap + civ.PopBonus(entity, Age.Dark) * step.Count);
-            targets[i] = cap;
+            if (what == "house" || entity.CountsAs.Contains("house"))
+                targets[i] = cap;
         }
         return targets;
     }

@@ -450,6 +450,31 @@ public class TrackerTests
         Assert.NotEqual(StepState.Done, tracker.Steps[ids.IndexOf("s13")].State);
     }
 
+    // Partida 20261030-203917 (británicos mejorada): con 18 casas el tope pasó el que la BO espera después de sus 2
+    // centros urbanos, y el paso quedó hecho a las 15:01, en Feudal. El log avisa los centros urbanos: el tope solo
+    // vale para las casas.
+    [Fact]
+    public void El_tope_no_da_por_hecho_un_centro_urbano()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "house", Do = StepAction.Build, What = "house", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "tc", Do = StepAction.Build, What = "town_center", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            ],
+        };
+        var tracker = new Tracker(bo, TestData.GameData);
+        var partida = new Partida().CapGrows(60);
+        tracker.Update(partida.State);
+        partida.Wait(3);
+        tracker.Update(partida.State);
+
+        Assert.Equal(StepState.Done, tracker.Steps[0].State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[1].State);
+    }
+
     [Fact]
     public void Las_granjas_no_traban_la_BO_y_quedan_hechas_al_empezar_un_paso_posterior()
     {
