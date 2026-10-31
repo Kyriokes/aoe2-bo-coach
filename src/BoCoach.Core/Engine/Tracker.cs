@@ -224,17 +224,23 @@ public sealed class Tracker
     /// <summary>
     /// Un paso quedó atrás si, desde que se pudo hacer, el log confirmó (o se empezó) uno posterior de su línea que no
     /// es de su mismo paso mixto. No si está a medias (las galerías 1/2) ni si es de aldeanos (se cuentan por el total).
-    /// El emplumado que recién se puede con la herrería no queda atrás de la collera hecha antes.
+    /// El emplumado que recién se puede con la herrería no queda atrás de la collera hecha antes. Una casa no deja atrás
+    /// a nadie: se hace cuando la pide la población, no en el orden de la BO (partida 20261031-171509: la casa de las
+    /// 4:58 dejaba "sin hacer" el molino y el campamento minero, y Construir pedía el cuartel; el molino se hizo a las 6:03).
     /// </summary>
     private bool IsBehind(StepProgress s)
     {
         var lane = Lanes.Of(s.Step);
         if (lane == Lane.Villagers || s.Completed > 0 || !_eligibleSince.TryGetValue(s.Index, out var since))
             return false;
-        return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index)
+        return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index) && !IsHouse(o.Step)
             && (_allocated.ContainsKey(o.Index) || _started.ContainsKey(o.Index))
             && (o.DoneAt ?? o.StartedAt) is { } at && at >= since);
     }
+
+    /// <summary>Construye casas (o lo que cuenta como casa, como el asentamiento de los incas).</summary>
+    private bool IsHouse(Step step) => step.Do == StepAction.Build && step.What is { } what
+        && (what == "house" || _data.TryGet(what, out var entity) && entity.CountsAs.Contains("house"));
 
     /// <summary>Desde cuándo cada paso es elegible (se borra si deja de serlo).</summary>
     private readonly Dictionary<int, double> _eligibleSince = [];

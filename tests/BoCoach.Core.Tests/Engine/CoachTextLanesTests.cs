@@ -79,11 +79,11 @@ public class CoachTextLanesTests
             [
                 new Step { Id = "mill1", Do = StepAction.Build, What = "mill", Assign = GatherSource.Berries },
                 new Step { Id = "mill2", Do = StepAction.Build, What = "mill", Assign = GatherSource.Berries },
-                new Step { Id = "house", Do = StepAction.Build, What = "house", Assign = GatherSource.Wood },
+                new Step { Id = "mine", Do = StepAction.Build, What = "mining_camp", Assign = GatherSource.Gold },
                 new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
             ],
         };
-        var view = new Coach(bo, TestData.GameData, TestData.Events).Update(At(100, PlanStart.Standard.Stock, "mill_built", "house_built"));
+        var view = new Coach(bo, TestData.GameData, TestData.Events).Update(At(100, PlanStart.Standard.Stock, "mill_built", "mining_camp_built"));
 
         var lines = CoachText.Lines(view, TestData.GameData);
 

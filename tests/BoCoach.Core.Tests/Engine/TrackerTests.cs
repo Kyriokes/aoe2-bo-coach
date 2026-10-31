@@ -171,16 +171,17 @@ public class TrackerTests
     public void Paso_salteado_queda_aparte_en_su_linea_y_no_se_pierde()
     {
         var tracker = NewTracker();
-        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4): Construir sigue después de
-        // la casa y el campamento queda aparte ("Quedó sin hacer"); los aldeanos siguen en su línea.
+        // Hace todo hasta s3 y la casa de s5, pero se olvida del campamento maderero (s4). Una casa se hace cuando la
+        // pide la población, no en el orden de la BO, así que no lo deja atrás: Construir sigue pidiendo el campamento
+        // (partida 20261031-171509: la casa de las 4:58 dejaba "sin hacer" el molino, que se hizo a las 6:03).
         var partida = new Partida().Play(Scouts, 0, 2).Event("house_built");
 
         tracker.Update(partida.State);
 
         Assert.Contains(StateOf(tracker, "s4"), Open);
         Assert.Equal(StepState.Done, StateOf(tracker, "s5"));
-        Assert.Equal("s8", tracker.LaneStep(Lane.Build)?.Step.Id);
-        Assert.Equal(["s4"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
+        Assert.Equal("s4", tracker.LaneStep(Lane.Build)?.Step.Id);
+        Assert.Empty(tracker.LaneBehind(Lane.Build));
         Assert.Equal("s6", tracker.LaneStep(Lane.Villagers)?.Step.Id);
 
         partida.Event("lumber_camp_built");

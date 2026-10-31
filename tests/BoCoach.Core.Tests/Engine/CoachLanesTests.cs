@@ -128,14 +128,13 @@ public class CoachLanesTests
             [
                 new Step { Id = "mill1", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Berries },
                 new Step { Id = "mill2", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
-                new Step { Id = "house", Do = StepAction.Build, What = "house", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "mine", Do = StepAction.Build, What = "mining_camp", From = GatherSource.Wood, Assign = GatherSource.Gold },
             ],
         };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
         var stock = new ResourceAmounts(500, 500, 500, 500);
-        // Con el tope de 5 del arranque: la casa la confirma el log, no el tope.
         coach.Update(At(60, stock, "mill_built") with { PopulationCap = 5 });
-        coach.Update(At(120, stock, "house_built") with { PopulationCap = 5 });
+        coach.Update(At(120, stock, "mining_camp_built") with { PopulationCap = 5 });
         var view = coach.Update(At(400, stock) with { PopulationCap = 10 });
         Assert.Null(view.Abandoned);
         Assert.NotNull(view.Posture);

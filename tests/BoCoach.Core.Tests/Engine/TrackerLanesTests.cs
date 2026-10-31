@@ -229,9 +229,9 @@ public class TrackerLanesTests
     [Fact]
     public void Lo_que_quedo_atras_en_la_linea_no_la_traba()
     {
-        var bo = Bo(Build("mill1", "mill"), Build("mill2", "mill"), Build("house", "house"), Build("camp", "lumber_camp"));
+        var bo = Bo(Build("mill1", "mill"), Build("mill2", "mill"), Build("mine", "mining_camp"), Build("camp", "lumber_camp"));
         var tracker = new Tracker(bo, TestData.GameData);
-        tracker.Update(new Partida().Event("mill_built").Event("house_built").State);
+        tracker.Update(new Partida().Event("mill_built").Event("mining_camp_built").State);
 
         Assert.Equal("camp", tracker.LaneStep(Lane.Build)?.Step.Id);
         Assert.Equal(["mill2"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
