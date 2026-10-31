@@ -1,0 +1,30 @@
+# Avisos de versiones nuevas de las dependencias (auditoría del 2026-10-31, B6): un PR por grupo, una vez por mes,
+# para no llenar el repo de PR. El CI los compila y los prueba; mergearlos es decisión del usuario.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    groups:
+      web:
+        patterns: ["*"]
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      dotnet:
+        patterns: ["*"]
+  - package-ecosystem: pip
+    directory: /tools/stats
+    schedule:
+      interval: monthly
+  - package-ecosystem: pip
+    directory: /tools/extractor
+    schedule:
+      interval: monthly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
