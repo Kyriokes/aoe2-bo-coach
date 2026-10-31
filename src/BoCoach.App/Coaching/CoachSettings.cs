@@ -53,8 +53,11 @@ public sealed class CoachSettings
     /// <summary>Modo desarrollador: muestra lo de diagnóstico (ver <see cref="App.DevMode"/>).</summary>
     public bool DevMode { get; set; }
 
-    /// <summary>"Grabar cada partida sola" (solo con el modo desarrollador).</summary>
-    public bool AutoRecord { get; set; }
+    /// <summary>
+    /// "Grabar cada partida sola" (solo con el modo desarrollador). Prendido por defecto: en modo desarrollador cada
+    /// partida queda grabada para revisarla (pedido del usuario del 2026-10-31, después de una partida sin grabar).
+    /// </summary>
+    public bool AutoRecord { get; set; } = true;
 
     /// <summary>Atajos cambiados por el jugador: id de la acción → combinación ("Ctrl+Alt+Right"); lo que falta es de fábrica.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = [];
@@ -88,7 +91,7 @@ public sealed class CoachSettings
                     ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
                     Hotkeys = Strings(json["hotkeys"]),
                     DevMode = Flag(json["dev_mode"]),
-                    AutoRecord = Flag(json["auto_record"]),
+                    AutoRecord = json["auto_record"] is JsonValue record && record.TryGetValue<bool>(out var auto) ? auto : true,
                 };
             }
         }

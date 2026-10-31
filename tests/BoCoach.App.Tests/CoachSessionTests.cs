@@ -182,18 +182,29 @@ public sealed class CoachSessionTests : IDisposable
         using (new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path, dev))
         {
             Assert.False(dev.IsOn);
-            Assert.False(dev.AutoRecord);
+            Assert.True(dev.AutoRecord); // lo que no se entiende queda en el valor por defecto: grabar
             dev.IsOn = true;
-            dev.AutoRecord = true;
+            dev.AutoRecord = false;
         }
         var saved = CoachSettings.Load(path);
         Assert.True(saved.DevMode);
-        Assert.True(saved.AutoRecord);
+        Assert.False(saved.AutoRecord);
 
         var again = new DevMode();
         using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path, again);
         Assert.True(again.IsOn);
-        Assert.True(again.AutoRecord);
+        Assert.False(again.AutoRecord);
+    }
+
+    [Fact]
+    public void En_modo_desarrollador_cada_partida_se_graba_sola_por_defecto()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, """{ "dev_mode": true }""");
+        var dev = new DevMode();
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path, dev);
+        Assert.True(dev.AutoRecord);
+        Assert.True(new CoachSettings().AutoRecord);
     }
 
     // Atajos editables: los textos dicen la combinación elegida, no la de fábrica.
