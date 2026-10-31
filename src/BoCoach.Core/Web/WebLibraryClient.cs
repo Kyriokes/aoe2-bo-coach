@@ -19,7 +19,24 @@ public sealed class WebLibraryException(string message, HttpStatusCode? status =
 public sealed record PublishedBuildOrder(string Code, string Url);
 
 /// <summary>Una BO bajada de la web.</summary>
-public sealed record WebBuildOrder(string Code, string Author, BuildOrder BuildOrder);
+/// <param name="Author">La cuenta que la subió (lo que la app muestra al confirmar).</param>
+/// <param name="GuideAuthor">El autor que dice el JSON (lo escribe cualquiera).</param>
+/// <param name="UpdatedAt">Cuándo se cambió por última vez en la web (la caché la baja de nuevo si cambió).</param>
+public sealed record WebBuildOrder(string Code, string Author, BuildOrder BuildOrder, DateTimeOffset? UpdatedAt = null, string GuideAuthor = "");
+
+/// <summary>Una BO de la lista de la app ("mis BO"): tuya o suscripta, sin los pasos.</summary>
+public sealed record WebBuildOrderEntry(string Code, string Name, string Civ, string? Map, string? Style, IReadOnlyList<string> Tags,
+    string Author, string GuideAuthor, bool Own, string Visibility, DateTimeOffset UpdatedAt, double? FeudalClick, double? CastleClick)
+{
+    /// <summary>Lo que usa la sugerencia para puntuarla sin bajarla.</summary>
+    public BuildOrderSummary Summary => new(Code, Name, Civ, Map, Tags, Style);
+}
+
+/// <summary>La lista de la app: el nombre de la cuenta del token y sus BO.</summary>
+public sealed record WebBuildOrderList(string Account, IReadOnlyList<WebBuildOrderEntry> Items)
+{
+    public static WebBuildOrderList Empty { get; } = new("", []);
+}
 
 /// <summary>Los códigos de la biblioteca web: 6 caracteres sin los que se confunden (0/o, 1/l/i).</summary>
 public static partial class WebCode
@@ -57,16 +74,19 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     /// </summary>
     public static bool SendsTokenSafely(Uri url) => url.Scheme == Uri.UriSchemeHttps || (url.Scheme == Uri.UriSchemeHttp && url.IsLoopback);
 
-    public async Task<WebBuildOrder> DownloadAsync(string code, CancellationToken cancel = default)
+    /// <summary>Baja una BO por su código. Con el token (de la app) también las privadas propias.</summary>
+    public async Task<WebBuildOrder> DownloadAsync(string code, string? token = null, CancellationToken cancel = default)
     {
-        if (!WebCode.IsValid(code))
-            throw new WebLibraryException($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).");
-        using var response = await Send(new HttpRequestMessage(HttpMethod.Get, new Uri(BaseUrl, $"api/bo/{code}")), cancel);
+        CheckCode(code);
+        if (token is not null)
+            CheckTokenSafe();
+        using var response = await Send(WithToken(new HttpRequestMessage(HttpMethod.Get, new Uri(BaseUrl, $"api/bo/{code}")), token), cancel);
         var json = await ReadJson(response, cancel);
         try
         {
             var bo = BuildOrderSerializer.Parse(json["build_order"]?.ToJsonString() ?? "");
-            return new WebBuildOrder(code, json["author"]?.GetValue<string>() ?? "Anónimo", bo);
+            var author = Text(json["author"]) ?? "Anónimo";
+            return new WebBuildOrder(code, author, bo, Date(json["updated_at"]), Text(json["guide_author"]) ?? author);
         }
         catch (BuildOrderFormatException e)
         {
@@ -74,16 +94,80 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         }
     }
 
+    /// <summary>La lista de la app: tus BO (también privadas) y tus suscriptas. Una entrada que no se entiende se saltea.</summary>
+    public async Task<WebBuildOrderList> MyBuildOrdersAsync(string token, CancellationToken cancel = default)
+    {
+        CheckTokenSafe();
+        using var response = await Send(WithToken(new HttpRequestMessage(HttpMethod.Get, new Uri(BaseUrl, "api/app/mis-bo")), token), cancel);
+        return ParseList(await ReadJson(response, cancel));
+    }
+
+    /// <summary>Lee la lista como la manda la web (también la guardada por la caché).</summary>
+    public static WebBuildOrderList ParseList(JsonObject json)
+    {
+        var items = new List<WebBuildOrderEntry>();
+        foreach (var node in json["items"] as JsonArray ?? [])
+        {
+            if (node is not JsonObject item || Text(item["code"]) is not { } code || !WebCode.IsValid(code)
+                || Text(item["name"]) is not { Length: > 0 } name || Date(item["updated_at"]) is not { } updated)
+                continue;
+            var author = Text(item["author"]) ?? "Anónimo";
+            items.Add(new WebBuildOrderEntry(code, name, Text(item["civ"]) ?? "any", Text(item["map"]), Text(item["style"]),
+                (item["tags"] as JsonArray ?? []).Select(Text).OfType<string>().ToList(), author, Text(item["guide_author"]) ?? author,
+                item["own"] is JsonValue own && own.TryGetValue<bool>(out var isOwn) && isOwn,
+                Text(item["visibility"]) ?? "public", updated, Number(item["feudal_click"]), Number(item["castle_click"])));
+        }
+        return new WebBuildOrderList(Text(json["account"]) ?? "", items);
+    }
+
+    /// <summary>Suma una BO pública a la lista de la app. True si es propia (las propias ya están).</summary>
+    public async Task<bool> SubscribeAsync(string code, string token, CancellationToken cancel = default)
+    {
+        CheckCode(code);
+        CheckTokenSafe();
+        using var response = await Send(WithToken(new HttpRequestMessage(HttpMethod.Post, new Uri(BaseUrl, $"api/app/suscripciones/{code}")), token), cancel);
+        var json = await ReadJson(response, cancel);
+        return json["own"] is JsonValue own && own.TryGetValue<bool>(out var isOwn) && isOwn;
+    }
+
+    private static void CheckCode(string code)
+    {
+        if (!WebCode.IsValid(code))
+            throw new WebLibraryException($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).");
+    }
+
+    private void CheckTokenSafe()
+    {
+        if (!SendsTokenSafely(BaseUrl))
+            throw new WebLibraryException(
+                $"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".");
+    }
+
+    private static HttpRequestMessage WithToken(HttpRequestMessage request, string? token)
+    {
+        if (token is not null)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    private static string? Text(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    private static double? Number(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue<double>(out var number) ? number : null;
+
+    private static DateTimeOffset? Date(JsonNode? node) =>
+        Text(node) is { } text && DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal, out var date) ? date : null;
+
     /// <summary>Publica la BO (o la reemplaza si se pasa el código de una propia).</summary>
     /// <param name="feudalClick">Clic de Feudal estimado por el Planner, en segundos (se muestra en la biblioteca).</param>
     public async Task<PublishedBuildOrder> PublishAsync(BuildOrder bo, string token, double? feudalClick, double? castleClick,
         string? code = null, CancellationToken cancel = default)
     {
-        if (!SendsTokenSafely(BaseUrl))
-            throw new WebLibraryException(
-                $"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".");
-        if (code is not null && !WebCode.IsValid(code))
-            throw new WebLibraryException($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).");
+        CheckTokenSafe();
+        if (code is not null)
+            CheckCode(code);
         var body = new JsonObject
         {
             ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(bo)),
