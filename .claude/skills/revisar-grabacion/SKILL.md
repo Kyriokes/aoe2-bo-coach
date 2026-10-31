@@ -22,7 +22,7 @@ Todo con `dotnet run -c Release --project tools/ReplaySession -- <comando>` desd
 - La visión completa sobre 15 000 capturas tarda. Si vas a correr el coach varias veces, primero `replay <grabación> --out <scratchpad>/lecturas.csv` y después `coach <scratchpad>/lecturas.csv <bo.json> --guide`, que es casi instantáneo. Ojo: el CSV solo guarda reloj, stocks, total de aldeanos, inactivos, edad y eventos; pierde los aldeanos por recurso del mod, el "N/M" y la cola de producción. Con el CSV la GD sale "(estimado)", la población se estima y los edificios por la cola no se cuentan (en la 20261019-202635 las galerías se cerraban a las 17:06 en vez de 12:16). Para lo que dependa de eso, corré `coach` sobre la grabación (unos 45 s para 12 minutos).
 - `queue <grabación> data/icons/production_queue.json`: cada cambio de la cola de producción.
 - `read <grabación> <región> data/fonts/<letra>.json --frames ...` y `ocr <grabación> event_log --frames ...` para una lectura puntual.
-- La BO: la del repo está en `build_orders/`, pero el usuario juega con su copia en `%APPDATA%\BoCoach\build_orders`, que puede estar vieja. Si el problema depende de la BO, compará las dos y avisá si difieren.
+- La BO: la del repo está en `build_orders/`, pero desde la v0.9.52 el usuario juega con la que bajó de la web, guardada en `%APPDATA%\BoCoach\cache\bo\<código>.json` (dentro, `build_order`), que puede ser distinta. Si el problema depende de la BO, compará las dos y avisá si difieren.
 
 Filtrá la salida con `grep` alrededor del minuto que contó el usuario; no la vuelques entera.
 
