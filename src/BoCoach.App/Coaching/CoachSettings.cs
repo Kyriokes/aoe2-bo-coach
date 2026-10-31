@@ -46,6 +46,9 @@ public sealed class CoachSettings
     /// <summary>D10: el perfil del juego que eligió con "Buscar" (para volver a buscarlo y comparar sus partidas).</summary>
     public long? ProfileId { get; set; }
 
+    /// <summary>Atajos cambiados por el jugador: id de la acción → combinación ("Ctrl+Alt+Right"); lo que falta es de fábrica.</summary>
+    public Dictionary<string, string> Hotkeys { get; set; } = [];
+
     /// <summary>D10: el Elo más alto que se acepta (el mismo tope que la ventana).</summary>
     public const int MaxElo = 4000;
 
@@ -70,6 +73,7 @@ public sealed class CoachSettings
                     Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= MaxElo ? (int)elo1v1 : null,
                     EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
                     ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
+                    Hotkeys = Strings(json["hotkeys"]),
                 };
             }
         }
@@ -83,6 +87,11 @@ public sealed class CoachSettings
     /// <summary>Un número entero, o null si falta o es de otro tipo (un valor raro no tiene que tirar abajo los ajustes).</summary>
     private static long? Number(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var number) ? number : null;
 
+    /// <summary>Los valores de texto de un objeto; lo que no es objeto o no es texto se ignora.</summary>
+    private static Dictionary<string, string> Strings(JsonNode? node) => node is JsonObject obj
+        ? obj.Where(p => p.Value is JsonValue v && v.TryGetValue<string>(out _)).ToDictionary(p => p.Key, p => p.Value!.GetValue<string>())
+        : [];
+
     public void Save(string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -94,6 +103,8 @@ public sealed class CoachSettings
             json["elo_team"] = eloTeam;
         if (ProfileId is { } profile)
             json["profile_id"] = profile;
+        if (Hotkeys.Count > 0)
+            json["hotkeys"] = new JsonObject(Hotkeys.Select(h => KeyValuePair.Create(h.Key, (JsonNode?)h.Value)));
         File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }
