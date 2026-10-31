@@ -1,3 +1,4 @@
+using BoCoach.Core.Web;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -34,8 +35,11 @@ public sealed class CoachSettings
     /// <summary>D6: el coach arranca solo cuando se abre el juego y se detiene cuando se cierra.</summary>
     public bool AutoStart { get; set; } = true;
 
-    /// <summary>D6: id de la última BO con que corrió el coach, para arrancar solo con ella.</summary>
+    /// <summary>D6: id de la última BO con que corrió el coach, para arrancar solo con ella (el código de la web).</summary>
     public string LastBuildOrder { get; set; } = "";
+
+    /// <summary>Parte 4: la BO se elige sola en cada partida (la sugerida) o a mano de la lista.</summary>
+    public BuildOrderMode BoMode { get; set; } = BuildOrderMode.Auto;
 
     /// <summary>D10: el Elo de 1v1 de mapa aleatorio del jugador (para las estadísticas de cruces), si lo puso.</summary>
     public int? Elo1v1 { get; set; }
@@ -76,6 +80,9 @@ public sealed class CoachSettings
                     FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
                     AutoStart = json["auto_start"]?.GetValue<bool>() ?? true,
                     LastBuildOrder = json["last_build_order"]?.GetValue<string>()?.Trim() ?? "",
+                    BoMode = json["bo_mode"] is JsonValue mode && mode.TryGetValue<string>(out var text) && text == "manual"
+                        ? BuildOrderMode.Manual
+                        : BuildOrderMode.Auto,
                     Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= MaxElo ? (int)elo1v1 : null,
                     EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
                     ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
@@ -119,6 +126,7 @@ public sealed class CoachSettings
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
+            ["bo_mode"] = BoMode == BuildOrderMode.Manual ? "manual" : "auto",
             ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord };
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;

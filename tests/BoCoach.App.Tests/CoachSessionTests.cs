@@ -156,6 +156,22 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(session.IsLive);
     }
 
+    // Parte 4: cómo se elige la BO (automática por defecto, o a mano) queda en settings.json.
+    [Fact]
+    public void El_modo_de_eleccion_de_la_BO_se_guarda()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, """{ "bo_mode": "otra cosa" }""");
+        using (var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path))
+        {
+            Assert.Equal(BuildOrderMode.Auto, session.BoMode);
+            session.BoMode = BuildOrderMode.Manual;
+        }
+        Assert.Equal(BuildOrderMode.Manual, CoachSettings.Load(path).BoMode);
+        using var again = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal(BuildOrderMode.Manual, again.BoMode);
+    }
+
     // Modo desarrollador: dev_mode y auto_record se leen de settings.json y se guardan al cambiar.
     [Fact]
     public void El_modo_desarrollador_y_la_grabacion_sola_se_guardan()

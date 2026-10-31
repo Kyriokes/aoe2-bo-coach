@@ -33,6 +33,9 @@ public sealed class BuildOrderPicker(IBuildOrderSource source, CivStyles styles)
     /// <summary>La última usada, si está guardada.</summary>
     public BuildOrder? Current(string? lastCode) => lastCode is { Length: > 0 } code ? source.Saved(code) : null;
 
+    /// <summary>Una BO de la lista (guardada, o bajada si no está o cambió).</summary>
+    public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) => source.GetAsync(code, cancel);
+
     /// <summary>La de más puntaje de la lista para esa partida, sin bajarla.</summary>
     public SummarySuggestion? Best(MatchSetup match, MatchupStats? matchups) =>
         BuildOrderSuggester.Suggest(source.List.Items.Select(i => i.Summary), match, styles, matchups);

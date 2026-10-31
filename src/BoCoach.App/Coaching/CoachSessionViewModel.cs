@@ -44,7 +44,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private readonly Func<IFrameSource> _liveFrames;
     private LiveCoach? _coach;
     private Vision.Loading.LoadingReading? _loading;
-    private BuildOrderSuggestion? _suggestion;
+    private SummarySuggestion? _suggestion;
+    private CancellationTokenSource? _pick;
+    private double _lastGameTime;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
     private bool _frameAllowsOverlay;
@@ -74,6 +76,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         LastBuildOrderId = settings.LastBuildOrder;
+        BoMode = settings.BoMode;
         Hotkeys = settings.Hotkeys;
         _devMode = devMode ?? DevMode.Instance;
         (_devMode.IsOn, _devMode.AutoRecord) = (settings.DevMode, settings.AutoRecord);
@@ -266,6 +269,18 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnAutoStartChanged(bool value) => SaveSettings();
 
+    /// <summary>Parte 4: la BO se elige sola en cada partida (la sugerida) o a mano de la lista.</summary>
+    [ObservableProperty] public partial BuildOrderMode BoMode { get; set; }
+
+    partial void OnBoModeChanged(BuildOrderMode value) => SaveSettings();
+
+    /// <summary>
+    /// De dónde salen las BO (la lista de la web y lo guardado). Sin asignar, la biblioteca local (hasta que se vaya).
+    /// </summary>
+    public BuildOrderPicker? Picker { get; set; }
+
+    private BuildOrderPicker ActivePicker => Picker ??= new BuildOrderPicker(new LibrarySource(_data.Library), _data.CivStyles);
+
     /// <summary>D6: id de la última BO con que corrió el coach (se guarda al empezar).</summary>
     public string LastBuildOrderId { get; private set; } = "";
 
@@ -306,6 +321,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 FirstRunDone = FirstRunDone,
                 AutoStart = AutoStart,
                 LastBuildOrder = LastBuildOrderId,
+                BoMode = BoMode,
                 Elo1v1 = Elo1v1,
                 EloTeam = EloTeam,
                 ProfileId = ProfileId,
@@ -384,10 +400,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _autoBlocked = true;
     }
 
-    /// <summary>La última BO usada (si sigue en la biblioteca), o la elegida.</summary>
+    /// <summary>
+    /// La última BO usada (si está guardada), o la elegida; en automática, si no hay ninguna, sin BO: la elige la
+    /// pantalla de carga.
+    /// </summary>
     private BuildOrder? AutoBuildOrder() =>
-        (LastBuildOrderId.Length > 0 ? _data.Library.List().Select(e => e.BuildOrder).FirstOrDefault(b => b?.Id == LastBuildOrderId) : null)
-        ?? _selected();
+        ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? (BoMode == BuildOrderMode.Auto ? BuildOrder.None : null);
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
     public void Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
@@ -468,7 +486,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>Hasta qué segundo de partida se puede aceptar la BO sugerida.</summary>
-    public const double SuggestionSeconds = 60;
+    public const double SuggestionSeconds = BuildOrderPicker.SwitchSeconds;
 
     /// <summary>
     /// D4: la BO de la biblioteca que mejor encaja con la civ, el mapa, los rivales (el de enfrente pesa más) y la
@@ -494,25 +512,61 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.MatchupLine = _matchupQuery is { } query ? MatchupText.Loading(matchups, query, CivName, MapName) : null;
         if (me.Civ is null)
             return;
-        var library = _data.Library.List().Select(e => e.BuildOrder).OfType<BuildOrder>().ToList();
-        var suggestion = BuildOrderSuggester.Suggest(library, match, _data.CivStyles, matchups);
-        if (suggestion is null || suggestion.BuildOrder.Id == _coach.BuildOrder.Id)
+        var picker = ActivePicker;
+        var suggestion = picker.Best(match, matchups);
+        // La que corre, como está guardada (sin la civ de la partida).
+        var running = picker.Current(_coach.BuildOrder.Id) ?? _coach.BuildOrder;
+        if (suggestion is not null && suggestion.Summary.Key == running.Id)
             return;
-        // D6: si arrancó solo, cambia a la sugerida cuando puntúa más que la que corre (la copia de la biblioteca, sin
-        // la civ de la partida). Ctrl+Alt+B vuelve a la anterior.
-        var running = library.FirstOrDefault(b => b.Id == _coach.BuildOrder.Id) ?? _coach.BuildOrder;
-        if (_startedAutomatically && suggestion.BuildOrder.Id != _declinedSuggestion
-            && suggestion.Score > BuildOrderSuggester.Score(running, match, _data.CivStyles, matchups))
+        // D6 y parte 4: arrancado solo en automática, cambia a la mejor de la lista cuando puntúa más que la que corre
+        // (bajándola si hace falta; sin internet, la mejor guardada). Ctrl+Alt+B vuelve a la anterior.
+        var runningScore = running.IsNone ? 0 : BuildOrderSuggester.Score(BuildOrderSummary.Of(running), match, _data.CivStyles, matchups);
+        if (_startedAutomatically && BoMode == BuildOrderMode.Auto && suggestion?.Summary.Key != _declinedSuggestion
+            && (suggestion is null ? running.IsNone : suggestion.Score > runningScore))
         {
-            _previousBuildOrder = running;
-            Start(suggestion.BuildOrder, _liveFrames(), automatic: true);
-            if (Overlay is not null)
-                Overlay.BoSuggestion = $"Cambié a {suggestion.BuildOrder.Name} ({suggestion.Reason}). {Key("accept_suggestion")} vuelve a {running.Name}";
-            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida ({Key("accept_suggestion")} vuelve a \"{running.Name}\").";
+            _ = SwitchForMatchAsync(picker, match, matchups, suggestion, running);
             return;
         }
+        if (suggestion is null)
+            return;
         _suggestion = suggestion;
-        Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). {Key("accept_suggestion")} para usarla";
+        Overlay.BoSuggestion = $"Sugerida: {suggestion.Summary.Name} ({suggestion.Reason}). {Key("accept_suggestion")} para usarla";
+    }
+
+    /// <summary>
+    /// Baja (si hace falta) la BO para la partida y la usa, salvo que ya haya empezado (más del primer minuto), se
+    /// haya detenido o cambiado el coach, o sea la misma que corre.
+    /// </summary>
+    private async Task SwitchForMatchAsync(BuildOrderPicker picker, MatchSetup match, MatchupStats? matchups, SummarySuggestion? best, BuildOrder running)
+    {
+        _pick?.Cancel();
+        var pick = _pick = new CancellationTokenSource();
+        var session = _coach;
+        if (best is not null && Overlay is not null)
+            Overlay.BoSuggestion = $"Bajando {best.Summary.Name}…";
+        BuildOrder bo;
+        try
+        {
+            bo = await picker.ForMatchAsync(match, matchups, pick.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        if (pick.IsCancellationRequested || _coach != session || session is null || !BuildOrderPicker.CanSwitchAt(_lastGameTime)
+            || bo.Id == running.Id || bo.IsNone)
+        {
+            if (Overlay is not null && _coach == session)
+                Overlay.BoSuggestion = null;
+            return;
+        }
+        _previousBuildOrder = running.IsNone ? null : running;
+        Start(bo, _liveFrames(), automatic: true);
+        var why = best is not null && best.Summary.Key == bo.Id ? $" ({best.Reason})" : "";
+        var back = running.IsNone ? "" : $" {Key("accept_suggestion")} vuelve a {running.Name}";
+        if (Overlay is not null)
+            Overlay.BoSuggestion = $"Cambié a {bo.Name}{why}.{back}";
+        Status = $"Coach con \"{bo.Name}\", la sugerida para esta partida.";
     }
 
     /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>
@@ -538,8 +592,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_suggestion is { } suggestion)
         {
             _suggestion = null;
-            Start(suggestion.BuildOrder, _liveFrames(), _startedAutomatically);
-            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida.";
+            _ = AcceptAsync(suggestion);
             return;
         }
         if (_previousBuildOrder is not { } previous || _coach is null)
@@ -548,6 +601,26 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _previousBuildOrder = null;
         Start(previous, _liveFrames(), automatic: true);
         Status = $"Volví a \"{previous.Name}\".";
+    }
+
+    /// <summary>Baja la sugerida (si no está guardada) y empieza el coach con ella.</summary>
+    private async Task AcceptAsync(SummarySuggestion suggestion)
+    {
+        var session = _coach;
+        BuildOrder bo;
+        try
+        {
+            bo = await ActivePicker.GetAsync(suggestion.Summary.Key);
+        }
+        catch (WebLibraryException e)
+        {
+            Status = $"No se pudo bajar \"{suggestion.Summary.Name}\": {e.Message}";
+            return;
+        }
+        if (_coach != session)
+            return;
+        Start(bo, _liveFrames(), _startedAutomatically);
+        Status = $"Coach con \"{bo.Name}\", la sugerida para esta partida.";
     }
 
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
@@ -659,6 +732,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         Overlay.Apply(frame);
         Live.Apply(frame);
+        _lastGameTime = frame.View.Time;
         _frameAllowsOverlay = frame is { InFront: true, Waiting: false };
         UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)
