@@ -36,7 +36,12 @@ export const ana = "11111111-1111-1111-1111-111111111111";
 export const beto = "22222222-2222-2222-2222-222222222222";
 
 export async function signUp(db: Db, id: string, name: string) {
-  await db.query("insert into auth.users (id, raw_user_meta_data) values ($1, $2)", [id, JSON.stringify({ full_name: name })]);
+  await signUpWith(db, id, { full_name: name });
+}
+
+/** Un alta con los datos que mande el proveedor (Discord o Google), tal cual. */
+export async function signUpWith(db: Db, id: string, metadata: Record<string, unknown>) {
+  await db.query("insert into auth.users (id, raw_user_meta_data) values ($1, $2)", [id, JSON.stringify(metadata)]);
 }
 
 /** Corre una consulta como un usuario logueado (o como anónimo si userId es null). */

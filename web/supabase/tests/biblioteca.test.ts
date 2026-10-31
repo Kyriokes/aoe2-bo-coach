@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ana, as, beto, database, type Db, insertBo, scouts, signUp } from "./database";
+import { ana, as, beto, database, type Db, insertBo, scouts, signUp, signUpWith } from "./database";
 
 
 describe("biblioteca", () => {
@@ -14,6 +14,18 @@ describe("biblioteca", () => {
   it("al registrarse se crea el perfil con el nombre de Discord o Google", async () => {
     const { rows } = await db.query<{ display_name: string }>("select display_name from public.profiles order by display_name");
     expect(rows.map((r) => r.display_name)).toEqual(["Ana", "Beto"]);
+  });
+
+  it("un nombre vacío del proveedor no rompe el alta", async () => {
+    const cata = "33333333-3333-3333-3333-333333333333";
+    const dani = "44444444-4444-4444-4444-444444444444";
+    await signUpWith(db, cata, { full_name: "", name: "  ", user_name: "cata", avatar_url: "" });
+    await signUpWith(db, dani, { full_name: "" });
+
+    const profile = async (id: string) =>
+      (await db.query<{ display_name: string; avatar_url: string | null }>("select display_name, avatar_url from public.profiles where id = $1", [id])).rows[0];
+    expect(await profile(cata)).toEqual({ display_name: "cata", avatar_url: null });
+    expect(await profile(dani)).toEqual({ display_name: "Jugador", avatar_url: null });
   });
 
   it("cualquiera ve las BO, pero publicar pide cuenta", async () => {

@@ -46,3 +46,22 @@ revoke execute on function public.sync_build_order_columns() from public, anon, 
 
 alter table public.build_orders
   add constraint build_orders_author_ok check (char_length(coalesce(body ->> 'author', '')) <= 60) not valid;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- B1: un proveedor que mande el nombre vacío ("") no es null para coalesce, dejaba display_name = '' y el check de
+-- profiles (1 a 60) hacía fallar el alta ("Database error saving new user"). Ahora lo vacío cuenta como que falta.
+-- ---------------------------------------------------------------------------------------------------------------
+create or replace function public.handle_new_user() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.profiles (id, display_name, avatar_url)
+  values (
+    new.id,
+    left(coalesce(
+      nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
+      nullif(trim(new.raw_user_meta_data ->> 'name'), ''),
+      nullif(trim(new.raw_user_meta_data ->> 'user_name'), ''),
+      'Jugador'), 60),
+    nullif(trim(new.raw_user_meta_data ->> 'avatar_url'), ''));
+  return new;
+end $$;
