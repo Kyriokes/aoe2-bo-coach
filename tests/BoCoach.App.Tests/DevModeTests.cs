@@ -95,4 +95,13 @@ public sealed class DevModeTests
         auto.OnFrame(true);
         Assert.Equal(1, rec.Starts);
     }
+
+    // Revisión: apagar el modo con una grabación en curso escondía el botón y no había cómo cortarla.
+    [Fact]
+    public void El_boton_de_grabar_se_ve_con_el_modo_o_grabando()
+    {
+        Assert.False(CaptureToolsViewModel.ShowsRecordButton(devMode: false, recording: false));
+        Assert.True(CaptureToolsViewModel.ShowsRecordButton(devMode: true, recording: false));
+        Assert.True(CaptureToolsViewModel.ShowsRecordButton(devMode: false, recording: true));
+    }
 }

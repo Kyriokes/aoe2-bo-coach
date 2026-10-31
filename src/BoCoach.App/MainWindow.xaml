@@ -53,7 +53,7 @@
                         <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
                                 ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
-                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" Visibility="{Binding RecordButtonVisible, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
                         <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"
                                 ToolTip="Invitame un café (Cafecito, PayPal, Ko-fi o Mercado Pago) y mirá las metas del proyecto en la web" />

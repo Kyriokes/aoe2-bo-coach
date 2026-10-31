@@ -66,7 +66,16 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(RecordButtonText))]
+    [NotifyPropertyChangedFor(nameof(RecordButtonVisible))]
     public partial bool IsRecording { get; set; }
+
+    /// <summary>El botón de grabar es del modo desarrollador, pero con una grabación en curso se ve igual (para poder cortarla).</summary>
+    public bool RecordButtonVisible => ShowsRecordButton(DevMode.Instance.IsOn, IsRecording);
+
+    public static bool ShowsRecordButton(bool devMode, bool recording) => devMode || recording;
+
+    /// <summary>La ventana avisa cuando se prende o apaga el modo desarrollador.</summary>
+    public void DevModeChanged() => OnPropertyChanged(nameof(RecordButtonVisible));
 
     [ObservableProperty] public partial string RecordingStatus { get; set; } = "";
 
