@@ -483,9 +483,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}, esperando la partida. Desde el juego: {Key("advance")} avanza, {Key("back")} retrocede, {Key("skip")} saltea, {Key("overlay")} oculta, {Key("cursor_reminders")} recordatorios en el mouse.";
     }
 
-    /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
-    public string ReportsFolder { get; init; } = Path.Combine(
+    /// <summary>
+    /// Dónde se guardan los informes si no se dice otra cosa. Los tests de la app lo cambian a una carpeta temporal: los
+    /// que terminaban una partida dejaban informes de scouts en la carpeta del usuario (2026-10-31, los de las 17:11 y
+    /// las 17:50 parecían partidas suyas).
+    /// </summary>
+    internal static string DefaultReportsFolder { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "informes");
+
+    /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
+    public string ReportsFolder { get; init; } = DefaultReportsFolder;
 
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
     private void Finished(GameReport report)
