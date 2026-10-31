@@ -52,7 +52,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         }, settingsPath ?? CoachSettings.DefaultPath);
         // Modo desarrollador: "Grabar cada partida sola".
         var autoRecorder = new AutoRecorder(Tools, () => DevMode.Instance is { IsOn: true, AutoRecord: true });
-        Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame);
+        // Solo con la pantalla en vivo: con --replay grabaría el escritorio.
+        Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame && Coach.IsLive);
         Coach.Stopped += autoRecorder.OnCoachStopped;
         CoachButton.DataContext = Coach;
         PlayerNameBox.DataContext = Coach;
@@ -197,7 +198,10 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         _hotkeyBinder = new HotkeyBinder(_hotkeys, map, actions, includeDeveloper: DevMode.Instance.IsOn);
         DevMode.Instance.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(DevMode.IsOn) && _hotkeyBinder is { } binder)
+            if (e.PropertyName != nameof(DevMode.IsOn))
+                return;
+            Tools.DevModeChanged();
+            if (_hotkeyBinder is { } binder)
                 binder.IncludeDeveloper = DevMode.Instance.IsOn;
         };
         var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? $"{HotkeyActions.Find(id)?.Name} (sin atajo)").ToList();

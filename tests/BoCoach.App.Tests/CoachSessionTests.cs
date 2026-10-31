@@ -120,6 +120,32 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
     }
 
+    // Revisión del modo desarrollador: cambiar de BO (Ctrl+Alt+B) reinicia el coach en plena partida; no es un
+    // "coach detenido" y la grabación de la partida no se tiene que partir en dos.
+    [Fact]
+    public void Reiniciar_el_coach_no_avisa_que_se_detuvo()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        var stopped = 0;
+        session.Stopped += () => stopped++;
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        Assert.Equal(0, stopped);
+        session.Stop();
+        Assert.Equal(1, stopped);
+    }
+
+    // Revisión: con --replay la grabación sola capturaba el escritorio de verdad. Solo graba con la pantalla en vivo.
+    [Fact]
+    public void Con_una_grabacion_el_coach_no_esta_en_vivo()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        Assert.False(session.IsLive);
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        Assert.True(session.IsLive);
+    }
+
     // Modo desarrollador: dev_mode y auto_record se leen de settings.json y se guardan al cambiar.
     [Fact]
     public void El_modo_desarrollador_y_la_grabacion_sola_se_guardan()

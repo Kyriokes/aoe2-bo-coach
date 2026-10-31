@@ -392,7 +392,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
     public void Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
     {
-        Stop();
+        // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
+        StopCoach(notify: false);
+        IsLive = frames is not RecordedFrames;
         _startedAutomatically = automatic;
         // Una BO con errores no se simula: el editor y la web validan antes, pero un .json importado a mano no pasa
         // por ahí, y un count enorme agota la memoria del Planner (encola una entrada por unidad). Se valida con su
@@ -574,7 +576,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             : $", juego en {Language.Label.ToLowerInvariant()} (Windows no tiene el OCR en castellano: lee con el inglés)";
     }
 
-    public void Stop()
+    public void Stop() => StopCoach(notify: true);
+
+    private void StopCoach(bool notify)
     {
         if (_coach is null)
             return;
@@ -585,7 +589,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _host.CloseOverlay();
         IsRunning = false;
         Status = "Coach detenido.";
-        Stopped?.Invoke();
+        if (notify)
+            Stopped?.Invoke();
     }
 
     /// <summary>Una opción del selector de línea de "Ya está" y "Saltear" (null = lo primero que falta).</summary>
@@ -640,6 +645,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     public void Dispose() => Stop();
+
+    /// <summary>El coach mira la pantalla de verdad (no una grabación, como con --replay).</summary>
+    public bool IsLive { get; private set; }
 
     /// <summary>Se detuvo el coach (a mano, o solo al cerrarse el juego).</summary>
     public event Action? Stopped;
