@@ -14,6 +14,15 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 0h. **Probar el modo desarrollador y la grabación sola** (30/10). (1) Abrí la v0.9.50. Si en tu `settings.json` no estaba `dev_mode`, la ventana arranca como la ve el público: sin Calibrar, Grabar, Grabaciones ni Captura de diagnóstico. (2) Hacé 5 clics rápidos sobre el número de versión (arriba a la izquierda): la barra de estado dice "Modo desarrollador prendido" y aparece todo eso, más "Grabar cada partida sola". Queda guardado. (3) Prendé "Grabar cada partida sola" y jugá una partida con el coach andando, sin tocar Ctrl+Alt+R: tiene que arrancar a grabar al aparecer el reloj y cortar al terminar la partida (unos 30 s sin reloj) o al detener el coach. Fijate en `%LOCALAPPDATA%\BoCoach\recordings` que haya una sola carpeta por partida, también si cambiaste de BO con Ctrl+Alt+B. (4) Con el modo apagado, el panel de abajo dice "En la partida" y solo tiene la línea, Atrás, Ya está, Saltear y el paso. Contame si falta algo a la vista del público.
 
+## Auditoría (2026-10-31)
+
+0k. **Apagar el proveedor de email en Supabase** (31/10, `docs/auditoria-2026-10-31.md`, M1). La web entra solo con
+Discord y Google, pero en el proyecto el email está prendido: cualquiera con la clave pública puede crear cuentas con
+correos descartables y publicar 150 BO por día por cuenta. (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`.
+(2) Menú de la izquierda, **Authentication** → **Sign In / Providers** (o **Providers**). (3) En **Email**, apagá
+"Enable Email provider" y guardá. (4) Verificá en la web que Discord y Google siguen entrando. Si algún día hace
+falta email, prendé también el CAPTCHA (Authentication → Attack Protection).
+
 ## La web: BO privadas y suscripciones (v0.9.51)
 
 0i. ~~**Correr la migración nueva antes de pedir el push a `main`**~~ Corrida por el usuario el 2026-10-31 (verificado: las 127 BO quedaron públicas con su estilo, la función de la app rechaza un token falso y un anónimo no ve las suscripciones). Falta lo de después del push (pasos 3 a 6). Sin ella, la web nueva no puede publicar ni abrir Mi cuenta (pide columnas que la base no tiene). (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`, y abrí el **SQL Editor** (menú de la izquierda). (2) Tocá "New query", pegá el archivo entero `web/supabase/migrations/20261031000000_privadas_suscripciones.sql` y tocá **Run**: tiene que decir "Success. No rows returned". Si antes no corriste la de los topes (punto 8b), corré esa primero. (3) Pedime el push a `main`. (4) En la web publicada: armá una BO en "Armar una BO" con **Privada** marcada y guardala; abrí su enlace en una ventana privada del navegador (sin sesión) y tiene que decir que no existe. (5) Con otra cuenta (o pedile a un amigo), abrí una BO pública tuya y tocá **Usar en el coach**: tiene que aparecer en "En tu coach" de Mi cuenta. (6) En Mi cuenta, cambiá una BO tuya de Pública a Privada y fijate que desaparece de la biblioteca. Contame lo que no ande.
