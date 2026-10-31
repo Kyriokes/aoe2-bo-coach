@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseBuildOrder } from "./buildOrder";
+import { columnsFor, parseBuildOrder } from "./buildOrder";
 
 /** Una BO mínima con un paso de aldeanos y lo que se quiera cambiar de ese paso. */
 const bo = (step: Record<string, unknown>) => ({
@@ -54,5 +54,15 @@ describe("tamaño de la BO", () => {
 
   it("acepta una BO con notas largas pero razonables", () => {
     expect(errorOf(bo({ notes: "x".repeat(4000) }))).toBeNull();
+  });
+});
+
+describe("visibilidad", () => {
+  const body = parseBuildOrder({ schema_version: 1, name: "x", steps: [{ id: "a", do: "train", what: "villager" }] });
+
+  it("se guarda solo si se la pasa", () => {
+    if (!body.ok) throw new Error(body.error);
+    expect(columnsFor(body.body, 1, 2, "private").visibility).toBe("private");
+    expect("visibility" in columnsFor(body.body, 1, 2)).toBe(false);
   });
 });

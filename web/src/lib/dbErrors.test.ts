@@ -25,3 +25,11 @@ describe("errores de la base", () => {
     );
   });
 });
+
+describe("BO que no existe o no es pública", () => {
+  it("se muestra el mensaje de la base y da 404", () => {
+    const error = { code: "P0002", message: "No hay ninguna build order pública con el código abcdef." };
+    expect(dbErrorMessage(error)).toBe(error.message);
+    expect(dbErrorStatus(error)).toBe(404);
+  });
+});

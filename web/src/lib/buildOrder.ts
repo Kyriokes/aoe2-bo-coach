@@ -69,9 +69,13 @@ export function parseBuildOrder(json: unknown): { ok: true; body: BuildOrderBody
   return { ok: true, body: result.data };
 }
 
-/** Columnas que se guardan junto al JSON para buscar y ordenar. */
-export function columnsFor(body: BuildOrderBody, feudalClick?: number | null, castleClick?: number | null) {
+/** Quién ve una BO: todos, o solo su dueño y su app. */
+export type Visibility = "public" | "private";
+
+/** Columnas que se guardan junto al JSON para buscar y ordenar. La visibilidad va solo si se pasa. */
+export function columnsFor(body: BuildOrderBody, feudalClick?: number | null, castleClick?: number | null, visibility?: Visibility) {
   return {
+    ...(visibility ? { visibility } : {}),
     name: body.name,
     civ: body.civ,
     tags: body.tags,

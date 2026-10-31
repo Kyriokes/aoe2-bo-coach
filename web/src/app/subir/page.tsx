@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BuildOrderEditor } from "@/components/editor/BuildOrderEditor";
-import { getBuildOrder } from "@/lib/data";
+import { getOwnBuildOrder } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -32,8 +32,8 @@ async function Upload({ searchParams }: { searchParams: PageProps<"/subir">["sea
   const params = await searchParams;
   const user = await getCurrentUser();
   const editar = typeof params.editar === "string" ? params.editar : undefined;
-  const editing = editar ? await getBuildOrder(editar) : null;
-  const ownEdit = editing && user && editing.owner_id === user.id ? editing : null;
+  // Se lee con la sesión: una privada propia no está en el caché público.
+  const ownEdit = editar && user ? await getOwnBuildOrder(editar.toLowerCase()) : null;
 
   return (
     <>
@@ -48,7 +48,12 @@ async function Upload({ searchParams }: { searchParams: PageProps<"/subir">["sea
           código y los votos.
         </p>
       ) : null}
-      <BuildOrderEditor loggedIn={user !== null} editCode={ownEdit?.code} initialJson={ownEdit ? JSON.stringify(ownEdit.body) : ""} />
+      <BuildOrderEditor
+        loggedIn={user !== null}
+        editCode={ownEdit?.code}
+        initialJson={ownEdit ? JSON.stringify(ownEdit.body) : ""}
+        initialVisibility={ownEdit?.visibility}
+      />
     </>
   );
 }

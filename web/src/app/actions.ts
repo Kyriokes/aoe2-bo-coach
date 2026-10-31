@@ -2,7 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { columnsFor, parseBuildOrder } from "@/lib/buildOrder";
+import { columnsFor, parseBuildOrder, type Visibility } from "@/lib/buildOrder";
 import { buildOrderTag, LIBRARY_TAG } from "@/lib/data";
 import { dbErrorMessage } from "@/lib/dbErrors";
 import { sessionClient } from "@/lib/supabase/server";
@@ -18,7 +18,12 @@ async function userClient() {
 }
 
 /** Publica una BO nueva con la cuenta del usuario. Devuelve el código corto. */
-export async function publishBuildOrder(json: string, feudalClick: number | null, castleClick: number | null): Promise<ActionResult<string>> {
+export async function publishBuildOrder(
+  json: string,
+  feudalClick: number | null,
+  castleClick: number | null,
+  visibility: Visibility,
+): Promise<ActionResult<string>> {
   const parsed = parseBuildOrder(json);
   if (!parsed.ok) return parsed;
   const supabase = await userClient();
@@ -26,7 +31,7 @@ export async function publishBuildOrder(json: string, feudalClick: number | null
 
   const { data, error } = await supabase
     .from("build_orders")
-    .insert(columnsFor(parsed.body, feudalClick, castleClick))
+    .insert(columnsFor(parsed.body, feudalClick, castleClick, visibilityOf(visibility)))
     .select("code")
     .single();
   if (error) return { ok: false, error: `No se pudo publicar: ${dbErrorMessage(error)}` };
@@ -35,7 +40,13 @@ export async function publishBuildOrder(json: string, feudalClick: number | null
 }
 
 /** Reemplaza una BO propia (las políticas de la base no dejan tocar las ajenas). */
-export async function updateBuildOrder(code: string, json: string, feudalClick: number | null, castleClick: number | null): Promise<ActionResult> {
+export async function updateBuildOrder(
+  code: string,
+  json: string,
+  feudalClick: number | null,
+  castleClick: number | null,
+  visibility: Visibility,
+): Promise<ActionResult> {
   const parsed = parseBuildOrder(json);
   if (!parsed.ok) return parsed;
   const supabase = await userClient();
@@ -43,13 +54,40 @@ export async function updateBuildOrder(code: string, json: string, feudalClick: 
 
   const { data, error } = await supabase
     .from("build_orders")
-    .update(columnsFor(parsed.body, feudalClick, castleClick))
+    .update(columnsFor(parsed.body, feudalClick, castleClick, visibilityOf(visibility)))
     .eq("code", code)
     .select("code");
   if (error) return { ok: false, error: `No se pudo guardar: ${dbErrorMessage(error)}` };
   if (!data?.length) return { ok: false, error: "Esa BO no es tuya." };
   updateTag(LIBRARY_TAG);
   updateTag(buildOrderTag(code));
+  return { ok: true, value: null };
+}
+
+/** Pública o privada. Invalida la biblioteca y la página: una que pasa a privada deja de verse para los demás. */
+export async function setVisibility(code: string, visibility: Visibility): Promise<ActionResult> {
+  const supabase = await userClient();
+  if (!supabase) return notLoggedIn;
+  const { data, error } = await supabase
+    .from("build_orders")
+    .update({ visibility: visibilityOf(visibility) })
+    .eq("code", code)
+    .select("code");
+  if (error) return { ok: false, error: `No se pudo cambiar: ${dbErrorMessage(error)}` };
+  if (!data?.length) return { ok: false, error: "Esa BO no es tuya." };
+  updateTag(LIBRARY_TAG);
+  updateTag(buildOrderTag(code));
+  return { ok: true, value: null };
+}
+
+/** Suma o saca una BO pública de otro de las que usa el coach del usuario. */
+export async function setSubscription(buildOrderId: string, subscribe: boolean): Promise<ActionResult> {
+  const supabase = await userClient();
+  if (!supabase) return notLoggedIn;
+  const { error } = subscribe
+    ? await supabase.from("subscriptions").upsert({ build_order_id: buildOrderId }, { ignoreDuplicates: true })
+    : await supabase.from("subscriptions").delete().eq("build_order_id", buildOrderId);
+  if (error) return { ok: false, error: `No se pudo ${subscribe ? "sumar" : "sacar"}: ${dbErrorMessage(error)}` };
   return { ok: true, value: null };
 }
 
@@ -92,6 +130,11 @@ export async function revokeAppToken(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("app_tokens").delete().eq("id", id);
   if (error) return { ok: false, error: `No se pudo borrar el token: ${dbErrorMessage(error)}` };
   return { ok: true, value: null };
+}
+
+/** Lo que llega del navegador: cualquier cosa que no sea "public" se guarda privada. */
+function visibilityOf(value: unknown): Visibility {
+  return value === "public" ? "public" : "private";
 }
 
 export async function signOut() {

@@ -12,6 +12,7 @@ function analysis(extra: Partial<Analysis>): Analysis {
   return {
     ok: true,
     valid: true,
+    style: null,
     id: "x",
     name: "x",
     civ: "any",

@@ -52,6 +52,8 @@ export interface AnalysisFailure {
 export interface Analysis {
   ok: true;
   valid: boolean;
+  /** El estilo por los pasos ("archers", "scouts", "maa", "fast_castle"), como BuildOrderStyle del Core. */
+  style: string | null;
   id: string;
   name: string;
   civ: string;

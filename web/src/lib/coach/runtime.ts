@@ -6,6 +6,8 @@ export interface CoachRuntime {
   datVersion: string;
   /** Valida, describe y simula una BO (el JSON de la app). */
   analyze(buildOrderJson: string): AnalysisResult;
+  /** Reconoce el formato (BO de la app, guía de RTS Overlay o de buildorderguide.com) y la convierte. */
+  importBuildOrder(json: string): ImportResult;
 }
 
 interface CoachExports {

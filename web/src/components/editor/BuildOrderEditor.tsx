@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { publishBuildOrder, updateBuildOrder } from "@/app/actions";
+import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
 import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
@@ -73,8 +74,20 @@ function settle(state: EditorState, coach: CoachRuntime | null): EditorState {
  * El editor de BO de la web (D8): datos de la BO, paleta, línea de tiempo arrastrable, el paso elegido y el resumen
  * del Core. Cada cambio se simula con el Core en WebAssembly; publicar y descargar usan la BO normalizada que devuelve.
  */
-export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn: boolean; editCode?: string; initialJson: string }) {
+export function BuildOrderEditor({
+  loggedIn,
+  editCode,
+  initialJson,
+  initialVisibility = "private",
+}: {
+  loggedIn: boolean;
+  editCode?: string;
+  initialJson: string;
+  /** La que tiene la BO que se edita; una nueva arranca privada. */
+  initialVisibility?: Visibility;
+}) {
   const router = useRouter();
+  const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [state, setState] = useState<EditorState>(initialState);
   const [coach, setCoach] = useState<CoachRuntime | null>(null);
   const [data, setData] = useState<GameDataFile | null>(null);
@@ -415,7 +428,7 @@ export function BuildOrderEditor({ loggedIn, editCode, initialJson }: { loggedIn
     const castle = state.analysis.castle_click ?? null;
     setPublishError(null);
     startTransition(async () => {
-      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle) : await publishBuildOrder(json, feudal, castle);
+      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle, visibility) : await publishBuildOrder(json, feudal, castle, visibility);
       if (!result.ok) {
         setPublishError(result.error);
         return;

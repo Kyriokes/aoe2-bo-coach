@@ -7,6 +7,7 @@ function analysis(steps: Record<string, unknown>[], units: number[], extra: Reco
   return {
     ok: true,
     valid: true,
+    style: null,
     id: "bo1",
     name: "Prueba",
     civ: "any",

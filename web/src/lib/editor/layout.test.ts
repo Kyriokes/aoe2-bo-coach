@@ -15,6 +15,7 @@ function analysis(times: Record<string, [number | null, number | null]>, blocks:
   return {
     ok: true,
     valid: true,
+    style: null,
     id: "x",
     name: "x",
     civ: "any",

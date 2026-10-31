@@ -1,5 +1,6 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
+import type { Visibility } from "./buildOrder";
 import { filterValue, pageNumber } from "./filters";
 import { publicClient } from "./supabase/server";
 
@@ -25,6 +26,8 @@ export interface BuildOrderDetail extends BuildOrderSummary {
   owner_id: string;
   updated_at: string;
   body: Record<string, unknown>;
+  /** Lo que se lee con caché es siempre público; las privadas solo las lee su dueño (ownData.ts). */
+  visibility: Visibility;
 }
 
 export type Sort = "votos" | "recientes";
@@ -52,15 +55,15 @@ export const LIBRARY_TAG = "biblioteca";
 export const buildOrderTag = (code: string) => `bo-${code}`;
 
 // "!owner_id": la BO llega a profiles por su dueño y también por los votos; sin decir cuál, Supabase no la arma.
-const summaryColumns =
+export const summaryColumns =
   "id, code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, guide_author:body->>author, profiles!owner_id(display_name)";
 
-interface Row extends Omit<BuildOrderSummary, "author" | "uploader"> {
+export interface Row extends Omit<BuildOrderSummary, "author" | "uploader"> {
   guide_author: string | null;
   profiles: { display_name: string } | null;
 }
 
-function toSummary({ profiles, guide_author, ...row }: Row): BuildOrderSummary {
+export function toSummary({ profiles, guide_author, ...row }: Row): BuildOrderSummary {
   const uploader = profiles?.display_name ?? "Anónimo";
   return { ...row, author: guide_author?.trim() || uploader, uploader };
 }
@@ -162,5 +165,5 @@ async function cachedBuildOrder(code: string): Promise<BuildOrderDetail | null> 
   if (error) throw new Error(`No se pudo leer la BO: ${error.message}`);
   if (!data) return null;
   const row = data as unknown as Row & { owner_id: string; updated_at: string; body: Record<string, unknown> };
-  return { ...toSummary(row), owner_id: row.owner_id, updated_at: row.updated_at, body: row.body };
+  return { ...toSummary(row), owner_id: row.owner_id, updated_at: row.updated_at, body: row.body, visibility: "public" };
 }
