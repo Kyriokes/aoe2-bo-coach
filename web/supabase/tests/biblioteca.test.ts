@@ -257,7 +257,7 @@ describe("privadas y suscripciones", () => {
   });
 
   describe("con el token de la app", () => {
-    type Item = { code: string; name: string; own: boolean; visibility: string; author: string; uploader: string };
+    type Item = { code: string; name: string; own: boolean; visibility: string; author: string; guide_author: string };
     const list = async (t: string) =>
       (await as<{ items: Item[] }>(db, null, "select public.app_my_build_orders($1) as items", [t])).rows[0].items;
     const subscribe = (t: string, code: string) =>
@@ -266,7 +266,7 @@ describe("privadas y suscripciones", () => {
     it("la lista trae las propias y las suscriptas públicas", async () => {
       const t = await token(beto);
       await publishAs(beto, "B privada", "private");
-      const publica = await publishAs(ana, "A pública", "public");
+      const publica = await publishAs(ana, "A pública", "public", { ...scouts, author: "Cicero" });
       const despues = await publishAs(ana, "A después privada", "public");
       await subscribe(t, publica.code);
       await subscribe(t, despues.code);
@@ -277,7 +277,7 @@ describe("privadas y suscripciones", () => {
         ["B privada", true, "private"],
         ["A pública", false, "public"],
       ]);
-      expect(items[1]).toMatchObject({ author: "Ana", uploader: "Ana" });
+      expect(items[1]).toMatchObject({ author: "Ana", guide_author: "Cicero" });
     });
 
     it("con un token inválido no da nada", async () => {

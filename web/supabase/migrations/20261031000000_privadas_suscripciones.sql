@@ -97,8 +97,10 @@ begin
              'map', b.map,
              'style', b.style,
              'tags', to_jsonb(b.tags),
-             'author', coalesce(nullif(trim(b.body ->> 'author'), ''), p.display_name),
-             'uploader', p.display_name,
+             -- Como GET /api/bo/<código>: author es la cuenta (lo que la app muestra al confirmar) y guide_author el
+             -- autor que dice el JSON, que lo escribe cualquiera.
+             'author', p.display_name,
+             'guide_author', coalesce(nullif(trim(b.body ->> 'author'), ''), p.display_name),
              'own', b.owner_id = owner,
              'visibility', b.visibility,
              'updated_at', b.updated_at,

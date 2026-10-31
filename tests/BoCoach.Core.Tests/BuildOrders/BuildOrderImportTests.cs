@@ -44,6 +44,21 @@ public class BuildOrderImportTests
         Assert.False(string.IsNullOrWhiteSpace(json["error"]!.GetValue<string>()));
     }
 
+    [Theory]
+    [InlineData("""{"build_order":[null]}""")]
+    [InlineData("""{"build_order":[{"notes":[null, 5, {"a":1}]}]}""")]
+    [InlineData("""{"build_order":[{"villager_count":"x","resources":[1],"notes":"no"}]}""")]
+    [InlineData("""{"build":[null, 3, {"type":5}],"resources":"x"}""")]
+    [InlineData("""{"build":[{"type":"newVillagers","count":"x","task":null}]}""")]
+    [InlineData("""{"schema_version":2,"steps":[null]}""")]
+    [InlineData("""[1,2]""")]
+    public void ReadJson_GuiaRara_NoTira(string guide)
+    {
+        var json = JsonNode.Parse(BuildOrderImport.ReadJson(guide, TestData.GameData))!;
+
+        Assert.NotNull(json["ok"]);
+    }
+
     [Fact]
     public void ReadJson_Guia_TraeLaBoYLosAvisos()
     {

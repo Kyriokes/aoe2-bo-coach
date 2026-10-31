@@ -19,7 +19,7 @@
 - Una privada ajena no aparece en la biblioteca, en `/bo/<código>` (404), en el sitemap, en `/api/bo`, ni se puede votar ni suscribir.
 - `subscriptions(user_id, build_order_id, created_at)`, clave las dos primeras, borrado en cascada con la BO y con el perfil. Cada uno ve, crea y borra solo las suyas, solo a BO públicas ajenas. Una suscripta que pasa a privada sale de la lista de la app.
 - Las propias no se suscriben: están siempre en la lista de la app.
-- `GET /api/app/mis-bo` con token: propias y suscriptas, sin pasos: `code`, `name`, `civ`, `map`, `style`, `tags`, `author`, `uploader`, `own`, `visibility`, `updated_at`, `feudal_click`, `castle_click`. Sin token o con uno inválido, 401.
+- `GET /api/app/mis-bo` con token: propias y suscriptas, sin pasos: `code`, `name`, `civ`, `map`, `style`, `tags`, `author` (la cuenta), `guide_author` (el autor del JSON), `own`, `visibility`, `updated_at`, `feudal_click`, `castle_click`. Sin token o con uno inválido, 401.
 - `POST` y `DELETE /api/app/suscripciones/<código>`, con token.
 - `GET /api/bo/<código>` acepta además el token para bajar las privadas propias.
 - Estilos: `archers`, `scouts`, `maa`, `fast_castle` o null (las reglas de hoy de `BuildOrderSuggester.StyleOf`).
