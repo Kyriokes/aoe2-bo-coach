@@ -60,7 +60,7 @@ public sealed class HudTracker
     // Recursos: en 0,5 s pueden entrar varias descargas juntas (la caza trae 35 por aldeano).
     private ValueFilter Resource() => new() { Window = 3, MaxRisePerSecond = 150, Slack = 40, ConfirmJump = 3, ResetOnDrop = 20 };
 
-    private readonly ValueFilter _clock = new() { Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6 };
+    private readonly ValueFilter _clock = ValueFilter.GameClock();
     private readonly ValueFilter _food;
     private readonly ValueFilter _wood;
     private readonly ValueFilter _gold;

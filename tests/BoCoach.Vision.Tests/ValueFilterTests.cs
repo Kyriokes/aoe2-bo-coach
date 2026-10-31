@@ -69,6 +69,19 @@ public class ValueFilterTests
     }
 
     [Fact]
+    public void El_reloj_nunca_acepta_un_salto_de_horas_aunque_se_repita()
+    {
+        // Partida 20261031-140712: la letra del reloj del mod leyó "09:06:10" en vez de "00:06:10" y, con el juego en
+        // pausa, la misma lectura se repitió: el reloj del coach saltó 9 horas y la partida quedó corrida.
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(370, Feed(clock, 369, 370));
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(370, clock.Add(32770, 1.0 + i * 0.5));
+        Assert.Equal(371, clock.Add(371, 7.5));
+    }
+
+    [Fact]
     public void Las_bajas_por_gasto_se_aceptan_al_instante()
     {
         var filter = new ValueFilter { Window = 1, MaxRisePerSecond = 120, Slack = 20 };

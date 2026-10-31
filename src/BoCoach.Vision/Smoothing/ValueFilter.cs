@@ -38,6 +38,23 @@ public sealed class ValueFilter
     /// </summary>
     public double? ResetOnDrop { get; init; }
 
+    /// <summary>
+    /// El reloj de la partida: sube a lo sumo 3 s de juego por segundo real (velocidad del juego con margen), nunca baja
+    /// (una partida nueva la ve <c>LiveCoach</c> con la lectura cruda) y un salto se acepta si se repite 6 veces.
+    /// </summary>
+    /// En la partida 20261031-140712 la letra leyó "09:06:10" por "00:06:10" y, en pausa, la lectura se repitió: un
+    /// salto de más de 10 minutos no se confirma nunca.
+    public static ValueFilter GameClock() => new()
+    {
+        Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600,
+    };
+
+    /// <summary>
+    /// Un salto (más allá de lo plausible) de más que esto no se confirma aunque se repita: es una lectura equivocada.
+    /// Null, cualquiera se confirma con <see cref="ConfirmJump"/>.
+    /// </summary>
+    public double? MaxConfirmedJump { get; init; }
+
     /// <summary>Valor suavizado actual, o null si todavía no hubo ninguna lectura válida.</summary>
     public double? Value => _window.Count == 0 ? null : Median();
 
@@ -51,6 +68,8 @@ public sealed class ValueFilter
 
         if (_lastAccepted is { } last && !Plausible(value - last, dt))
         {
+            if (MaxConfirmedJump is { } max && Math.Abs(value - last) > max + (MaxRisePerSecond ?? 0) * dt + Slack)
+                return Value;
             if (_pending is { } pending && Math.Abs(pending - value) < 1e-9)
                 _pendingCount++;
             else
