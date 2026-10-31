@@ -43,8 +43,24 @@ public sealed class BuildOrderPicker(IBuildOrderSource source, CivStyles styles)
 
     public static bool CanSwitchAt(double gameTime) => gameTime <= SwitchSeconds;
 
-    /// <summary>La última usada, si está guardada.</summary>
-    public BuildOrder? Current(string? lastCode) => lastCode is { Length: > 0 } code ? source.Saved(code) : null;
+    /// <summary>
+    /// Se cambia de BO solo, sin el atajo, solo antes de que empiece la partida: un coach nuevo ya en la partida no tiene
+    /// lo que dio la pantalla de carga (tu número de jugador, los aliados, la civ).
+    /// </summary>
+    public static bool CanSwitch(bool inGame, double gameTime) => !inGame && CanSwitchAt(gameTime);
+
+    /// <summary>La última usada, si está guardada y sigue en tu lista.</summary>
+    public BuildOrder? Current(string? lastCode) => lastCode is { Length: > 0 } code && InList(code) ? source.Saved(code) : null;
+
+    /// <summary>
+    /// Si la BO sigue en tu lista: una que se borró en la web, se hizo privada o dejaste de seguir queda guardada pero
+    /// no se usa. Sin lista todavía (nunca se pudo pedir), sirven todas las guardadas.
+    /// </summary>
+    private bool InList(string code) => source.List.Items.Count == 0 || source.List.Items.Any(i => i.Code == code);
+
+    /// <summary>Si la BO se puede usar en esa partida (de su civ o de cualquiera).</summary>
+    public static bool Fits(BuildOrder bo, MatchSetup match) =>
+        bo.Civ.Equals("any", StringComparison.OrdinalIgnoreCase) || match.Civ is null || bo.Civ.Equals(match.Civ, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Una BO de la lista (guardada, o bajada si no está o cambió).</summary>
     public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) => source.GetAsync(code, cancel);
@@ -67,6 +83,6 @@ public sealed class BuildOrderPicker(IBuildOrderSource source, CivStyles styles)
                 // Sin internet: lo guardado.
             }
         }
-        return BuildOrderSuggester.Suggest(source.AllSaved(), match, styles, matchups)?.BuildOrder ?? BuildOrder.None;
+        return BuildOrderSuggester.Suggest(source.AllSaved().Where(b => InList(b.Id)), match, styles, matchups)?.BuildOrder ?? BuildOrder.None;
     }
 }

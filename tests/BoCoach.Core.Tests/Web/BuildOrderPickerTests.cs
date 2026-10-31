@@ -17,11 +17,16 @@ public class BuildOrderPickerTests
 
     private sealed class FakeSource(params BuildOrder[] web) : IBuildOrderSource
     {
+        /// <summary>Lo que trae la lista; por defecto, todas las de <c>web</c>.</summary>
+        public BuildOrder[] Listed { get; init; } = web;
+
+        private readonly BuildOrder[] _web = web;
+
         public List<BuildOrder> Stored { get; } = [];
         public bool Offline { get; set; }
         public List<string> Downloads { get; } = [];
 
-        public WebBuildOrderList List { get; } = new("Ana", web.Select(bo =>
+        public WebBuildOrderList List => new("Ana", Listed.Select(bo =>
         {
             var s = BuildOrderSummary.Of(bo);
             return new WebBuildOrderEntry(bo.Id, s.Name, s.Civ, s.Map, s.Style, s.Tags, "Ana", "Ana", true, "public", DateTimeOffset.UnixEpoch, null, null);
@@ -38,7 +43,7 @@ public class BuildOrderPickerTests
                 return Task.FromResult(saved);
             if (Offline)
                 throw new WebLibraryException("sin conexión");
-            var bo = web.Single(b => b.Id == code);
+            var bo = _web.Single(b => b.Id == code);
             Stored.Add(bo);
             return Task.FromResult(bo);
         }
@@ -90,6 +95,39 @@ public class BuildOrderPickerTests
         Assert.Equal("hunshu", picker.Current("hunshu")?.Id);
         Assert.Null(picker.Current("zzzzzz"));
         Assert.Null(picker.Current(null));
+    }
+
+    [Fact]
+    public async Task Una_guardada_que_ya_no_esta_en_la_lista_no_se_usa()
+    {
+        // Revisión de la parte 4: se borró en la web, se hizo privada o se dejó de seguir; queda en bo/ pero no se usa.
+        var source = new FakeSource(Huns, Franks) { Listed = [Franks], Offline = true };
+        source.Stored.Add(Huns);
+        var picker = new BuildOrderPicker(source, Styles);
+
+        Assert.Null(picker.Current("hunshu"));
+        Assert.True((await picker.ForMatchAsync(new MatchSetup("huns"), null, default)).IsNone);
+    }
+
+    [Fact]
+    public void Sin_lista_todavia_sirven_las_guardadas()
+    {
+        var source = new FakeSource(Huns) { Listed = [] };
+        source.Stored.Add(Huns);
+
+        Assert.Equal("hunshu", new BuildOrderPicker(source, Styles).Current("hunshu")?.Id);
+    }
+
+    [Theory]
+    [InlineData(false, 0, true)]
+    [InlineData(false, 60, true)]
+    [InlineData(true, 5, false)]
+    [InlineData(false, 61, false)]
+    public void Cambia_de_BO_solo_antes_de_que_empiece_la_partida(bool inGame, double gameTime, bool allowed)
+    {
+        // Revisión de la parte 4: un coach nuevo después de la pantalla de carga pierde lo que ella dio (tu número de
+        // jugador, los aliados, la civ): si la BO llega tarde, queda como sugerida con su atajo.
+        Assert.Equal(allowed, BuildOrderPicker.CanSwitch(inGame, gameTime));
     }
 
     [Theory]
