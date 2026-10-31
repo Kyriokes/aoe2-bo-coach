@@ -32,7 +32,8 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private bool _calibrating;
     private readonly CoachData _data;
 
-    public MainWindow(CoachData data)
+    /// <param name="settingsPath">Dónde están los ajustes; las capturas de prueba usan unos temporales para no tocar los del usuario.</param>
+    public MainWindow(CoachData data, string? settingsPath = null)
     {
         InitializeComponent();
         _data = data;
@@ -48,7 +49,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         {
             var calibrated = Tools.TryAutoCalibrate();
             return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated);
-        }, CoachSettings.DefaultPath);
+        }, settingsPath ?? CoachSettings.DefaultPath);
         // Modo desarrollador: "Grabar cada partida sola".
         var autoRecorder = new AutoRecorder(Tools, () => DevMode.Instance is { IsOn: true, AutoRecord: true });
         Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame);
@@ -137,6 +138,17 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private void FirstRun_Click(object sender, RoutedEventArgs e) => ShowFirstRun();
 
     private HotkeysWindow? _hotkeysWindow;
+
+    private readonly VersionClicks _versionClicks = new();
+
+    /// <summary>5 clics sobre la versión prenden o apagan el modo desarrollador (spec 2026-10-30, parte 2).</summary>
+    private void Version_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (!_versionClicks.Click(DateTime.Now))
+            return;
+        DevMode.Instance.IsOn = !DevMode.Instance.IsOn;
+        ViewModel.Status = DevMode.Instance.IsOn ? "Modo desarrollador prendido." : "Modo desarrollador apagado.";
+    }
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e) => ShowHotkeys();
 

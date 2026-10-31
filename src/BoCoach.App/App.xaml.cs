@@ -47,10 +47,12 @@ public partial class App : Application
         }
 
         CoachData data;
+        string? shotDir;
         try
         {
             // Para la captura se usa una biblioteca temporal, así no se toca la del usuario.
-            data = CoachData.Load(screenshot is null ? null : Directory.CreateTempSubdirectory("bocoach-shot-").FullName);
+            shotDir = screenshot is null ? null : Directory.CreateTempSubdirectory("bocoach-shot-").FullName;
+            data = CoachData.Load(shotDir);
         }
         catch (Exception ex)
         {
@@ -66,7 +68,10 @@ public partial class App : Application
             return;
         }
 
-        var window = new MainWindow(data);
+        // Las capturas usan ajustes temporales (con --dev, el modo desarrollador prendido).
+        var window = new MainWindow(data, shotDir is null ? null : Path.Combine(shotDir, "settings.json"));
+        if (screenshot is not null && args.Contains("--dev"))
+            DevMode.Instance.IsOn = true;
         MainWindow = window;
         if (screenshot is null)
         {

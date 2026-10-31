@@ -41,6 +41,7 @@
                 <DockPanel>
                     <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="#A39A8F" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0"
+                               MouseLeftButtonUp="Version_Click"
                                ToolTip="Versión · commit · cuándo se compiló" />
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -49,11 +50,11 @@
                         <Button Content="Atajos" Click="Hotkeys_Click" ToolTip="Ver y cambiar los atajos de teclado que andan desde el juego" />
                         <Button Content="Primeros pasos" Click="FirstRun_Click"
                                 ToolTip="Idioma del juego, mod del HUD, una partida rápida contra 7 IA para calibrar y leer tu nombre en la pantalla de carga" />
-                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
                                 ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
-                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" />
+                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
                         <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"
                                 ToolTip="Invitame un café (Cafecito, PayPal, Ko-fi o Mercado Pago) y mirá las metas del proyecto en la web" />
                     </StackPanel>
@@ -121,9 +122,13 @@
                               ToolTip="{Binding AutoStart, Source={x:Static hotkeys:HotkeyTips.Instance}}">
                         <TextBlock Text="Coach automático" Foreground="#C9C1B6" />
                     </CheckBox>
-                    <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0"
+                    <CheckBox IsChecked="{Binding AutoRecord, Source={x:Static app:DevMode.Instance}}" VerticalAlignment="Center" Margin="0,0,10,0" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"
+                              ToolTip="Modo desarrollador: arranca a grabar cuando empieza una partida y corta cuando termina (o al detener el coach). No toca una grabación hecha a mano">
+                        <TextBlock Text="Grabar cada partida sola" Foreground="#F0A050" />
+                    </CheckBox>
+                    <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="{Binding Diagnostic, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                    <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
                 </WrapPanel>
             </StackPanel>
         </Border>
@@ -132,7 +137,8 @@
         <Border x:Name="LivePanel" DockPanel.Dock="Top" Background="#1E1A16" BorderBrush="#5C5046" BorderThickness="0,0,0,1" Padding="12,8"
                 Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}">
             <DockPanel DataContext="{Binding Live}">
-                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="Últimos eventos leídos del log">
+                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="Últimos eventos leídos del log"
+                              Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" Foreground="#C9C1B6" FontSize="11" FontFamily="Consolas" />
@@ -141,9 +147,11 @@
                 </ItemsControl>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Lo que ve el coach" Foreground="#E8C26A" FontWeight="SemiBold" Margin="0,0,16,0" />
-                        <TextBlock Foreground="#F4F2EE"><Run Text="Reloj " Foreground="#A39A8F" /><Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="   Edad " Foreground="#A39A8F" /><Run Text="{Binding Age, Mode=OneWay}" /><Run Text="   Aldeanos " Foreground="#A39A8F" /><Run Text="{Binding Villagers, Mode=OneWay}" /><Run Text="   Inactivos " Foreground="#A39A8F" /><Run Text="{Binding Idle, Mode=OneWay}" /><Run Text="   Población " Foreground="#A39A8F" /><Run Text="{Binding Population, Mode=OneWay}" /></TextBlock>
+                        <TextBlock Text="{Binding Header, Source={x:Static app:DevMode.Instance}}" Foreground="#E8C26A" FontWeight="SemiBold" Margin="0,0,16,0" />
+                        <TextBlock Foreground="#F4F2EE" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"><Run Text="Reloj " Foreground="#A39A8F" /><Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="   Edad " Foreground="#A39A8F" /><Run Text="{Binding Age, Mode=OneWay}" /><Run Text="   Aldeanos " Foreground="#A39A8F" /><Run Text="{Binding Villagers, Mode=OneWay}" /><Run Text="   Inactivos " Foreground="#A39A8F" /><Run Text="{Binding Idle, Mode=OneWay}" /><Run Text="   Población " Foreground="#A39A8F" /><Run Text="{Binding Population, Mode=OneWay}" /></TextBlock>
                     </StackPanel>
+                    <!-- Lo leído: solo con el modo desarrollador -->
+                    <StackPanel Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl Margin="0,6,0,0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -160,6 +168,7 @@
                     <TextBlock Text="{Binding Queue}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" />
                     <TextBlock Text="{Binding Game}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
                                Visibility="{Binding Game, Converter={StaticResource NotEmptyToVisibility}}" />
+                    </StackPanel>
                     <DockPanel Margin="0,6,0,0">
                         <!-- Lo mismo que los atajos de Atrás, Ya está y Saltear desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
@@ -175,6 +184,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
+                    <StackPanel Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl ItemsSource="{Binding Lanes}" Margin="0,2,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -185,6 +195,7 @@
                     <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
                                Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
                     <TextBlock Text="{Binding Usage}" Foreground="#A39A8F" FontSize="11" />
+                    </StackPanel>
                 </StackPanel>
             </DockPanel>
         </Border>

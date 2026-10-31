@@ -19,6 +19,13 @@ public sealed class DevModeTests
     }
 
     [Fact]
+    public void El_panel_en_vivo_cambia_de_titulo_con_el_modo()
+    {
+        Assert.Equal("En la partida", new DevMode().Header);
+        Assert.Equal("Lo que ve el coach", new DevMode { IsOn = true }.Header);
+    }
+
+    [Fact]
     public void Clics_lentos_no_prenden()
     {
         var clicks = new VersionClicks();
