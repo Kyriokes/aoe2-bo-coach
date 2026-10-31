@@ -1,0 +1,48 @@
+<Window x:Class="BoCoach.App.Hotkeys.HotkeysWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:hotkeys="clr-namespace:BoCoach.App.Hotkeys"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance hotkeys:HotkeysViewModel}"
+        Title="Atajos" Width="480" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource Background}"
+        FontFamily="Segoe UI" FontSize="13">
+    <StackPanel Margin="18">
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,12">
+            Andan aunque el foco esté en el juego. Para cambiar uno, hacé clic en la combinación y apretá la nueva (con Ctrl, Alt o Win). Escape cancela.
+        </TextBlock>
+        <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type hotkeys:HotkeyRowViewModel}">
+                    <StackPanel Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Content="{Binding Text}" Command="{Binding StartCaptureCommand}"
+                                    AutomationProperties.Name="{Binding Name}" Margin="0,0,6,0" />
+                            <Button Grid.Column="2" Content="Restaurar" Command="{Binding ResetCommand}" Padding="8,1" />
+                        </Grid>
+                        <TextBlock Text="{Binding Message}" Foreground="#C0392B" TextWrapping="Wrap" Margin="0,2,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Message}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Button Content="Restaurar todos" Command="{Binding ResetAllCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+    </StackPanel>
+</Window>

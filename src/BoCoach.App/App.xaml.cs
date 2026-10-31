@@ -93,6 +93,11 @@ public partial class App : Application
             CaptureFirstRunAndExit(window, data, screenshot, Argument(args, "--loading"));
             return;
         }
+        if (args.Contains("--hotkeys"))
+        {
+            CaptureHotkeysAndExit(screenshot);
+            return;
+        }
         if (args.Contains("--calibration"))
         {
             CaptureCalibrationAndExit(screenshot, Argument(args, "--background"));
@@ -181,6 +186,34 @@ public partial class App : Application
             window.Close();
             Shutdown(0);
         });
+    }
+
+    /// <summary>
+    /// Dibuja la ventana "Atajos" y cierra.
+    /// Uso: BoCoach.exe --screenshot salida.png --hotkeys.
+    /// </summary>
+    private void CaptureHotkeysAndExit(string path)
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, async () =>
+        {
+            // Sin registrar nada en Windows: la captura puede correr con la app abierta.
+            var map = new Hotkeys.HotkeyMap();
+            var binder = new Hotkeys.HotkeyBinder(new NoHotkeys(), map, Hotkeys.HotkeyActions.All.ToDictionary(a => a.Id, _ => (Action)(() => { })), includeDeveloper: true);
+            binder.RegisterAll();
+            var window = new Hotkeys.HotkeysWindow(new Hotkeys.HotkeysViewModel(binder, map, includeDeveloper: true)) { ShowActivated = false, Left = -30000 };
+            window.Show();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Render(window, path);
+            window.Close();
+            Shutdown(0);
+        });
+    }
+
+    private sealed class NoHotkeys : Hotkeys.IHotkeyRegistrar
+    {
+        private int _next;
+        public int? Register(Hotkeys.HotkeyBinding binding, Action action) => ++_next;
+        public void Unregister(int id) { }
     }
 
     /// <summary>Una pantalla guardada en lugar de la del juego (para las capturas de prueba).</summary>

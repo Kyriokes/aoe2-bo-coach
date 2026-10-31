@@ -30,11 +30,11 @@ public sealed class HotkeyBinder(IHotkeyRegistrar registrar, HotkeyMap map, IRea
 
     private IEnumerable<HotkeyAction> Active => HotkeyActions.All.Where(a => (includeDeveloper || !a.Developer) && actions.ContainsKey(a.Id));
 
-    /// <summary>Registra todas las del mapa; devuelve los ids que no se pudieron (otro programa o sin atajo).</summary>
+    /// <summary>Registra las del mapa que falten; devuelve los ids que no se pudieron (otro programa o sin atajo).</summary>
     public IReadOnlyList<string> RegisterAll()
     {
         var missing = new List<string>();
-        foreach (var action in Active)
+        foreach (var action in Active.Where(a => !_ids.ContainsKey(a.Id)))
         {
             if (map.Get(action.Id) is { } binding && registrar.Register(binding, actions[action.Id]) is { } id)
                 _ids[action.Id] = id;
@@ -76,12 +76,21 @@ public sealed class HotkeyBinder(IHotkeyRegistrar registrar, HotkeyMap map, IRea
         return ChangeResult.Done;
     }
 
-    /// <summary>Todas de fábrica (de a una no se puede si dos se intercambiaron); devuelve las que no se pudieron registrar.</summary>
-    public IReadOnlyList<string> ResetAll()
+    /// <summary>
+    /// Suelta todos los atajos mientras la ventana espera una combinación nueva: una ya registrada no le llegaría (la
+    /// toma Windows y dispara su acción). <see cref="RegisterAll"/> los vuelve a tomar.
+    /// </summary>
+    public void Suspend()
     {
         foreach (var id in _ids.Values)
             registrar.Unregister(id);
         _ids.Clear();
+    }
+
+    /// <summary>Todas de fábrica (de a una no se puede si dos se intercambiaron); devuelve las que no se pudieron registrar.</summary>
+    public IReadOnlyList<string> ResetAll()
+    {
+        Suspend();
         map.ResetAll();
         return RegisterAll();
     }

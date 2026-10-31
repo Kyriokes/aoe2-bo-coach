@@ -202,4 +202,94 @@ public sealed class HotkeysTests
         Assert.Equal(12, registrar.Registered.Count);
         Assert.Empty(map.Overrides);
     }
+
+    private static (HotkeysViewModel Vm, HotkeyMap Map) Window(params string[] taken)
+    {
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(new FakeRegistrar(taken), map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        return (new HotkeysViewModel(binder, map, includeDeveloper: true), map);
+    }
+
+    [Fact]
+    public void La_ventana_cambia_y_avisa_choques()
+    {
+        var (vm, map) = Window();
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+        advance.StartCaptureCommand.Execute(null);
+        Assert.Equal("Apretá la nueva…", advance.Text);
+        Assert.False(vm.Capture("advance", ModifierKeys.None, Key.F1));
+        Assert.Equal("Tiene que llevar Ctrl, Alt o Win", advance.Message);
+        Assert.False(vm.Capture("advance", ModifierKeys.Control, Key.LeftCtrl)); // solo el modificador: sigue esperando
+        Assert.True(vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.P));
+        Assert.Equal("Ya la usa: Pausa", advance.Message);
+        Assert.True(advance.IsError);
+        Assert.Equal("Ctrl+Alt+→", advance.Text);
+        advance.StartCaptureCommand.Execute(null);
+        Assert.True(vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F1));
+        Assert.Equal("Ctrl+Alt+F1", advance.Text);
+        Assert.Null(advance.Message);
+        Assert.Equal("Ctrl+Alt+F1", map.Overrides["advance"]);
+        vm.ResetAllCommand.Execute(null);
+        Assert.Equal("Ctrl+Alt+→", advance.Text);
+    }
+
+    [Fact]
+    public void Escape_cancela()
+    {
+        var (vm, _) = Window();
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+        advance.StartCaptureCommand.Execute(null);
+        Assert.True(vm.Capture("advance", ModifierKeys.None, Key.Escape));
+        Assert.Equal("Ctrl+Alt+→", advance.Text);
+        Assert.Null(advance.Message);
+        Assert.False(advance.Capturing);
+    }
+
+    [Fact]
+    public void La_ventana_avisa_si_otro_programa_la_tiene_y_restaura_una()
+    {
+        var (vm, _) = Window("Ctrl+Alt+F1");
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+        advance.StartCaptureCommand.Execute(null);
+        Assert.True(vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F1));
+        Assert.Equal("Otro programa ya usa Ctrl+Alt+F1", advance.Message);
+        Assert.Equal("Ctrl+Alt+→", advance.Text);
+        advance.StartCaptureCommand.Execute(null);
+        vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F2);
+        advance.ResetCommand.Execute(null);
+        Assert.Equal("Ctrl+Alt+→", advance.Text);
+        Assert.Equal(12, vm.Rows.Count);
+        Assert.Equal(8, new HotkeysViewModel(new HotkeyBinder(new FakeRegistrar(), new HotkeyMap(), Actions(), false), new HotkeyMap(), includeDeveloper: false).Rows.Count);
+    }
+
+    // Mientras se espera la combinación nueva, los atajos se sueltan: si no, apretar una que ya está registrada (la de
+    // Pausa) dispararía la pausa en vez de llegar a la ventana.
+    [Fact]
+    public void Mientras_espera_la_combinacion_los_atajos_se_sueltan()
+    {
+        var registrar = new FakeRegistrar();
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        var vm = new HotkeysViewModel(binder, map, includeDeveloper: true);
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+
+        advance.StartCaptureCommand.Execute(null);
+        Assert.Empty(registrar.Registered);
+        Assert.True(vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F1));
+        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Contains("Ctrl+Alt+F1", registrar.Registered.Values);
+
+        advance.StartCaptureCommand.Execute(null);
+        vm.Capture("advance", ModifierKeys.None, Key.Escape);
+        Assert.Equal(12, registrar.Registered.Count);
+
+        // Cerrar la ventana esperando una combinación también los vuelve a tomar, sin registrar nada dos veces.
+        advance.StartCaptureCommand.Execute(null);
+        vm.CancelCapture();
+        vm.CancelCapture();
+        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(12, registrar.Registered.Values.Distinct().Count());
+    }
 }

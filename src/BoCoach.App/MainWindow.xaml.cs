@@ -132,6 +132,25 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
 
     private void FirstRun_Click(object sender, RoutedEventArgs e) => ShowFirstRun();
 
+    private HotkeysWindow? _hotkeysWindow;
+
+    private void Hotkeys_Click(object sender, RoutedEventArgs e) => ShowHotkeys();
+
+    /// <summary>La ventana "Atajos" (una sola a la vez, no modal).</summary>
+    private void ShowHotkeys()
+    {
+        if (_hotkeyBinder is null)
+            return;
+        if (_hotkeysWindow is not null)
+        {
+            _hotkeysWindow.Activate();
+            return;
+        }
+        _hotkeysWindow = new HotkeysWindow(new HotkeysViewModel(_hotkeyBinder, HotkeyMap.Current, includeDeveloper: true)) { Owner = this };
+        _hotkeysWindow.Closed += (_, _) => _hotkeysWindow = null;
+        _hotkeysWindow.Show();
+    }
+
     /// <summary>
     /// Atajos que andan con el foco en el juego (de fábrica todos con Ctrl+Alt, que el juego no usa): calibrar, grabar
     /// y manejar el coach sin salir con Alt+Tab. No le mandan nada al juego. Se cambian en la ventana "Atajos".

@@ -45,6 +45,7 @@
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
                                 ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
+                        <Button Content="Atajos" Click="Hotkeys_Click" ToolTip="Ver y cambiar los atajos de teclado que andan desde el juego" />
                         <Button Content="Primeros pasos" Click="FirstRun_Click"
                                 ToolTip="Idioma del juego, mod del HUD, una partida rápida contra 7 IA para calibrar y leer tu nombre en la pantalla de carga" />
                         <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
