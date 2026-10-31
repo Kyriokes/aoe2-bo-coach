@@ -83,13 +83,16 @@ grant insert (build_order_id) on public.subscriptions to authenticated;
 -- Lo que la app pide con su token (como app_publish: la web no necesita la clave de administrador).
 -- ---------------------------------------------------------------------------------------------------------------
 
--- Tus BO (de cualquier visibilidad) y tus suscriptas que siguen públicas, sin los pasos: para elegir sin bajarlas.
+-- Tu cuenta y tus BO (de cualquier visibilidad) y tus suscriptas que siguen públicas, sin los pasos: para elegir
+-- sin bajarlas. { "account": nombre, "items": [...] }.
 create function public.app_my_build_orders(p_token text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   owner uuid := public.app_token_owner(p_token);
 begin
-  return coalesce((
+  return jsonb_build_object(
+    'account', (select display_name from public.profiles where id = owner),
+    'items', coalesce((
     select jsonb_agg(jsonb_build_object(
              'code', b.code,
              'name', b.name,
@@ -112,7 +115,7 @@ begin
      where b.owner_id = owner
         or (b.visibility = 'public'
             and exists (select 1 from public.subscriptions s where s.user_id = owner and s.build_order_id = b.id))),
-    '[]'::jsonb);
+    '[]'::jsonb));
 end $$;
 
 -- Suscribirse a una BO por su código: 'own' si es tuya (no hace falta), 'subscribed' si es pública de otro.

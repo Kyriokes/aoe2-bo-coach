@@ -258,8 +258,9 @@ describe("privadas y suscripciones", () => {
 
   describe("con el token de la app", () => {
     type Item = { code: string; name: string; own: boolean; visibility: string; author: string; guide_author: string };
-    const list = async (t: string) =>
-      (await as<{ items: Item[] }>(db, null, "select public.app_my_build_orders($1) as items", [t])).rows[0].items;
+    const mine = async (t: string) =>
+      (await as<{ result: { account: string; items: Item[] } }>(db, null, "select public.app_my_build_orders($1) as result", [t])).rows[0].result;
+    const list = async (t: string) => (await mine(t)).items;
     const subscribe = (t: string, code: string) =>
       as<{ result: string }>(db, null, "select public.app_subscribe($1, $2) as result", [t, code]);
 
@@ -278,6 +279,10 @@ describe("privadas y suscripciones", () => {
         ["A pública", false, "public"],
       ]);
       expect(items[1]).toMatchObject({ author: "Ana", guide_author: "Cicero" });
+    });
+
+    it("trae el nombre de la cuenta, también sin BO", async () => {
+      expect(await mine(await token(beto))).toEqual({ account: "Beto", items: [] });
     });
 
     it("con un token inválido no da nada", async () => {
