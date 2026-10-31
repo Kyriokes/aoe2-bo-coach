@@ -52,11 +52,11 @@
 **Interfaces:**
 - Produces: `app_my_build_orders(p_token) returns jsonb` = `{ "account": <display_name>, "items": [...] }`; `GET /api/app/mis-bo` → `{ account, items }`.
 
-- [ ] **Step 1: Test.** En "con el token de la app", `list` lee `.items` y un caso nuevo: `account` es "Beto" con el token de Beto.
-- [ ] **Step 2: Correr** `npx vitest run supabase/tests/biblioteca.test.ts`: falla.
-- [ ] **Step 3: Implementar** (objeto con `account` del perfil del dueño del token e `items`, `[]` si no hay) y la ruta pasa el objeto tal cual.
-- [ ] **Step 4: Correr** el mismo comando, `npx tsc --noEmit` y `npm run lint`: pasan.
-- [ ] **Step 5: Commit** (`mis-bo: el nombre de la cuenta junto a la lista`).
+- [x] **Step 1: Test.** En "con el token de la app", `list` lee `.items` y un caso nuevo: `account` es "Beto" con el token de Beto.
+- [x] **Step 2: Correr** `npx vitest run supabase/tests/biblioteca.test.ts`: falla.
+- [x] **Step 3: Implementar** (objeto con `account` del perfil del dueño del token e `items`, `[]` si no hay) y la ruta pasa el objeto tal cual.
+- [x] **Step 4: Correr** el mismo comando, `npx tsc --noEmit` y `npm run lint`: pasan.
+- [x] **Step 5: Commit** (`mis-bo: el nombre de la cuenta junto a la lista`).
 
 ### Task 2: Core, resumen de una BO y sugerencia sobre resúmenes
 
