@@ -292,4 +292,53 @@ public class TrackerLanesTests
         Assert.True(tracker.Built("mill"));
         Assert.True(tracker.Built("lumber_camp"));
     }
+
+    // Partida 20261031-125929 (británicos, Fast Archers mejorada): Investigar pedía el telar desde el 0:00 (la BO lo
+    // pone a 19 de población) y Construir el campamento minero a 15 (la BO lo pone después del clic de Feudal a 20).
+    // Un paso de Construir, Investigar o Producir espera a la población que tiene la BO cuando llega a él.
+    private static readonly BuildOrder ByPopulation = Bo(
+        new Step { Id = "h0", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+        Villagers("v1", 6, GatherSource.Sheep),
+        Research("loom", "loom"),
+        Build("camp", "lumber_camp"),
+        Villagers("v2", 3, GatherSource.Wood),
+        Villagers("berries", 2, GatherSource.Berries) with { Group = "g" },
+        Build("mill", "mill") with { Group = "g" },
+        Build("house", "house") with { AtPop = 9 });
+
+    [Fact]
+    public void Un_paso_que_no_es_de_aldeanos_espera_a_la_poblacion_de_la_BO()
+    {
+        var tracker = new Tracker(ByPopulation, TestData.GameData);
+        var partida = new Partida();
+        tracker.Update(partida.State);
+
+        // La población con que la simulación de la BO empieza cada paso: 4 al arrancar (3 aldeanos y el explorador) y 3
+        // aldeanos nuevos en ovejas; el telar se encola detrás del último (6 hechos y 1 en el centro urbano).
+        var loom = tracker.LaneStep(Lane.Research)!;
+        Assert.Equal("loom", loom.Step.Id);
+        Assert.InRange(loom.AtPop!.Value, 6, 7);
+        Assert.Equal(StepState.Pending, loom.State);
+        // El molino va con los aldeanos de su paso mixto, no después de ellos (serían 12).
+        Assert.InRange(tracker.Steps[Index(ByPopulation, "mill")].AtPop!.Value, 7, 10);
+        // La de la BO manda.
+        Assert.Equal(9, tracker.Steps[Index(ByPopulation, "house")].AtPop);
+        // Los de aldeanos no esperan: hacen la población.
+        Assert.Null(tracker.Steps[Index(ByPopulation, "v2")].AtPop);
+
+        partida.Events("villager_created", 3);
+        tracker.Update(partida.State);
+        Assert.Equal(StepState.Ready, tracker.LaneStep(Lane.Research)!.State);
+    }
+
+    [Fact]
+    public void La_linea_dice_a_que_poblacion_espera()
+    {
+        var coach = new Coach(ByPopulation, TestData.GameData, TestData.Events);
+        var view = coach.Update(new GameSnapshot(5, PlanStart.Standard.Stock, 4, 5, []) { Villagers = 3 });
+
+        var research = Assert.Single(CoachText.LaneLines(view, TestData.GameData), l => l.Lane == Lane.Research);
+        Assert.Contains($"a {coach.Tracker.LaneStep(Lane.Research)!.AtPop} de población (vas 4)", research.Text);
+        Assert.Equal(LaneTone.Waiting, research.Tone);
+    }
 }

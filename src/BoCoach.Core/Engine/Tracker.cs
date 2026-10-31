@@ -20,6 +20,10 @@ public enum StepState
     Skipped,
 }
 
+/// <param name="AtPop">
+/// La población a la que espera el paso: la que dice la BO (<c>at_pop</c>) o, en Construir, Investigar y Producir, la
+/// que tiene la BO cuando llega a él (<see cref="Tracker.PopulationTargets"/>).
+/// </param>
 public sealed record StepProgress(
     Step Step,
     int Index,
@@ -28,7 +32,8 @@ public sealed record StepProgress(
     int Required,
     double? DoneAt,
     bool Manual,
-    double? StartedAt = null)
+    double? StartedAt = null,
+    int? AtPop = null)
 {
     public int Remaining => Math.Max(0, Required - Completed);
 }
@@ -87,7 +92,52 @@ public sealed class Tracker
         _units = LivePlan.Units(bo);
         _hudTarget = HudTargets(bo);
         _capTarget = CapTargets(bo, data);
+        _atPop = PopulationTargets(bo, data);
         Recompute();
+    }
+
+    private readonly int?[] _atPop;
+
+    /// <summary>
+    /// La población a la que espera cada paso: la de su <c>at_pop</c> o, si no es de aldeanos, la que tiene la BO cuando
+    /// lo empieza en la simulación (el Planner sabe que el campamento maderero lo hace el primer aldeano que va a la
+    /// madera, y que el telar va después de los aldeanos de antes). En la partida 20261031-125929 (británicos, Fast
+    /// Archers mejorada) la línea Investigar pedía el telar desde el 0:00, y lo hizo a los 10 de población cuando la BO lo
+    /// pone a 20; y Construir pedía el campamento minero a 15, cuando la BO lo pone después del clic de Feudal a 20.
+    /// Sumar las unidades de los pasos de antes daba el campamento maderero a 10 en vez de 6.
+    /// </summary>
+    internal static int?[] PopulationTargets(BuildOrder bo, GameData data)
+    {
+        var targets = new int?[bo.Steps.Count];
+        PlanResult? plan = null;
+        for (var i = 0; i < bo.Steps.Count; i++)
+        {
+            var step = bo.Steps[i];
+            if (step.AtPop is { } pop)
+            {
+                targets[i] = pop;
+                continue;
+            }
+            if (Lanes.Of(step) == Lane.Villagers)
+                continue;
+            plan ??= Simulate(bo, data);
+            // La muestra del segundo en que empieza ya cuenta lo que nació en ese segundo.
+            if (plan?.Steps[i].Start is { } at && plan.Timeline.LastOrDefault(t => t.Time <= at + 1) is { } sample)
+                targets[i] = sample.Population;
+        }
+        return targets;
+    }
+
+    private static PlanResult? Simulate(BuildOrder bo, GameData data)
+    {
+        try
+        {
+            return new Planner(data).Simulate(bo);
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or KeyNotFoundException)
+        {
+            return null; // una BO que no se simula no espera población: se ve como antes
+        }
     }
 
     /// <summary>
@@ -593,7 +643,7 @@ public sealed class Tracker
             }
 
             steps[i] = new StepProgress(step, i, state, Math.Min(completed[i], required), required, state == StepState.Done ? at : null, manual,
-                state == StepState.InProgress ? _started[i] : null);
+                state == StepState.InProgress ? _started[i] : null, _atPop[i]);
         }
         _steps = steps;
 
@@ -602,8 +652,8 @@ public sealed class Tracker
             if (!_eligible[i])
                 return false;
             // La población y la hora no esconden el paso (como los recursos, se espera mostrándolo): "Feudal a 20 de
-            // población" se ve antes de llegar a 20.
-            if (step.AtPop is { } pop && _state.Population < pop)
+            // población" se ve antes de llegar a 20. Lo que no es de aldeanos espera a la población de la BO.
+            if (_atPop[i] is { } pop && _state.Population < pop)
                 return false;
             if (step.AtTime is { } t && _state.Time < t)
                 return false;

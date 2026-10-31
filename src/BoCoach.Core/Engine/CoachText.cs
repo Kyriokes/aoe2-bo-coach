@@ -129,7 +129,7 @@ public static class CoachText
                 return $"faltan {Join(missing)}{eta}";
             }
         }
-        if (step.AtPop is { } pop && view.Population < pop)
+        if (lane.Step.AtPop is { } pop && view.Population < pop)
             return $"a {pop} de población (vas {view.Population})";
         if (step.AtTime is { } time && view.Time < time)
             return $"a los {GameClock.Format(time)}";
@@ -413,7 +413,7 @@ public static class CoachText
 
         if (missing.Count > 0)
             return $"Faltan {Join(missing)}{eta}";
-        if (step.AtPop is { } pop && view.Population < pop)
+        if (current.AtPop is { } pop && view.Population < pop)
             return $"A {pop} de población (vas {view.Population})";
         if (step.AtTime is { } time && view.Time < time)
             return $"A los {GameClock.Format(time)}";
