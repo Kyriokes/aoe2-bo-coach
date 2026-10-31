@@ -175,6 +175,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         };
         var map = new HotkeyMap(Coach.Hotkeys);
         HotkeyMap.Current = map;
+        HotkeyTips.Instance.Attach(map);
         map.Changed += () => Coach.SaveHotkeys(map.Overrides);
         // Hasta la parte 2 (modo desarrollador) se registran también las de desarrollador.
         _hotkeyBinder = new HotkeyBinder(_hotkeys, map, actions, includeDeveloper: true);

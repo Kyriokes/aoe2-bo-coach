@@ -92,7 +92,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     public bool ShowCursorReminder => CursorReminders && (HouseReminder || TownCenterReminder || IdleReminder);
 
-    /// <summary>D4: la BO que encaja con la partida de la pantalla de carga ("Sugerida: ... Ctrl+Alt+B para usarla"), o null.</summary>
+    /// <summary>D4: la BO que encaja con la partida de la pantalla de carga ("Sugerida: ... <atajo> para usarla"), o null.</summary>
     [ObservableProperty] public partial string? BoSuggestion { get; set; }
 
     /// <summary>D4: el consejo contra el rival de enfrente, en la pantalla de carga y el primer minuto.</summary>
@@ -104,7 +104,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     public void Apply(CoachFrame frame)
     {
         var view = frame.View;
-        var lines = CoachText.Lines(view, data);
+        var lines = CoachText.Lines(view, data, Hotkeys.HotkeyMap.Current.Text("back"));
         Clock = view.Time > 0 ? GameClock.Format(view.Time) : "--:--";
         Progress = view.Abandoned is not null ? "-"
             : view.Current is { } current ? $"{current.Index + 1}/{view.TotalSteps}" : $"{view.TotalSteps}/{view.TotalSteps}";
@@ -169,7 +169,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     private static string? WarningFor(CoachFrame frame) => frame switch
     {
         { Ended: true } => "Terminó la grabación.",
-        { Paused: true } => "En pausa: Ctrl+Alt+P para seguir.",
+        { Paused: true } => $"En pausa: {Hotkeys.HotkeyMap.Current.Text("pause")} para seguir.",
         { Error: { } error } => $"No se pudo leer la pantalla: {error}",
         { InFront: false } => "El juego no está al frente.",
         { Waiting: true } => "Esperando una partida…",

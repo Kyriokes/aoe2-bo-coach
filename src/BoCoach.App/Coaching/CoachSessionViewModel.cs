@@ -266,6 +266,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>El coach en vivo mientras corre (para los tests).</summary>
     public LiveCoach? LiveCoach => _coach;
 
+    /// <summary>El atajo que eligió el jugador para una acción, como se muestra ("Ctrl+Alt+→").</summary>
+    private static string Key(string action) => global::BoCoach.App.Hotkeys.HotkeyMap.Current.Text(action);
+
     /// <summary>Los atajos cambiados por el jugador (id → combinación), como están en settings.json.</summary>
     public IReadOnlyDictionary<string, string> Hotkeys { get; private set; }
 
@@ -415,7 +418,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}, esperando la partida. Desde el juego: Ctrl+Alt+→ avanza, Ctrl+Alt+← retrocede, Ctrl+Alt+↓ saltea, Ctrl+Alt+H oculta, Ctrl+Alt+M recordatorios en el mouse.";
+        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}, esperando la partida. Desde el juego: {Key("advance")} avanza, {Key("back")} retrocede, {Key("skip")} saltea, {Key("overlay")} oculta, {Key("cursor_reminders")} recordatorios en el mouse.";
     }
 
     /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
@@ -488,12 +491,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _previousBuildOrder = running;
             Start(suggestion.BuildOrder, _liveFrames(), automatic: true);
             if (Overlay is not null)
-                Overlay.BoSuggestion = $"Cambié a {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B vuelve a {running.Name}";
-            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida (Ctrl+Alt+B vuelve a \"{running.Name}\").";
+                Overlay.BoSuggestion = $"Cambié a {suggestion.BuildOrder.Name} ({suggestion.Reason}). {Key("accept_suggestion")} vuelve a {running.Name}";
+            Status = $"Coach con \"{suggestion.BuildOrder.Name}\", la sugerida para esta partida ({Key("accept_suggestion")} vuelve a \"{running.Name}\").";
             return;
         }
         _suggestion = suggestion;
-        Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). Ctrl+Alt+B para usarla";
+        Overlay.BoSuggestion = $"Sugerida: {suggestion.BuildOrder.Name} ({suggestion.Reason}). {Key("accept_suggestion")} para usarla";
     }
 
     /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>

@@ -120,6 +120,25 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
     }
 
+    // Atajos editables: los textos dicen la combinación elegida, no la de fábrica.
+    [Fact]
+    public void Al_empezar_el_estado_nombra_los_atajos_elegidos()
+    {
+        var previous = Hotkeys.HotkeyMap.Current;
+        try
+        {
+            Hotkeys.HotkeyMap.Current = new Hotkeys.HotkeyMap(new Dictionary<string, string> { ["advance"] = "Ctrl+Alt+F1" });
+            using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"));
+            session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+            Assert.Contains("Ctrl+Alt+F1 avanza", session.Status);
+            Assert.Contains("Ctrl+Alt+← retrocede", session.Status);
+        }
+        finally
+        {
+            Hotkeys.HotkeyMap.Current = previous;
+        }
+    }
+
     // Atajos editables: cualquier otro ajuste que se guarde no tiene que borrar los atajos cambiados.
     [Fact]
     public void Los_atajos_cambiados_sobreviven_a_otros_ajustes()

@@ -164,9 +164,10 @@ public static class CoachText
     /// <summary>Desvío (en segundos) a partir del cual el objetivo se muestra como atrasado.</summary>
     public const double BehindThreshold = 15;
 
-    public static CoachLines Lines(CoachView view, GameData data)
+    /// <param name="backHotkey">El atajo de "Atrás" que eligió el jugador, para el texto de la BO abandonada.</param>
+    public static CoachLines Lines(CoachView view, GameData data, string backHotkey = "Ctrl+Alt+←")
     {
-        var lines = BaseLines(view, data);
+        var lines = BaseLines(view, data, backHotkey);
         // D3: una señal reciente (el rival hizo clic, perdiste aldeanos) va en el renglón de avisos, antes que el del log.
         if (view.Signals.Count > 0)
             lines = lines with { Alert = view.Signals[^1].Text };
@@ -215,7 +216,7 @@ public static class CoachText
         return card;
     }
 
-    private static CoachLines BaseLines(CoachView view, GameData data)
+    private static CoachLines BaseLines(CoachView view, GameData data, string backHotkey)
     {
         // Las metas en curso del paso mixto se ven en su renglón de meta, no también en "En curso".
         var goalIndexes = view.Goals.Select(g => g.Index).ToHashSet();
@@ -232,7 +233,7 @@ public static class CoachText
             // D1: sin los pasos viejos; queda lo que siempre vale. "Atrás" la retoma.
             return new CoachLines(
                 "BO abandonada: seguí con lo básico",
-                $"Porque {reason}. Centro urbano produciendo, casas y nadie inactivo. Ctrl+Alt+← vuelve a la BO.",
+                $"Porque {reason}. Centro urbano produciendo, casas y nadie inactivo. {backHotkey} vuelve a la BO.",
                 null,
                 running,
                 null,

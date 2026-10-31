@@ -167,6 +167,9 @@ public class BuildOrderAbandonmentTests
         var lines = CoachText.Lines(view, TestData.GameData);
         Assert.Equal("BO abandonada: seguí con lo básico", lines.Current);
         Assert.Contains("lanceros", lines.Status);
+        Assert.Contains("Ctrl+Alt+← vuelve a la BO", lines.Status);
+        // Con el atajo cambiado por el jugador, el texto dice el suyo.
+        Assert.Contains("Ctrl+Alt+F9 vuelve a la BO", CoachText.Lines(view, TestData.GameData, backHotkey: "Ctrl+Alt+F9").Status);
 
         view = coach.Back();
         Assert.Null(view.Abandoned);

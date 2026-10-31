@@ -1,6 +1,7 @@
 <Window x:Class="BoCoach.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hotkeys="clr-namespace:BoCoach.App.Hotkeys"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:editor="clr-namespace:BoCoach.App.Editor"
@@ -44,14 +45,14 @@
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
-                                ToolTip="Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con Ctrl+Alt+S desde el juego" />
+                                ToolTip="{Binding StartStop, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Atajos" Click="Hotkeys_Click" ToolTip="Ver y cambiar los atajos de teclado que andan desde el juego" />
                         <Button Content="Primeros pasos" Click="FirstRun_Click"
                                 ToolTip="Idioma del juego, mod del HUD, una partida rápida contra 7 IA para calibrar y leer tu nombre en la pantalla de carga" />
-                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="También con Ctrl+Alt+C desde el juego" />
+                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
                                 ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
-                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="También con Ctrl+Alt+R desde el juego" />
+                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" />
                         <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"
                                 ToolTip="Invitame un café (Cafecito, PayPal, Ko-fi o Mercado Pago) y mirá las metas del proyecto en la web" />
@@ -113,15 +114,15 @@
                                  AutomationProperties.Name="Máximo de aldeanos" />
                     </StackPanel>
                     <CheckBox x:Name="CursorRemindersBox" IsChecked="{Binding CursorReminders}" VerticalAlignment="Center" Margin="0,0,10,0"
-                              ToolTip="Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con Ctrl+Alt+M desde el juego">
+                              ToolTip="{Binding CursorReminders, Source={x:Static hotkeys:HotkeyTips.Instance}}">
                         <TextBlock Text="Recordatorios en el mouse" Foreground="#C9C1B6" />
                     </CheckBox>
                     <CheckBox x:Name="AutoStartBox" IsChecked="{Binding AutoStart}" VerticalAlignment="Center" Margin="0,0,10,0"
-                              ToolTip="El coach arranca solo cuando se abre el juego, con la última BO usada (en la pantalla de carga cambia a la sugerida si encaja mejor; Ctrl+Alt+B vuelve), y se detiene con el informe cuando el juego se cierra. Si lo detenés a mano, no vuelve a arrancar hasta que abras el juego de nuevo">
+                              ToolTip="{Binding AutoStart, Source={x:Static hotkeys:HotkeyTips.Instance}}">
                         <TextBlock Text="Coach automático" Foreground="#C9C1B6" />
                     </CheckBox>
                     <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0"
-                            ToolTip="Si algo no se lee bien: a los 2 s guarda la pantalla entera sin pérdida y un .txt con lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico, para mandar esa carpeta. También con Ctrl+Alt+X desde el juego" />
+                            ToolTip="{Binding Diagnostic, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                     <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </WrapPanel>
             </StackPanel>
@@ -160,17 +161,17 @@
                     <TextBlock Text="{Binding Game}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
                                Visibility="{Binding Game, Converter={StaticResource NotEmptyToVisibility}}" />
                     <DockPanel Margin="0,6,0,0">
-                        <!-- Lo mismo que Ctrl+Alt+← / → / ↓ desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
+                        <!-- Lo mismo que los atajos de Atrás, Ya está y Saltear desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
                             <ComboBox ItemsSource="{Binding DataContext.LaneChoices, ElementName=LivePanel}" SelectedItem="{Binding DataContext.SelectedLane, ElementName=LivePanel}"
                                       DisplayMemberPath="Name" Margin="0,0,4,0" Padding="4,1"
                                       ToolTip="Sobre qué línea actúan Ya está y Saltear (también los atajos)" />
                             <Button Content="◀ Atrás" Command="{Binding DataContext.BackCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
-                                    ToolTip="Deshace lo último que se completó o salteó (Ctrl+Alt+← desde el juego)" />
+                                    ToolTip="{Binding Back, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                             <Button Content="Ya está ▶" Command="{Binding DataContext.AdvanceCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
-                                    ToolTip="Da por hecho el paso actual, por ejemplo si el coach no vio que lo terminaste (Ctrl+Alt+→ desde el juego)" />
+                                    ToolTip="{Binding Advance, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                             <Button Content="Saltear" Command="{Binding DataContext.SkipCommand, ElementName=LivePanel}" Padding="8,1"
-                                    ToolTip="Saltea el paso actual: no lo vas a hacer (Ctrl+Alt+↓ desde el juego)" />
+                                    ToolTip="{Binding Skip, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         </StackPanel>
                         <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
