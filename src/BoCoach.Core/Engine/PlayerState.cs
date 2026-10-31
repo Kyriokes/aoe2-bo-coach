@@ -51,6 +51,8 @@ public sealed class PlayerState
 
     public void Apply(GameSnapshot snapshot)
     {
+        if (snapshot.Events.Any(e => UnitLines.Normalize(e) != e))
+            snapshot = snapshot with { Events = snapshot.Events.Select(UnitLines.Normalize).ToList() };
         var before = _events.Count;
         Time = snapshot.Time;
         Stock = snapshot.Stock;

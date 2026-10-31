@@ -38,6 +38,17 @@ public class BuildOrderAbandonmentTests
         return detector;
     }
 
+    // Partida 20261030-203917 (británicos): investigados los ballesteros, la galería saca ballesteros y no arqueros, y a
+    // las 27:16 la BO quedaba "abandonada" por 6 unidades que no tiene.
+    [Fact]
+    public void Los_ballesteros_son_los_arqueros_de_la_BO()
+    {
+        var state = Game(700, [("archer", 500), .. Units("crossbowman", 6, 600)]);
+
+        Assert.False(Watching(state).Abandoned);
+        Assert.Equal(7, state.Count("archer_created"));
+    }
+
     [Fact]
     public void Seis_lanceros_y_ningun_arquero_hace_un_minuto_es_otra_build()
     {
