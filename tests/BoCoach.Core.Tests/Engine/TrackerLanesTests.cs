@@ -286,6 +286,23 @@ public class TrackerLanesTests
         }
     }
 
+    // Partida 20261031-195651: con el establo hecho, el paso mixto "9 aldeanos en granjas + 7 granjas" dejaba las granjas
+    // "Quedó sin hacer" de 11:57 a 12:31; el juego no las avisa y se dan por hechas con los aldeanos (12:36).
+    [Fact]
+    public void Las_granjas_no_quedan_sin_hacer()
+    {
+        var bo = Bo(
+            Villagers("farmers", 2, GatherSource.Farm) with { Group = "g" },
+            new Step { Id = "farms", Do = StepAction.Build, What = "farm", Count = 2, From = GatherSource.Farm, Assign = GatherSource.Farm, Group = "g" },
+            Build("stable", "stable"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("mill_built").Event("feudal_age_researched").Event("barracks_built")
+            .Event("stable_built").State);
+
+        Assert.Empty(tracker.LaneBehind(Lane.Build));
+        Assert.False(tracker.IsLeftBehind(1));
+    }
+
     // Revisión de la rama: los jemeres suben de edad sin edificios.
     [Fact]
     public void Los_jemeres_hacen_clic_de_edad_sin_edificios()

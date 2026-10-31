@@ -235,6 +235,10 @@ public sealed class Tracker
         var lane = Lanes.Of(s.Step);
         if (lane == Lane.Villagers || s.Completed > 0 || !_eligibleSince.TryGetValue(s.Index, out var since))
             return false;
+        // Lo que el juego no avisa (granjas) se da por hecho con sus compañeras, nunca por el log: no queda atrás
+        // (partida 20261031-195651: "Quedó sin hacer: Construir 7 granjas" de 11:57 a 12:31, con el establo).
+        if (EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id))
+            return false;
         return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index) && !IsHouse(o.Step)
             && (lane == Lane.Build || Producer(o.Step) == Producer(s.Step))
             && (_allocated.ContainsKey(o.Index) || _started.ContainsKey(o.Index))
