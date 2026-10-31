@@ -193,7 +193,13 @@ public sealed class Tracker
     /// Quedan pasos de la BO por hacer, se puedan mostrar o no (subiendo de edad, lo que sigue es de la edad siguiente y
     /// la BO no terminó). No cuentan lo que el juego no avisa ni la producción en marcha, que nunca se cierran solos.
     /// </summary>
-    public bool HasOpenSteps => _steps.Any(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s));
+    public bool HasOpenSteps => _steps.Any(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s) && !IsBehind(s));
+
+    /// <summary>
+    /// El paso sigue abierto pero quedó atrás (<see cref="IsBehind"/>): no impide terminar la BO. En la
+    /// 20261030-203917 el segundo molino que nunca se hizo dejaba la BO "abandonada" a los 3 minutos de terminarla.
+    /// </summary>
+    public bool IsLeftBehind(int index) => IsOpen(_steps[index]) && IsBehind(_steps[index]);
 
     /// <summary>
     /// La edad a la que llegó el jugador: la de los clics de edad hechos (pasos o log) o salteados, o la de lo que ya se

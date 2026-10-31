@@ -57,7 +57,8 @@ public sealed class BuildOrderAbandonment
     /// <summary>Muchas unidades ajenas pero la de la BO sigue saliendo: no se marca atrasado lo militar.</summary>
     public bool Gray { get; private set; }
 
-    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps)
+    /// <param name="leftBehind">Pasos abiertos que quedaron atrás: no cuentan para dar la BO por terminada.</param>
+    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, Func<int, bool>? leftBehind = null)
     {
         var progress = Progress(steps);
         if (_progress != progress)
@@ -78,7 +79,7 @@ public sealed class BuildOrderAbandonment
                 : $"hiciste {foreign.Count} unidades que la BO no tiene ({names}) y hace {BoUnitPause:0} s que no sale {string.Join(" ni ", _boUnits.Select(u => StepText.Name(u)))}";
             return;
         }
-        var finished = steps.All(s => s.State is StepState.Done or StepState.Skipped);
+        var finished = steps.All(s => s.State is StepState.Done or StepState.Skipped || leftBehind?.Invoke(s.Index) == true);
         if (!finished && state.Time - _progressAt >= MaxStall)
             Reason = $"hace {GameClock.Format(state.Time - _progressAt)} que no avanza ningún paso de la BO";
     }
