@@ -51,7 +51,6 @@ public class CivBuildOrdersTests
             var errors = validator.Validate(bo).Errors.ToList();
             Assert.True(errors.Count == 0, $"{bo.Id}: {string.Join("; ", errors)}");
             Assert.True(planner.Simulate(bo).Completed, $"{bo.Id} no se completa");
-            Assert.True(BuildOrderLibrary.IsFileNameId(bo.Id), bo.Id);
         }
     }
 }

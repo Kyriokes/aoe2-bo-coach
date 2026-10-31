@@ -19,7 +19,7 @@ public sealed class CoachSessionTests : IDisposable
 
     public CoachSessionTests()
     {
-        _data = CoachData.Load(_library.FullName);
+        _data = CoachData.Load();
     }
 
     public void Dispose() => _library.Delete(recursive: true);
@@ -302,6 +302,7 @@ public sealed class CoachSessionTests : IDisposable
         {
             PlayerName = "Kyriokes",
             BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
         for (var i = 0; i < 6; i++)
@@ -310,7 +311,7 @@ public sealed class CoachSessionTests : IDisposable
         // El panel no baja en la pantalla de carga ni sin reloj: queda donde lo puso ShowOverlay, arriba a la derecha
         // (abajo tapaba el mapa en plena partida; pedido del usuario, 2026-10-29).
         Assert.Empty(host.Placed);
-        // El jugador juega con japoneses: desde D7 la biblioteca tiene una BO de cada civ (importada y mejorada) y gana
+        // El jugador juega con japoneses: la lista de prueba tiene una BO de cada civ (importada y mejorada) y gana
         // la mejorada de la suya.
         Assert.StartsWith("Sugerida: Fast Men-at-Arms (mejorada) (de tu civ", session.Overlay!.BoSuggestion);
         Assert.Contains("Ctrl+Alt+B", session.Overlay.BoSuggestion);
@@ -331,6 +332,7 @@ public sealed class CoachSessionTests : IDisposable
         using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
             PlayerName = "Kyriokes",
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
         for (var i = 0; i < 6 && session.LiveCoach!.BuildOrder.Name == Scouts.Name; i++)

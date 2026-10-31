@@ -15,7 +15,7 @@ public sealed class LiveReadingViewModelTests : IDisposable
 
     public LiveReadingViewModelTests()
     {
-        _data = CoachData.Load(_library.FullName);
+        _data = CoachData.Load();
     }
 
     public void Dispose() => _library.Delete(recursive: true);

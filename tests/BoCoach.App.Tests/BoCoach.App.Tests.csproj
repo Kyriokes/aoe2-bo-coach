@@ -30,6 +30,8 @@
     <None Include="..\fixtures\hud-20261018-132830\*" Link="fixtures\hud-20261018-132830\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\screens\*.png" Link="fixtures\screens\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\build_orders\*.json" Link="fixtures\build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Las BO del repo (ejemplos y una por civ): la lista de prueba de la sugerida en la pantalla de carga. -->
+    <None Include="..\..\build_orders\*.json;..\..\build_orders\civs\*.json" Link="build_orders\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -7,15 +7,14 @@ using BoCoach.Vision.Ocr;
 
 namespace BoCoach.App;
 
-/// <summary>Datos que comparten todas las ventanas: game_data, eventos, planner, validador y biblioteca.</summary>
+/// <summary>Datos que comparten todas las ventanas: game_data, eventos, planner y validador.</summary>
 public sealed class CoachData
 {
-    private CoachData(GameData gameData, EventCatalog events, Maps maps, BuildOrderLibrary library)
+    private CoachData(GameData gameData, EventCatalog events, Maps maps)
     {
         GameData = gameData;
         Events = events;
         Maps = maps;
-        Library = library;
         Planner = new Planner(gameData);
         Validator = new BuildOrderValidator(gameData, events, maps);
     }
@@ -26,7 +25,6 @@ public sealed class CoachData
     /// <summary>Los mapas (data/maps.json): qué fuentes tiene cada uno y si hay agua (D8).</summary>
     public Maps Maps { get; }
 
-    public BuildOrderLibrary Library { get; }
     public Planner Planner { get; }
     public BuildOrderValidator Validator { get; }
 
@@ -59,13 +57,12 @@ public sealed class CoachData
 
     private HudFonts? _fonts;
 
-    /// <summary>Carpeta "data" junto al ejecutable (game_data, events.json y BO de ejemplo).</summary>
+    /// <summary>Carpeta "data" junto al ejecutable (game_data, events.json, letras, íconos).</summary>
     public static string DataDir => Path.Combine(AppContext.BaseDirectory, "data");
 
     /// <summary>Carpeta del usuario: %APPDATA%\BoCoach.</summary>
     public static string UserDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BoCoach");
 
-    /// <param name="libraryDir">Carpeta de la biblioteca; por defecto %APPDATA%\BoCoach\build_orders.</param>
     private readonly Dictionary<string, EventCatalog> _eventsByLanguage = [];
 
     /// <summary>
@@ -84,13 +81,11 @@ public sealed class CoachData
         }
     }
 
-    public static CoachData Load(string? libraryDir = null)
+    public static CoachData Load()
     {
         var gameData = GameDataLoader.LoadLatest(Path.Combine(DataDir, "game_data"));
         var events = EventCatalog.Load(Path.Combine(DataDir, "events.json")).PreferringEntitiesOf(gameData);
         var maps = Maps.Load(Path.Combine(DataDir, "maps.json"));
-        var library = new BuildOrderLibrary(libraryDir ?? Path.Combine(UserDir, "build_orders"));
-        library.SeedMissing(Directory.EnumerateFiles(Path.Combine(DataDir, "build_orders"), "*.json"));
-        return new CoachData(gameData, events, maps, library);
+        return new CoachData(gameData, events, maps);
     }
 }

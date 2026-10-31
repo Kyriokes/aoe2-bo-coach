@@ -50,9 +50,9 @@ public partial class App : Application
         string? shotDir;
         try
         {
-            // Para la captura se usa una biblioteca temporal, así no se toca la del usuario.
+            // Para la captura se usan ajustes, cuenta y caché temporales, así no se tocan los del usuario.
             shotDir = screenshot is null ? null : Directory.CreateTempSubdirectory("bocoach-shot-").FullName;
-            data = CoachData.Load(shotDir);
+            data = CoachData.Load();
         }
         catch (Exception ex)
         {
@@ -117,13 +117,11 @@ public partial class App : Application
     /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>
     private static int PublishFolder(string source, bool dryRun)
     {
-        // Biblioteca temporal: los datos del juego hacen falta para validar y simular, la biblioteca del usuario no.
-        var library = Directory.CreateTempSubdirectory("bocoach-publish-");
         // Sin consola, Console.Out escribe con la página de códigos de Windows y rompe los acentos.
         using var output = new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true };
         try
         {
-            var data = CoachData.Load(library.FullName);
+            var data = CoachData.Load();
             using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
             // Task.Run: sin el contexto de WPF, esperar acá el resultado no traba las respuestas de la web.
             return Task.Run(() => BulkPublish.RunAsync(data, new WebAccount(http), source, dryRun, output)).GetAwaiter().GetResult();
@@ -132,10 +130,6 @@ public partial class App : Application
         {
             output.WriteLine($"No se pudo publicar: {e.Message}");
             return 2;
-        }
-        finally
-        {
-            library.Delete(recursive: true);
         }
     }
 
@@ -266,9 +260,8 @@ public partial class App : Application
 
     /// <summary>
     /// Dibuja el overlay como se vería en un momento de una partida grabada y cierra.
-    /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo nombre --at 8:20 [--debug].
-    /// --bo es parte del nombre de una BO de la biblioteca o la ruta de un .json (una BO corta que ya terminó muestra la
-    /// tarjeta de la BO terminada).
+    /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo ruta.json --at 8:20 [--debug].
+    /// --bo es la ruta de un .json (una BO corta que ya terminó muestra la tarjeta de la BO terminada).
     /// </summary>
     /// <param name="bands">
     /// Simula el casillero del diseño nuevo en cada recurso (el de la celda a 1080p) y la celda entera de inactivos, y
@@ -276,9 +269,7 @@ public partial class App : Application
     /// </param>
     private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false)
     {
-        var buildOrder = bo is not null && File.Exists(bo)
-            ? BuildOrderSerializer.Load(bo)
-            : data.Library.List().FirstOrDefault(e => bo is null || e.Name.Contains(bo, StringComparison.OrdinalIgnoreCase))?.BuildOrder;
+        var buildOrder = bo is not null && File.Exists(bo) ? BuildOrderSerializer.Load(bo) : null;
         if (buildOrder is null || readings is null)
         {
             Shutdown(2);

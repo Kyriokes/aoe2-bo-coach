@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
-using BoCoach.App.Editor;
 using BoCoach.App.Web;
 using BoCoach.Core.BuildOrders;
 using Microsoft.Win32;
@@ -15,7 +14,7 @@ public sealed class WebTests : IDisposable
 
     public WebTests()
     {
-        _data = CoachData.Load(Path.Combine(_dir.FullName, "biblioteca"));
+        _data = CoachData.Load();
     }
 
     public void Dispose() => _dir.Delete(recursive: true);
@@ -36,39 +35,6 @@ public sealed class WebTests : IDisposable
             var (status, body) = Respond(request);
             return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
-    }
-
-    private sealed class FakeDialogs : IDialogs
-    {
-        public string? Text { get; set; }
-        public WebSettings? Account { get; set; }
-        public List<string> Errors { get; } = [];
-        public List<string> Opened { get; } = [];
-        public List<string> Confirmations { get; } = [];
-        public bool Accept { get; set; } = true;
-        public int AccountDialogs { get; private set; }
-
-        public string? PickFileToOpen() => null;
-        public string? PickFileToSave(string suggestedName) => null;
-        public bool AskSaveChanges(string name) => true;
-        public bool Confirm(string message)
-        {
-            Confirmations.Add(message);
-            return Accept;
-        }
-
-        public void ShowError(string message) => Errors.Add(message);
-        public string? AskText(string title, string message, string initial = "") => Text;
-        public WebSettings? EditWebAccount(WebSettings current) { AccountDialogs++; return Account; }
-        public void OpenUrl(string url) => Opened.Add(url);
-    }
-
-    private (MainViewModel Vm, FakeWeb Web, FakeDialogs Dialogs, WebAccount Account) Editor()
-    {
-        var web = new FakeWeb();
-        var dialogs = new FakeDialogs();
-        var account = new WebAccount(new HttpClient(web), SettingsPath);
-        return (new MainViewModel(_data, dialogs, account), web, dialogs, account);
     }
 
     [Fact]
@@ -109,121 +75,6 @@ public sealed class WebTests : IDisposable
     }
 
     [Fact]
-    public async Task Importa_una_BO_de_la_web_con_el_enlace_de_la_pagina()
-    {
-        var (vm, web, dialogs, _) = Editor();
-        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
-        web.Respond = _ => (HttpStatusCode.OK, new JsonObject
-        {
-            ["code"] = "k7m2xq",
-            ["author"] = "Ana",
-            ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(scouts with { Name = "Scouts de Ana" })),
-        }.ToJsonString());
-        dialogs.Text = "bocoach://import/k7m2xq";
-
-        await vm.ImportFromWebCommand.ExecuteAsync(null);
-
-        Assert.Equal("/api/bo/k7m2xq", web.Requests.Single().Path);
-        Assert.Equal("Scouts de Ana", vm.Editor?.Name);
-        Assert.Contains(vm.Entries, e => e.Name == "Scouts de Ana");
-        Assert.Contains("de Ana", vm.Status);
-        Assert.Empty(dialogs.Errors);
-        Assert.Empty(dialogs.Confirmations); // el código lo pegó el usuario: no hace falta preguntar
-    }
-
-    private static string ScoutsDeAna()
-    {
-        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
-        return new JsonObject
-        {
-            ["code"] = "k7m2xq",
-            ["author"] = "Ana",
-            ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(scouts with { Name = "Scouts de Ana" })),
-        }.ToJsonString();
-    }
-
-    // Un enlace bocoach://import/... lo dispara cualquier página web: antes de agregar la BO hay que preguntar.
-    [Fact]
-    public async Task Un_enlace_bocoach_pregunta_antes_de_agregar_y_no_agrega_si_se_dice_que_no()
-    {
-        var (vm, web, dialogs, _) = Editor();
-        web.Respond = _ => (HttpStatusCode.OK, ScoutsDeAna());
-        dialogs.Accept = false;
-        var before = vm.Entries.Count;
-
-        Assert.False(await vm.ImportFromLinkAsync("bocoach://import/k7m2xq", confirm: true));
-
-        var question = Assert.Single(dialogs.Confirmations);
-        Assert.Contains("Scouts de Ana", question);
-        Assert.Contains("Ana", question);
-        Assert.Equal(before, vm.Entries.Count);
-        Assert.DoesNotContain(vm.Entries, e => e.Name == "Scouts de Ana");
-        Assert.Empty(dialogs.Errors);
-    }
-
-    [Fact]
-    public async Task Un_enlace_bocoach_agrega_la_BO_si_se_confirma()
-    {
-        var (vm, web, dialogs, _) = Editor();
-        web.Respond = _ => (HttpStatusCode.OK, ScoutsDeAna());
-
-        Assert.True(await vm.ImportFromLinkAsync("bocoach://import/k7m2xq", confirm: true));
-
-        Assert.Single(dialogs.Confirmations);
-        Assert.Contains(vm.Entries, e => e.Name == "Scouts de Ana");
-        Assert.Equal("Scouts de Ana", vm.Editor?.Name);
-    }
-
-    [Fact]
-    public async Task Un_codigo_que_no_existe_se_explica()
-    {
-        var (vm, web, dialogs, _) = Editor();
-        web.Respond = _ => (HttpStatusCode.NotFound, """{ "error": "No hay ninguna build order con el código k7m2xq." }""");
-
-        Assert.False(await vm.ImportFromLinkAsync("k7m2xq"));
-
-        Assert.Contains("No hay ninguna build order", Assert.Single(dialogs.Errors));
-    }
-
-    [Fact]
-    public async Task Publicar_pide_la_cuenta_la_primera_vez_y_despues_reemplaza_la_misma_BO()
-    {
-        var (vm, web, dialogs, account) = Editor();
-        web.Respond = r => (r.Method == HttpMethod.Post ? HttpStatusCode.Created : HttpStatusCode.OK,
-            """{ "code": "k7m2xq", "url": "https://bo.example/bo/k7m2xq" }""");
-        dialogs.Account = new WebSettings { WebUrl = "https://bo.example", Token = Token };
-        vm.SelectedEntry = vm.Entries.First(e => e.Name.Contains("Scouts"));
-
-        await vm.PublishToWebCommand.ExecuteAsync(null);
-        await vm.PublishToWebCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, dialogs.AccountDialogs);
-        Assert.Equal([(HttpMethod.Post, "/api/bo", Token), (HttpMethod.Put, "/api/bo/k7m2xq", Token)], web.Requests);
-        Assert.Equal("k7m2xq", account.Settings.Published[vm.Editor!.ToBuildOrder().Id]);
-        Assert.Equal("https://bo.example/bo/k7m2xq", dialogs.Opened.Last());
-        Assert.Empty(dialogs.Errors);
-    }
-
-    [Fact]
-    public async Task Si_la_BO_se_borro_de_la_web_se_publica_de_nuevo()
-    {
-        var (vm, web, dialogs, account) = Editor();
-        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
-        vm.SelectedEntry = vm.Entries.First(e => e.Name.Contains("Scouts"));
-        account.RememberPublished(vm.Editor!.ToBuildOrder().Id, "zzzzzz");
-        web.Respond = r => r.Method == HttpMethod.Put
-            ? (HttpStatusCode.Forbidden, """{ "error": "No hay una BO tuya con el código zzzzzz." }""")
-            : (HttpStatusCode.Created, """{ "code": "k7m2xq", "url": "https://bo.example/bo/k7m2xq" }""");
-
-        await vm.PublishToWebCommand.ExecuteAsync(null);
-
-        Assert.Equal([HttpMethod.Put, HttpMethod.Post], web.Requests.Select(r => r.Method));
-        Assert.Equal("k7m2xq", account.Settings.Published[vm.Editor!.ToBuildOrder().Id]);
-        Assert.Empty(dialogs.Errors);
-    }
-
-    // BoCoach.exe --publish corre con la app abierta: la app no tiene que pisar los códigos que guardó.
-    [Fact]
     public void Lo_que_guarda_otra_instancia_no_se_pisa()
     {
         var app = new WebAccount(new HttpClient(), SettingsPath);
@@ -243,7 +94,7 @@ public sealed class WebTests : IDisposable
     public async Task Publicar_una_carpeta_publica_cada_BO_y_la_segunda_vez_las_reemplaza()
     {
         var folder = Directory.CreateDirectory(Path.Combine(_dir.FullName, "civs")).FullName;
-        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(CoachData.DataDir, "build_orders", "scouts_22p.json")));
+        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build_orders", "scouts_22p.json")));
         File.WriteAllText(Path.Combine(folder, "a.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-a", Name = "A" }));
         File.WriteAllText(Path.Combine(folder, "b.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-b", Name = "B" }));
         File.WriteAllText(Path.Combine(folder, "rota.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-rota", Name = "Rota", Steps = [] }));
@@ -275,24 +126,11 @@ public sealed class WebTests : IDisposable
         var output = new StringWriter();
 
         var result = await BulkPublish.RunAsync(_data, new WebAccount(new HttpClient(web), SettingsPath),
-            Path.Combine(CoachData.DataDir, "build_orders"), dryRun: false, output);
+            Path.Combine(AppContext.BaseDirectory, "build_orders"), dryRun: false, output);
 
         Assert.Equal(2, result);
         Assert.Empty(web.Requests);
         Assert.Contains("Cuenta de la web", output.ToString());
-    }
-
-    [Fact]
-    public async Task Una_BO_con_errores_no_se_publica()
-    {
-        var (vm, web, dialogs, account) = Editor();
-        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
-        vm.NewCommand.Execute(null); // BO nueva sin pasos: tiene errores
-
-        await vm.PublishToWebCommand.ExecuteAsync(null);
-
-        Assert.Empty(web.Requests);
-        Assert.Contains("errores", Assert.Single(dialogs.Errors));
     }
 
     [Fact]

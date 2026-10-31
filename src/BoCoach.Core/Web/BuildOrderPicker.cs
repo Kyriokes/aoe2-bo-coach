@@ -12,6 +12,19 @@ public interface IBuildOrderSource
     Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default);
 }
 
+/// <summary>Sin BO: sin cuenta y sin nada guardado (y en los tests).</summary>
+public sealed class EmptyBuildOrderSource : IBuildOrderSource
+{
+    public static EmptyBuildOrderSource Instance { get; } = new();
+
+    public WebBuildOrderList List => WebBuildOrderList.Empty;
+    public BuildOrder? Saved(string code) => null;
+    public IEnumerable<BuildOrder> AllSaved() => [];
+
+    public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) =>
+        Task.FromException<BuildOrder>(new WebLibraryException("Conectá tu cuenta para elegir BO."));
+}
+
 /// <summary>Cómo se elige la BO del coach: la sugerida en cada partida, o la que el jugador eligió de su lista.</summary>
 public enum BuildOrderMode
 {

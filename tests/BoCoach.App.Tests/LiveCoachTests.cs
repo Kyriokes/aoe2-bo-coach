@@ -13,7 +13,7 @@ public sealed class LiveCoachTests : IDisposable
 
     public LiveCoachTests()
     {
-        _data = CoachData.Load(_library.FullName);
+        _data = CoachData.Load();
     }
 
     public void Dispose() => _library.Delete(recursive: true);

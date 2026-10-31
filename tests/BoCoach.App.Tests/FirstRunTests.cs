@@ -14,7 +14,7 @@ public sealed class FirstRunTests : IDisposable
 
     public FirstRunTests()
     {
-        _data = CoachData.Load(_dir.FullName);
+        _data = CoachData.Load();
     }
 
     public void Dispose() => _dir.Delete(recursive: true);

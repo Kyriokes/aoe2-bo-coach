@@ -300,12 +300,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
     }
 
-    /// <summary>
-    /// De dónde salen las BO (la lista de la web y lo guardado). Sin asignar, la biblioteca local (hasta que se vaya).
-    /// </summary>
+    /// <summary>De dónde salen las BO (la lista de la web y lo guardado). Sin asignar, ninguna: el coach corre sin BO.</summary>
     public BuildOrderPicker? Picker { get; set; }
 
-    private BuildOrderPicker ActivePicker => Picker ??= new BuildOrderPicker(new LibrarySource(_data.Library), _data.CivStyles);
+    private BuildOrderPicker ActivePicker => Picker ??= new BuildOrderPicker(EmptyBuildOrderSource.Instance, _data.CivStyles);
 
     /// <summary>D6: id de la última BO con que corrió el coach (se guarda al empezar).</summary>
     public string LastBuildOrderId { get; private set; } = "";

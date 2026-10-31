@@ -44,7 +44,7 @@ En `src/BoCoach.App/BoCoach.App.csproj`, `<Version>`: sumá 1 al último número
 dotnet build src/BoCoach.App -c Release
 ```
 
-Release y no Debug: si el editor está abierto, el `BoCoach.exe` de Debug queda bloqueado. Después verificá que el ejecutable tenga sus datos al lado, en `src/BoCoach.App/bin/Release/net10.0-windows10.0.19041.0/data/`: `game_data`, `events.json`, `fonts`, `icons` y `build_orders`. Si agregaste un tipo de archivo de datos nuevo, tiene que estar en el `ItemGroup` de datos del csproj, con `ExcludeFromSingleFile` para la versión portable.
+Release y no Debug: si la app está abierta, el `BoCoach.exe` de Debug queda bloqueado. Después verificá que el ejecutable tenga sus datos al lado, en `src/BoCoach.App/bin/Release/net10.0-windows10.0.19041.0/data/`: `game_data`, `events.json`, `fonts`, `icons` y `hud_layout.json` (desde la v0.9.52 las BO no van con la app: vienen de la web). Si agregaste un tipo de archivo de datos nuevo, tiene que estar en el `ItemGroup` de datos del csproj, con `ExcludeFromSingleFile` para la versión portable.
 
 ## 5. Pushear la rama
 
