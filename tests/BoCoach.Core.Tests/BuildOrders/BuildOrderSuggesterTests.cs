@@ -49,9 +49,9 @@ public class BuildOrderSuggesterTests
     [Fact]
     public void El_estilo_de_una_BO_sale_de_sus_pasos()
     {
-        Assert.Equal("archers", BuildOrderSuggester.StyleOf(Archers));
-        Assert.Equal("scouts", BuildOrderSuggester.StyleOf(Scouts));
-        Assert.Equal("fast_castle", BuildOrderSuggester.StyleOf(FastCastle));
+        Assert.Equal("archers", BuildOrderStyle.Of(Archers));
+        Assert.Equal("scouts", BuildOrderStyle.Of(Scouts));
+        Assert.Equal("fast_castle", BuildOrderStyle.Of(FastCastle));
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class BuildOrderSuggesterTests
         // Las civs mesoamericanas no tienen establo: abren con águilas desde el cuartel.
         var eagles = BuildOrderSerializer.Parse(BuildOrderSerializer.Serialize(Scouts).Replace("\"scout_cavalry\"", "\"eagle_scout\""));
 
-        Assert.Equal("scouts", BuildOrderSuggester.StyleOf(eagles));
+        Assert.Equal("scouts", BuildOrderStyle.Of(eagles));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class BuildOrderSuggesterTests
     {
         var suggestion = BuildOrderSuggester.Suggest(Library, civ, [], null, Styles);
 
-        Assert.Equal(style, BuildOrderSuggester.StyleOf(suggestion!.BuildOrder));
+        Assert.Equal(style, BuildOrderStyle.Of(suggestion!.BuildOrder));
         Assert.Contains("típico de tu civ", suggestion.Reason);
     }
 

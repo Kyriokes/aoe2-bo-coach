@@ -183,7 +183,7 @@ internal static class CivGuides
         var bo = best.Import.BuildOrder;
         var civName = data.Civ(civ).Names.TryGetValue("es", out var es) ? es : civ;
         var tags = new List<string> { "importada", "buildorderguide" };
-        if (BuildOrderSuggester.StyleOf(bo) is { } style)
+        if (BuildOrderStyle.Of(bo) is { } style)
             tags.Add(style);
         if (kind != "propia")
             tags.Add("genérica");
@@ -272,7 +272,7 @@ internal static class CivGuides
         {
             if (step is { Do: StepAction.Research, What: "castle_age" })
                 return "fast_castle";
-            if (step.Do == StepAction.Train && step.What is { } unit && BuildOrderSuggester.StyleOf(new BuildOrder { Steps = [step] }) is { } style)
+            if (step.Do == StepAction.Train && step.What is { } unit && BuildOrderStyle.Of(new BuildOrder { Steps = [step] }) is { } style)
                 return style;
         }
         return attributes.Contains("fastCastle") ? "fast_castle" : null;

@@ -149,23 +149,6 @@ public sealed record BuildOrderSuggestion(BuildOrder BuildOrder, string Reason, 
 /// </summary>
 public static class BuildOrderSuggester
 {
-    /// <summary>
-    /// El estilo de una BO por sus pasos: la última unidad militar que entrena (arqueros, exploradores, hombres de
-    /// armas) o, si no entrena ninguna y clica Castillos, "fast_castle". null si no se entiende.
-    /// </summary>
-    public static string? StyleOf(BuildOrder bo)
-    {
-        var military = bo.Steps.LastOrDefault(s => s.Do == StepAction.Train && s.What is { } w && w != "villager")?.What;
-        return military switch
-        {
-            "archer" or "skirmisher" => "archers",
-            "scout_cavalry" or "eagle_scout" => "scouts", // las águilas son los exploradores de las civs mesoamericanas
-            "militia" or "spearman" => "maa",
-            null when bo.Steps.Any(s => s is { Do: StepAction.Research, What: "castle_age" }) => "fast_castle",
-            _ => null,
-        };
-    }
-
     private static readonly IReadOnlyDictionary<string, string> StyleNames = new Dictionary<string, string>
     {
         ["archers"] = "arqueros",
@@ -282,7 +265,7 @@ public static class BuildOrderSuggester
                 why.Add($"para {c.Match.Map}");
             }
         }
-        var style = StyleOf(bo);
+        var style = BuildOrderStyle.Of(bo);
         if (style is not null && c.Mine.Count > 0 && c.Mine.Contains(style))
         {
             score += c.Mine[0] == style ? 3 : 2;
