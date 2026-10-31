@@ -16,6 +16,8 @@ public sealed partial class HotkeysViewModel
         Rows = HotkeyActions.All.Where(a => includeDeveloper || !a.Developer).Select(a => new HotkeyRowViewModel(this, a)).ToList();
         map.Changed += Refresh;
         Refresh();
+        foreach (var row in Rows.Where(r => !binder.IsRegistered(r.Id)))
+            row.Stop(map.Get(row.Id) is null ? "Sin atajo (estaba repetido en settings.json)" : $"Otro programa ya usa {map.Text(row.Id)}", true);
     }
 
     public IReadOnlyList<HotkeyRowViewModel> Rows { get; }
@@ -82,6 +84,13 @@ public sealed partial class HotkeysViewModel
 
     internal void Apply(HotkeyRowViewModel row, HotkeyBinding? binding)
     {
+        // "Restaurar" con un renglón esperando la combinación: primero vuelven los atajos que se soltaron.
+        if (Rows.Any(r => r.Capturing))
+        {
+            _binder.RegisterAll();
+            foreach (var other in Rows.Where(r => r.Capturing))
+                other.Stop(null, false);
+        }
         var target = binding ?? row.Action.Default;
         var message = _binder.Change(row.Id, binding) switch
         {

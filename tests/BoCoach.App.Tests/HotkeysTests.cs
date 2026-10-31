@@ -120,11 +120,12 @@ public sealed class HotkeysTests
     private sealed class FakeRegistrar(params string[] taken) : IHotkeyRegistrar
     {
         private int _next = 1;
+        public List<string> Taken { get; } = [.. taken];
         public Dictionary<int, string> Registered { get; } = [];
 
         public int? Register(HotkeyBinding binding, Action action)
         {
-            if (taken.Contains(binding.Storage) || Registered.ContainsValue(binding.Storage))
+            if (Taken.Contains(binding.Storage) || Registered.ContainsValue(binding.Storage))
                 return null;
             Registered[_next] = binding.Storage;
             return _next++;
@@ -291,5 +292,52 @@ public sealed class HotkeysTests
         vm.CancelCapture();
         Assert.Equal(12, registrar.Registered.Count);
         Assert.Equal(12, registrar.Registered.Values.Distinct().Count());
+    }
+
+    // Revisión: "Restaurar" en el renglón que esperaba la combinación dejaba todos los atajos sueltos.
+    [Fact]
+    public void Restaurar_mientras_espera_vuelve_a_tomar_los_atajos()
+    {
+        var registrar = new FakeRegistrar();
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        var vm = new HotkeysViewModel(binder, map, includeDeveloper: true);
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+        advance.StartCaptureCommand.Execute(null);
+        advance.ResetCommand.Execute(null);
+        Assert.Equal(12, registrar.Registered.Count);
+        Assert.False(advance.Capturing);
+    }
+
+    // Revisión: una de fábrica que tenía otro programa al abrir se ve en la ventana y "Restaurar" la vuelve a intentar.
+    [Fact]
+    public void La_que_no_se_registro_al_abrir_se_avisa_y_restaurar_la_reintenta()
+    {
+        var registrar = new FakeRegistrar("Ctrl+Alt+Right");
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        var vm = new HotkeysViewModel(binder, map, includeDeveloper: true);
+        var advance = vm.Rows.Single(r => r.Id == "advance");
+        Assert.Equal("Otro programa ya usa Ctrl+Alt+→", advance.Message);
+
+        advance.ResetCommand.Execute(null);
+        Assert.Equal("Otro programa ya usa Ctrl+Alt+→", advance.Message);
+        registrar.Taken.Clear(); // el otro programa la soltó
+        advance.ResetCommand.Execute(null);
+        Assert.Null(advance.Message);
+        Assert.Contains("Ctrl+Alt+Right", registrar.Registered.Values);
+    }
+
+    // Revisión: una clave repetida en settings.json (editado a mano) tiraba ArgumentException y la app no abría.
+    [Fact]
+    public void Una_clave_repetida_en_settings_no_rompe_la_app()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"bocoach-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """{ "hotkeys": { "advance": "Ctrl+Alt+F1", "advance": "Ctrl+Alt+F2" } }""");
+        var settings = CoachSettings.Load(path);
+        Assert.Empty(settings.Hotkeys);
+        File.Delete(path);
     }
 }

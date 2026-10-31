@@ -55,7 +55,8 @@ public sealed class HotkeyBinder(IHotkeyRegistrar registrar, HotkeyMap map, IRea
             LastConflict = other;
             return ChangeResult.UsedByOther;
         }
-        if (map.Get(id) != target && Active.Contains(action))
+        // También si ya es la del mapa pero no quedó registrada (al abrir la tenía otro programa): se vuelve a intentar.
+        if (Active.Contains(action) && (map.Get(id) != target || !_ids.ContainsKey(id)))
         {
             var old = map.Get(id);
             if (_ids.Remove(id, out var oldId))
@@ -75,6 +76,9 @@ public sealed class HotkeyBinder(IHotkeyRegistrar registrar, HotkeyMap map, IRea
             map.Set(id, target);
         return ChangeResult.Done;
     }
+
+    /// <summary>La acción tiene su combinación registrada en Windows.</summary>
+    public bool IsRegistered(string id) => _ids.ContainsKey(id);
 
     /// <summary>
     /// Suelta todos los atajos mientras la ventana espera una combinación nueva: una ya registrada no le llegaría (la
