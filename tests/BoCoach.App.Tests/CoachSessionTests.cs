@@ -135,6 +135,16 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal(1, stopped);
     }
 
+    // Parte 4: sin ninguna BO (sin cuenta ni internet) el coach arranca igual, con los recordatorios.
+    [Fact]
+    public void Sin_BO_el_coach_arranca_igual()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        session.Start(BuildOrder.None, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        Assert.True(session.IsRunning);
+        session.Stop();
+    }
+
     // Revisión: con --replay la grabación sola capturaba el escritorio de verdad. Solo graba con la pantalla en vivo.
     [Fact]
     public void Con_una_grabacion_el_coach_no_esta_en_vivo()

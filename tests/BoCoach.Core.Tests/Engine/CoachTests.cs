@@ -386,6 +386,22 @@ public class CoachTests
     }
 
     [Fact]
+    public void Sin_BO_quedan_los_recordatorios_en_la_tarjeta_compacta()
+    {
+        // Parte 4: si la app no tiene ninguna BO (sin cuenta ni internet), el coach sigue con lo que no depende de ella.
+        Assert.True(BuildOrder.None.IsNone);
+        var coach = new Coach(BuildOrder.None, TestData.GameData, TestData.Events, economy: new EconomySettings { MaxVillagers = 30 });
+
+        coach.Update(At(300, 200, villagers: 21));
+        var view = coach.Update(At(360, 200, villagers: 21));
+
+        Assert.True(view.NeedsHouse);
+        Assert.True(view.TownCenterReminder);
+        Assert.True(view.Compact);
+        Assert.Null(view.Current);
+    }
+
+    [Fact]
     public void Recuerda_el_centro_urbano_parado_solo_debajo_del_maximo_de_aldeanos()
     {
         var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Research, What = "loom" }] };

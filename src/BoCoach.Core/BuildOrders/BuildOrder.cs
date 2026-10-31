@@ -62,6 +62,17 @@ public sealed record BuildOrder
     /// subir <see cref="SchemaVersion"/>; null es una BO manual.
     /// </summary>
     public AssistedPlan? Assisted { get; set; }
+
+    /// <summary>
+    /// Sin BO (la app no tiene ninguna: sin cuenta ni internet). El coach la toma como terminada y sigue con lo que no
+    /// depende de la BO: casa, centro urbano parado, inactivos, tecnologías y la GD por lo que hay.
+    /// </summary>
+    public static BuildOrder None => new() { Name = NoneName };
+
+    private const string NoneName = "Sin BO";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsNone => Steps.Count == 0 && Name == NoneName;
 }
 
 public sealed record Step
