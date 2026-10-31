@@ -68,8 +68,11 @@ public partial class App : Application
             return;
         }
 
-        // Las capturas usan ajustes temporales (con --dev, el modo desarrollador prendido).
-        var window = new MainWindow(data, shotDir is null ? null : Path.Combine(shotDir, "settings.json"));
+        // Las capturas usan ajustes, cuenta y caché temporales (con --dev, el modo desarrollador prendido; con --cache
+        // <carpeta>, esa caché de BO, para ver la lista sin la web).
+        if (shotDir is not null && Argument(args, "--cache") is { } cacheSource && Directory.Exists(cacheSource))
+            CopyFolder(cacheSource, Path.Combine(shotDir, "cache"));
+        var window = new MainWindow(data, shotDir is null ? null : Path.Combine(shotDir, "settings.json"), shotDir);
         if (screenshot is not null && args.Contains("--dev"))
             DevMode.Instance.IsOn = true;
         MainWindow = window;
@@ -79,7 +82,7 @@ public partial class App : Application
             if (Argument(args, "--replay") is { } replay)
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             if (importLink is not null)
-                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.ViewModel.ImportFromLinkAsync(importLink, confirm: true));
+                Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => _ = window.BuildOrders.HandleLinkAsync(importLink));
             else if (Argument(args, "--replay") is null)
                 Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, window.ShowFirstRunIfNeeded);
             _instance!.Listen(message => Dispatcher.BeginInvoke(async () =>
@@ -88,7 +91,7 @@ public partial class App : Application
                     window.WindowState = WindowState.Normal;
                 window.Activate();
                 if (message != ActivateMessage)
-                    await window.ViewModel.ImportFromLinkAsync(message, confirm: true);
+                    await window.BuildOrders.HandleLinkAsync(message);
             }));
             return;
         }
@@ -108,7 +111,7 @@ public partial class App : Application
             CaptureCalibrationAndExit(screenshot, Argument(args, "--background"));
             return;
         }
-        CaptureAndExit(window, data, screenshot, Argument(args, "--bo"), Argument(args, "--open"), Argument(args, "--select"));
+        CaptureAndExit(window, screenshot);
     }
 
     /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>
@@ -231,15 +234,12 @@ public partial class App : Application
 
     /// <summary>
     /// Modo de prueba sin el juego: corre el coach en vivo sobre una grabación, con el overlay en pantalla.
-    /// Uso: BoCoach.exe --replay carpeta [--bo nombre] [--speed 4] [--stats uso.csv] (CPU y RAM cada 2 s).
+    /// Uso: BoCoach.exe --replay carpeta [--bo ruta.json] [--speed 4] [--stats uso.csv] (CPU y RAM cada 2 s). Sin --bo,
+    /// el coach corre sin BO.
     /// </summary>
     private static void StartReplay(MainWindow window, string folder, string? bo, string? speed, string? stats)
     {
-        var vm = window.ViewModel;
-        if (bo is not null)
-            vm.SelectedEntry = vm.Entries.FirstOrDefault(entry => entry.Name.Contains(bo, StringComparison.OrdinalIgnoreCase)) ?? vm.SelectedEntry;
-        if (vm.SelectedEntry?.BuildOrder is not { } buildOrder)
-            return;
+        var buildOrder = bo is not null && File.Exists(bo) ? BuildOrderSerializer.Load(bo) : BuildOrder.None;
 
         var factor = double.TryParse(speed, NumberStyles.Float, CultureInfo.InvariantCulture, out var s) ? s : 1;
         window.Coach.Start(buildOrder, new RecordedFrames(RecordedSession.Load(folder), factor));
@@ -354,11 +354,10 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Modo de verificación: abre la ventana fuera de la pantalla, opcionalmente con una BO y un paso elegidos,
-    /// la guarda como PNG y cierra.
-    /// Uso: BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número].
+    /// Modo de verificación: abre la ventana fuera de la pantalla, la guarda como PNG y cierra.
+    /// Uso: BoCoach.exe --screenshot salida.png [--cache carpeta] [--dev].
     /// </summary>
-    private void CaptureAndExit(MainWindow window, CoachData data, string path, string? bo, string? open, string? select)
+    private void CaptureAndExit(MainWindow window, string path)
     {
         window.WindowStartupLocation = WindowStartupLocation.Manual;
         window.Left = -30000;
@@ -366,23 +365,21 @@ public partial class App : Application
         window.ShowInTaskbar = false;
         window.Show();
 
-        var vm = window.ViewModel;
-        if (open is not null)
-        {
-            var imported = data.Library.Import(open);
-            vm.Reload();
-            vm.SelectedEntry = vm.Entries.FirstOrDefault(entry => entry.BuildOrder?.Id == imported.Id);
-        }
-        else if (bo is not null)
-            vm.SelectedEntry = vm.Entries.FirstOrDefault(entry => entry.Name.Contains(bo, StringComparison.OrdinalIgnoreCase)) ?? vm.SelectedEntry;
-        if (int.TryParse(select, out var n) && vm.Editor is { } editor && n >= 1 && n <= editor.Steps.Count)
-            editor.SelectedStep = editor.Steps[n - 1];
-
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
             Render(window, path);
             Shutdown(0);
         });
+    }
+
+    private static void CopyFolder(string from, string to)
+    {
+        foreach (var file in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(to, Path.GetRelativePath(from, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
     }
 
     /// <summary>Lo que manda una segunda instancia sin enlace: solo que se muestre la ventana.</summary>

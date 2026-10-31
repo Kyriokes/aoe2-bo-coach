@@ -22,6 +22,7 @@
         <local:StarConverter x:Key="Star" />
         <local:NotEmptyToVisibilityConverter x:Key="NotEmptyToVisibility" />
         <local:NullToVisibilityConverter x:Key="NullToVisibility" />
+        <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
 
         <!-- Estilos base -->
         <Style TargetType="Window">

@@ -297,9 +297,11 @@ public sealed class CoachSessionTests : IDisposable
         if (Vision.Ocr.OcrReader.TryCreate() is null)
             return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
         var host = new FakeHost();
+        // A mano: la sugerida se muestra con su atajo (en Automática el coach cambia solo, ver el test siguiente).
         using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
             PlayerName = "Kyriokes",
+            BoMode = BuildOrderMode.Manual,
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
         for (var i = 0; i < 6; i++)
@@ -317,6 +319,28 @@ public sealed class CoachSessionTests : IDisposable
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
+    }
+
+    // Parte 4: en Automática, en la pantalla de carga el coach usa la mejor de tu lista sin esperar el atajo, y el
+    // atajo vuelve a la anterior.
+    [Fact]
+    public async Task En_automatica_la_pantalla_de_carga_cambia_a_la_mejor_y_el_atajo_vuelve()
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"))
+        {
+            PlayerName = "Kyriokes",
+        };
+        session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
+        for (var i = 0; i < 6 && session.LiveCoach!.BuildOrder.Name == Scouts.Name; i++)
+            await session.LiveCoach!.StepAsync();
+
+        Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
+        Assert.StartsWith("Cambié a Fast Men-at-Arms (mejorada)", session.Overlay!.BoSuggestion);
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
     }
 
     // Con la BO terminada el panel queda en la tarjeta chica, y sin nada que hacer no se ve (pedido del usuario,
@@ -494,13 +518,16 @@ public sealed class CoachSessionTests : IDisposable
     public void Sin_BO_elegida_no_arranca_y_lo_dice()
     {
         var host = new FakeHost();
-        var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException("no debería capturar"));
+        var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException("no debería capturar"))
+        {
+            BoMode = BuildOrderMode.Manual,
+        };
 
         session.StartStopCommand.Execute(null);
 
         Assert.False(session.IsRunning);
         Assert.Null(host.Shown);
-        Assert.Contains("Elegí una build order", session.Status);
+        Assert.Contains("Elegí una BO de tu lista", session.Status);
     }
 
     [Fact]

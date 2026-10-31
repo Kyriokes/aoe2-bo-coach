@@ -1,25 +1,24 @@
 using System.Diagnostics;
+using System.IO;
+using System.Net.Http;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Threading;
 using BoCoach.App.Calibration;
 using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
-using BoCoach.App.Editor;
 using BoCoach.App.FirstRun;
 using BoCoach.App.Hotkeys;
 using BoCoach.App.Overlay;
 using BoCoach.App.Web;
+using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
-using Microsoft.Win32;
 
 namespace BoCoach.App;
 
-public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
+public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoachHost
 {
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly ScreenCapture _screen = new();
@@ -32,20 +31,26 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private bool _calibrating;
     private readonly CoachData _data;
 
+    // Una BO de la web pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
+    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+
     /// <param name="settingsPath">Dónde están los ajustes; las capturas de prueba usan unos temporales para no tocar los del usuario.</param>
-    public MainWindow(CoachData data, string? settingsPath = null)
+    /// <param name="userDir">Dónde están la cuenta de la web (web.json) y la caché de BO; por defecto %APPDATA%\BoCoach.</param>
+    public MainWindow(CoachData data, string? settingsPath = null, string? userDir = null)
     {
         InitializeComponent();
         _data = data;
-        ViewModel = new MainViewModel(data, this);
-        DataContext = ViewModel;
+        var web = new WebAccount(SharedHttp, userDir is null ? null : Path.Combine(userDir, "web.json"));
+        var cache = new BuildOrderCache(Path.Combine(userDir ?? CoachData.UserDir, "cache"), () => web.Client, () => web.Settings.Token);
+        BuildOrders = new BuildOrdersViewModel(cache, web, this, data.GameData);
+        DataContext = BuildOrders;
         // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
         Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English,
             gameData: () => data.GameData, playerName: () => Coach?.PlayerName);
         ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual
         // y el coach la vuelve a intentar cada tanto hasta encontrar el HUD (arrancó en el menú del juego).
-        Coach = new CoachSessionViewModel(data, this, () => ViewModel.SelectedEntry?.BuildOrder, () =>
+        Coach = new CoachSessionViewModel(data, this, () => BuildOrders.SelectedBuildOrder, () =>
         {
             var calibrated = Tools.TryAutoCalibrate();
             return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated);
@@ -63,13 +68,19 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         CursorRemindersBox.DataContext = Coach;
         AutoStartBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
-        ViewModel.GameCiv = () => Coach.GameCiv == CoachSessionViewModel.BoCiv ? null : Coach.GameCiv;
+        ModeBox.DataContext = Coach;
+        Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
         Coach.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(CoachSessionViewModel.GameCiv))
-                ViewModel.GameCivChanged();
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))
-                ViewModel.Status = Coach.Status;
+                BuildOrders.Status = Coach.Status;
+        };
+        // La lista se pide al abrir la app (sin internet, la guardada) y se marca la última usada.
+        Loaded += async (_, _) =>
+        {
+            BuildOrders.Select(Coach.LastBuildOrderId);
+            await BuildOrders.RefreshAsync();
+            BuildOrders.Select(Coach.LastBuildOrderId);
         };
 
         _tick.Tick += (_, _) =>
@@ -91,7 +102,6 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
                 _indicator.Hide();
         };
         SourceInitialized += (_, _) => RegisterHotkeys();
-        Closing += (_, _) => ViewModel.LeaveCurrent();
         Closed += (_, _) =>
         {
             _tick.Stop();
@@ -102,7 +112,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         };
     }
 
-    public MainViewModel ViewModel { get; }
+    public BuildOrdersViewModel BuildOrders { get; }
     public CaptureToolsViewModel Tools { get; }
     public CoachSessionViewModel Coach { get; }
 
@@ -148,7 +158,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         if (!_versionClicks.Click(DateTime.Now))
             return;
         DevMode.Instance.IsOn = !DevMode.Instance.IsOn;
-        ViewModel.Status = DevMode.Instance.IsOn ? "Modo desarrollador prendido." : "Modo desarrollador apagado.";
+        BuildOrders.Status = DevMode.Instance.IsOn ? "Modo desarrollador prendido." : "Modo desarrollador apagado.";
     }
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e) => ShowHotkeys();
@@ -205,7 +215,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
                 binder.IncludeDeveloper = DevMode.Instance.IsOn;
         };
         var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? $"{HotkeyActions.Find(id)?.Name} (sin atajo)").ToList();
-        ViewModel.Status = missing.Count > 0
+        BuildOrders.Status = missing.Count > 0
             ? $"Otro programa ya usa {string.Join(", ", missing)}; usá los botones o cambialos en Atajos."
             : $"Atajos listos, también desde el juego: {map.Text("start_stop")} empieza el coach y {map.Text("advance")} da por hecho el paso (todos en Atajos).";
     }
@@ -301,79 +311,12 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     public void ShowMessage(string title, string text, bool warning) =>
         MessageBox.Show(this, text, title, MessageBoxButton.OK, warning ? MessageBoxImage.Warning : MessageBoxImage.Information);
 
-    // ---- Reordenar pasos arrastrando ----
-
-    private void DragHandle_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed && sender is FrameworkElement { DataContext: StepViewModel step })
-        {
-            ViewModel.Editor!.SelectedStep = step;
-            DragDrop.DoDragDrop(StepList, step, DragDropEffects.Move);
-        }
-    }
-
-    private void StepList_DragOver(object sender, DragEventArgs e)
-    {
-        e.Effects = e.Data.GetDataPresent(typeof(StepViewModel)) ? DragDropEffects.Move : DragDropEffects.None;
-        e.Handled = true;
-    }
-
-    private void StepList_Drop(object sender, DragEventArgs e)
-    {
-        if (ViewModel.Editor is not { } editor || e.Data.GetData(typeof(StepViewModel)) is not StepViewModel dragged)
-            return;
-        var target = FindAncestor<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as StepViewModel;
-        var to = target is null ? editor.Steps.Count - 1 : editor.Steps.IndexOf(target);
-        editor.MoveStep(editor.Steps.IndexOf(dragged), to);
-        editor.SelectedStep = dragged;
-    }
-
-    private static T? FindAncestor<T>(DependencyObject? node) where T : DependencyObject
-    {
-        while (node is not null and not T)
-            node = node is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
-        return node as T;
-    }
-
     // ---- Diálogos ----
-
-    public string? PickFileToOpen()
-    {
-        var dialog = new OpenFileDialog { Filter = "Build order (*.json)|*.json", Title = "Importar build order" };
-        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
-    }
-
-    public string? PickFileToSave(string suggestedName)
-    {
-        var invalid = System.IO.Path.GetInvalidFileNameChars();
-        var name = new string(suggestedName.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
-        var dialog = new SaveFileDialog { Filter = "Build order (*.json)|*.json", FileName = name, Title = "Exportar build order" };
-        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
-    }
-
-    public bool AskSaveChanges(string name) =>
-        MessageBox.Show(this, $"\"{name}\" tiene cambios sin guardar. ¿Guardarlos?", "Cambios sin guardar",
-            MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 
     public bool Confirm(string message) =>
         MessageBox.Show(this, message, "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 
-    public void ShowError(string message) =>
-        MessageBox.Show(this, message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-
     public string? AskText(string title, string message, string initial = "") => TextPrompt.Ask(this, title, message, initial);
-
-    public string? ClipboardText()
-    {
-        try
-        {
-            return Clipboard.ContainsText() ? Clipboard.GetText() : null;
-        }
-        catch (System.Runtime.InteropServices.ExternalException)
-        {
-            return null; // otro programa tiene el portapapeles abierto
-        }
-    }
 
     public WebSettings? EditWebAccount(WebSettings current)
     {
@@ -381,7 +324,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         return window.ShowDialog() == true ? window.Result : null;
     }
 
-    private void Support_Click(object sender, RoutedEventArgs e) => OpenUrl(ViewModel.SupportUrl);
+    private void Support_Click(object sender, RoutedEventArgs e) => OpenUrl(BuildOrders.SupportUrl);
 
     /// <summary>Solo direcciones http(s): las arma la web, pero no se abre cualquier cosa.</summary>
     public void OpenUrl(string url)

@@ -4,33 +4,19 @@
         xmlns:hotkeys="clr-namespace:BoCoach.App.Hotkeys"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:editor="clr-namespace:BoCoach.App.Editor"
+        xmlns:coaching="clr-namespace:BoCoach.App.Coaching"
         xmlns:app="clr-namespace:BoCoach.App"
         mc:Ignorable="d"
-        d:DataContext="{d:DesignInstance editor:MainViewModel}"
+        d:DataContext="{d:DesignInstance coaching:BuildOrdersViewModel}"
         Title="{x:Static app:AppVersion.WindowTitle}"
-        Width="1440" Height="880" MinWidth="1100" MinHeight="640"
+        Width="1280" Height="820" MinWidth="1000" MinHeight="560"
         FontFamily="Segoe UI" FontSize="13"
         Background="{StaticResource Background}" Foreground="{StaticResource Text}">
-
-    <Window.InputBindings>
-        <KeyBinding Modifiers="Ctrl" Key="S" Command="{Binding SaveCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="N" Command="{Binding NewCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="D1" Command="{Binding Editor.AddVillagersCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="D2" Command="{Binding Editor.AddBuildCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="D3" Command="{Binding Editor.AddResearchCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="D4" Command="{Binding Editor.AddMoveCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="D" Command="{Binding Editor.DuplicateStepCommand}" />
-        <KeyBinding Modifiers="Ctrl" Key="Delete" Command="{Binding Editor.RemoveStepCommand}" />
-        <KeyBinding Modifiers="Alt" Key="Up" Command="{Binding Editor.MoveUpCommand}" />
-        <KeyBinding Modifiers="Alt" Key="Down" Command="{Binding Editor.MoveDownCommand}" />
-    </Window.InputBindings>
 
     <DockPanel>
         <!-- Barra de estado -->
         <Border DockPanel.Dock="Bottom" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="12,5">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Right" Foreground="{StaticResource Muted}" Text="{Binding LibraryPath, StringFormat=Biblioteca: {0}}" />
                 <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
             </DockPanel>
         </Border>
@@ -134,7 +120,7 @@
         </Border>
 
         <!-- Lo que ve el coach: todo lo leído en la última captura, mientras el coach corre -->
-        <Border x:Name="LivePanel" DockPanel.Dock="Top" Background="#1E1A16" BorderBrush="#5C5046" BorderThickness="0,0,0,1" Padding="12,8"
+        <Border x:Name="LivePanel" DockPanel.Dock="Bottom" Background="#1E1A16" BorderBrush="#5C5046" BorderThickness="0,1,0,0" Padding="12,8"
                 Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}">
             <DockPanel DataContext="{Binding Live}">
                 <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="Últimos eventos leídos del log"
@@ -200,373 +186,54 @@
             </DockPanel>
         </Border>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="260" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="430" />
-            </Grid.ColumnDefinitions>
-
-            <!-- ===== Biblioteca ===== -->
-            <Border Grid.Column="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,0,1,0" Padding="12">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="BIBLIOTECA" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
-                    <TextBox DockPanel.Dock="Top" x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Buscar por nombre, civ, tags o descripción" Margin="0,0,0,8" />
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8"
-                               ToolTip="Mostrar las BO de una civ (y las que sirven para cualquiera). &quot;La de la partida&quot; es la civ elegida arriba">
-                        <TextBlock Text="Civ" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox ItemsSource="{Binding CivFilterOptions}" SelectedItem="{Binding CivFilter}"
-                                  AutomationProperties.Name="Filtrar la biblioteca por civ" />
-                    </DockPanel>
-                    <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                        <Button Content="Nueva" Command="{Binding NewCommand}" ToolTip="Ctrl+N" Margin="0,0,6,6" />
-                        <Button Content="Importar…" Command="{Binding ImportCommand}" Margin="0,0,6,6"
-                                ToolTip="Un archivo de BO: de esta app o exportado de buildorderguide.com" />
-                        <Button Content="Pegar BO" Command="{Binding PasteCommand}" Margin="0,0,6,6"
-                                ToolTip="La BO copiada: por ejemplo, el texto que da Exportar en buildorderguide.com" />
-                        <Button Content="Desde la web…" Command="{Binding ImportFromWebCommand}" Margin="0,0,6,6"
-                                ToolTip="Importar una BO de la biblioteca web con su código" />
-                        <Button Content="A la papelera" Command="{Binding TrashCommand}" Margin="0,0,6,6" />
-                        <Button Content="Cuenta de la web…" Command="{Binding WebAccountSettingsCommand}" Margin="0,0,6,6"
-                                ToolTip="Dirección de la web, token para publicar y enlaces bocoach://" />
-                    </WrapPanel>
-                    <ListBox ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" BorderThickness="0"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="2,4">
-                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Foreground="{StaticResource Muted}" FontSize="11" TextTrimming="CharacterEllipsis"
-                                               Text="{Binding BuildOrder.Civ, StringFormat=Civ: {0}}" />
-                                    <TextBlock Foreground="{StaticResource Danger}" FontSize="11" TextWrapping="Wrap"
-                                               Text="{Binding Error}" Visibility="{Binding Error, Converter={StaticResource NotEmptyToVisibility}}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </DockPanel>
-            </Border>
-
-            <!-- ===== Sin BO abierta ===== -->
-            <TextBlock Grid.Column="1" Grid.ColumnSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       Foreground="{StaticResource Muted}" FontSize="15" TextAlignment="Center"
-                       Visibility="{Binding Editor, Converter={StaticResource NullToVisibility}}"
-                       Text="Elegí una build order de la biblioteca o creá una nueva con Ctrl+N." />
-
-            <!-- ===== Editor: encabezado y pasos ===== -->
-            <DockPanel Grid.Column="1" Margin="16,12,16,12" DataContext="{Binding Editor}"
-                       Visibility="{Binding Converter={StaticResource NotEmptyToVisibility}}">
-                <StackPanel DockPanel.Dock="Top">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="● sin guardar" Foreground="{StaticResource Warning}" VerticalAlignment="Center" Margin="0,0,10,0"
-                                       Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
-                            <Button Content="Guardar" Style="{StaticResource PrimaryButton}" ToolTip="Ctrl+S"
-                                    Command="{Binding DataContext.SaveCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                            <Button Content="Duplicar BO" Command="{Binding DataContext.DuplicateCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                            <Button Content="Exportar…" Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                            <Button Content="Publicar en la web" Margin="0" Command="{Binding DataContext.PublishToWebCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    ToolTip="Publica (o reemplaza) esta BO en la biblioteca web con tu cuenta" />
-                        </StackPanel>
-                        <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="SemiBold"
-                                 BorderThickness="0,0,0,1" Background="Transparent" Margin="0,0,16,0" ToolTip="Nombre de la build order" />
-                    </DockPanel>
-
-                    <Grid Margin="0,10,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Civ" Style="{StaticResource FieldLabel}" />
-                        <ComboBox Grid.Column="1" IsEditable="True" ItemsSource="{Binding CivOptions}"
-                                  Text="{Binding Civ, UpdateSourceTrigger=PropertyChanged}"
-                                  ToolTip="'any' o la civ: la vista previa usa sus bonificaciones (recolección, costos, arranque)" />
-                        <!-- D8: el mapa dice qué fuentes hay y si hay agua (data/maps.json) -->
-                        <TextBlock Grid.Column="2" Text="Mapa" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                        <ComboBox Grid.Column="3" ItemsSource="{Binding MapOptions}" SelectedValuePath="Value" SelectedValue="{Binding Map}"
-                                  AutomationProperties.Name="Mapa de la build order"
-                                  ToolTip="Para qué mapa es: el validador avisa si usa una fuente o el muelle que el mapa no tiene" />
-                        <TextBlock Grid.Column="4" Text="Autor" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                        <TextBox Grid.Column="5" Text="{Binding Author, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Grid.Column="6" Text="Tags" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                        <TextBox Grid.Column="7" Text="{Binding TagsText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Separados por coma" />
-                    </Grid>
-                    <TextBox Margin="0,8,0,0" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap"
-                             AcceptsReturn="True" MinHeight="44" MaxHeight="80" VerticalScrollBarVisibility="Auto" ToolTip="Descripción" />
-
-                    <!-- D3: de qué se ven los pasos (la BO o una rama) -->
-                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                        <TextBlock Text="Pasos de" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
-                        <ComboBox Width="230" ItemsSource="{Binding BranchOptions}" SelectedValuePath="Value" SelectedValue="{Binding SelectedBranch}"
-                                  AutomationProperties.Name="Pasos de"
-                                  ToolTip="Ramas: pasos que el coach pone primero cuando ve una señal de la partida (el rival hizo clic en una edad, te atacan, perdiste aldeanos). Una vez por partida." />
-                        <StackPanel Orientation="Horizontal" Visibility="{Binding IsBranch, Converter={StaticResource BoolToVisibility}}">
-                            <TextBlock Text="antes de" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                            <TextBox Width="54" Text="{Binding BranchBeforeText, UpdateSourceTrigger=PropertyChanged}" ToolTip="mm:ss; vacío = en cualquier momento" />
-                            <TextBlock Text="Nota" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                            <TextBox Width="260" Text="{Binding BranchNote, UpdateSourceTrigger=PropertyChanged}" ToolTip="Qué hacer y por qué (sale en el overlay)" />
-                        </StackPanel>
+        <!-- ===== Build order: tu cuenta de la web, cómo se elige y tu lista (parte 4) ===== -->
+        <Border x:Name="BuildOrdersPanel" Background="{StaticResource Panel}" Padding="16,12">
+            <DockPanel LastChildFill="False">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Conectar cuenta" Command="{Binding ConnectCommand}" Margin="0,0,6,0"
+                                Visibility="{Binding Connected, Converter={StaticResource InverseBoolToVisibility}}"
+                                ToolTip="Abre Mi cuenta en la web: ahí &quot;Conectar la app&quot; trae tu cuenta acá" />
+                        <Button Content="Cuenta…" Command="{Binding AccountSettingsCommand}" Margin="0"
+                                ToolTip="Dirección de la web y el token pegado a mano" />
                     </StackPanel>
-
-                    <!-- Barra de pasos -->
-                    <WrapPanel Margin="0,8,0,8">
-                        <Button Content="+ Aldeanos" Style="{StaticResource AddButton}" Command="{Binding AddVillagersCommand}" ToolTip="Ctrl+1" />
-                        <Button Content="+ Construir" Style="{StaticResource AddButton}" Command="{Binding AddBuildCommand}" ToolTip="Ctrl+2" />
-                        <Button Content="+ Investigar" Style="{StaticResource AddButton}" Command="{Binding AddResearchCommand}" ToolTip="Ctrl+3" />
-                        <Button Content="+ Mover" Style="{StaticResource AddButton}" Command="{Binding AddMoveCommand}" ToolTip="Ctrl+4" Margin="0,0,18,0" />
-                        <Button Content="Duplicar" Command="{Binding DuplicateStepCommand}" ToolTip="Ctrl+D" />
-                        <Button Content="▲" Command="{Binding MoveUpCommand}" ToolTip="Subir (Alt+↑)" />
-                        <Button Content="▼" Command="{Binding MoveDownCommand}" ToolTip="Bajar (Alt+↓)" />
-                        <Button Content="Quitar" Command="{Binding RemoveStepCommand}" ToolTip="Ctrl+Supr" />
-                    </WrapPanel>
+                    <TextBlock Text="BUILD ORDER" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <StackPanel x:Name="ModeBox" DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <RadioButton IsChecked="{Binding IsAutoMode}" Margin="0,0,0,4" GroupName="BoMode">
+                        <TextBlock Text="Automática: la sugerida para tu civ, mapa y rival en cada partida" Foreground="{StaticResource Text}" />
+                    </RadioButton>
+                    <RadioButton IsChecked="{Binding IsManualMode}" GroupName="BoMode">
+                        <TextBlock Text="Elegir de tu lista:" Foreground="{StaticResource Text}" />
+                    </RadioButton>
                 </StackPanel>
-
-                <!-- Lista de pasos con su tiempo estimado -->
-                <ListBox x:Name="StepList" ItemsSource="{Binding Steps}" SelectedItem="{Binding SelectedStep}"
-                         AllowDrop="True" Drop="StepList_Drop" DragOver="StepList_DragOver"
-                         HorizontalContentAlignment="Stretch" BorderBrush="{StaticResource Border}"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox DockPanel.Dock="Top" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" BorderThickness="0" MaxHeight="420"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"
+                         ToolTip="Con &quot;Elegir de tu lista&quot;, la que usa el coach (se baja al elegirla)">
                     <ListBox.ItemTemplate>
-                        <DataTemplate DataType="editor:StepViewModel">
-                            <Grid Margin="0,3" ToolTip="{Binding IssueText}">
+                        <DataTemplate DataType="{x:Type coaching:BuildOrderEntryViewModel}">
+                            <Grid Margin="2,4">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="18" />
-                                    <ColumnDefinition Width="30" />
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="2*" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="170" />
-                                    <ColumnDefinition Width="120" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="⋮⋮" Foreground="{StaticResource Muted}" Cursor="SizeAll" VerticalAlignment="Center"
-                                           ToolTip="Arrastrá para reordenar" MouseMove="DragHandle_MouseMove" />
-                                <TextBlock Grid.Column="1" Text="{Binding Number}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="✖ " Foreground="{StaticResource Danger}" Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
-                                        <TextBlock Text="⚠ " Foreground="{StaticResource Warning}" Visibility="{Binding HasWarning, Converter={StaticResource BoolToVisibility}}" />
-                                        <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding BlockText}" FontSize="11" Foreground="{StaticResource Danger}"
-                                               Visibility="{Binding IsPopBlocked, Converter={StaticResource BoolToVisibility}}" />
-                                </StackPanel>
-                                <!-- Mini línea de tiempo: dónde cae el paso dentro de toda la BO -->
-                                <Border Grid.Column="3" Height="10" Background="#EEEAE3" CornerRadius="2" Margin="8,0" VerticalAlignment="Center"
-                                        ToolTip="{Binding BlockText}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="{Binding BarStart, Converter={StaticResource Star}}" />
-                                            <ColumnDefinition Width="{Binding BarWidth, Converter={StaticResource Star}}" />
-                                            <ColumnDefinition Width="{Binding BarRest, Converter={StaticResource Star}}" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="1" CornerRadius="2">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{StaticResource Bar}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsPopBlocked}" Value="True">
-                                                            <Setter Property="Background" Value="{StaticResource Danger}" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                                <TextBlock Grid.Column="4" Text="{Binding EstimateText}" Foreground="{StaticResource Muted}"
-                                           VerticalAlignment="Center" FontFamily="Consolas" FontSize="12" />
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="1" Text="{Binding Detail}" Foreground="{StaticResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="8,0" />
+                                <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="{StaticResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+                <WrapPanel x:Name="BuildOrderButtons" DockPanel.Dock="Top" Margin="0,8,0,0">
+                    <Button Content="Buscar más BO en la web" Command="{Binding SearchMoreCommand}" Margin="0,0,6,6"
+                            ToolTip="La biblioteca de la web: &quot;Usar en el coach&quot; suma una BO a tu lista" />
+                    <Button Content="Pegar código" Command="{Binding PasteCodeCommand}" Margin="0,0,6,6"
+                            ToolTip="El código de 6 letras de una BO de la web (o el enlace de su página): se suma a tu lista" />
+                    <Button Content="Actualizar lista" Command="{Binding RefreshCommand}" Margin="0,0,6,6" />
+                </WrapPanel>
             </DockPanel>
-
-            <!-- ===== Panel derecho: paso, objetivos, vista previa y problemas ===== -->
-            <Border Grid.Column="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="1,0,0,0"
-                    DataContext="{Binding Editor}" Visibility="{Binding Converter={StaticResource NotEmptyToVisibility}}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="16,4,16,16">
-                    <StackPanel>
-                        <!-- Paso seleccionado -->
-                        <TextBlock Text="PASO SELECCIONADO" Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="Elegí un paso de la lista." Foreground="{StaticResource Muted}"
-                                   Visibility="{Binding SelectedStep, Converter={StaticResource NullToVisibility}}" />
-                        <Grid DataContext="{Binding SelectedStep}" Visibility="{Binding Converter={StaticResource NotEmptyToVisibility}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.Resources>
-                                <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-                                    <Setter Property="Margin" Value="0,3" />
-                                </Style>
-                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                    <Setter Property="Margin" Value="0,3" />
-                                </Style>
-                            </Grid.Resources>
-
-                            <TextBlock Grid.Row="0" Text="Acción" Style="{StaticResource FieldLabel}" />
-                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{x:Static editor:Options.Actions}"
-                                      SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding Action}" />
-
-                            <TextBlock Grid.Row="1" Text="Qué" Style="{StaticResource FieldLabel}"
-                                       Visibility="{Binding UsesEntity, Converter={StaticResource BoolToVisibility}}" />
-                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding EntityOptions}" IsTextSearchEnabled="True" TextSearch.TextPath="Label"
-                                      SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding What}"
-                                      Visibility="{Binding UsesEntity, Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Grid.Row="2" Text="Cantidad" Style="{StaticResource FieldLabel}" ToolTip="En los pasos de aldeanos: cuántos tiene que haber en el recurso al terminar el paso, contando los que ya están (como el contador del HUD)." />
-                            <TextBox Grid.Row="2" Grid.Column="1" Width="70" HorizontalAlignment="Left"
-                                     Text="{Binding Count, UpdateSourceTrigger=PropertyChanged}" />
-
-                            <TextBlock Grid.Row="3" Text="Desde" Style="{StaticResource FieldLabel}"
-                                       Visibility="{Binding UsesFrom, Converter={StaticResource BoolToVisibility}}" />
-                            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{x:Static editor:Options.Sources}"
-                                      SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding From}"
-                                      ToolTip="De dónde salen los aldeanos (en 'construir': vacío = aldeanos sin tarea)"
-                                      Visibility="{Binding UsesFrom, Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Grid.Row="4" Text="Asignar a" Style="{StaticResource FieldLabel}"
-                                       Visibility="{Binding UsesAssign, Converter={StaticResource BoolToVisibility}}" />
-                            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{x:Static editor:Options.Sources}"
-                                      SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding Assign}"
-                                      ToolTip="A dónde van los aldeanos nuevos, los constructores al terminar o los que se mueven"
-                                      Visibility="{Binding UsesAssign, Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Grid.Row="5" Text="Constructores" Style="{StaticResource FieldLabel}"
-                                       Visibility="{Binding IsBuild, Converter={StaticResource BoolToVisibility}}" />
-                            <TextBox Grid.Row="5" Grid.Column="1" Width="70" HorizontalAlignment="Left"
-                                     Text="{Binding Builders, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Vacío = 1 (en granjas, uno por granja)"
-                                     Visibility="{Binding IsBuild, Converter={StaticResource BoolToVisibility}}" />
-
-                            <TextBlock Grid.Row="6" Text="Después de" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding AfterText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Ids de pasos que tienen que estar terminados, separados por coma (ej.: s4, s13)" />
-
-                            <TextBlock Grid.Row="7" Text="A población" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Row="7" Grid.Column="1" Width="70" HorizontalAlignment="Left"
-                                     Text="{Binding AtPop, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
-
-                            <TextBlock Grid.Row="8" Text="A tiempo" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Row="8" Grid.Column="1" Width="70" HorizontalAlignment="Left"
-                                     Text="{Binding AtTimeText, UpdateSourceTrigger=PropertyChanged}" ToolTip="mm:ss" />
-
-                            <TextBlock Grid.Row="9" Text="Confirmar con" Style="{StaticResource FieldLabel}" />
-                            <ComboBox Grid.Row="9" Grid.Column="1" ItemsSource="{Binding ConfirmOptions}"
-                                      SelectedValuePath="Value" DisplayMemberPath="Label" SelectedValue="{Binding ConfirmBy}"
-                                      ToolTip="Evento del log que confirma el paso" />
-
-                            <TextBlock Grid.Row="10" Text="Nota" Style="{StaticResource FieldLabel}" VerticalAlignment="Top" Margin="0,6,8,0" />
-                            <TextBox Grid.Row="10" Grid.Column="1" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
-                                     TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" />
-
-                            <TextBlock Grid.Row="11" Text="Id" Style="{StaticResource FieldLabel}" />
-                            <StackPanel Grid.Row="11" Grid.Column="1" Orientation="Horizontal">
-                                <TextBox Width="70" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
-                                <CheckBox Content="Junto con el anterior" IsChecked="{Binding WithPrevious}" VerticalAlignment="Center" Margin="14,0,0,0"
-                                          ToolTip="Paso mixto: esta meta se hace a la vez que el paso anterior (por ejemplo, el cuartel mientras siguen saliendo aldeanos a madera). El coach muestra todas las metas juntas y el paso termina cuando terminan todas." />
-                            </StackPanel>
-
-                            <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="{Binding IssueText}" TextWrapping="Wrap" Margin="0,6,0,0"
-                                       Foreground="{StaticResource Danger}" Visibility="{Binding IssueText, Converter={StaticResource NotEmptyToVisibility}}" />
-                        </Grid>
-
-                        <!-- Objetivos -->
-                        <TextBlock Text="OBJETIVOS" Style="{StaticResource SectionTitle}" />
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="70" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="70" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Click Feudal" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Column="1" Text="{Binding FeudalTargetText, UpdateSourceTrigger=PropertyChanged}" ToolTip="mm:ss" />
-                            <TextBlock Grid.Column="2" Text="Castillos" Style="{StaticResource FieldLabel}" Margin="14,0,8,0" />
-                            <TextBox Grid.Column="3" Text="{Binding CastleTargetText, UpdateSourceTrigger=PropertyChanged}" ToolTip="mm:ss" />
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <TextBlock Text="Aldeanos en Feudal" Style="{StaticResource FieldLabel}" Width="122" />
-                            <TextBlock Text="C" Style="{StaticResource FieldLabel}" Margin="0,0,4,0" ToolTip="Comida" />
-                            <TextBox Width="36" Text="{Binding FeudalFood, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="M" Style="{StaticResource FieldLabel}" Margin="8,0,4,0" ToolTip="Madera" />
-                            <TextBox Width="36" Text="{Binding FeudalWood, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="O" Style="{StaticResource FieldLabel}" Margin="8,0,4,0" ToolTip="Oro" />
-                            <TextBox Width="36" Text="{Binding FeudalGold, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Text="P" Style="{StaticResource FieldLabel}" Margin="8,0,4,0" ToolTip="Piedra" />
-                            <TextBox Width="36" Text="{Binding FeudalStone, TargetNullValue='', UpdateSourceTrigger=PropertyChanged}" />
-                        </StackPanel>
-
-                        <!-- Postura de cierre (D2) -->
-                        <TextBlock Text="POSTURA DE CIERRE" Style="{StaticResource SectionTitle}"
-                                   ToolTip="Qué hace el coach cuando terminan los pasos: pide tener siempre en cola estas unidades (en cada edificio que las produce) y junta lo que sobra para la próxima edad. Si la BO no la tiene, se deduce de sus pasos." />
-                        <StackPanel Orientation="Horizontal">
-                            <CheckBox Content="Aldeanos" IsChecked="{Binding PostureVillagers}" VerticalAlignment="Center" Margin="0,0,14,0"
-                                      ToolTip="Aldeanos siempre en cola en el centro urbano" />
-                            <TextBlock Text="y siempre en cola" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
-                            <ComboBox Width="150" ItemsSource="{Binding PostureUnitOptions}" SelectedValuePath="Value" SelectedValue="{Binding PostureUnit}"
-                                      AutomationProperties.Name="Unidad siempre en cola" />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <TextBlock Text="Después, apuntar a" Style="{StaticResource FieldLabel}" Margin="0,0,8,0" />
-                            <ComboBox Width="110" ItemsSource="{Binding PostureAgeOptions}" SelectedValuePath="Value" SelectedValue="{Binding PostureNextAge}"
-                                      AutomationProperties.Name="Próxima edad" />
-                        </StackPanel>
-
-                        <!-- Vista previa -->
-                        <TextBlock Text="VISTA PREVIA" Style="{StaticResource SectionTitle}" />
-                        <ItemsControl ItemsSource="{Binding Summary}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <!-- Problemas -->
-                        <TextBlock Text="PROBLEMAS" Style="{StaticResource SectionTitle}" />
-                        <TextBlock Text="Ninguno." Foreground="{StaticResource Muted}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Problems.Count}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <ItemsControl ItemsSource="{Binding Problems}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" Foreground="{StaticResource Danger}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-        </Grid>
+        </Border>
     </DockPanel>
 </Window>

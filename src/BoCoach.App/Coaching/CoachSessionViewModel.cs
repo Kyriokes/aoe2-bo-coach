@@ -59,7 +59,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private string? _declinedSuggestion;
     private MatchupQuery? _matchupQuery;
 
-    /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
+    /// <param name="selected">La BO elegida a mano de tu lista (ya bajada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
     /// <param name="settingsPath">Dónde se guardan los ajustes (máximo de aldeanos); null para no guardarlos (tests).</param>
     /// <param name="devMode">El estado del modo desarrollador (por defecto <see cref="DevMode.Instance"/>): se carga y se guarda con los ajustes.</param>
@@ -272,7 +272,33 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Parte 4: la BO se elige sola en cada partida (la sugerida) o a mano de la lista.</summary>
     [ObservableProperty] public partial BuildOrderMode BoMode { get; set; }
 
-    partial void OnBoModeChanged(BuildOrderMode value) => SaveSettings();
+    partial void OnBoModeChanged(BuildOrderMode value)
+    {
+        OnPropertyChanged(nameof(IsAutoMode));
+        OnPropertyChanged(nameof(IsManualMode));
+        SaveSettings();
+    }
+
+    /// <summary>Para los dos botones de la ventana ("Automática" y "Elegir de tu lista").</summary>
+    public bool IsAutoMode
+    {
+        get => BoMode == BuildOrderMode.Auto;
+        set
+        {
+            if (value)
+                BoMode = BuildOrderMode.Auto;
+        }
+    }
+
+    public bool IsManualMode
+    {
+        get => BoMode == BuildOrderMode.Manual;
+        set
+        {
+            if (value)
+                BoMode = BuildOrderMode.Manual;
+        }
+    }
 
     /// <summary>
     /// De dónde salen las BO (la lista de la web y lo guardado). Sin asignar, la biblioteca local (hasta que se vaya).
@@ -356,9 +382,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Stop();
             return;
         }
-        if (_selected() is not { } bo)
+        if ((BoMode == BuildOrderMode.Auto ? AutoBuildOrder() : _selected()) is not { } bo)
         {
-            Status = "Elegí una build order en la biblioteca para empezar el coach.";
+            Status = "Elegí una BO de tu lista (o pasá a Automática) para empezar el coach.";
             return;
         }
         (_previousBuildOrder, _declinedSuggestion) = (null, null);
@@ -388,7 +414,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (!_autoNoBoWarned)
             {
                 _autoNoBoWarned = true;
-                Status = "Coach automático: elegí una build order en la biblioteca para que arranque solo con el juego.";
+                Status = "Coach automático: elegí una BO de tu lista (o pasá a Automática) para que arranque solo con el juego.";
             }
             return;
         }
@@ -489,7 +515,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public const double SuggestionSeconds = BuildOrderPicker.SwitchSeconds;
 
     /// <summary>
-    /// D4: la BO de la biblioteca que mejor encaja con la civ, el mapa, los rivales (el de enfrente pesa más) y la
+    /// D4: la BO de tu lista que mejor encaja con la civ, el mapa, los rivales (el de enfrente pesa más) y la
     /// posición en el equipo, y un consejo contra el rival de enfrente.
     /// </summary>
     private void Suggest(CoachFrame frame)
@@ -518,10 +544,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var running = picker.Current(_coach.BuildOrder.Id) ?? _coach.BuildOrder;
         if (suggestion is not null && suggestion.Summary.Key == running.Id)
             return;
-        // D6 y parte 4: arrancado solo en automática, cambia a la mejor de la lista cuando puntúa más que la que corre
+        // D6 y parte 4: en automática, cambia a la mejor de la lista cuando puntúa más que la que corre
         // (bajándola si hace falta; sin internet, la mejor guardada). Ctrl+Alt+B vuelve a la anterior.
         var runningScore = running.IsNone ? 0 : BuildOrderSuggester.Score(BuildOrderSummary.Of(running), match, _data.CivStyles, matchups);
-        if (_startedAutomatically && BoMode == BuildOrderMode.Auto && suggestion?.Summary.Key != _declinedSuggestion
+        if (BoMode == BuildOrderMode.Auto && suggestion?.Summary.Key != _declinedSuggestion
             && (suggestion is null ? running.IsNone : suggestion.Score > runningScore))
         {
             _ = SwitchForMatchAsync(picker, match, matchups, suggestion, running);

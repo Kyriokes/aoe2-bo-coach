@@ -26,7 +26,7 @@ public sealed class HotkeyTips : ObservableObject
 
     private static string Key(string id) => HotkeyMap.Current.Text(id);
 
-    public string StartStop => $"Sigue la BO elegida en la biblioteca con el overlay sobre el juego. También con {Key("start_stop")} desde el juego";
+    public string StartStop => $"Sigue la BO (la sugerida en Automática, o la elegida de tu lista) con el overlay sobre el juego. También con {Key("start_stop")} desde el juego";
     public string Calibrate => $"También con {Key("calibrate")} desde el juego";
     public string Record => $"También con {Key("record")} desde el juego";
     public string CursorReminders => $"Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con {Key("cursor_reminders")} desde el juego";
