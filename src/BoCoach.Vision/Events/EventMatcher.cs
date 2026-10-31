@@ -44,7 +44,7 @@ public sealed class EventMatcher
                 result.Add(single);
                 continue;
             }
-            if (i + 1 < lines.Count && Match(lines[i] + " " + lines[i + 1]) is { } joined)
+            if (i + 1 < lines.Count && !Closes(lines[i]) && !Opens(lines[i + 1]) && Match(lines[i] + " " + lines[i + 1]) is { } joined)
             {
                 result.Add(joined);
                 i++;
@@ -54,6 +54,19 @@ public sealed class EventMatcher
         }
         return (result, unrecognized);
     }
+
+    /// <summary>Guiones con que el OCR lee los "--" que abren y cierran cada mensaje.</summary>
+    private static readonly char[] Dashes = ['-', '—', '–', '_', '~'];
+
+    /// <summary>
+    /// El renglón termina un mensaje ("Complete--"): no es la primera mitad de uno largo. Lo que queda arriba puede ser
+    /// el final de un mensaje con su primer renglón fuera de la caja (partida 20261031-163414: "Complete--" junto con
+    /// "--Archer Created--" se leía "Cavalry Archer Created").
+    /// </summary>
+    private static bool Closes(string line) => line.TrimEnd() is { Length: > 0 } t && Dashes.Contains(t[^1]);
+
+    /// <summary>El renglón empieza un mensaje ("--Archer Created--"): no es la segunda mitad de uno largo.</summary>
+    private static bool Opens(string line) => line.TrimStart() is { Length: > 0 } t && Dashes.Contains(t[0]);
 
     /// <summary>Id del evento que mejor coincide con el texto, o null si ninguno se parece lo suficiente.</summary>
     public string? Match(string text)

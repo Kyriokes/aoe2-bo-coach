@@ -67,6 +67,15 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(["scale_mail_armor_researched"], Matcher.MatchLines(["-Scale Mail Armor Researcb", "Complete--"]));
     }
 
+    // Partida 20261031-163414 (22:31): arriba quedaba solo el final de un mensaje largo ("Complete--", su primer renglón
+    // ya fuera de la caja) y junto con "--Archer Created--" se leía "Cavalry Archer Created", de Castillos: el coach
+    // daba la edad por alcanzada y pedía los centros urbanos con Castillos en curso.
+    [Fact]
+    public void El_final_de_un_mensaje_no_se_junta_con_el_mensaje_siguiente()
+    {
+        Assert.Equal(["archer_created"], Matcher.MatchLines(["Complete—", "—Archer Creat«l—"]));
+    }
+
     private static List<string> Run(EventLogTracker tracker, params string[][] frames) =>
         frames.SelectMany(f => tracker.Update(f)).ToList();
 
