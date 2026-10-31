@@ -113,4 +113,93 @@ public sealed class HotkeysTests
         Assert.Equal(new Dictionary<string, string> { ["back"] = "Ctrl+Alt+F2" }, CoachSettings.Load(path).Hotkeys);
         File.Delete(path);
     }
+
+    private static Dictionary<string, Action> Actions() => HotkeyActions.All.ToDictionary(a => a.Id, _ => (Action)(() => { }));
+
+    /// <summary>Hace de Windows: las combinaciones de <c>taken</c> las tiene otro programa.</summary>
+    private sealed class FakeRegistrar(params string[] taken) : IHotkeyRegistrar
+    {
+        private int _next = 1;
+        public Dictionary<int, string> Registered { get; } = [];
+
+        public int? Register(HotkeyBinding binding, Action action)
+        {
+            if (taken.Contains(binding.Storage) || Registered.ContainsValue(binding.Storage))
+                return null;
+            Registered[_next] = binding.Storage;
+            return _next++;
+        }
+
+        public void Unregister(int id) => Registered.Remove(id);
+    }
+
+    [Fact]
+    public void Registra_todas_y_dice_cuales_tiene_otro_programa()
+    {
+        var registrar = new FakeRegistrar("Ctrl+Alt+Right");
+        var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: true);
+        Assert.Equal(["advance"], binder.RegisterAll());
+        Assert.Equal(11, registrar.Registered.Count);
+    }
+
+    [Fact]
+    public void Sin_desarrollador_no_registra_las_de_desarrollador()
+    {
+        var registrar = new FakeRegistrar();
+        new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: false).RegisterAll();
+        Assert.Equal(8, registrar.Registered.Count);
+    }
+
+    [Fact]
+    public void Si_Windows_no_deja_la_nueva_queda_la_vieja()
+    {
+        var registrar = new FakeRegistrar("Ctrl+Alt+F1");
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        Assert.Equal(ChangeResult.Rejected, binder.Change("advance", HotkeyBinding.Parse("Ctrl+Alt+F1")));
+        Assert.Contains("Ctrl+Alt+Right", registrar.Registered.Values);
+        Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
+    }
+
+    [Fact]
+    public void No_deja_repetir_y_restaurar_vuelve_a_fabrica()
+    {
+        var registrar = new FakeRegistrar();
+        var map = new HotkeyMap();
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        Assert.Equal(ChangeResult.UsedByOther, binder.Change("advance", HotkeyBinding.Parse("Ctrl+Alt+P")));
+        Assert.Equal("pause", binder.LastConflict?.Id);
+        Assert.Equal(ChangeResult.Done, binder.Change("advance", HotkeyBinding.Parse("Ctrl+Alt+F1")));
+        Assert.Contains("Ctrl+Alt+F1", registrar.Registered.Values);
+        Assert.DoesNotContain("Ctrl+Alt+Right", registrar.Registered.Values);
+        Assert.Equal(ChangeResult.Done, binder.Change("advance", null));
+        Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
+        Assert.Equal(12, registrar.Registered.Count);
+    }
+
+    [Fact]
+    public void Cambiar_a_la_misma_no_es_choque()
+    {
+        var registrar = new FakeRegistrar();
+        var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        Assert.Equal(ChangeResult.Done, binder.Change("advance", HotkeyBinding.Parse("Ctrl+Alt+Right")));
+        Assert.Equal(12, registrar.Registered.Count);
+    }
+
+    [Fact]
+    public void Restaurar_todos_cuando_dos_se_intercambiaron()
+    {
+        var registrar = new FakeRegistrar();
+        var map = new HotkeyMap(new Dictionary<string, string> { ["advance"] = "Ctrl+Alt+Left", ["back"] = "Ctrl+Alt+Right" });
+        var binder = new HotkeyBinder(registrar, map, Actions(), includeDeveloper: true);
+        binder.RegisterAll();
+        binder.ResetAll();
+        Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
+        Assert.Equal("Ctrl+Alt+←", map.Text("back"));
+        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Empty(map.Overrides);
+    }
 }

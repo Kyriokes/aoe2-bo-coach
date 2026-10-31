@@ -120,6 +120,22 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
     }
 
+    // Atajos editables: cualquier otro ajuste que se guarde no tiene que borrar los atajos cambiados.
+    [Fact]
+    public void Los_atajos_cambiados_sobreviven_a_otros_ajustes()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { Hotkeys = new() { ["advance"] = "Ctrl+Alt+F1" } }.Save(path);
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal("Ctrl+Alt+F1", session.Hotkeys["advance"]);
+
+        session.ToggleCursorRemindersCommand.Execute(null);
+        Assert.Equal("Ctrl+Alt+F1", CoachSettings.Load(path).Hotkeys["advance"]);
+
+        session.SaveHotkeys(new Dictionary<string, string> { ["back"] = "Ctrl+Alt+F2" });
+        Assert.Equal(new Dictionary<string, string> { ["back"] = "Ctrl+Alt+F2" }, CoachSettings.Load(path).Hotkeys);
+    }
+
     // Partida 20261017-163738 (incas): el coach tomaba la civ de la BO ("any") y no aplicaba las bonificaciones
     // de la civ con que se juega. La civ de la partida se elige en la ventana y queda guardada.
     [Fact]

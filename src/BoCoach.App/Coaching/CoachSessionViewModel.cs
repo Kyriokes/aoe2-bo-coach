@@ -72,6 +72,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         LastBuildOrderId = settings.LastBuildOrder;
+        Hotkeys = settings.Hotkeys;
         Elo1v1Text = settings.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "";
         EloTeamText = settings.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "";
         ProfileId = settings.ProfileId;
@@ -265,6 +266,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>El coach en vivo mientras corre (para los tests).</summary>
     public LiveCoach? LiveCoach => _coach;
 
+    /// <summary>Los atajos cambiados por el jugador (id → combinación), como están en settings.json.</summary>
+    public IReadOnlyDictionary<string, string> Hotkeys { get; private set; }
+
+    /// <summary>Guarda los atajos cambiados junto con los demás ajustes.</summary>
+    public void SaveHotkeys(IReadOnlyDictionary<string, string> hotkeys)
+    {
+        Hotkeys = new Dictionary<string, string>(hotkeys);
+        SaveSettings();
+    }
+
     private void SaveSettings()
     {
         if (_settingsPath is null)
@@ -284,6 +295,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 Elo1v1 = Elo1v1,
                 EloTeam = EloTeam,
                 ProfileId = ProfileId,
+                Hotkeys = new(Hotkeys),
             }.Save(_settingsPath);
         }
         catch (IOException)

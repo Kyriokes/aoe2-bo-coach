@@ -9,6 +9,7 @@ using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
 using BoCoach.App.Editor;
 using BoCoach.App.FirstRun;
+using BoCoach.App.Hotkeys;
 using BoCoach.App.Overlay;
 using BoCoach.App.Web;
 using BoCoach.Vision.Capture;
@@ -24,6 +25,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private readonly ScreenCapture _screen = new();
     private readonly RecordingIndicator _indicator = new();
     private GlobalHotkeys? _hotkeys;
+    private HotkeyBinder? _hotkeyBinder;
     private CoachOverlay? _overlay;
     private ResourceOverlay? _resources;
     private CursorReminder? _cursor;
@@ -131,31 +133,36 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
     private void FirstRun_Click(object sender, RoutedEventArgs e) => ShowFirstRun();
 
     /// <summary>
-    /// Atajos que andan con el foco en el juego (todos con Ctrl+Alt, que el juego no usa): calibrar, grabar y
-    /// manejar el coach sin salir con Alt+Tab. No le mandan nada al juego.
+    /// Atajos que andan con el foco en el juego (de fábrica todos con Ctrl+Alt, que el juego no usa): calibrar, grabar
+    /// y manejar el coach sin salir con Alt+Tab. No le mandan nada al juego. Se cambian en la ventana "Atajos".
     /// </summary>
     private void RegisterHotkeys()
     {
         _hotkeys = new GlobalHotkeys(this);
-        var keys = new (Key Key, string Name, Action Action)[]
+        var actions = new Dictionary<string, Action>
         {
-            (Key.C, "C", () => { if (!_calibrating) Tools.CalibrateCommand.Execute(null); }),
-            (Key.R, "R", () => Tools.ToggleRecordingCommand.Execute(null)),
-            (Key.S, "S", () => Coach.StartStopCommand.Execute(null)),
-            (Key.Right, "→", () => Coach.AdvanceCommand.Execute(null)),
-            (Key.Left, "←", () => Coach.BackCommand.Execute(null)),
-            (Key.Down, "↓", () => Coach.SkipCommand.Execute(null)),
-            (Key.P, "P", () => Coach.TogglePauseCommand.Execute(null)),
-            (Key.H, "H", () => Coach.ToggleOverlayCommand.Execute(null)),
-            (Key.D, "D", () => Coach.ToggleDebugCommand.Execute(null)),
-            (Key.M, "M", () => Coach.ToggleCursorRemindersCommand.Execute(null)),
-            (Key.X, "X", () => Tools.DiagnosticCommand.Execute(null)),
-            (Key.B, "B", () => Coach.AcceptSuggestionCommand.Execute(null)),
+            ["calibrate"] = () => { if (!_calibrating) Tools.CalibrateCommand.Execute(null); },
+            ["record"] = () => Tools.ToggleRecordingCommand.Execute(null),
+            ["start_stop"] = () => Coach.StartStopCommand.Execute(null),
+            ["advance"] = () => Coach.AdvanceCommand.Execute(null),
+            ["back"] = () => Coach.BackCommand.Execute(null),
+            ["skip"] = () => Coach.SkipCommand.Execute(null),
+            ["pause"] = () => Coach.TogglePauseCommand.Execute(null),
+            ["overlay"] = () => Coach.ToggleOverlayCommand.Execute(null),
+            ["debug"] = () => Coach.ToggleDebugCommand.Execute(null),
+            ["cursor_reminders"] = () => Coach.ToggleCursorRemindersCommand.Execute(null),
+            ["diagnostic"] = () => Tools.DiagnosticCommand.Execute(null),
+            ["accept_suggestion"] = () => Coach.AcceptSuggestionCommand.Execute(null),
         };
-        var missing = keys.Where(k => !_hotkeys.Register(ModifierKeys.Control | ModifierKeys.Alt, k.Key, k.Action)).Select(k => $"Ctrl+Alt+{k.Name}").ToList();
+        var map = new HotkeyMap(Coach.Hotkeys);
+        HotkeyMap.Current = map;
+        map.Changed += () => Coach.SaveHotkeys(map.Overrides);
+        // Hasta la parte 2 (modo desarrollador) se registran también las de desarrollador.
+        _hotkeyBinder = new HotkeyBinder(_hotkeys, map, actions, includeDeveloper: true);
+        var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? $"{HotkeyActions.Find(id)?.Name} (sin atajo)").ToList();
         ViewModel.Status = missing.Count > 0
-            ? $"Otro programa ya usa {string.Join(", ", missing)}; usá los botones de arriba."
-            : "Atajos listos, también desde el juego: Ctrl+Alt+S empieza el coach, Ctrl+Alt+C calibra y Ctrl+Alt+R graba.";
+            ? $"Otro programa ya usa {string.Join(", ", missing)}; usá los botones o cambialos en Atajos."
+            : $"Atajos listos, también desde el juego: {map.Text("start_stop")} empieza el coach, {map.Text("calibrate")} calibra y {map.Text("record")} graba.";
     }
 
     // ---- Overlay del coach ----

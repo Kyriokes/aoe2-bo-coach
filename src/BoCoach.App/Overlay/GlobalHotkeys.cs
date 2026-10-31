@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using BoCoach.App.Hotkeys;
 
 namespace BoCoach.App.Overlay;
 
@@ -9,7 +10,7 @@ namespace BoCoach.App.Overlay;
 /// Atajos de teclado que funcionan aunque el foco esté en el juego (RegisterHotKey de Win32).
 /// No envían nada al juego: solo avisan a la app.
 /// </summary>
-public sealed class GlobalHotkeys : IDisposable
+public sealed class GlobalHotkeys : IHotkeyRegistrar, IDisposable
 {
     private const int WmHotkey = 0x0312;
     private const uint ModNoRepeat = 0x4000;
@@ -26,19 +27,26 @@ public sealed class GlobalHotkeys : IDisposable
         _source.AddHook(Hook);
     }
 
-    /// <summary>Registra el atajo. Devuelve false si otro programa ya lo usa.</summary>
-    public bool Register(ModifierKeys modifiers, Key key, Action action)
+    /// <summary>Registra el atajo. Devuelve su id, o null si otro programa ya lo usa.</summary>
+    public int? Register(HotkeyBinding binding, Action action)
     {
         var id = _nextId++;
+        var modifiers = binding.Modifiers;
         var mods = ModNoRepeat
             | (modifiers.HasFlag(ModifierKeys.Alt) ? 1u : 0)
             | (modifiers.HasFlag(ModifierKeys.Control) ? 2u : 0)
             | (modifiers.HasFlag(ModifierKeys.Shift) ? 4u : 0)
             | (modifiers.HasFlag(ModifierKeys.Windows) ? 8u : 0);
-        if (!RegisterHotKey(_handle, id, mods, (uint)KeyInterop.VirtualKeyFromKey(key)))
-            return false;
+        if (!RegisterHotKey(_handle, id, mods, (uint)KeyInterop.VirtualKeyFromKey(binding.Key)))
+            return null;
         _actions[id] = action;
-        return true;
+        return id;
+    }
+
+    public void Unregister(int id)
+    {
+        if (_actions.Remove(id))
+            UnregisterHotKey(_handle, id);
     }
 
     public void Dispose()
