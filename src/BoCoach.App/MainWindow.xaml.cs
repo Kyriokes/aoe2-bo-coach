@@ -137,7 +137,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         }
         var tutorial = new FirstRunViewModel(_screen, _data.GameData, () => Coach.Language, Tools.TryAutoCalibrate,
             name => Coach.PlayerName = name, Coach.PlayerName);
-        _firstRun = new FirstRunWindow(tutorial, Coach, Tools.InstallModCommand) { Owner = this };
+        _firstRun = new FirstRunWindow(tutorial, Coach, Tools.InstallModCommand, BuildOrders) { Owner = this };
         _firstRun.Closed += (_, _) =>
         {
             _firstRun = null;

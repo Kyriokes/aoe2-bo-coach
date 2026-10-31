@@ -14,11 +14,13 @@ public partial class FirstRunWindow : Window
 
     /// <param name="languageContext">Lo que tiene el idioma del juego (<c>LanguageOptions</c> y <c>Language</c>): el coach.</param>
     /// <param name="installMod">El botón "Instalar mod del HUD" de la barra.</param>
-    public FirstRunWindow(FirstRunViewModel viewModel, object languageContext, ICommand installMod)
+    /// <param name="accountContext">Lo que tiene la cuenta de la web (<c>ConnectCommand</c> y <c>AccountText</c>): la sección "Build order".</param>
+    public FirstRunWindow(FirstRunViewModel viewModel, object languageContext, ICommand installMod, object? accountContext = null)
     {
         InitializeComponent();
         DataContext = viewModel;
         LanguageBox.DataContext = languageContext;
+        AccountBox.DataContext = accountContext;
         InstallModButton.Command = installMod;
         _timer.Tick += async (_, _) => await viewModel.TickAsync();
         _timer.Start();

@@ -11,7 +11,7 @@
         FontFamily="Segoe UI" FontSize="13">
     <StackPanel Margin="18">
         <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,14">
-            Cuatro pasos para que el coach te lea bien. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
+            Cinco pasos para que el coach te lea bien y tenga tus BO. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
         </TextBlock>
 
         <!-- 1. Idioma -->
@@ -57,6 +57,16 @@
         </ListBox>
         <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left" Margin="0,0,0,16"
                  AutomationProperties.Name="Tu nombre en el juego" />
+
+        <!-- 5. Cuenta de la web (parte 4) -->
+        <TextBlock Text="5. Tu cuenta de la web" Style="{StaticResource SectionTitle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,6">
+            Las build orders se arman y se eligen en la web. Conectá tu cuenta: se abre Mi cuenta en el navegador y ahí «Conectar la app» la trae acá.
+        </TextBlock>
+        <StackPanel x:Name="AccountBox" Orientation="Horizontal" Margin="0,0,0,16">
+            <Button Content="Conectar cuenta" Command="{Binding ConnectCommand}" />
+            <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+        </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Guardar mi nombre" IsDefault="True" Style="{StaticResource PrimaryButton}" Command="{Binding FinishCommand}" />
