@@ -21,7 +21,7 @@ namespace BoCoach.Core.Engine;
 /// atrasado.</item>
 /// </list>
 /// Hasta 5 unidades de reacción (piqueros en una BO de arqueros) no cuentan. Queda abandonada hasta que el jugador
-/// la retoma (<see cref="Resume"/>, el atajo "Atrás"): desde ahí las unidades ajenas y el tiempo se cuentan de nuevo.
+/// la retoma (<see cref="Resume"/>, el atajo "Atrás", o sola cuando avanza un paso de la BO): desde ahí las unidades ajenas y el tiempo se cuentan de nuevo.
 /// </summary>
 public sealed class BuildOrderAbandonment
 {
@@ -68,6 +68,10 @@ public sealed class BuildOrderAbandonment
     public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, Func<int, bool>? leftBehind = null, double missing = 0)
     {
         var progress = Progress(steps);
+        // Abandonada, si avanza un paso de la BO el jugador volvió a ella (partida 20261031-171509: abandonada a las
+        // 16:44 por la herrería sin hacer, seguía así a las 31:18 con la herrería, Castillos y los centros urbanos hechos).
+        if (Abandoned && progress > _progress)
+            Resume(state);
         if (_progress != progress)
             (_progress, _progressAt, _leastMissing) = (progress, state.Time, double.PositiveInfinity);
         if (missing > 0 && missing < _leastMissing - SavingStep)

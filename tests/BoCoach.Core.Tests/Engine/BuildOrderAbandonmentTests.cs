@@ -154,6 +154,24 @@ public class BuildOrderAbandonmentTests
         Assert.True(detector.Abandoned);
     }
 
+    // Partida 20261031-171509: abandonada a las 16:44 (la herrería pagable desde las 16:29 y sin hacer), quedó así hasta
+    // el final aunque a las 19:48 hizo la herrería y después el emplumado, Castillos y los centros urbanos.
+    [Fact]
+    public void Si_avanza_un_paso_de_la_BO_abandonada_se_retoma_sola()
+    {
+        var state = new PlayerState();
+        state.Apply(At(600));
+        var detector = Watching(state);
+        state.Apply(At(780));
+        detector.Update(state, Steps);
+        Assert.True(detector.Abandoned);
+
+        state.Apply(At(900));
+        detector.Update(state, Steps.Select((s, i) => i == 0 ? s with { State = StepState.Done } : s).ToList());
+
+        Assert.False(detector.Abandoned);
+    }
+
     [Fact]
     public void Con_la_BO_terminada_no_se_abandona_por_tiempo()
     {
