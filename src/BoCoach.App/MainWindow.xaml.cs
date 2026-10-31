@@ -70,10 +70,13 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         LivePanel.DataContext = Coach;
         ModeBox.DataContext = Coach;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
-        Coach.PropertyChanged += (_, e) =>
+        Coach.PropertyChanged += async (_, e) =>
         {
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))
                 BuildOrders.Status = Coach.Status;
+            // La lista también se pide al empezar el coach: con la app abierta horas, lo nuevo de la web llega.
+            if (e.PropertyName == nameof(CoachSessionViewModel.IsRunning) && Coach.IsRunning)
+                await BuildOrders.RefreshQuietlyAsync();
         };
         // La lista se pide al abrir la app (sin internet, la guardada) y se marca la última usada.
         Loaded += async (_, _) =>
