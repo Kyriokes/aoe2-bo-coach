@@ -51,3 +51,17 @@ export async function publishFromApp(request: Request, code: string | null) {
   revalidateTag(buildOrderTag(published), "max");
   return Response.json({ code: published, url: `${new URL(request.url).origin}/bo/${published}` }, { status: code ? 200 : 201 });
 }
+
+/**
+ * Llama a una función app_* de la base con el token de la app. Sin token 401, sin base 503, y los errores de la base
+ * con su código (dbErrorStatus). Devuelve los datos o la respuesta de error.
+ */
+export async function appRpc<T>(request: Request, fn: string, args: Record<string, unknown>): Promise<{ data: T } | { response: Response }> {
+  const token = bearerToken(request);
+  if (!token) return { response: error(401, "Falta el token de la app (creá uno en Mi cuenta de la web).") };
+  const db = publicClient();
+  if (!db) return { response: error(503, "La web todavía no está conectada a la base de datos.") };
+  const { data, error: dbError } = await db.rpc(fn, { p_token: token, ...args });
+  if (dbError) return { response: error(dbErrorStatus(dbError), dbErrorMessage(dbError)) };
+  return { data: data as T };
+}

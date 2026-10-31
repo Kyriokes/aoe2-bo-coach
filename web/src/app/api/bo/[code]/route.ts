@@ -1,12 +1,22 @@
 import type { NextRequest } from "next/server";
-import { getBuildOrder } from "@/lib/data";
-import { error, publishFromApp } from "../appApi";
+import { CODE_PATTERN, getBuildOrder } from "@/lib/data";
+import { appRpc, bearerToken, error, publishFromApp } from "../appApi";
 
-/** GET /api/bo/<código>: una BO con su JSON, para "Importar desde la web" y los enlaces bocoach://import/<código>. */
-export async function GET(_request: NextRequest, context: RouteContext<"/api/bo/[code]">) {
+/**
+ * GET /api/bo/<código>: una BO con su JSON, para "Importar desde la web" y los enlaces bocoach://import/<código>.
+ * Las públicas salen del caché; con el token de la app (Authorization: Bearer) también las privadas del dueño.
+ */
+export async function GET(request: NextRequest, context: RouteContext<"/api/bo/[code]">) {
   const { code } = await context.params;
+  const missing = () => error(404, `No hay ninguna build order con el código ${code}.`);
   const bo = await getBuildOrder(code.toLowerCase());
-  if (!bo) return error(404, `No hay ninguna build order con el código ${code}.`);
+  if (!bo) {
+    // Una privada solo con el token de su dueño. Sin token, lo mismo que una que no existe.
+    if (!bearerToken(request) || !CODE_PATTERN.test(code.toLowerCase())) return missing();
+    const own = await appRpc<Record<string, unknown> | null>(request, "app_build_order", { p_code: code.toLowerCase() });
+    if ("response" in own) return own.response;
+    return own.data ? Response.json(own.data) : missing();
+  }
   return Response.json({
     code: bo.code,
     name: bo.name,
