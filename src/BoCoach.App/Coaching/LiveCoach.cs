@@ -128,11 +128,6 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     public const double GameEndSeconds = 30;
 
-    /// <summary>D6: un reloj que vuelve para atrás más que esto, en <see cref="NewGameBackReads"/> lecturas seguidas, es otra partida.</summary>
-    public const double NewGameBackSeconds = 5;
-
-    public const int NewGameBackReads = 3;
-
     /// <summary>Cuánto se espera sin reloj antes de mirar la pantalla de carga (lo que tarda el overlay en bajar).</summary>
     public static readonly TimeSpan LoadingDelay = TimeSpan.FromSeconds(1);
 
@@ -174,8 +169,6 @@ public sealed class LiveCoach : IDisposable
     private bool _waiting = true;
     private bool _clockSeenInGame;
     private bool _reportPending;
-    private double? _lastClock;
-    private int _backwards;
 
     /// <param name="playerName">El nombre del jugador en el juego, para encontrar su renglón en la pantalla de carga.</param>
     /// <param name="language">Idioma del juego (<see cref="GameLanguage.Code"/>), para los nombres de las civs.</param>
@@ -328,7 +321,7 @@ public sealed class LiveCoach : IDisposable
                 _loadingDone = false;
                 // Un reloj que vuelve a empezar sin pantalla de carga leída: otra partida con la misma BO. Se mira
                 // la lectura cruda: el suavizado nunca deja que el reloj vuelva para atrás.
-                if (IsNewGame(hud.ClockReading))
+                if (_newGame.Check(hud.ClockReading, hud.Clock))
                     StartGame(null);
             }
             var snapshot = _builder.Build(hud.ToReading());
@@ -418,25 +411,10 @@ public sealed class LiveCoach : IDisposable
         }
         _loadingDone = reading is not null;
         (_waiting, _clockSeenInGame) = (false, false);
-        if (reading is not null)
-            (_lastClock, _backwards) = (null, 0);
+        _newGame.Reset();
     }
 
-    /// <summary>D6: el reloj volvió para atrás más de <see cref="NewGameBackSeconds"/> en <see cref="NewGameBackReads"/> lecturas seguidas (una sola puede ser un error de lectura).</summary>
-    private bool IsNewGame(double? clock)
-    {
-        if (clock is not { } now)
-            return false;
-        if (_lastClock is { } last && now < last - NewGameBackSeconds)
-        {
-            if (++_backwards < NewGameBackReads)
-                return false;
-            (_backwards, _lastClock) = (0, now);
-            return true;
-        }
-        (_backwards, _lastClock) = (0, now);
-        return false;
-    }
+    private readonly NewGameDetector _newGame = new();
 
     /// <summary>
     /// D6: la partida terminó (30 s sin reloj con el juego a la vista): el informe, y a esperar otra. El estado no se
