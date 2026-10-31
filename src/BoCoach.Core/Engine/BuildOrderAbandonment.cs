@@ -14,7 +14,9 @@ namespace BoCoach.Core.Engine;
 /// BO esperaba", pero contra el plan del simulador (optimista: pone el clic de Feudal de la BO de scouts a las 7:30
 /// con el objetivo en 9:00) la partida de scouts del 2026-10-15, siguiendo la BO a ritmo humano, quedaba abandonada a
 /// las 13:05 esperando madera para el establo. Sin avanzar nada, en cambio, el hueco más largo de esa partida es de
-/// unos 2 minutos.</item>
+/// unos 2 minutos. Juntar lo que le falta al paso actual también es avanzar: en la partida 20261031-163414 el
+/// jugador juntó para Castillos de 15:05 a 20:53 (con granjas, que el juego no avisa) y la BO quedaba abandonada a las
+/// 18:05.</item>
 /// <item>Gris: muchas unidades ajenas pero la de la BO sigue saliendo. Sigue la BO, pero lo militar no queda
 /// atrasado.</item>
 /// </list>
@@ -32,6 +34,9 @@ public sealed class BuildOrderAbandonment
     /// <summary>Segundos sin que avance ningún paso de la BO para darla por abandonada.</summary>
     public const double MaxStall = 180;
 
+    /// <summary>Cuánto tiene que bajar lo que falta para el paso actual para contar como avance (que no cuente un vaivén).</summary>
+    private const double SavingStep = 10;
+
     /// <summary>Unidades que no son militares: no cambian la build.</summary>
     private static readonly IReadOnlySet<string> Economic = new HashSet<string>
     {
@@ -42,6 +47,7 @@ public sealed class BuildOrderAbandonment
     private int _countFrom;
     private int? _progress;
     private double _progressAt;
+    private double _leastMissing = double.PositiveInfinity;
 
     public BuildOrderAbandonment(BuildOrder bo)
     {
@@ -58,11 +64,14 @@ public sealed class BuildOrderAbandonment
     public bool Gray { get; private set; }
 
     /// <param name="leftBehind">Pasos abiertos que quedaron atrás: no cuentan para dar la BO por terminada.</param>
-    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, Func<int, bool>? leftBehind = null)
+    /// <param name="missing">Lo que le falta juntar al paso actual (en total): cada vez que llega más abajo que nunca, avanza.</param>
+    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, Func<int, bool>? leftBehind = null, double missing = 0)
     {
         var progress = Progress(steps);
         if (_progress != progress)
-            (_progress, _progressAt) = (progress, state.Time);
+            (_progress, _progressAt, _leastMissing) = (progress, state.Time, double.PositiveInfinity);
+        if (missing > 0 && missing < _leastMissing - SavingStep)
+            (_leastMissing, _progressAt) = (missing, state.Time);
         if (Abandoned)
             return;
 

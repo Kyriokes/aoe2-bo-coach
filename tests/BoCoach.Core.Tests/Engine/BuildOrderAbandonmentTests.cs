@@ -117,6 +117,43 @@ public class BuildOrderAbandonmentTests
         Assert.False(detector.Abandoned);
     }
 
+    // Partida 20261031-163414 (británicos, Fast Archers mejorada): de 15:05 a 20:53 el jugador hizo granjas y juntó para
+    // Castillos, y a las 18:05 la BO quedaba "abandonada" con "faltan 584 de comida".
+    [Fact]
+    public void Juntar_lo_que_le_falta_al_paso_actual_es_avanzar()
+    {
+        var state = new PlayerState();
+        state.Apply(At(900));
+        var detector = Watching(state);
+        detector.Update(state, Steps, missing: 900);
+
+        for (var t = 960; t <= 1260; t += 60)
+        {
+            state.Apply(At(t));
+            detector.Update(state, Steps, missing: 900 - (t - 900));
+        }
+
+        Assert.False(detector.Abandoned);
+    }
+
+    [Fact]
+    public void Si_lo_que_falta_no_baja_los_tres_minutos_siguen_contando()
+    {
+        var state = new PlayerState();
+        state.Apply(At(900));
+        var detector = Watching(state);
+        detector.Update(state, Steps, missing: 500);
+
+        // Junta y lo gasta en otra cosa: lo que falta sube y baja sin llegar nunca más abajo.
+        for (var t = 930; t <= 1080; t += 30)
+        {
+            state.Apply(At(t));
+            detector.Update(state, Steps, missing: t % 60 == 0 ? 520 : 500);
+        }
+
+        Assert.True(detector.Abandoned);
+    }
+
     [Fact]
     public void Con_la_BO_terminada_no_se_abandona_por_tiempo()
     {

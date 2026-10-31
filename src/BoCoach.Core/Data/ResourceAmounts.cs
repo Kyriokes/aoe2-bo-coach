@@ -14,6 +14,8 @@ public readonly record struct ResourceAmounts(double Food, double Wood, double S
         _ => throw new ArgumentOutOfRangeException(nameof(resource), resource, null),
     };
 
+    public double Total => Food + Wood + Stone + Gold;
+
     public static ResourceAmounts Of(Resource resource, double amount) => Zero.With(resource, amount);
 
     public ResourceAmounts With(Resource resource, double amount) => resource switch

@@ -231,7 +231,7 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
-        Abandonment.Update(State, Tracker.Steps, Tracker.IsLeftBehind);
+        Abandonment.Update(State, Tracker.Steps, Tracker.IsLeftBehind, Tracker.Current is { } current ? MissingFor(current).Total : 0);
         var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
