@@ -5,6 +5,9 @@ export interface DbError {
 }
 
 /** Los topes que controla la base (migración 20261022000000_topes.sql), contados para quien publica. */
+/** El tope del autor que dice el JSON (migración 20261031200000_columnas_del_json.sql). */
+export const AUTHOR_MESSAGE = "El autor de la BO tiene hasta 60 caracteres.";
+
 export const LIMITS_MESSAGE =
   "La BO no entra en los topes de la biblioteca: hasta 512 KB, de 1 a 300 pasos, count y builders de 1 a 200 y etiquetas de hasta 30 caracteres.";
 
@@ -14,6 +17,7 @@ export const LIMITS_MESSAGE =
  * (nombres de tablas, consultas).
  */
 export function dbErrorMessage(error: DbError): string {
+  if (/build_orders_author_ok/.test(error.message)) return AUTHOR_MESSAGE;
   if (/violates check constraint/i.test(error.message)) return LIMITS_MESSAGE;
   if (/row-level security|permission denied/i.test(error.message)) return "No tenés permiso para hacer eso.";
   // 28000 token inválido, 42501 sin permiso, 23514 un tope de la migración, P0002 una BO que no existe o no es

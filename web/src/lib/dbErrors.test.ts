@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { dbErrorMessage, dbErrorStatus, LIMITS_MESSAGE } from "./dbErrors";
+import { AUTHOR_MESSAGE, dbErrorMessage, dbErrorStatus, LIMITS_MESSAGE } from "./dbErrors";
 
 describe("errores de la base", () => {
   it("una restricción violada se explica con los topes", () => {
     const error = { code: "23514", message: 'new row for relation "build_orders" violates check constraint "build_orders_body_ok"' };
     expect(dbErrorMessage(error)).toBe(LIMITS_MESSAGE);
     expect(dbErrorStatus(error)).toBe(400);
+    const author = { code: "23514", message: 'new row for relation "build_orders" violates check constraint "build_orders_author_ok"' };
+    expect(dbErrorMessage(author)).toBe(AUTHOR_MESSAGE);
+    expect(dbErrorStatus(author)).toBe(400);
   });
 
   it("los mensajes propios de la migración se muestran tal cual", () => {

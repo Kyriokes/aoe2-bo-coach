@@ -64,9 +64,12 @@ export interface Row extends Omit<BuildOrderSummary, "author" | "uploader"> {
   profiles: { display_name: string } | null;
 }
 
+/** Hasta dónde se muestra el autor que dice el JSON (la base lo limita desde la migración de columnas; lo anterior, no). */
+export const MAX_AUTHOR = 60;
+
 export function toSummary({ profiles, guide_author, ...row }: Row): BuildOrderSummary {
   const uploader = profiles?.display_name ?? "Anónimo";
-  return { ...row, author: guide_author?.trim() || uploader, uploader };
+  return { ...row, author: (guide_author?.trim() || uploader).slice(0, MAX_AUTHOR), uploader };
 }
 
 /** Saca lo que rompería el filtro de PostgREST (comas, paréntesis, comodines): se busca por palabras. */

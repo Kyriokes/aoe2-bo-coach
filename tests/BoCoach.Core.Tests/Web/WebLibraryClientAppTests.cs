@@ -127,6 +127,12 @@ public class WebLibraryClientAppTests
         Assert.Null(web.Requests[1].Auth);
         Assert.Equal(new DateTimeOffset(2026, 10, 30, 8, 0, 0, TimeSpan.Zero), withToken.UpdatedAt);
         Assert.Equal("Cicero", withToken.GuideAuthor);
+
+        // El autor del JSON lo escribe cualquiera: se corta a 60 (la web lo limita desde la migración de columnas; lo viejo, no).
+        var longAuthor = JsonNode.Parse(BuildOrderJson("k7m2xq"))!.AsObject();
+        longAuthor["guide_author"] = new string('x', 100);
+        web.Routes["GET /api/bo/k7m2xq"] = (HttpStatusCode.OK, longAuthor.ToJsonString());
+        Assert.Equal(new string('x', WebLibraryClient.MaxAuthorLength), (await client.DownloadAsync("k7m2xq", Token)).GuideAuthor);
         Assert.Equal("Ana", withoutToken.Author);
     }
 

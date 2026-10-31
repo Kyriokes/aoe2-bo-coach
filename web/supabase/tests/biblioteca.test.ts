@@ -36,7 +36,7 @@ describe("biblioteca", () => {
     expect(deleted.rows).toEqual([]);
     await expect(as(db, ana, "update public.build_orders set votes = 1000")).rejects.toThrow(/permission/);
 
-    const byAna = await as<{ name: string }>(db, ana, "update public.build_orders set name = 'Scouts 2' returning name");
+    const byAna = await as<{ name: string }>(db, ana, `update public.build_orders set body = body || '{"name": "Scouts 2"}' returning name`);
     expect(byAna.rows).toEqual([{ name: "Scouts 2" }]);
   });
 
@@ -157,9 +157,22 @@ describe("biblioteca", () => {
     });
 
     it("etiquetas cortas, versión del formato y clics de edad razonables", async () => {
-      await expect(as(db, ana, "insert into public.build_orders (name, tags, schema_version, body) values ('x', $1, 1, $2)", [["x".repeat(31)], scouts])).rejects.toThrow(/check/);
-      await expect(as(db, ana, "insert into public.build_orders (name, schema_version, body) values ('x', 1000, $1)", [scouts])).rejects.toThrow(/check/);
+      await bad({ ...scouts, tags: ["x".repeat(31)] });
+      await bad({ ...scouts, schema_version: 1000 });
       await expect(as(db, ana, "insert into public.build_orders (name, schema_version, body, feudal_click) values ('x', 1, $1, -5)", [scouts])).rejects.toThrow(/check/);
+    });
+
+    it("las columnas salen del JSON, y el autor tiene hasta 60 caracteres", async () => {
+      const body = { ...scouts, civ: " Franks ", tags: [" fc ", ""], description: "  ", author: "Hera" };
+      const direct = "insert into public.build_orders (name, civ, tags, schema_version, body) values ('Otra', 'britons', '{x}', 7, $1) returning code";
+      const { rows } = await as<{ code: string }>(db, ana, direct, [body]);
+      const columns = await db.query("select name, civ, tags, description, schema_version from public.build_orders where code = $1", [rows[0].code]);
+      expect(columns.rows[0]).toEqual({ name: "Scouts Feudal", civ: "Franks", tags: ["fc"], description: null, schema_version: 1 });
+
+      await bad({ ...scouts, author: "x".repeat(61) });
+      await expect(as(db, ana, direct, [{ ...scouts, name: "   " }])).rejects.toThrow(/nombre/);
+      await expect(as(db, ana, direct, [{ ...scouts, schema_version: "1" }])).rejects.toThrow(/schema_version/);
+      await expect(as(db, ana, direct, [{ ...scouts, schema_version: 1.5 }])).rejects.toThrow(/schema_version/);
     });
 
     it("hasta 150 BO nuevas por cuenta en 24 horas", async () => {
@@ -182,7 +195,7 @@ describe("privadas y suscripciones", () => {
   });
 
   const insertWith = `insert into public.build_orders (name, schema_version, body, visibility)
-                      values ($1, 1, $2, $3) returning id, code`;
+                      values ($1, 1, jsonb_set($2, '{name}', to_jsonb($1::text)), $3) returning id, code`;
 
   async function publishAs(userId: string, name: string, visibility: "public" | "private", body: object = scouts) {
     return (await as<{ id: string; code: string }>(db, userId, insertWith, [name, body, visibility])).rows[0];
@@ -314,7 +327,7 @@ describe("privadas y suscripciones", () => {
       const get = async (code: string) =>
         (await as<{ bo: Record<string, unknown> | null }>(db, null, "select public.app_build_order($1, $2) as bo", [t, code])).rows[0].bo;
 
-      expect(await get(mia.code)).toMatchObject({ code: mia.code, name: "Mía", author: "Beto", build_order: { name: "Scouts Feudal" } });
+      expect(await get(mia.code)).toMatchObject({ code: mia.code, name: "Mía", author: "Beto", build_order: { name: "Mía" } });
       expect(await get(ajena.code)).toBeNull();
     });
 

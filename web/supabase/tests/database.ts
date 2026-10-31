@@ -59,5 +59,6 @@ export const scouts = {
   steps: [{ id: "s1", do: "train", what: "villager", count: 6 }],
 };
 
+/** Inserta con ese nombre (la base deriva las columnas del JSON, así que el nombre va en el body). */
 export const insertBo = `insert into public.build_orders (name, civ, tags, schema_version, body)
-                  values ($1, 'any', '{scouts}', 1, $2) returning code, owner_id, votes`;
+                  values ($1, 'any', '{scouts}', 1, jsonb_set($2, '{name}', to_jsonb($1::text))) returning code, owner_id, votes`;

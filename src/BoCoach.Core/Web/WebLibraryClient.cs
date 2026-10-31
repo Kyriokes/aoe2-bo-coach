@@ -86,7 +86,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         {
             var bo = BuildOrderSerializer.Parse(json["build_order"]?.ToJsonString() ?? "");
             var author = Text(json["author"]) ?? "Anónimo";
-            return new WebBuildOrder(code, author, bo, Date(json["updated_at"]), Text(json["guide_author"]) ?? author);
+            return new WebBuildOrder(code, author, bo, Date(json["updated_at"]), Short(json["guide_author"]) ?? author);
         }
         catch (BuildOrderFormatException e)
         {
@@ -113,7 +113,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
                 continue;
             var author = Text(item["author"]) ?? "Anónimo";
             items.Add(new WebBuildOrderEntry(code, name, Text(item["civ"]) ?? "any", Text(item["map"]), Text(item["style"]),
-                (item["tags"] as JsonArray ?? []).Select(Text).OfType<string>().ToList(), author, Text(item["guide_author"]) ?? author,
+                (item["tags"] as JsonArray ?? []).Select(Text).OfType<string>().ToList(), author, Short(item["guide_author"]) ?? author,
                 item["own"] is JsonValue own && own.TryGetValue<bool>(out var isOwn) && isOwn,
                 Text(item["visibility"]) ?? "public", updated, Number(item["feudal_click"]), Number(item["castle_click"])));
         }
@@ -152,6 +152,12 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
 
     private static string? Text(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    /// <summary>El autor que dice el JSON de una BO lo escribe cualquiera: hasta 60 caracteres, como en la web.</summary>
+    public const int MaxAuthorLength = 60;
+
+    private static string? Short(JsonNode? node) =>
+        Text(node) is { } text ? (text.Length > MaxAuthorLength ? text[..MaxAuthorLength] : text) : null;
 
     private static double? Number(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<double>(out var number) ? number : null;
