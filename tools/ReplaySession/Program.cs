@@ -243,7 +243,7 @@ static int TeachIcon(string recording, int frame, int slot, string key, string l
     var row = args.Contains("--row") ? Option(args, "--row", 0) : library.Row(image) ?? throw new ArgumentException("no hay ningún ícono conocido en la captura: pasá --row");
     var (taught, change) = library.Teach(ProductionQueue.Features(image, slot * ProductionQueue.IconSize, row), key);
     taught.Save(libraryPath);
-    Console.WriteLine($"{change} → {libraryPath} ({taught.Icons.Count} íconos)");
+    Console.WriteLine($"{change} → {libraryPath} ({taught.Icons.Count} íconos, fila {row})");
     Console.WriteLine($"ahora se lee: {string.Join(" ", taught.Read(image))}");
     return 0;
 }
