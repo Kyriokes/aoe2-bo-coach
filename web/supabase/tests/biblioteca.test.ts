@@ -1,67 +1,6 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
+import { ana, as, beto, database, type Db, insertBo, scouts, signUp } from "./database";
 
-/**
- * La migración corre sobre PGlite (Postgres en WebAssembly) con lo mínimo de Supabase: los roles anon y
- * authenticated, auth.users, auth.uid() (que lee el usuario de la sesión) y los permisos por defecto del esquema
- * public. Así se prueban los permisos sin Docker.
- */
-const migrations = join(__dirname, "..", "migrations");
-
-async function database() {
-  const db = new PGlite();
-  await db.exec(`
-    create role anon nologin;
-    create role authenticated nologin;
-    create schema auth;
-    create table auth.users (id uuid primary key, raw_user_meta_data jsonb not null default '{}');
-    create function auth.uid() returns uuid language sql stable as $$
-      select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
-    $$;
-    grant usage on schema public, auth to anon, authenticated;
-    grant execute on function auth.uid() to anon, authenticated;
-    alter default privileges in schema public grant all on tables to anon, authenticated;
-    alter default privileges in schema public grant all on functions to anon, authenticated;
-  `);
-  for (const file of readdirSync(migrations).filter((f) => f.endsWith(".sql")).sort()) {
-    await db.exec(readFileSync(join(migrations, file), "utf8"));
-  }
-  return db;
-}
-
-type Db = Awaited<ReturnType<typeof database>>;
-
-const ana = "11111111-1111-1111-1111-111111111111";
-const beto = "22222222-2222-2222-2222-222222222222";
-
-async function signUp(db: Db, id: string, name: string) {
-  await db.query("insert into auth.users (id, raw_user_meta_data) values ($1, $2)", [id, JSON.stringify({ full_name: name })]);
-}
-
-/** Corre una consulta como un usuario logueado (o como anónimo si userId es null). */
-async function as<T>(db: Db, userId: string | null, sql: string, params: unknown[] = []) {
-  await db.exec(`set role ${userId ? "authenticated" : "anon"}`);
-  await db.query("select set_config('request.jwt.claim.sub', $1, false)", [userId ?? ""]);
-  try {
-    return await db.query<T>(sql, params);
-  } finally {
-    await db.exec("reset role");
-  }
-}
-
-const scouts = {
-  schema_version: 1,
-  id: "ejemplo-scouts",
-  name: "Scouts Feudal",
-  civ: "any",
-  tags: ["feudal", "scouts"],
-  steps: [{ id: "s1", do: "train", what: "villager", count: 6 }],
-};
-
-const insertBo = `insert into public.build_orders (name, civ, tags, schema_version, body)
-                  values ($1, 'any', '{scouts}', 1, $2) returning code, owner_id, votes`;
 
 describe("biblioteca", () => {
   let db: Db;
@@ -229,6 +168,157 @@ describe("biblioteca", () => {
          select $1, 'BO ' || i, 1, $2 from generate_series(1, 150) as i`, [ana, scouts]);
       await expect(as(db, ana, insertBo, ["La 151", scouts])).rejects.toThrow(/24 horas/);
       await as(db, beto, insertBo, ["La de Beto", scouts]);
+    });
+  });
+});
+
+describe("privadas y suscripciones", () => {
+  let db: Db;
+
+  beforeEach(async () => {
+    db = await database();
+    await signUp(db, ana, "Ana");
+    await signUp(db, beto, "Beto");
+  });
+
+  const insertWith = `insert into public.build_orders (name, schema_version, body, visibility)
+                      values ($1, 1, $2, $3) returning id, code`;
+
+  async function publishAs(userId: string, name: string, visibility: "public" | "private", body: object = scouts) {
+    return (await as<{ id: string; code: string }>(db, userId, insertWith, [name, body, visibility])).rows[0];
+  }
+
+  async function token(userId: string) {
+    return (await as<{ token: string }>(db, userId, "select public.create_app_token('PC') as token")).rows[0].token;
+  }
+
+  const names = async (userId: string | null) =>
+    (await as<{ name: string }>(db, userId, "select name from public.build_orders order by name")).rows.map((r) => r.name);
+
+  it("una privada solo la ve su dueña", async () => {
+    await publishAs(ana, "Privada", "private");
+    await publishAs(ana, "Pública", "public");
+
+    expect(await names(null)).toEqual(["Pública"]);
+    expect(await names(beto)).toEqual(["Pública"]);
+    expect(await names(ana)).toEqual(["Privada", "Pública"]);
+  });
+
+  it("lo publicado sin decir nada queda público", async () => {
+    await as(db, ana, insertBo, ["Scouts", scouts]);
+    expect((await db.query<{ visibility: string }>("select visibility from public.build_orders")).rows).toEqual([{ visibility: "public" }]);
+  });
+
+  it("no se vota una privada ajena y cada uno cambia la visibilidad de las suyas", async () => {
+    const privada = await publishAs(ana, "Privada", "private");
+    const vote = "insert into public.votes (build_order_id) values ($1)";
+    await expect(as(db, beto, vote, [privada.id])).rejects.toThrow();
+
+    const byBeto = await as(db, beto, "update public.build_orders set visibility = 'public' returning code");
+    expect(byBeto.rows).toEqual([]);
+    const byAna = await as<{ visibility: string }>(db, ana, "update public.build_orders set visibility = 'public' returning visibility");
+    expect(byAna.rows).toEqual([{ visibility: "public" }]);
+    await expect(as(db, ana, "update public.build_orders set visibility = 'secreta'")).rejects.toThrow(/check/);
+  });
+
+  it("se suscribe solo a públicas ajenas y cada uno ve las suyas", async () => {
+    const publica = await publishAs(ana, "Pública", "public");
+    const privada = await publishAs(ana, "Privada", "private");
+    const propia = await publishAs(beto, "De Beto", "public");
+    const subscribe = "insert into public.subscriptions (build_order_id) values ($1)";
+
+    await as(db, beto, subscribe, [publica.id]);
+    await expect(as(db, beto, subscribe, [privada.id])).rejects.toThrow();
+    await expect(as(db, beto, subscribe, [propia.id])).rejects.toThrow();
+    await expect(as(db, null, subscribe, [publica.id])).rejects.toThrow();
+
+    expect((await as(db, ana, "select * from public.subscriptions")).rows).toEqual([]);
+    expect((await as(db, ana, "delete from public.subscriptions returning user_id")).rows).toEqual([]);
+    expect((await as(db, beto, "select build_order_id from public.subscriptions")).rows).toEqual([{ build_order_id: publica.id }]);
+  });
+
+  it("al borrar la BO se van sus suscripciones", async () => {
+    const publica = await publishAs(ana, "Pública", "public");
+    await as(db, beto, "insert into public.subscriptions (build_order_id) values ($1)", [publica.id]);
+
+    await as(db, ana, "delete from public.build_orders");
+    expect((await db.query("select * from public.subscriptions")).rows).toEqual([]);
+  });
+
+  it("el mapa y el estilo salen del JSON", async () => {
+    const scoutsOnArabia = { ...scouts, map: "arabia", steps: [...scouts.steps, { id: "s2", do: "train", what: "scout_cavalry", count: 3 }] };
+    const bo = await publishAs(ana, "Scouts", "public", scoutsOnArabia);
+    const read = async () =>
+      (await db.query<{ map: string | null; style: string | null }>("select map, style from public.build_orders where id = $1", [bo.id])).rows[0];
+    expect(await read()).toEqual({ map: "arabia", style: "scouts" });
+
+    await as(db, ana, "update public.build_orders set body = $1", [scouts]);
+    expect(await read()).toEqual({ map: null, style: null });
+  });
+
+  describe("con el token de la app", () => {
+    type Item = { code: string; name: string; own: boolean; visibility: string; author: string; uploader: string };
+    const list = async (t: string) =>
+      (await as<{ items: Item[] }>(db, null, "select public.app_my_build_orders($1) as items", [t])).rows[0].items;
+    const subscribe = (t: string, code: string) =>
+      as<{ result: string }>(db, null, "select public.app_subscribe($1, $2) as result", [t, code]);
+
+    it("la lista trae las propias y las suscriptas públicas", async () => {
+      const t = await token(beto);
+      await publishAs(beto, "B privada", "private");
+      const publica = await publishAs(ana, "A pública", "public");
+      const despues = await publishAs(ana, "A después privada", "public");
+      await subscribe(t, publica.code);
+      await subscribe(t, despues.code);
+      await as(db, ana, "update public.build_orders set visibility = 'private' where id = $1", [despues.id]);
+
+      const items = await list(t);
+      expect(items.map((i) => [i.name, i.own, i.visibility])).toEqual([
+        ["B privada", true, "private"],
+        ["A pública", false, "public"],
+      ]);
+      expect(items[1]).toMatchObject({ author: "Ana", uploader: "Ana" });
+    });
+
+    it("con un token inválido no da nada", async () => {
+      await expect(list("bocoach_falso")).rejects.toThrow(/token/);
+    });
+
+    it("suscribirse: propia, pública ajena, privada ajena y código que no existe", async () => {
+      const t = await token(beto);
+      const propia = await publishAs(beto, "Mía", "public");
+      const publica = await publishAs(ana, "Pública", "public");
+      const privada = await publishAs(ana, "Privada", "private");
+
+      expect((await subscribe(t, propia.code)).rows[0].result).toBe("own");
+      expect((await subscribe(t, publica.code)).rows[0].result).toBe("subscribed");
+      expect((await subscribe(t, publica.code)).rows[0].result).toBe("subscribed");
+      await expect(subscribe(t, privada.code)).rejects.toThrow(/pública/);
+      await expect(subscribe(t, "zzzzzz")).rejects.toThrow(/pública/);
+      expect((await db.query("select * from public.subscriptions")).rows).toHaveLength(1);
+
+      await as(db, null, "select public.app_unsubscribe($1, $2)", [t, publica.code]);
+      await as(db, null, "select public.app_unsubscribe($1, $2)", [t, publica.code]);
+      expect((await db.query("select * from public.subscriptions")).rows).toEqual([]);
+    });
+
+    it("baja una privada propia pero no una ajena", async () => {
+      const t = await token(beto);
+      const mia = await publishAs(beto, "Mía", "private");
+      const ajena = await publishAs(ana, "Ajena", "private");
+      const get = async (code: string) =>
+        (await as<{ bo: Record<string, unknown> | null }>(db, null, "select public.app_build_order($1, $2) as bo", [t, code])).rows[0].bo;
+
+      expect(await get(mia.code)).toMatchObject({ code: mia.code, name: "Mía", author: "Beto", build_order: { name: "Scouts Feudal" } });
+      expect(await get(ajena.code)).toBeNull();
+    });
+
+    it("reemplazar desde la app no cambia la visibilidad", async () => {
+      const t = await token(ana);
+      const privada = await publishAs(ana, "Privada", "private");
+      await as(db, null, "select public.app_publish($1, $2, null, null, $3)", [t, { ...scouts, name: "Nueva" }, privada.code]);
+
+      expect((await db.query<{ visibility: string }>("select visibility from public.build_orders")).rows).toEqual([{ visibility: "private" }]);
     });
   });
 });
