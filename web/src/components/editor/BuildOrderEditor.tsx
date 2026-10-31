@@ -189,10 +189,22 @@ export function BuildOrderEditor({
   const load = useCallback(
     (json: string) => {
       if (!coach) return;
-      const result = coach.analyze(json);
+      // Una guía de buildorderguide.com o de RTS Overlay se convierte primero; una BO de la app se analiza tal cual.
+      const imported = coach.importBuildOrder(json);
+      if (!imported.ok) {
+        showNotice(`No se pudo leer la BO: ${imported.error}`);
+        return;
+      }
+      const result = coach.analyze(imported.source === "bocoach" ? json : JSON.stringify(imported.build_order));
       if (!result.ok) {
         showNotice(`No se pudo leer la BO: ${result.error}`);
         return;
+      }
+      if (imported.source !== "bocoach") {
+        const from = imported.source === "buildorderguide" ? "buildorderguide.com" : "RTS Overlay";
+        const warnings = imported.warnings.slice(0, 3).join(" · ");
+        const more = imported.warnings.length > 3 ? ` (y ${imported.warnings.length - 3} más)` : "";
+        showNotice(warnings ? `Importada de ${from}, revisala: ${warnings}${more}` : `Importada de ${from}.`);
       }
       setStrip(null);
       lastPlanRef.current = null;
@@ -682,8 +694,18 @@ export function BuildOrderEditor({
         <button type="button" className="button" onClick={download} disabled={!canDownload}>
           Descargar .json
         </button>
-        <button type="button" className="button-primary ml-auto" onClick={publish} disabled={!canPublish}>
-          {pending ? "Publicando…" : editCode ? "Guardar la nueva versión" : "Publicar en la biblioteca"}
+        <fieldset className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+          <legend className="sr-only">Quién la ve</legend>
+          {(["public", "private"] as const).map((value) => (
+            <label key={value} className="flex cursor-pointer items-center gap-1.5">
+              <input type="radio" name="visibility" value={value} checked={visibility === value} onChange={() => setVisibility(value)} />
+              {value === "public" ? "Pública" : "Privada"}
+            </label>
+          ))}
+          <span className="text-xs text-faint">{visibility === "private" ? "Solo la ven vos y tu app." : "Aparece en la biblioteca."}</span>
+        </fieldset>
+        <button type="button" className="button-primary" onClick={publish} disabled={!canPublish}>
+          {pending ? "Guardando…" : editCode ? "Guardar la nueva versión" : visibility === "private" ? "Guardar privada" : "Publicar en la biblioteca"}
         </button>
       </div>
       {!loggedIn ? (

@@ -10,7 +10,8 @@ interface Example {
 
 /**
  * Cómo entra una BO al editor: un ejemplo de los que trae la app, un archivo .json, el JSON pegado, o una nueva de
- * cero. Todo termina en `onLoad(json)`.
+ * cero. El archivo y lo pegado pueden ser una guía de buildorderguide.com o de RTS Overlay: el editor la convierte con
+ * el Core. Todo termina en `onLoad(json)`.
  */
 export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoad: (json: string) => void; onNew: () => void }) {
   const [examples, setExamples] = useState<Example[]>([]);
@@ -57,7 +58,7 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
           <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => readFile(e.target.files?.[0])} />
         </label>
         <button type="button" className="button" aria-expanded={pasteOpen} onClick={() => setPasteOpen((open) => !open)}>
-          Pegar JSON
+          Pegar JSON o guía
         </button>
       </div>
       {pasteOpen ? (
@@ -67,8 +68,8 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
             onChange={(e) => setPasted(e.target.value)}
             rows={6}
             spellCheck={false}
-            placeholder='{ "schema_version": 2, "name": "…", "steps": [ … ] }'
-            aria-label="JSON de la build order"
+            placeholder="El JSON de una BO, o una guía copiada de buildorderguide.com (Copy to clipboard for RTS Overlay)"
+            aria-label="JSON de la build order o guía"
             className="field font-mono text-xs"
           />
           <div>
