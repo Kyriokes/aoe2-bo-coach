@@ -262,6 +262,30 @@ public class TrackerLanesTests
         Assert.Equal(["fletching"], tracker.LaneBehind(Lane.Research).Select(s => s.Step.Id));
     }
 
+    // Partida 20261031-192108: la BO de scouts "any" jugada con francos pedía la collera desde las 10:43 hasta el final;
+    // a los francos el juego se la da gratis al llegar a Feudal (con el arado pesado y la rotación de cultivos).
+    [Theory]
+    [InlineData("franks", true)]
+    [InlineData("britons", false)]
+    public void Lo_que_la_civ_tiene_gratis_queda_hecho_al_llegar_a_su_edad(string civ, bool free)
+    {
+        var bo = Bo(Build("mill", "mill"), Research("feudal", "feudal_age"), Research("collar", "horse_collar")) with { Civ = civ };
+        var tracker = new Tracker(bo, TestData.GameData);
+        var partida = new Partida().Event("mill_built");
+        tracker.Update(partida.State);
+        Assert.NotEqual(StepState.Done, tracker.Steps[2].State); // en la Edad Oscura todavía no la tiene
+
+        partida.Wait(30).Event("feudal_age_researched");
+        tracker.Update(partida.State);
+
+        Assert.Equal(free, tracker.Steps[2].State == StepState.Done);
+        if (free)
+        {
+            Assert.Equal(partida.Time, tracker.Steps[2].DoneAt);
+            Assert.Null(tracker.LaneStep(Lane.Research));
+        }
+    }
+
     // Revisión de la rama: los jemeres suben de edad sin edificios.
     [Fact]
     public void Los_jemeres_hacen_clic_de_edad_sin_edificios()

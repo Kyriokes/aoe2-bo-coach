@@ -657,6 +657,12 @@ public sealed class Tracker
                 state = StepState.Done;
                 completed[i] = required;
             }
+            else if (FreeAt(step, i) is { } free)
+            {
+                state = StepState.Done;
+                at = free;
+                completed[i] = required;
+            }
             else if (_started.ContainsKey(i))
             {
                 state = StepState.InProgress;
@@ -688,6 +694,26 @@ public sealed class Tracker
             return _state.Stock.Covers(entity.Cost);
         }
     }
+
+    /// <summary>
+    /// Una investigación que a la civ le sale gratis (costo y tiempo cero en game_data: la collera, el arado pesado y la
+    /// rotación de cultivos de los francos, la carretilla de los vikingos) la da el juego al llegar a su edad: queda
+    /// hecha desde ese momento, sin el log (partida 20261031-192108: la BO de scouts "any" jugada con francos pedía la
+    /// collera desde las 10:43 hasta el final).
+    /// </summary>
+    private double? FreeAt(Step step, int i)
+    {
+        if (step.Do != StepAction.Research || step.What is not { } what || !_data.TryGet(what, out var entity)
+            || entity.Age > Age || BuildOrderValidator.AgeOf(what) is not null)
+            return null;
+        var civ = _data.Civ(_bo.Civ);
+        if (civ.Cost(entity, Age) != ResourceAmounts.Zero || entity.Cost == ResourceAmounts.Zero)
+            return null;
+        return _freeAt.TryGetValue(i, out var at) ? at : _freeAt[i] = _state.Time;
+    }
+
+    /// <summary>Cuándo se vio por primera vez que la civ ya tenía gratis cada investigación (<see cref="FreeAt"/>).</summary>
+    private readonly Dictionary<int, double> _freeAt = [];
 
     private double? FirstProgressTime(int i, double?[] doneAt) =>
         _manualDone.TryGetValue(i, out var manual) ? manual
