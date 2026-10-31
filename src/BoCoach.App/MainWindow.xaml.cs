@@ -146,7 +146,7 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             _hotkeysWindow.Activate();
             return;
         }
-        _hotkeysWindow = new HotkeysWindow(new HotkeysViewModel(_hotkeyBinder, HotkeyMap.Current, includeDeveloper: true)) { Owner = this };
+        _hotkeysWindow = new HotkeysWindow(new HotkeysViewModel(_hotkeyBinder, HotkeyMap.Current, includeDeveloper: DevMode.Instance.IsOn)) { Owner = this };
         _hotkeysWindow.Closed += (_, _) => _hotkeysWindow = null;
         _hotkeysWindow.Show();
     }
@@ -177,12 +177,17 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
         HotkeyMap.Current = map;
         HotkeyTips.Instance.Attach(map);
         map.Changed += () => Coach.SaveHotkeys(map.Overrides);
-        // Hasta la parte 2 (modo desarrollador) se registran también las de desarrollador.
-        _hotkeyBinder = new HotkeyBinder(_hotkeys, map, actions, includeDeveloper: true);
+        // Los de desarrollador (calibrar, grabar, debug, diagnóstico) solo con el modo prendido.
+        _hotkeyBinder = new HotkeyBinder(_hotkeys, map, actions, includeDeveloper: DevMode.Instance.IsOn);
+        DevMode.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DevMode.IsOn) && _hotkeyBinder is { } binder)
+                binder.IncludeDeveloper = DevMode.Instance.IsOn;
+        };
         var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? $"{HotkeyActions.Find(id)?.Name} (sin atajo)").ToList();
         ViewModel.Status = missing.Count > 0
             ? $"Otro programa ya usa {string.Join(", ", missing)}; usá los botones o cambialos en Atajos."
-            : $"Atajos listos, también desde el juego: {map.Text("start_stop")} empieza el coach, {map.Text("calibrate")} calibra y {map.Text("record")} graba.";
+            : $"Atajos listos, también desde el juego: {map.Text("start_stop")} empieza el coach y {map.Text("advance")} da por hecho el paso (todos en Atajos).";
     }
 
     // ---- Overlay del coach ----

@@ -340,4 +340,21 @@ public sealed class HotkeysTests
         Assert.Empty(settings.Hotkeys);
         File.Delete(path);
     }
+
+    // Modo desarrollador: prenderlo registra los atajos de desarrollador y apagarlo los suelta, sin duplicar.
+    [Fact]
+    public void Prender_y_apagar_el_modo_registra_y_suelta_los_de_desarrollador()
+    {
+        var registrar = new FakeRegistrar();
+        var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: false);
+        binder.RegisterAll();
+        Assert.Equal(8, registrar.Registered.Count);
+        binder.IncludeDeveloper = true;
+        Assert.Equal(12, registrar.Registered.Count);
+        binder.IncludeDeveloper = true;
+        Assert.Equal(12, registrar.Registered.Count);
+        binder.IncludeDeveloper = false;
+        Assert.Equal(8, registrar.Registered.Count);
+        Assert.DoesNotContain("Ctrl+Alt+C", registrar.Registered.Values);
+    }
 }

@@ -28,7 +28,32 @@ public sealed class HotkeyBinder(IHotkeyRegistrar registrar, HotkeyMap map, IRea
     /// <summary>La acción que tenía la combinación pedida en el último <see cref="ChangeResult.UsedByOther"/>.</summary>
     public HotkeyAction? LastConflict { get; private set; }
 
-    private IEnumerable<HotkeyAction> Active => HotkeyActions.All.Where(a => (includeDeveloper || !a.Developer) && actions.ContainsKey(a.Id));
+    private bool _includeDeveloper = includeDeveloper;
+
+    /// <summary>
+    /// Con el modo desarrollador: en true registra los atajos de desarrollador (los que no se pueden quedan sin
+    /// registrar, como al abrir); en false los suelta.
+    /// </summary>
+    public bool IncludeDeveloper
+    {
+        get => _includeDeveloper;
+        set
+        {
+            if (value == _includeDeveloper)
+                return;
+            _includeDeveloper = value;
+            if (value)
+            {
+                RegisterAll();
+                return;
+            }
+            foreach (var action in HotkeyActions.All.Where(a => a.Developer))
+                if (_ids.Remove(action.Id, out var id))
+                    registrar.Unregister(id);
+        }
+    }
+
+    private IEnumerable<HotkeyAction> Active => HotkeyActions.All.Where(a => (_includeDeveloper || !a.Developer) && actions.ContainsKey(a.Id));
 
     /// <summary>Registra las del mapa que falten; devuelve los ids que no se pudieron (otro programa o sin atajo).</summary>
     public IReadOnlyList<string> RegisterAll()
