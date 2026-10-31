@@ -122,6 +122,20 @@ public sealed class BuildOrderCacheTests : IDisposable
     }
 
     [Fact]
+    public async Task Con_el_token_vencido_pide_conectar_de_nuevo_y_sigue_la_lista()
+    {
+        ServeList(Entry("k7m2xq", "Mía"));
+        var cache = Cache();
+        await cache.RefreshAsync();
+        _web.Routes["GET /api/app/mis-bo"] = (HttpStatusCode.Unauthorized, """{"error":"El token de la app no es válido."}""");
+
+        var error = await cache.RefreshAsync();
+
+        Assert.StartsWith("Conectá tu cuenta de nuevo", error);
+        Assert.Single(cache.List.Items);
+    }
+
+    [Fact]
     public async Task Sin_token_no_pide_nada()
     {
         _token = null;

@@ -9,9 +9,14 @@ namespace BoCoach.Core.Web;
 /// (<c>bo/&lt;código&gt;.json</c>, con la fecha de la web). Una BO se baja recién cuando se va a usar y de nuevo solo si
 /// la lista dice que cambió; sin internet se sigue con lo guardado. Lo guardado que no se puede leer se ignora.
 /// </summary>
+/// <param name="client">El cliente de la web; se pide en cada pedido (la dirección de la web se puede cambiar).</param>
 /// <param name="token">El token de la app (null o vacío sin cuenta): se lee en cada pedido.</param>
-public sealed class BuildOrderCache(string directory, WebLibraryClient client, Func<string?> token) : IBuildOrderSource
+public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> client, Func<string?> token) : IBuildOrderSource
 {
+    public BuildOrderCache(string directory, WebLibraryClient client, Func<string?> token) : this(directory, () => client, token)
+    {
+    }
+
     private const string ListFile = "mis-bo.json";
     private const string BuildOrdersFolder = "bo";
 
@@ -27,7 +32,11 @@ public sealed class BuildOrderCache(string directory, WebLibraryClient client, F
             return "Conectá tu cuenta para elegir BO.";
         try
         {
-            List = await client.MyBuildOrdersAsync(current, cancel);
+            List = await client().MyBuildOrdersAsync(current, cancel);
+        }
+        catch (WebLibraryException e) when (e.Status == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return $"Conectá tu cuenta de nuevo: {e.Message}";
         }
         catch (WebLibraryException e)
         {
@@ -71,7 +80,7 @@ public sealed class BuildOrderCache(string directory, WebLibraryClient client, F
             return saved.BuildOrder;
         try
         {
-            var downloaded = await client.DownloadAsync(code, Token(), cancel);
+            var downloaded = await client().DownloadAsync(code, Token(), cancel);
             var updated = downloaded.UpdatedAt ?? entry?.UpdatedAt ?? DateTimeOffset.MinValue;
             Write(PathFor(code), new JsonObject
             {
@@ -91,7 +100,7 @@ public sealed class BuildOrderCache(string directory, WebLibraryClient client, F
     {
         if (Token() is not { } current)
             throw new WebLibraryException("Conectá tu cuenta para sumar BO.");
-        await client.SubscribeAsync(code, current, cancel);
+        await client().SubscribeAsync(code, current, cancel);
         if (await RefreshAsync(cancel) is { } error)
             throw new WebLibraryException(error);
         await GetAsync(code, cancel);
