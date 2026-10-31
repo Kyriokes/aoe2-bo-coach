@@ -49,6 +49,10 @@ public partial class MainWindow : Window, IDialogs, ICaptureHost, ICoachHost
             var calibrated = Tools.TryAutoCalibrate();
             return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated);
         }, CoachSettings.DefaultPath);
+        // Modo desarrollador: "Grabar cada partida sola".
+        var autoRecorder = new AutoRecorder(Tools, () => DevMode.Instance is { IsOn: true, AutoRecord: true });
+        Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame);
+        Coach.Stopped += autoRecorder.OnCoachStopped;
         CoachButton.DataContext = Coach;
         PlayerNameBox.DataContext = Coach;
         GameCivBox.DataContext = Coach;

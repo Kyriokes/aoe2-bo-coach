@@ -26,7 +26,7 @@ public interface ICaptureHost
 }
 
 /// <summary>Calibrar la pantalla, grabar partidas (RecordSession) e instalar el mod del HUD.</summary>
-public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposable
+public sealed partial class CaptureToolsViewModel : ObservableObject, IRecordingControl, IDisposable
 {
     private readonly IScreenSource _screen;
     private readonly ICaptureHost _host;
@@ -86,6 +86,18 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IDisposabl
             return;
         result.Save(_regionsPath);
         UpdateCalibrationStatus();
+    }
+
+    public void StartRecording()
+    {
+        if (!IsRecording)
+            ToggleRecording();
+    }
+
+    public void StopRecording()
+    {
+        if (IsRecording)
+            ToggleRecording();
     }
 
     [RelayCommand]

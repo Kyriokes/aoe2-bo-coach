@@ -585,6 +585,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _host.CloseOverlay();
         IsRunning = false;
         Status = "Coach detenido.";
+        Stopped?.Invoke();
     }
 
     /// <summary>Una opción del selector de línea de "Ya está" y "Saltear" (null = lo primero que falta).</summary>
@@ -639,6 +640,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     public void Dispose() => Stop();
+
+    /// <summary>Se detuvo el coach (a mano, o solo al cerrarse el juego).</summary>
+    public event Action? Stopped;
 
     internal void Apply(CoachFrame frame)
     {
