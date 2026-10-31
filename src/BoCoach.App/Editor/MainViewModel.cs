@@ -203,14 +203,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void AddImported(string json)
     {
-        IReadOnlyList<string> warnings = [];
-        BuildOrder bo;
-        if (RtsOverlayImporter.IsRtsOverlay(json))
-            (bo, warnings) = RtsOverlayImporter.Convert(json, _app.GameData);
-        else if (BuildOrderGuideImporter.IsBuildOrderGuide(json))
-            (bo, warnings) = BuildOrderGuideImporter.Convert(json, _app.GameData);
-        else
-            bo = BuildOrderSerializer.Parse(json);
+        var (bo, warnings, _) = BuildOrderImport.Read(json, _app.GameData);
         LeaveCurrent();
         var imported = _app.Library.Add(bo);
         RefreshList();
