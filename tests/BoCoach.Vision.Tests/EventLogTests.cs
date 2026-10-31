@@ -76,6 +76,22 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(["archer_created"], Matcher.MatchLines(["Complete—", "—Archer Creat«l—"]));
     }
 
+    // Partida 20261031-183635: renglones leídos perfectos de techs poco comunes salían como la común parecida (la
+    // penalidad de las poco comunes pesaba más que las letras distintas): Town Patrol daba Town Watch otra vez.
+    [Theory]
+    [InlineData("—Town Patrol Research Complete—", "town_patrol_researched")]
+    [InlineData("—Leather Archer Armor Research Complete—", "leather_archer_armor_researched")]
+    public void Un_renglon_leido_tal_cual_es_su_evento_aunque_sea_poco_comun(string line, string expected)
+    {
+        Assert.Equal(expected, Matcher.Match(line));
+    }
+
+    [Fact]
+    public void Un_mensaje_largo_poco_comun_partido_en_dos_renglones()
+    {
+        Assert.Equal(["leather_archer_armor_researched"], Matcher.MatchLines(["—Leather Archer Armor Research", "Complete—"]));
+    }
+
     private static List<string> Run(EventLogTracker tracker, params string[][] frames) =>
         frames.SelectMany(f => tracker.Update(f)).ToList();
 

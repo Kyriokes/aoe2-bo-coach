@@ -39,15 +39,19 @@ public sealed class EventMatcher
         var unrecognized = 0;
         for (var i = 0; i < lines.Count; i++)
         {
-            if (Match(lines[i]) is { } single)
+            var single = Best(lines[i]);
+            // Puede ser la primera mitad de un mensaje largo: si junto con el siguiente se parece más a algo, es eso
+            // (partida 20261031-183635: "Leather Archer Armor Research" solo ya se parecía a Padded Archer Armor).
+            var joined = i + 1 < lines.Count && !Closes(lines[i]) && !Opens(lines[i + 1]) ? Best(lines[i] + " " + lines[i + 1]) : null;
+            if (joined is { } pair && (single is null || pair.Score < single.Value.Score))
             {
-                result.Add(single);
+                result.Add(pair.EventId);
+                i++;
                 continue;
             }
-            if (i + 1 < lines.Count && !Closes(lines[i]) && !Opens(lines[i + 1]) && Match(lines[i] + " " + lines[i + 1]) is { } joined)
+            if (single is { } one)
             {
-                result.Add(joined);
-                i++;
+                result.Add(one.EventId);
                 continue;
             }
             unrecognized++;
@@ -69,7 +73,10 @@ public sealed class EventMatcher
     private static bool Opens(string line) => line.TrimStart() is { Length: > 0 } t && Dashes.Contains(t[0]);
 
     /// <summary>Id del evento que mejor coincide con el texto, o null si ninguno se parece lo suficiente.</summary>
-    public string? Match(string text)
+    public string? Match(string text) => Best(text)?.EventId;
+
+    /// <summary>El evento que mejor coincide y su puntaje (distancia relativa más la penalidad), o null.</summary>
+    private (string EventId, double Score)? Best(string text)
     {
         var normalized = Normalize(text);
         if (normalized.Length < 4)
@@ -80,14 +87,17 @@ public sealed class EventMatcher
         foreach (var (eventId, phrase, rare) in _phrases)
         {
             // La distancia nunca es menor que la diferencia de largo: si con eso ya no puede ganar, no se calcula.
-            var penalty = rare ? RarePenalty : 0;
-            if (Math.Abs(normalized.Length - phrase.Length) > (Math.Min(bestScore, MaxRelativeDistance) - penalty) * phrase.Length)
+            if (Math.Abs(normalized.Length - phrase.Length) > Math.Min(bestScore, MaxRelativeDistance) * phrase.Length)
                 continue;
-            var score = Levenshtein(normalized, phrase) / (double)phrase.Length + penalty;
+            // Leído tal cual, gana aunque sea poco común: la penalidad es para las lecturas dudosas (partida
+            // 20261031-183635: "Town Patrol Research Complete" salía Town Watch, y Leather Archer Armor, Padded). Con
+            // letras mal leídas sigue entera: "I aeather Archer Armor" queda Padded.
+            var distance = Levenshtein(normalized, phrase);
+            var score = distance == 0 ? 0 : distance / (double)phrase.Length + (rare ? RarePenalty : 0);
             if (score < bestScore)
                 (best, bestScore) = (eventId, score);
         }
-        return bestScore <= MaxRelativeDistance ? best : null;
+        return best is not null && bestScore <= MaxRelativeDistance ? (best, bestScore) : null;
     }
 
     /// <summary>Minúsculas, solo letras y espacios simples, con las confusiones típicas del OCR corregidas.</summary>
