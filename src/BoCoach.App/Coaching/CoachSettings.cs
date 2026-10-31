@@ -77,7 +77,7 @@ public sealed class CoachSettings
                 };
             }
         }
-        catch (Exception e) when (e is IOException or JsonException or InvalidOperationException or FormatException)
+        catch (Exception e) when (e is IOException or JsonException or InvalidOperationException or FormatException or ArgumentException)
         {
             // Un archivo roto no tiene que impedir abrir la app: quedan los valores por defecto.
         }
@@ -88,9 +88,20 @@ public sealed class CoachSettings
     private static long? Number(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var number) ? number : null;
 
     /// <summary>Los valores de texto de un objeto; lo que no es objeto o no es texto se ignora.</summary>
-    private static Dictionary<string, string> Strings(JsonNode? node) => node is JsonObject obj
-        ? obj.Where(p => p.Value is JsonValue v && v.TryGetValue<string>(out _)).ToDictionary(p => p.Key, p => p.Value!.GetValue<string>())
-        : [];
+    private static Dictionary<string, string> Strings(JsonNode? node)
+    {
+        if (node is not JsonObject obj)
+            return [];
+        try
+        {
+            return obj.Where(p => p.Value is JsonValue v && v.TryGetValue<string>(out _)).ToDictionary(p => p.Key, p => p.Value!.GetValue<string>());
+        }
+        catch (ArgumentException)
+        {
+            // Una clave repetida (settings.json editado a mano): los atajos quedan de fábrica, el resto se lee igual.
+            return [];
+        }
+    }
 
     public void Save(string path)
     {
