@@ -177,6 +177,34 @@ public sealed class WebTests : IDisposable
         var second = SingleInstance.Claim("bocoach://import/k7m2xq", name);
 
         Assert.Null(second);
-        Assert.Equal("bocoach://import/k7m2xq", await received.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.Equal("bocoach://import/k7m2xq", await received.Task.WaitAsync(TimeSpan.FromSeconds(15)));
+    }
+
+    [Fact]
+    public async Task Si_otro_proceso_tiene_el_pipe_el_escucha_reintenta_hasta_tomarlo()
+    {
+        var name = $"BoCoachTest-{Guid.NewGuid():N}";
+        // Otro proceso con el mismo nombre de pipe (una sola instancia): abrir el nuestro falla hasta que lo suelte.
+        var squatter = new System.IO.Pipes.NamedPipeServerStream(SingleInstance.PipeNameFor(name), System.IO.Pipes.PipeDirection.In, 1);
+        var previous = SingleInstance.RetryDelay;
+        SingleInstance.RetryDelay = TimeSpan.FromMilliseconds(100);
+        try
+        {
+            using var first = SingleInstance.Claim(null, name);
+            var received = new TaskCompletionSource<string>();
+            first!.Listen(link => received.TrySetResult(link));
+            await Task.Delay(400);
+            Assert.False(received.Task.IsCompleted);
+
+            squatter.Dispose();
+            Assert.Null(SingleInstance.Claim("bocoach://import/k7m2xq", name));
+
+            Assert.Equal("bocoach://import/k7m2xq", await received.Task.WaitAsync(TimeSpan.FromSeconds(15)));
+        }
+        finally
+        {
+            SingleInstance.RetryDelay = previous;
+            squatter.Dispose();
+        }
     }
 }

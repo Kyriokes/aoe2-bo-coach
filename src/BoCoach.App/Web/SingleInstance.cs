@@ -31,7 +31,7 @@ public sealed class SingleInstance : IDisposable
     {
         // Alcanza con saber si el mutex ya existía (lo creó otra instancia): no hace falta tomarlo.
         var mutex = new Mutex(initiallyOwned: false, $@"Local\{name}", out var createdNew);
-        var pipeName = $"{name}.{Environment.UserName}";
+        var pipeName = PipeNameFor(name);
         if (createdNew)
             return new SingleInstance(mutex, pipeName);
 
@@ -40,6 +40,12 @@ public sealed class SingleInstance : IDisposable
             TrySend(pipeName, link);
         return null;
     }
+
+    /// <summary>El nombre del pipe de esa instancia: uno por usuario de Windows.</summary>
+    internal static string PipeNameFor(string name) => $"{name}.{Environment.UserName}";
+
+    /// <summary>Cuánto se espera antes de volver a abrir el pipe cuando falló (otro proceso lo tiene, se cortó).</summary>
+    internal static TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
 
     /// <summary>Escucha los enlaces que mandan otras instancias (llama a <paramref name="onLink"/> fuera del hilo de la interfaz).</summary>
     public void Listen(Action<string> onLink) => _ = Task.Run(async () =>
@@ -57,9 +63,19 @@ public sealed class SingleInstance : IDisposable
             {
                 return;
             }
-            catch (IOException)
+            catch (Exception e) when (e is not OperationCanceledException)
             {
-                // Se cortó la conexión: se vuelve a escuchar.
+                // Se cortó la conexión, o el pipe no se pudo abrir (otro proceso tiene ese nombre, "All pipe instances
+                // are busy"): se espera un poco y se vuelve a escuchar. Antes solo se atrapaba IOException y cualquier
+                // otro error terminaba el escucha en silencio: la app seguía abierta pero los enlaces se perdían.
+                try
+                {
+                    await Task.Delay(RetryDelay, _stop.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
             }
         }
     });
@@ -93,7 +109,8 @@ public sealed class SingleInstance : IDisposable
             // CurrentUserOnly en los dos lados: el pipe solo acepta procesos del mismo usuario de Windows, y el cliente
             // solo le habla a un pipe creado por ese usuario (otro no puede hacerse pasar por la app y recibir enlaces).
             using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
-            client.Connect(timeout: 3000);
+            // 10 s: con la PC cargada (los tests de .NET y de la web a la vez) 3 s no alcanzaban y el enlace se perdía.
+            client.Connect(timeout: 10_000);
             using var writer = new StreamWriter(client) { AutoFlush = true };
             writer.WriteLine(link);
         }
