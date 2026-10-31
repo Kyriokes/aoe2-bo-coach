@@ -120,6 +120,30 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path).CursorReminders);
     }
 
+    // Modo desarrollador: dev_mode y auto_record se leen de settings.json y se guardan al cambiar.
+    [Fact]
+    public void El_modo_desarrollador_y_la_grabacion_sola_se_guardan()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, """{ "dev_mode": "sí", "auto_record": 1 }""");
+        var dev = new DevMode();
+        using (new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path, dev))
+        {
+            Assert.False(dev.IsOn);
+            Assert.False(dev.AutoRecord);
+            dev.IsOn = true;
+            dev.AutoRecord = true;
+        }
+        var saved = CoachSettings.Load(path);
+        Assert.True(saved.DevMode);
+        Assert.True(saved.AutoRecord);
+
+        var again = new DevMode();
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path, again);
+        Assert.True(again.IsOn);
+        Assert.True(again.AutoRecord);
+    }
+
     // Atajos editables: los textos dicen la combinación elegida, no la de fábrica.
     [Fact]
     public void Al_empezar_el_estado_nombra_los_atajos_elegidos()

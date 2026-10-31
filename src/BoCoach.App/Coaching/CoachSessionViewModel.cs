@@ -60,7 +60,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <param name="selected">La BO elegida en la biblioteca (la versión guardada).</param>
     /// <param name="liveFrames">Las capturas de la pantalla en vivo.</param>
     /// <param name="settingsPath">Dónde se guardan los ajustes (máximo de aldeanos); null para no guardarlos (tests).</param>
-    public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames, string? settingsPath = null)
+    /// <param name="devMode">El estado del modo desarrollador (por defecto <see cref="DevMode.Instance"/>): se carga y se guarda con los ajustes.</param>
+    public CoachSessionViewModel(CoachData data, ICoachHost host, Func<BuildOrder?> selected, Func<IFrameSource> liveFrames, string? settingsPath = null,
+        DevMode? devMode = null)
     {
         SelectedLane = LaneChoices[0];
         var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
@@ -73,10 +75,17 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         AutoStart = settings.AutoStart;
         LastBuildOrderId = settings.LastBuildOrder;
         Hotkeys = settings.Hotkeys;
+        _devMode = devMode ?? DevMode.Instance;
+        (_devMode.IsOn, _devMode.AutoRecord) = (settings.DevMode, settings.AutoRecord);
         Elo1v1Text = settings.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "";
         EloTeamText = settings.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "";
         ProfileId = settings.ProfileId;
         _settingsPath = settingsPath;
+        _devMode.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(DevMode.IsOn) or nameof(DevMode.AutoRecord))
+                SaveSettings();
+        };
         _data = data;
         _host = host;
         _selected = selected;
@@ -266,6 +275,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>El coach en vivo mientras corre (para los tests).</summary>
     public LiveCoach? LiveCoach => _coach;
 
+    private readonly DevMode _devMode;
+
     /// <summary>El atajo que eligió el jugador para una acción, como se muestra ("Ctrl+Alt+→").</summary>
     private static string Key(string action) => global::BoCoach.App.Hotkeys.HotkeyMap.Current.Text(action);
 
@@ -299,6 +310,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 EloTeam = EloTeam,
                 ProfileId = ProfileId,
                 Hotkeys = new(Hotkeys),
+                DevMode = _devMode.IsOn,
+                AutoRecord = _devMode.AutoRecord,
             }.Save(_settingsPath);
         }
         catch (IOException)

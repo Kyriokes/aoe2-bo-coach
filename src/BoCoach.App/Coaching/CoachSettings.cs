@@ -46,6 +46,12 @@ public sealed class CoachSettings
     /// <summary>D10: el perfil del juego que eligió con "Buscar" (para volver a buscarlo y comparar sus partidas).</summary>
     public long? ProfileId { get; set; }
 
+    /// <summary>Modo desarrollador: muestra lo de diagnóstico (ver <see cref="App.DevMode"/>).</summary>
+    public bool DevMode { get; set; }
+
+    /// <summary>"Grabar cada partida sola" (solo con el modo desarrollador).</summary>
+    public bool AutoRecord { get; set; }
+
     /// <summary>Atajos cambiados por el jugador: id de la acción → combinación ("Ctrl+Alt+Right"); lo que falta es de fábrica.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = [];
 
@@ -74,6 +80,8 @@ public sealed class CoachSettings
                     EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
                     ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
                     Hotkeys = Strings(json["hotkeys"]),
+                    DevMode = Flag(json["dev_mode"]),
+                    AutoRecord = Flag(json["auto_record"]),
                 };
             }
         }
@@ -86,6 +94,9 @@ public sealed class CoachSettings
 
     /// <summary>Un número entero, o null si falta o es de otro tipo (un valor raro no tiene que tirar abajo los ajustes).</summary>
     private static long? Number(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var number) ? number : null;
+
+    /// <summary>True solo si es un booleano true: otro tipo ("sí", 1) no tiene que tirar abajo los ajustes.</summary>
+    private static bool Flag(JsonNode? node) => node is JsonValue value && value.TryGetValue<bool>(out var flag) && flag;
 
     /// <summary>Los valores de texto de un objeto; lo que no es objeto o no es texto se ignora.</summary>
     private static Dictionary<string, string> Strings(JsonNode? node)
@@ -107,7 +118,8 @@ public sealed class CoachSettings
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
-            ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder };
+            ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
+            ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord };
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;
         if (EloTeam is { } eloTeam)
