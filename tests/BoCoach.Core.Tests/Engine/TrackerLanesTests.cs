@@ -237,6 +237,31 @@ public class TrackerLanesTests
         Assert.Equal(["mill2"], tracker.LaneBehind(Lane.Build).Select(s => s.Step.Id));
     }
 
+    // Partida 20261031-183635: la collera (en el molino) hecha antes que el emplumado (en la herrería) dejaba el
+    // emplumado "sin hacer" de 12:28 a 13:09; se hizo a las 13:57. Cada edificio investiga lo suyo en su orden.
+    [Fact]
+    public void Lo_de_otro_edificio_no_deja_atras_al_paso()
+    {
+        var bo = Bo(Research("fletching", "fletching"), Research("collar", "horse_collar"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("feudal_age_researched").Event("blacksmith_built").Event("mill_built")
+            .Event("horse_collar_researched").State);
+
+        Assert.Equal("fletching", tracker.LaneStep(Lane.Research)?.Step.Id);
+        Assert.Empty(tracker.LaneBehind(Lane.Research));
+    }
+
+    [Fact]
+    public void Lo_del_mismo_edificio_si_lo_deja_atras()
+    {
+        var bo = Bo(Research("fletching", "fletching"), Research("padded", "padded_archer_armor"), Research("collar", "horse_collar"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("feudal_age_researched").Event("blacksmith_built").Event("mill_built")
+            .Event("padded_archer_armor_researched").State);
+
+        Assert.Equal(["fletching"], tracker.LaneBehind(Lane.Research).Select(s => s.Step.Id));
+    }
+
     // Revisión de la rama: los jemeres suben de edad sin edificios.
     [Fact]
     public void Los_jemeres_hacen_clic_de_edad_sin_edificios()

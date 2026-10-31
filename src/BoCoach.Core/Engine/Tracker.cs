@@ -227,6 +227,8 @@ public sealed class Tracker
     /// El emplumado que recién se puede con la herrería no queda atrás de la collera hecha antes. Una casa no deja atrás
     /// a nadie: se hace cuando la pide la población, no en el orden de la BO (partida 20261031-171509: la casa de las
     /// 4:58 dejaba "sin hacer" el molino y el campamento minero, y Construir pedía el cuartel; el molino se hizo a las 6:03).
+    /// Lo que se investiga o entrena solo queda atrás por algo del mismo edificio: cada uno lleva su orden (partida
+    /// 20261031-183635: la collera, en el molino, dejaba "sin hacer" el emplumado, de la herrería).
     /// </summary>
     private bool IsBehind(StepProgress s)
     {
@@ -234,9 +236,13 @@ public sealed class Tracker
         if (lane == Lane.Villagers || s.Completed > 0 || !_eligibleSince.TryGetValue(s.Index, out var since))
             return false;
         return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index) && !IsHouse(o.Step)
+            && (lane == Lane.Build || Producer(o.Step) == Producer(s.Step))
             && (_allocated.ContainsKey(o.Index) || _started.ContainsKey(o.Index))
             && (o.DoneAt ?? o.StartedAt) is { } at && at >= since);
     }
+
+    /// <summary>El edificio que investiga o entrena el paso (null si no se sabe).</summary>
+    private string? Producer(Step step) => step.What is { } what && _data.TryGet(what, out var entity) ? entity.MadeIn : null;
 
     /// <summary>Construye casas (o lo que cuenta como casa, como el asentamiento de los incas).</summary>
     private bool IsHouse(Step step) => step.Do == StepAction.Build && step.What is { } what
