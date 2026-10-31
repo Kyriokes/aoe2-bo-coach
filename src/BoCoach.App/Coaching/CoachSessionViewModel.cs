@@ -47,6 +47,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private SummarySuggestion? _suggestion;
     private CancellationTokenSource? _pick;
     private double _lastGameTime;
+    private bool _lastInGame;
+    private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
     private bool _frameAllowsOverlay;
@@ -56,7 +58,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private bool _autoBlocked;
     private bool _autoNoBoWarned;
     private BuildOrder? _previousBuildOrder;
-    private string? _declinedSuggestion;
+    private readonly HashSet<string> _declined = [];
     private MatchupQuery? _matchupQuery;
 
     /// <param name="selected">La BO elegida a mano de tu lista (ya bajada).</param>
@@ -385,7 +387,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Status = "Elegí una BO de tu lista (o pasá a Automática) para empezar el coach.";
             return;
         }
-        (_previousBuildOrder, _declinedSuggestion) = (null, null);
+        _previousBuildOrder = null;
+        _declined.Clear();
         Start(bo, _liveFrames());
     }
 
@@ -417,7 +420,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         }
         _autoNoBoWarned = false;
-        (_previousBuildOrder, _declinedSuggestion) = (null, null);
+        _previousBuildOrder = null;
+        _declined.Clear();
         Start(bo, _liveFrames(), automatic: true);
         // La BO tiene errores: no se insiste cada segundo.
         if (!IsRunning)
@@ -545,8 +549,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // D6 y parte 4: en automática, cambia a la mejor de la lista cuando puntúa más que la que corre
         // (bajándola si hace falta; sin internet, la mejor guardada). Ctrl+Alt+B vuelve a la anterior.
         var runningScore = running.IsNone ? 0 : BuildOrderSuggester.Score(BuildOrderSummary.Of(running), match, _data.CivStyles, matchups);
-        if (BoMode == BuildOrderMode.Auto && suggestion?.Summary.Key != _declinedSuggestion
-            && (suggestion is null ? running.IsNone : suggestion.Score > runningScore))
+        // Una BO de otra civ (la de la partida anterior) no sirve: cuenta como sin BO.
+        var runningFits = !running.IsNone && BuildOrderPicker.Fits(running, match);
+        if (BoMode == BuildOrderMode.Auto && (suggestion is null || !_declined.Contains(suggestion.Summary.Key))
+            && (suggestion is null ? !runningFits && !(running.IsNone && _declined.Count > 0) : !runningFits || suggestion.Score > runningScore))
         {
             _ = SwitchForMatchAsync(picker, match, matchups, suggestion, running);
             return;
@@ -577,14 +583,25 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             return;
         }
-        if (pick.IsCancellationRequested || _coach != session || session is null || !BuildOrderPicker.CanSwitchAt(_lastGameTime)
-            || bo.Id == running.Id || bo.IsNone)
+        if (pick.IsCancellationRequested || _coach != session || session is null || bo.Id == running.Id || _declined.Contains(bo.Id)
+            || (bo.IsNone && BuildOrderPicker.Fits(running, match)))
         {
             if (Overlay is not null && _coach == session)
                 Overlay.BoSuggestion = null;
             return;
         }
+        // Ya empezó la partida: un coach nuevo perdería lo de la pantalla de carga. Queda como sugerida con su atajo.
+        if (!BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
+        {
+            if (best is not null && !bo.IsNone && Overlay is not null)
+            {
+                _suggestion = best;
+                Overlay.BoSuggestion = $"Sugerida: {best.Summary.Name} ({best.Reason}). {Key("accept_suggestion")} para usarla";
+            }
+            return;
+        }
         _previousBuildOrder = running.IsNone ? null : running;
+        _lastSwitchBest = best?.Summary.Key;
         Start(bo, _liveFrames(), automatic: true);
         var why = best is not null && best.Summary.Key == bo.Id ? $" ({best.Reason})" : "";
         var back = running.IsNone ? "" : $" {Key("accept_suggestion")} vuelve a {running.Name}";
@@ -621,7 +638,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_previousBuildOrder is not { } previous || _coach is null)
             return;
-        _declinedSuggestion = _coach.BuildOrder.Id;
+        // No vuelve a cambiar solo en esta partida: ni a la que usó ni a la mejor de la lista (sin internet pueden ser
+        // distintas: la mejor no se bajó y usó una guardada).
+        _declined.Add(_coach.BuildOrder.Id);
+        if (_lastSwitchBest is not null)
+            _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
         Start(previous, _liveFrames(), automatic: true);
         Status = $"Volví a \"{previous.Name}\".";
@@ -757,6 +778,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.Apply(frame);
         Live.Apply(frame);
         _lastGameTime = frame.View.Time;
+        _lastInGame = frame.InGame;
         _frameAllowsOverlay = frame is { InFront: true, Waiting: false };
         UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)

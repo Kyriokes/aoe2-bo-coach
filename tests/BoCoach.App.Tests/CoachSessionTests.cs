@@ -345,6 +345,53 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
     }
 
+    private async Task<CoachSessionViewModel?> AtLoadingScreen(BuildOrder running, IBuildOrderSource source)
+    {
+        if (Vision.Ocr.OcrReader.TryCreate() is null)
+            return null;
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"))
+        {
+            PlayerName = "Kyriokes",
+            Picker = new BuildOrderPicker(source, _data.CivStyles),
+        };
+        session.Start(running, new StillScreen("carga-ia-en-1080p.png"));
+        for (var i = 0; i < 12; i++)
+            await session.LiveCoach!.StepAsync();
+        return session;
+    }
+
+    // Revisión de la parte 4: en Automática, una BO de otra civ (la de la partida anterior) no sigue si la lista no
+    // tiene ninguna para esta civ: el coach sigue sin BO.
+    [Fact]
+    public async Task En_automatica_una_BO_de_otra_civ_no_sigue()
+    {
+        var huns = RepoBuildOrders.Get("bog-huns-mejorada");
+        using var session = await AtLoadingScreen(huns, new RepoBuildOrders(inList: id => id.StartsWith("bog-huns")));
+        if (session is null)
+            return;
+
+        Assert.True(session.LiveCoach!.BuildOrder.IsNone);
+    }
+
+    // Revisión de la parte 4: sin internet la mejor de la lista no se baja y el coach toma una guardada; Ctrl+Alt+B
+    // vuelve a la anterior y no se deshace solo.
+    [Fact]
+    public async Task El_atajo_que_vuelve_no_se_deshace_aunque_se_haya_usado_una_guardada()
+    {
+        var source = new RepoBuildOrders(inList: id => id.StartsWith("bog-japanese"), saved: id => id == "bog-japanese",
+            failing: new HashSet<string> { "bog-japanese-mejorada" });
+        using var session = await AtLoadingScreen(Scouts, source);
+        if (session is null)
+            return;
+        Assert.Equal("bog-japanese", session.LiveCoach!.BuildOrder.Id);
+
+        session.AcceptSuggestionCommand.Execute(null);
+        for (var i = 0; i < 12; i++)
+            await session.LiveCoach!.StepAsync();
+
+        Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
+    }
+
     // Con la BO terminada el panel queda en la tarjeta chica, y sin nada que hacer no se ve (pedido del usuario,
     // 2026-10-26, opción A).
     [Fact]
