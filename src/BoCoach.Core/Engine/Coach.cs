@@ -195,6 +195,12 @@ public sealed class Coach
     /// <summary>Cuántos segundos de partida se muestra una señal en el overlay.</summary>
     public double SignalSeconds { get; init; } = 10;
 
+    /// <summary>
+    /// El clic de edad del rival se muestra más (pedido del usuario del 2026-10-31: "tiene que ser más largo, titilar
+    /// entre el color del texto y el del jugador y ser mega molesto").
+    /// </summary>
+    public double RivalClickSeconds { get; init; } = 30;
+
     private readonly HashSet<int> _ownClicksSeen = [];
     private readonly Branches _branches;
     private readonly GameReportBuilder _report;
@@ -726,7 +732,8 @@ public sealed class Coach
         return (_guide ?? Distribution(Economy?.FoodFloor ?? 0)) is { } split ? resources.MaxBy(r => split[r]) : null;
     }
 
-    private IReadOnlyList<GameSignal> RecentSignals() => Signals.All.Where(s => State.Time - s.Time < SignalSeconds).ToList();
+    private IReadOnlyList<GameSignal> RecentSignals() =>
+        Signals.All.Where(s => State.Time - s.Time < (s.IsRivalClick ? RivalClickSeconds : SignalSeconds)).ToList();
 
     /// <summary>
     /// La postura de cierre, cuando no queda paso actual (la cola, si se leyó hace poco). Pueden quedar abiertos lo que

@@ -34,6 +34,12 @@ public sealed record CoachLines(
 
     /// <summary>El overlay muestra las líneas (la BO en curso, sin rama ni abandonada); si no, el título de antes.</summary>
     public bool LanesShown { get; init; }
+
+    /// <summary>
+    /// El aviso es un clic de edad del rival: el overlay lo hace titilar entre su color y el del jugador de este número
+    /// (1 azul ... 8 naranja; 0 si no se sabe). Null si el aviso es otro.
+    /// </summary>
+    public int? RivalSlot { get; init; }
 }
 
 /// <summary>Color de un renglón de línea: se puede hacer ya (blanco), espera recursos o población (amarillo), fallback (gris).</summary>
@@ -53,8 +59,11 @@ public sealed record CardLine(string Text, CardKind Kind);
 /// <summary>De qué es un renglón de la tarjeta (el overlay le da su color).</summary>
 public enum CardKind
 {
-    /// <summary>Aviso del log o señal de la partida (granja agotada, ataque, clic del rival).</summary>
+    /// <summary>Aviso del log o señal de la partida (granja agotada, ataque).</summary>
     Alert,
+
+    /// <summary>El rival hizo clic en una edad: titila con su color.</summary>
+    RivalClick,
 
     /// <summary>El centro urbano parado.</summary>
     TownCenter,
@@ -173,7 +182,7 @@ public static class CoachText
         var lines = BaseLines(view, data, backHotkey);
         // D3: una señal reciente (el rival hizo clic, perdiste aldeanos) va en el renglón de avisos, antes que el del log.
         if (view.Signals.Count > 0)
-            lines = lines with { Alert = view.Signals[^1].Text };
+            lines = lines with { Alert = view.Signals[^1].Text, RivalSlot = view.Signals[^1].IsRivalClick ? view.Signals[^1].Slot : null };
         // Una rama de la BO en curso va primero; lo que pedía la BO queda como "después".
         if (view.Branch is { Current: { } step } branch)
         {
@@ -205,7 +214,7 @@ public static class CoachText
     {
         var card = new List<CardLine>();
         if (lines.Alert is { } alert)
-            card.Add(new CardLine($"⚠ {alert}", CardKind.Alert));
+            card.Add(new CardLine($"⚠ {alert}", lines.RivalSlot is null ? CardKind.Alert : CardKind.RivalClick));
         if (lines.Idle is { } idle)
             card.Add(new CardLine($"⏱ {idle}", CardKind.TownCenter));
         if (view.Posture is { NextAgeInProgress: false } posture && (posture.NextAgeReady || posture.NextAgeBuildingsMissing > 0)

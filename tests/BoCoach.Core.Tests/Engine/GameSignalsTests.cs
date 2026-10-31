@@ -91,6 +91,7 @@ public class GameSignalsTests
 
         var signal = Assert.Single(found);
         Assert.StartsWith("El rival naranja hizo clic en Feudal", signal.Text);
+        Assert.Equal(8, signal.Slot);
     }
 
     [Fact]
@@ -186,8 +187,13 @@ public class GameSignalsTests
         coach.Update(At(502, null, new PlayerScore(2, 797, true)));
         var view = coach.Update(At(504, null, new PlayerScore(2, 799, true)));
 
-        Assert.Equal("El rival hizo clic en Feudal (8:22): llega a las 10:32", CoachText.Lines(view, TestData.GameData).Alert);
+        var lines = CoachText.Lines(view, TestData.GameData);
+        Assert.Equal("El rival hizo clic en Feudal (8:22): llega a las 10:32", lines.Alert);
+        Assert.Equal(2, lines.RivalSlot); // titila con el rojo del jugador 2
+        // Pedido del usuario: el clic del rival dura más (30 s) que las demás señales (10 s).
         view = coach.Update(At(520));
-        Assert.Empty(view.Signals); // a los 10 s se deja de mostrar
+        Assert.Single(view.Signals);
+        view = coach.Update(At(532));
+        Assert.Empty(view.Signals);
     }
 }

@@ -4,6 +4,7 @@ using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace BoCoach.App.Overlay;
@@ -48,6 +49,56 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial bool Behind { get; set; }
     [ObservableProperty] public partial string? Suggestion { get; set; }
     [ObservableProperty] public partial string? Alert { get; set; }
+
+    /// <summary>El aviso es un clic de edad del rival: su número (1 azul ... 8 naranja, 0 si no se sabe); null si no.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(RivalClick), nameof(AlertForeground), nameof(AlertBackground))]
+    public partial int? RivalSlot { get; set; }
+
+    /// <summary>Medio ciclo del titileo del clic del rival (lo prende y apaga <see cref="Blink"/>).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(AlertForeground), nameof(AlertBackground))]
+    public partial bool BlinkOn { get; set; }
+
+    /// <summary>El aviso es un clic de edad del rival: más grande y titilando.</summary>
+    public bool RivalClick => RivalSlot is not null;
+
+    /// <summary>El color del texto del aviso: el de siempre, o el del rival en la mitad del titileo.</summary>
+    public Brush AlertForeground => RivalClick && BlinkOn ? PlayerBrushes[RivalSlot!.Value] : AlertBrush;
+
+    /// <summary>El fondo del aviso del rival: su color, apagado, en la mitad del titileo; si no, transparente.</summary>
+    public Brush AlertBackground => RivalClick && !BlinkOn ? PlayerBackgrounds[RivalSlot!.Value] : Brushes.Transparent;
+
+    /// <summary>Lo llama la ventana cada <see cref="BlinkInterval"/>: alterna el color del clic del rival.</summary>
+    public void Blink()
+    {
+        if (RivalClick)
+            BlinkOn = !BlinkOn;
+        else if (BlinkOn)
+            BlinkOn = false;
+    }
+
+    /// <summary>Medio ciclo del titileo: rápido, molesto a propósito (pedido del usuario del 2026-10-31).</summary>
+    public static readonly TimeSpan BlinkInterval = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>El naranja de los avisos (el mismo del XAML).</summary>
+    public static readonly Brush AlertBrush = Solid(0xFF, 0xF0, 0xA0, 0x60);
+
+    /// <summary>Los colores de los jugadores del juego por número (0 = no se sabe: rojo).</summary>
+    private static readonly Brush[] PlayerBrushes =
+    [
+        Solid(0xFF, 0xFF, 0x30, 0x30), Solid(0xFF, 0x40, 0x7C, 0xFF), Solid(0xFF, 0xFF, 0x30, 0x30), Solid(0xFF, 0x30, 0xD0, 0x40),
+        Solid(0xFF, 0xFF, 0xE8, 0x20), Solid(0xFF, 0x30, 0xE6, 0xE6), Solid(0xFF, 0xC8, 0x40, 0xFF), Solid(0xFF, 0xC0, 0xC0, 0xC0),
+        Solid(0xFF, 0xFF, 0x90, 0x20),
+    ];
+
+    private static readonly Brush[] PlayerBackgrounds = PlayerBrushes
+        .Select(b => Solid(0x70, ((SolidColorBrush)b).Color.R, ((SolidColorBrush)b).Color.G, ((SolidColorBrush)b).Color.B)).ToArray();
+
+    private static SolidColorBrush Solid(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
     [ObservableProperty] public partial string? Idle { get; set; }
     [ObservableProperty] public partial string? Distribution { get; set; }
     [ObservableProperty] public partial string? DistributionNow { get; set; }
@@ -120,6 +171,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Behind = lines.Behind;
         Suggestion = lines.Suggestion;
         Alert = lines.Alert;
+        RivalSlot = lines.RivalSlot;
         Idle = lines.Idle;
         Distribution = lines.Distribution;
         DistributionNow = lines.DistributionNow;

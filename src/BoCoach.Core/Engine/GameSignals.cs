@@ -6,7 +6,12 @@ namespace BoCoach.Core.Engine;
 /// <param name="Kind">"rival_feudal_click", "rival_castle_click", "rival_imperial_click", "under_attack" o "villagers_lost".</param>
 /// <param name="Time">Segundo de partida en que se vio.</param>
 /// <param name="Text">El aviso para el overlay.</param>
-public sealed record GameSignal(string Kind, double Time, string Text);
+/// <param name="Slot">El número del jugador de la señal (1 azul ... 8 naranja, por su color), o 0 si no se sabe.</param>
+public sealed record GameSignal(string Kind, double Time, string Text, int Slot = 0)
+{
+    /// <summary>Un clic de edad del rival (el overlay lo muestra más tiempo y titilando con su color).</summary>
+    public bool IsRivalClick => Kind.StartsWith("rival_", StringComparison.Ordinal);
+}
 
 /// <summary>
 /// Las señales de D3 (diseño acordado con el usuario el 2026-10-20), a partir de los snapshots:
@@ -191,7 +196,7 @@ public sealed class GameSignals(GameData data)
         // Con más de un rival posible, el color dice cuál (en 1 contra 1 no hace falta).
         var who = _players.Count > 2 && player.Slot is > 0 and <= 8 ? $"El rival {ColorNames[player.Slot]}" : "El rival";
         var arrives = data.TryGet(tech, out var entity) ? $": llega a las {GameClock.Format(time + entity.Time)}" : "";
-        _signals.Add(new GameSignal(kind, time, $"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}"));
+        _signals.Add(new GameSignal(kind, time, $"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}", player.Slot is > 0 and <= 8 ? player.Slot : 0));
     }
 
     /// <summary>Lo que cae el puntaje al pagar esa edad: la décima parte de su costo (sin bonificaciones de civ).</summary>

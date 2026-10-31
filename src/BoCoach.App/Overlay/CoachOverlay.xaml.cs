@@ -20,6 +20,11 @@ public partial class CoachOverlay : Window
         InitializeComponent();
         DataContext = viewModel;
         SourceInitialized += (_, _) => OverlayWindows.MakeClickThrough(this);
+        // El clic de edad del rival titila (pedido del usuario: "mega molesto").
+        var blink = new System.Windows.Threading.DispatcherTimer { Interval = OverlayViewModel.BlinkInterval };
+        blink.Tick += (_, _) => viewModel.Blink();
+        blink.Start();
+        Closed += (_, _) => blink.Stop();
     }
 
     /// <summary>
