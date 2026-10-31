@@ -172,22 +172,37 @@ public static class BuildOrderSuggester
     public static BuildOrderSuggestion? Suggest(IEnumerable<BuildOrder> library, MatchSetup match, CivStyles styles,
         MatchupStats? matchups = null)
     {
+        return Best(library, BuildOrderSummary.Of, match, styles, matchups) is { } best
+            ? new BuildOrderSuggestion(best.Item, best.Reason, best.Score)
+            : null;
+    }
+
+    /// <summary>Como la de las BO enteras, sobre la lista de la web (sin los pasos): elige la app antes de bajar la BO.</summary>
+    public static SummarySuggestion? Suggest(IEnumerable<BuildOrderSummary> library, MatchSetup match, CivStyles styles,
+        MatchupStats? matchups = null) =>
+        Best(library, s => s, match, styles, matchups) is { } best ? new SummarySuggestion(best.Item, best.Reason, best.Score) : null;
+
+    private static (T Item, string Reason, double Score)? Best<T>(IEnumerable<T> library, Func<T, BuildOrderSummary> summary,
+        MatchSetup match, CivStyles styles, MatchupStats? matchups)
+    {
         var context = Context.For(match, styles, matchups);
-        (BuildOrder Bo, double Score, List<string> Why)? best = null;
-        foreach (var bo in library)
+        (T Item, double Score, List<string> Why)? best = null;
+        foreach (var item in library)
         {
-            if (Evaluate(bo, context, styles) is not { } result)
+            if (Evaluate(summary(item), context, styles) is not { } result)
                 continue;
             if (best is null || result.Score > best.Value.Score)
-                best = (bo, result.Score, result.Why);
+                best = (item, result.Score, result.Why);
         }
-        return best is { Score: > 0 } b
-            ? new BuildOrderSuggestion(b.Bo, string.Join(", ", b.Why), b.Score)
-            : null;
+        return best is { Score: > 0 } b ? (b.Item, string.Join(", ", b.Why), b.Score) : null;
     }
 
     /// <summary>Los puntos de una BO para esa partida (0 si es de otra civ: no se puede sugerir). D6 compara con ellos la que corre.</summary>
     public static double Score(BuildOrder bo, MatchSetup match, CivStyles styles, MatchupStats? matchups = null) =>
+        Score(BuildOrderSummary.Of(bo), match, styles, matchups);
+
+    /// <summary>Los puntos de un resumen de la lista de la web (los mismos que los de su BO entera).</summary>
+    public static double Score(BuildOrderSummary bo, MatchSetup match, CivStyles styles, MatchupStats? matchups = null) =>
         Evaluate(bo, Context.For(match, styles, matchups), styles)?.Score ?? 0;
 
     /// <summary>D10: el cruce con el rival de enfrente, si tiene tendencia por duración (la regla de honestidad).</summary>
@@ -231,7 +246,7 @@ public static class BuildOrderSuggester
     }
 
     /// <summary>Los puntos de una BO y por qué, o null si es de otra civ.</summary>
-    private static (double Score, List<string> Why)? Evaluate(BuildOrder bo, Context c, CivStyles styles)
+    private static (double Score, List<string> Why)? Evaluate(BuildOrderSummary bo, Context c, CivStyles styles)
     {
         var why = new List<string>();
         var score = 0.0;
@@ -265,7 +280,7 @@ public static class BuildOrderSuggester
                 why.Add($"para {c.Match.Map}");
             }
         }
-        var style = BuildOrderStyle.Of(bo);
+        var style = bo.Style;
         if (style is not null && c.Mine.Count > 0 && c.Mine.Contains(style))
         {
             score += c.Mine[0] == style ? 3 : 2;
