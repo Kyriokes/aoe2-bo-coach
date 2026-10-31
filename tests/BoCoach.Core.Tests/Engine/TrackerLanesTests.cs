@@ -332,6 +332,34 @@ public class TrackerLanesTests
     }
 
     [Fact]
+    public void Antes_de_su_poblacion_la_linea_no_habla_de_recursos()
+    {
+        // Partida 20261031-145925: de las 5:40 a las 6:21 el cuartel (a 20 de población) decía "faltan 65 de madera"
+        // con 16 de población.
+        var coach = new Coach(ByPopulation, TestData.GameData, TestData.Events);
+        var view = coach.Update(new GameSnapshot(5, ResourceAmounts.Zero, 4, 5, []) { Villagers = 3 });
+
+        var research = Assert.Single(CoachText.LaneLines(view, TestData.GameData), l => l.Lane == Lane.Research);
+        Assert.Contains("de población (vas 4)", research.Text);
+        Assert.DoesNotContain("faltan", research.Text);
+    }
+
+    [Fact]
+    public void Con_la_poblacion_en_el_paso_no_la_repite()
+    {
+        // Partida 20261031-145925: "Investigar Edad Feudal a 20 de población · a 20 de población (vas 17)".
+        var bo = Bo(Villagers("v1", 3, GatherSource.Sheep), Research("feudal", "feudal_age") with { AtPop = 20 });
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        // La Feudal pide 2 edificios de la Edad Oscura.
+        var view = coach.Update(new GameSnapshot(5, PlanStart.Standard.Stock, 17, 20,
+            [new GameEvent("lumber_camp_built", 4), new GameEvent("mill_built", 4)]) { Villagers = 16 });
+
+        var research = Assert.Single(CoachText.LaneLines(view, TestData.GameData), l => l.Lane == Lane.Research);
+        Assert.Equal(1, research.Text.Split("a 20 de población").Length - 1);
+        Assert.EndsWith("· vas 17", research.Text);
+    }
+
+    [Fact]
     public void La_linea_dice_a_que_poblacion_espera()
     {
         var coach = new Coach(ByPopulation, TestData.GameData, TestData.Events);

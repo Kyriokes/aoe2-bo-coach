@@ -119,6 +119,11 @@ public static class CoachText
     private static string? Waiting(CoachView view, LaneView lane, GameData? data)
     {
         var step = lane.Step!.Step;
+        // Antes de su población, lo que falte de recursos no importa todavía (el cuartel a 20 decía "faltan 65 de
+        // madera" con 16 de población en la 20261031-145925).
+        // Si la población es la del paso (at_pop), el nombre ya la dice ("Edad Feudal a 20 de población"): solo cuánto vas.
+        if (lane.Step.AtPop is { } pop && view.Population < pop)
+            return step.AtPop == pop ? $"vas {view.Population}" : $"a {pop} de población (vas {view.Population})";
         if (lane.Lane != Lane.Villagers)
         {
             var missing = Enum.GetValues<Resource>().Where(r => lane.Missing[r] >= 1)
@@ -129,8 +134,6 @@ public static class CoachText
                 return $"faltan {Join(missing)}{eta}";
             }
         }
-        if (lane.Step.AtPop is { } pop && view.Population < pop)
-            return $"a {pop} de población (vas {view.Population})";
         if (step.AtTime is { } time && view.Time < time)
             return $"a los {GameClock.Format(time)}";
         if (step.What is { } what && data is not null && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
