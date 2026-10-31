@@ -20,6 +20,7 @@ export interface BuildOrderSummary {
   author: string;
   /** La cuenta que la subió. */
   uploader: string;
+  owner_id: string;
 }
 
 export interface BuildOrderDetail extends BuildOrderSummary {
@@ -56,7 +57,7 @@ export const buildOrderTag = (code: string) => `bo-${code}`;
 
 // "!owner_id": la BO llega a profiles por su dueño y también por los votos; sin decir cuál, Supabase no la arma.
 export const summaryColumns =
-  "id, code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, guide_author:body->>author, profiles!owner_id(display_name)";
+  "id, code, owner_id, name, civ, tags, description, feudal_click, castle_click, votes, created_at, guide_author:body->>author, profiles!owner_id(display_name)";
 
 export interface Row extends Omit<BuildOrderSummary, "author" | "uploader"> {
   guide_author: string | null;

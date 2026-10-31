@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { BoCard } from "@/components/BoCard";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
 import { filterValue, libraryHref, pageNumber } from "@/lib/filters";
+import { mySubscriptionIds } from "@/lib/ownData";
+import { getCurrentUser } from "@/lib/session";
 import { civLabel, SITE_NAME } from "@/lib/share";
 import { supabaseConfigured } from "@/lib/supabase/env";
 
@@ -126,7 +128,8 @@ async function Results({ searchParams }: { searchParams: SearchParams }) {
   if (!supabaseConfigured) {
     return <p className="text-sm text-faint">La web todavía no está conectada a la base de datos (falta configurar Supabase).</p>;
   }
-  const { items, hasMore } = await listBuildOrders(query);
+  // La página sale del caché; la sesión y las suscripciones, no (solo para el botón "Usar en el coach").
+  const [{ items, hasMore }, user, subscriptions] = await Promise.all([listBuildOrders(query), getCurrentUser(), mySubscriptionIds()]);
   const page = query.page ?? 1;
   if (items.length === 0) {
     return (
@@ -147,7 +150,11 @@ async function Results({ searchParams }: { searchParams: SearchParams }) {
     <>
       <div className="grid gap-3 sm:grid-cols-2">
         {items.map((bo) => (
-          <BoCard key={bo.code} bo={bo} />
+          <BoCard
+            key={bo.code}
+            bo={bo}
+            subscription={user ? { subscribed: subscriptions?.has(bo.id) ?? false, own: bo.owner_id === user.id } : undefined}
+          />
         ))}
       </div>
       {page > 1 || hasMore ? (

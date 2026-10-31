@@ -2,9 +2,11 @@ import Link from "next/link";
 import { formatClock } from "@/lib/buildOrder";
 import type { BuildOrderSummary } from "@/lib/data";
 import { byline, civLabel } from "@/lib/share";
+import { SubscribeButton } from "./SubscribeButton";
 import { Votes } from "./VoteButton";
 
-export function BoCard({ bo }: { bo: BuildOrderSummary }) {
+/** Una BO de la biblioteca. Con sesión (`subscription`), también "Usar en el coach". */
+export function BoCard({ bo, subscription }: { bo: BuildOrderSummary; subscription?: { subscribed: boolean; own: boolean } }) {
   return (
     <article className="rounded-lg border border-line bg-panel p-4">
       <div className="flex items-start justify-between gap-3">
@@ -33,6 +35,11 @@ export function BoCard({ bo }: { bo: BuildOrderSummary }) {
             </li>
           ))}
         </ul>
+      ) : null}
+      {subscription ? (
+        <div className="mt-3">
+          <SubscribeButton buildOrderId={bo.id} code={bo.code} subscribed={subscription.subscribed} own={subscription.own} loggedIn />
+        </div>
       ) : null}
     </article>
   );
