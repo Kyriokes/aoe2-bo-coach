@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.ObjectModel;
 using BoCoach.App.Web;
 using BoCoach.Core.BuildOrders;
@@ -78,6 +79,8 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
 
     partial void OnSelectedEntryChanged(BuildOrderEntryViewModel? value)
     {
+        if (_rebuilding)
+            return;
         SelectedBuildOrder = null;
         if (value is not null)
             _choosing = DownloadSelectedAsync(value);
@@ -132,6 +135,21 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         Status = error ?? (Entries.Count == 0 ? "Tu lista está vacía: armá una BO en la web o sumá una con Pegar código." : $"{Entries.Count} BO en tu lista.");
     }
 
+    /// <summary>Pide la lista sin tocar el estado de la ventana (al empezar el coach, que escribe el suyo).</summary>
+    public async Task RefreshQuietlyAsync()
+    {
+        if (!Connected)
+            return;
+        try
+        {
+            if (await _cache.RefreshAsync() is null)
+                RebuildEntries();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
     /// <summary>Suma una BO por su código o el enlace de su página.</summary>
     [RelayCommand]
     public async Task PasteCodeAsync()
@@ -161,10 +179,34 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         }
     }
 
-    /// <summary>Guarda el token que manda la web ("Conectar la app") y pide la lista.</summary>
+    /// <summary>
+    /// El token que manda la web ("Conectar la app"): pregunta con el nombre de la cuenta antes de guardarlo (cualquier
+    /// página puede abrir un enlace bocoach://conectar con el token de otra cuenta) y pide la lista.
+    /// </summary>
     public async Task ConnectWithTokenAsync(string token)
     {
-        _web.Save(_web.Settings with { Token = token });
+        await _imports.WaitAsync();
+        try
+        {
+            WebBuildOrderList list;
+            try
+            {
+                list = await _web.Client.MyBuildOrdersAsync(token);
+            }
+            catch (WebLibraryException e)
+            {
+                Status = $"No se pudo conectar la cuenta: {e.Message}";
+                return;
+            }
+            var account = list.Account.Length > 0 ? list.Account : "(sin nombre)";
+            if (!_dialogs.Confirm($"¿Conectar BO Coach con la cuenta {account} de la web?"))
+                return;
+            _web.Save(_web.Settings with { Token = token });
+        }
+        finally
+        {
+            _imports.Release();
+        }
         await RefreshAsync();
         Changed();
         if (_cache.List.Account.Length > 0)
@@ -231,22 +273,27 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
 
     private void RebuildEntries()
     {
-        var selected = SelectedEntry?.Code;
-        Entries.Clear();
-        foreach (var item in _cache.List.Items)
-            Entries.Add(new BuildOrderEntryViewModel(item.Code, item.Name, Detail(item)));
-        UpdateStates();
-        if (selected is not null)
+        // Antes de vaciar la lista: la ventana pone la elegida en null al vaciarla.
+        var (selected, bo) = (SelectedEntry?.Code, SelectedBuildOrder);
+        _rebuilding = true;
+        try
         {
-            var again = Entries.FirstOrDefault(e => e.Code == selected);
-            // Sin volver a bajar: es la misma.
-            var bo = SelectedBuildOrder;
-            SelectedEntry = again;
-            if (again is not null && bo is not null)
-                SelectedBuildOrder = bo;
+            Entries.Clear();
+            foreach (var item in _cache.List.Items)
+                Entries.Add(new BuildOrderEntryViewModel(item.Code, item.Name, Detail(item)));
+            // La misma de antes, sin bajarla de nuevo (se sigue usando la que había).
+            SelectedEntry = Entries.FirstOrDefault(e => e.Code == selected);
+            SelectedBuildOrder = SelectedEntry is null ? null : bo;
         }
+        finally
+        {
+            _rebuilding = false;
+        }
+        UpdateStates();
         Changed();
     }
+
+    private bool _rebuilding;
 
     private void UpdateStates()
     {

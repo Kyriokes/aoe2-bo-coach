@@ -103,6 +103,7 @@ public sealed class BuildOrdersViewModelTests : IDisposable
 
         await vm.HandleLinkAsync($"bocoach://conectar/{Token}");
 
+        Assert.Contains("Ana", Assert.Single(_dialogs.Confirmations));
         Assert.Equal(Token, _account.Settings.Token);
         Assert.True(vm.Connected);
         Assert.Equal("Conectada como Ana", vm.AccountText);
@@ -110,6 +111,38 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.Equal("Mía", entry.Name);
         Assert.Equal("se baja al usarla", entry.State);
         Assert.Contains("tuya", entry.Detail);
+    }
+
+    [Fact]
+    public async Task Un_enlace_para_conectar_pregunta_antes_de_cambiar_la_cuenta()
+    {
+        // Revisión de la parte 4: cualquier página puede abrir bocoach://conectar/<token> con el token de otra cuenta.
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        _dialogs.ConfirmAnswer = false;
+        var vm = ViewModel();
+
+        await vm.HandleLinkAsync($"bocoach://conectar/{Token}");
+
+        Assert.Contains("Ana", Assert.Single(_dialogs.Confirmations));
+        Assert.False(_account.Settings.HasToken);
+        Assert.False(vm.Connected);
+    }
+
+    [Fact]
+    public async Task Actualizar_la_lista_no_pierde_la_elegida_ni_la_baja_de_nuevo()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        ServeBuildOrder("k7m2xq", "Mía");
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        await vm.ChooseAsync(vm.Entries[0]);
+
+        await vm.RefreshAsync();
+
+        Assert.Equal("Mía", vm.SelectedBuildOrder?.Name);
+        Assert.Equal("k7m2xq", vm.SelectedEntry?.Code);
+        Assert.Equal(1, _web.Requests.Count(r => r == "GET /api/bo/k7m2xq"));
     }
 
     [Fact]
