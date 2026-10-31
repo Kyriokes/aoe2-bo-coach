@@ -9,7 +9,13 @@ namespace BoCoach.Core.Engine;
 /// <summary>Un paso de la BO: cuándo lo pedía el plan de la BO, cuándo se hizo y cuánto atraso.</summary>
 public sealed record StepTiming(int Number, string Text, double? Planned, double? Done)
 {
-    public double? Delay => Planned is { } p && Done is { } d ? d - p : null;
+    /// <summary>
+    /// Lo que el juego no avisa (granjas): su hora es la del paso posterior que la dio por hecha, no la real, así que
+    /// no tiene atraso (en la partida 20261031-163414 las granjas salían 14:30 tarde).
+    /// </summary>
+    public bool Unannounced { get; init; }
+
+    public double? Delay => !Unannounced && Planned is { } p && Done is { } d ? d - p : null;
 }
 
 /// <summary>Un tramo de partida (desde, cuánto duró).</summary>
@@ -136,7 +142,10 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
             .Select(f => new FloatingResource(f.Key, f.Value.Since, _last - f.Value.Since, f.Value.Peak))).ToList();
 
         var steps = _steps.Select(s => new StepTiming(s.Index + 1, StepText.Describe(s.Step), _plan.For(s.Step.Id)?.Start,
-            s.State == StepState.Done ? s.DoneAt : null)).ToList();
+            s.State == StepState.Done ? s.DoneAt : null)
+        {
+            Unannounced = EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id),
+        }).ToList();
         var clicks = new List<AgeClick>();
         foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", "Castillos", bo.Targets?.CastleClickTime) })
         {

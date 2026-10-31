@@ -72,6 +72,19 @@ public class GameReportTests
         Assert.Contains("sin hacer", html);
     }
 
+    // Partida 20261031-163414: las granjas (que el juego no avisa) se dieron por hechas recién con Castillos, y el
+    // informe las ponía primeras en "lo que más se atrasó" (14:30 tarde) aunque estaban hechas desde mucho antes.
+    [Fact]
+    public void Lo_que_el_juego_no_avisa_no_tiene_atraso()
+    {
+        var report = new GameReport("Arqueros", 1500,
+            [new StepTiming(1, "Construir 1 cuartel", 300, 500), new StepTiming(2, "Construir 3 granjas", 500, 1400) { Unannounced = true }],
+            [], 0, [], 0, 0, 0, []);
+
+        Assert.Null(report.Steps[1].Delay);
+        Assert.Contains("Lo que más se atrasó: Construir 1 cuartel (3:20 tarde).", GameReportText.Summary(report));
+    }
+
     private static GameReport Simple => new("Arqueros", 1200, [new StepTiming(1, "Construir 2 casas", 0, 40)],
         [new AgeClick("Feudal", 487, 610, 500, 480)], 31, [new GameInterval(150, 12)], 57, 20, 2, []);
 
