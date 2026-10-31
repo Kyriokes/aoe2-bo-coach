@@ -10,7 +10,7 @@ namespace BoCoach.Core.Web;
 /// la lista dice que cambió; sin internet se sigue con lo guardado. Lo guardado que no se puede leer se ignora.
 /// </summary>
 /// <param name="token">El token de la app (null o vacío sin cuenta): se lee en cada pedido.</param>
-public sealed class BuildOrderCache(string directory, WebLibraryClient client, Func<string?> token)
+public sealed class BuildOrderCache(string directory, WebLibraryClient client, Func<string?> token) : IBuildOrderSource
 {
     private const string ListFile = "mis-bo.json";
     private const string BuildOrdersFolder = "bo";
