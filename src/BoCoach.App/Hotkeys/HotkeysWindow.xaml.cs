@@ -14,6 +14,8 @@ public partial class HotkeysWindow : Window
         DataContext = _viewModel = viewModel;
         PreviewKeyDown += OnPreviewKeyDown;
         Closed += (_, _) => viewModel.CancelCapture();
+        // Si el jugador se va al juego con un renglón esperando, los atajos no pueden quedar sueltos.
+        Deactivated += (_, _) => viewModel.CancelCapture();
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
