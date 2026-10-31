@@ -6,12 +6,14 @@ import { BuildOrderView } from "@/components/BuildOrderView";
 import { JsonLd } from "@/components/JsonLd";
 import { OpenInApp } from "@/components/OpenInApp";
 import { OwnerActions } from "@/components/OwnerActions";
+import { SubscribeButton } from "@/components/SubscribeButton";
 import { VoteButton, Votes } from "@/components/VoteButton";
 import { StepList, stepsOf, type ListedStep } from "@/components/StepList";
 import { getBuildOrder } from "@/lib/data";
 import { getMatchups } from "@/lib/matchupsServer";
 import { civsWithData } from "@/lib/matchupView";
 import { GAME } from "@/lib/jsonLd";
+import { getOwnBuildOrder, mySubscriptionIds } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
 import { byline, civLabel, shareDescription, SITE_NAME } from "@/lib/share";
 import { siteUrl } from "@/lib/site";
@@ -32,7 +34,11 @@ function pageTitle(bo: { name: string; civ: string }) {
 export async function generateMetadata({ params }: PageProps<"/bo/[code]">): Promise<Metadata> {
   const { code } = await params;
   const bo = await getBuildOrder(code);
-  if (!bo) return { title: "No encontrada", robots: { index: false } };
+  if (!bo) {
+    // Una privada propia lleva su nombre, pero nunca se indexa.
+    const own = await getOwnBuildOrder(code);
+    return { title: own ? own.name : "No encontrada", robots: { index: false } };
+  }
   // Lo que muestran Discord, WhatsApp o los buscadores al compartir el enlace (la imagen sale de opengraph-image).
   const description = shareDescription(bo);
   const url = `/bo/${bo.code}`;
@@ -106,14 +112,16 @@ export default function BuildOrderPage({ params }: PageProps<"/bo/[code]">) {
 
 async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] }) {
   const { code } = await params;
-  const bo = await getBuildOrder(code);
+  // Las públicas salen del caché; una privada solo la ve su dueño, leída con la sesión.
+  const bo = (await getBuildOrder(code)) ?? (await getOwnBuildOrder(code));
   if (!bo) notFound();
+  const isPrivate = bo.visibility === "private";
   const json = JSON.stringify(bo.body);
   const steps = stepsOf(bo.body);
 
   return (
     <article className="flex flex-col gap-6">
-      <JsonLd data={structuredData(bo, steps)} />
+      {isPrivate ? null : <JsonLd data={structuredData(bo, steps)} />}
       <header className="flex flex-col gap-2">
         <nav aria-label="Ruta" className="text-sm">
           <Link href="/biblioteca" className="text-faint hover:text-amber">
@@ -138,15 +146,31 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
         </nav>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold">{bo.name}</h1>
+            <h1 className="text-2xl font-semibold">
+              {bo.name}
+              {isPrivate ? (
+                <span className="ml-2 rounded bg-panel-2 px-2 py-0.5 align-middle text-xs font-normal text-muted" title="Solo la ven vos y tu app">
+                  Privada
+                </span>
+              ) : null}
+            </h1>
             <p className="text-sm text-faint">
               {civLabel(bo.civ)} · por {byline(bo)} · actualizada el{" "}
               {new Date(bo.updated_at).toLocaleDateString("es-AR")}
             </p>
           </div>
-          <Suspense fallback={<span className="button"><Votes votes={bo.votes} /></span>}>
-            <Vote buildOrderId={bo.id} code={bo.code} votes={bo.votes} />
-          </Suspense>
+          <div className="flex flex-wrap items-center gap-2">
+            {isPrivate ? null : (
+              <Suspense fallback={null}>
+                <Subscribe buildOrderId={bo.id} code={bo.code} ownerId={bo.owner_id} />
+              </Suspense>
+            )}
+            {isPrivate ? null : (
+              <Suspense fallback={<span className="button"><Votes votes={bo.votes} /></span>}>
+                <Vote buildOrderId={bo.id} code={bo.code} votes={bo.votes} />
+              </Suspense>
+            )}
+          </div>
         </div>
         {bo.description ? <p className="max-w-3xl whitespace-pre-line text-sm text-muted">{bo.description}</p> : null}
         {bo.tags.length > 0 ? (
@@ -162,7 +186,7 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
         ) : null}
       </header>
 
-      <OpenInApp code={bo.code} fileName={bo.name} />
+      {isPrivate ? null : <OpenInApp code={bo.code} fileName={bo.name} />}
       <Suspense fallback={null}>
         <Owner ownerId={bo.owner_id} code={bo.code} />
       </Suspense>
@@ -186,6 +210,20 @@ async function Vote({ buildOrderId, code, votes }: { buildOrderId: string; code:
     voted = data !== null;
   }
   return <VoteButton buildOrderId={buildOrderId} code={code} votes={votes} voted={voted} loggedIn={user !== null} />;
+}
+
+/** "Usar en el coach": lee la sesión y las suscripciones, así que va dentro de <Suspense>. */
+async function Subscribe({ buildOrderId, code, ownerId }: { buildOrderId: string; code: string; ownerId: string }) {
+  const [user, subscriptions] = await Promise.all([getCurrentUser(), mySubscriptionIds()]);
+  return (
+    <SubscribeButton
+      buildOrderId={buildOrderId}
+      code={code}
+      subscribed={subscriptions?.has(buildOrderId) ?? false}
+      loggedIn={user !== null}
+      own={user?.id === ownerId}
+    />
+  );
 }
 
 async function Owner({ ownerId, code }: { ownerId: string; code: string }) {
