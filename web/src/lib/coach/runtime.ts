@@ -1,4 +1,4 @@
-import type { AnalysisResult } from "./types";
+import type { AnalysisResult, ImportResult } from "./types";
 
 /** El Core de C# corriendo en WebAssembly (src/BoCoach.Wasm): el mismo validador y Planner que la app. */
 export interface CoachRuntime {
@@ -9,7 +9,7 @@ export interface CoachRuntime {
 }
 
 interface CoachExports {
-  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string, maps: string): string; Analyze(json: string): string } } };
+  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string, maps: string): string; Analyze(json: string): string; Import(json: string): string } } };
 }
 
 interface DotnetModule {
@@ -27,5 +27,6 @@ export async function startCoach(dotnetModule: DotnetModule, gameDataJson: strin
   return {
     datVersion,
     analyze: (json) => JSON.parse(coach.Analyze(json)) as AnalysisResult,
+    importBuildOrder: (json) => JSON.parse(coach.Import(json)) as ImportResult,
   };
 }

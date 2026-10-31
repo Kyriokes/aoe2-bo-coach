@@ -62,6 +62,7 @@ public static class BuildOrderAnalysis
             var validation = assisted is null && bo.Assisted is not null ? validator.ValidateAssistedPlan(bo) : validator.Validate(bo);
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
+            w.WriteString("style", BuildOrderStyle.Of(bo));
             WriteBuildOrder(w, bo);
             WriteStart(w, bo, data);
             WriteIssues(w, validation);

@@ -19,6 +19,7 @@ public class BuildOrderAnalysisTests
         Assert.True(r.GetProperty("ok").GetBoolean());
         Assert.True(r.GetProperty("valid").GetBoolean());
         Assert.Equal("Scouts Feudal (22 pop)", r.GetProperty("name").GetString());
+        Assert.Equal("scouts", r.GetProperty("style").GetString());
         var steps = r.GetProperty("steps").EnumerateArray().ToList();
         Assert.Equal(17, steps.Count);
         Assert.Equal("Construir 2 casas (3 constructores) → ovejas", steps[0].GetProperty("text").GetString());

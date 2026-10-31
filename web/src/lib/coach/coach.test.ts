@@ -40,6 +40,32 @@ describe("Core en WebAssembly", () => {
   });
 });
 
+describe("importar guías", () => {
+  const fixture = (...path: string[]) => readFileSync(join(repo, "tests", "fixtures", ...path), "utf8");
+
+  it("convierte una guía de RTS Overlay en una BO que el Core acepta", () => {
+    const result = coach.importBuildOrder(fixture("rts-overlay", "22p-scouts.json"));
+
+    expect(result).toMatchObject({ ok: true, source: "rts_overlay" });
+    if (!result.ok) return;
+    expect(Array.isArray(result.warnings)).toBe(true);
+    expect(coach.analyze(JSON.stringify(result.build_order)).ok).toBe(true);
+  });
+
+  it("reconoce una guía de buildorderguide.com", () => {
+    expect(coach.importBuildOrder(fixture("buildorderguide", "armenians.json"))).toMatchObject({ ok: true, source: "buildorderguide" });
+  });
+
+  it("lo que no es JSON da un error", () => {
+    expect(coach.importBuildOrder("{no").ok).toBe(false);
+  });
+
+  it("el análisis trae el estilo de la BO", () => {
+    const result = coach.analyze(readFileSync(join(repo, "build_orders", "scouts_22p.json"), "utf8"));
+    expect((result as Analysis).style).toBe("scouts");
+  });
+});
+
 describe("los pasos escritos desde el servidor dicen lo mismo que el Core", () => {
   const texts = (json: string) => (coach.analyze(json) as Analysis).steps.map((step) => step.text);
   const described = (json: string) => (JSON.parse(json) as { steps: StepLike[] }).steps.map(describeStep);

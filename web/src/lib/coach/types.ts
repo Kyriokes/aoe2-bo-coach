@@ -102,6 +102,11 @@ export interface AssistedAnalysis {
 
 export type AnalysisResult = Analysis | AnalysisFailure;
 
+/** Una BO o una guía leída por el Core (BuildOrderImport), lista para analizar. */
+export type ImportResult =
+  | { ok: true; source: "bocoach" | "rts_overlay" | "buildorderguide"; warnings: string[]; build_order: Record<string, unknown> }
+  | { ok: false; error: string };
+
 /** El arranque de la partida: recursos, población, los aldeanos sin tarea (los iniciales) y los que ya trabajan. */
 export interface GameStart {
   food: number;

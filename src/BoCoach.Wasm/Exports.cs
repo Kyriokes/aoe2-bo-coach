@@ -38,4 +38,9 @@ public static partial class Exports
     [JSExport]
     public static string Analyze(string buildOrderJson) =>
         BuildOrderAnalysis.Analyze(buildOrderJson, _data ?? throw new InvalidOperationException("Falta llamar a Init."), _events, _maps);
+
+    /// <summary>Reconoce y convierte una BO o una guía (ver <see cref="BuildOrderImport.ReadJson"/>).</summary>
+    [JSExport]
+    public static string Import(string json) =>
+        BuildOrderImport.ReadJson(json, _data ?? throw new InvalidOperationException("Falta llamar a Init."));
 }
