@@ -64,7 +64,8 @@ public partial class App : Application
 
         if (Argument(args, "--overlay-screenshot") is { } overlayShot)
         {
-            CaptureOverlayAndExit(data, overlayShot, Argument(args, "--readings"), Argument(args, "--bo"), Argument(args, "--at"), args.Contains("--debug"), args.Contains("--bands"));
+            CaptureOverlayAndExit(data, overlayShot, Argument(args, "--readings"), Argument(args, "--bo"), Argument(args, "--at"), args.Contains("--debug"), args.Contains("--bands"),
+                int.TryParse(Argument(args, "--rival-click"), out var rival) ? rival : null);
             return;
         }
 
@@ -262,12 +263,15 @@ public partial class App : Application
     /// Dibuja el overlay como se vería en un momento de una partida grabada y cierra.
     /// Uso: BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo ruta.json --at 8:20 [--debug].
     /// --bo es la ruta de un .json (una BO corta que ya terminó muestra la tarjeta de la BO terminada).
+    /// --rival-click N pone el aviso del clic de edad del rival N (1 azul ... 8 naranja) y guarda también la otra mitad
+    /// del titileo en "-titila.png".
     /// </summary>
     /// <param name="bands">
     /// Simula el casillero del diseño nuevo en cada recurso (el de la celda a 1080p) y la celda entera de inactivos, y
     /// usa la calibración del usuario, para ver dónde cae la GD y el marco de inactivos sin el juego abierto.
     /// </param>
-    private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false)
+    private void CaptureOverlayAndExit(CoachData data, string path, string? readings, string? bo, string? at, bool debug, bool bands = false,
+        int? rivalClick = null)
     {
         var buildOrder = bo is not null && File.Exists(bo) ? BuildOrderSerializer.Load(bo) : null;
         if (buildOrder is null || readings is null)
@@ -290,6 +294,8 @@ public partial class App : Application
 
         var overlay = new OverlayViewModel(data.GameData, buildOrder.Name) { ShowDebug = debug };
         overlay.Apply(new CoachFrame(coach.View, null, 0, 31, new ProcessUsage(1.2, 87), false, false, null, GameWindow.PrimaryScreen));
+        if (rivalClick is { } slot)
+            (overlay.Alert, overlay.RivalSlot) = ("El rival hizo clic en Castillos (18:20): llega a las 21:00", slot);
         var window = new CoachOverlay(overlay) { Left = -30000, Top = 0 };
         window.Show();
         // La segunda parte: los números debajo de los recursos, en otra imagen ("-recursos.png").
@@ -315,6 +321,12 @@ public partial class App : Application
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
             Render(window, path);
+            if (rivalClick is not null)
+            {
+                overlay.Blink();
+                window.UpdateLayout();
+                Render(window, Path.ChangeExtension(path, null) + "-titila.png");
+            }
             Render(resources, Path.ChangeExtension(path, null) + "-recursos.png");
             if (bands && cursor.Content is FrameworkElement badges)
             {
