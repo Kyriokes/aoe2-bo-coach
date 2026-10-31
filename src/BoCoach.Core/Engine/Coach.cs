@@ -436,10 +436,40 @@ public sealed class Coach
                 started = true;
             }
         }
+        if (snapshot.Queue is not null)
+            FinishedInQueue(snapshot.Time, previous);
         return started;
     }
 
     private HashSet<string> _lastQueueKeys = [];
+
+    /// <summary>Cuándo se vio por primera vez en la cola cada investigación en curso de la BO (por paso).</summary>
+    private readonly Dictionary<int, double> _seenInQueue = [];
+
+    /// <summary>
+    /// Pedido del usuario (2026-10-31: "el sistema actual es muy poco confiable"): una investigación en curso que se vio
+    /// en la cola y ya no está en dos lecturas seguidas, pasado el 90 % de su tiempo desde que se la vio, terminó aunque
+    /// el log no lo avise. Antes de su tiempo, que no esté es un error de lectura; una que nunca se vio en la cola (el
+    /// clic visto en el stock) sigue esperando al log.
+    /// </summary>
+    private void FinishedInQueue(double now, HashSet<string> previous)
+    {
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        foreach (var step in Tracker.InProgress.ToList())
+        {
+            if (step.Step.Do != StepAction.Research || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
+                continue;
+            if (_lastQueueKeys.Contains(tech))
+            {
+                _seenInQueue.TryAdd(step.Index, now);
+                continue;
+            }
+            if (previous.Contains(tech) || !_seenInQueue.TryGetValue(step.Index, out var seen))
+                continue;
+            if (now - seen >= 0.9 * civ.Time(entity, Tracker.Age))
+                Tracker.MarkSeenDone(step.Index, now);
+        }
+    }
 
     /// <summary>
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores

@@ -430,6 +430,54 @@ public class CoachTests
         Assert.NotNull(coach.Update(Queue(1066, "archer")).TownCenterIdle);              // 6 s sin nada del centro urbano
     }
 
+    // Pedido del usuario (2026-10-31): el log no es confiable para las tecnologías. Una que pasó por la cola y se fue
+    // después de su tiempo de investigación quedó hecha, aunque el log no lo avise.
+    private static readonly BuildOrder Loom = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 30, Assign = GatherSource.Wood },
+            new Step { Id = "s2", Do = StepAction.Research, What = "loom" },
+        ],
+    };
+
+    private static GameSnapshot WithQueue(double time, params string[] queue) =>
+        At(time, 200, villagers: 20) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
+
+    [Fact]
+    public void Una_tecnologia_que_paso_por_la_cola_y_se_fue_despues_de_su_tiempo_queda_hecha()
+    {
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        StepState LoomState() => coach.Tracker.Steps[1].State;
+
+        coach.Update(WithQueue(200, "loom"));
+        coach.Update(WithQueue(201, "loom"));
+        Assert.Equal(StepState.InProgress, LoomState());
+
+        // El telar tarda 25 s: a los 10 s una lectura de la cola sin él es un error de lectura.
+        coach.Update(WithQueue(210, "villager"));
+        coach.Update(WithQueue(211, "villager"));
+        Assert.Equal(StepState.InProgress, LoomState());
+
+        coach.Update(WithQueue(226, "villager"));
+        coach.Update(WithQueue(227, "villager"));
+        Assert.Equal(StepState.Done, LoomState());
+        Assert.False(coach.Tracker.Steps[1].Manual);
+    }
+
+    [Fact]
+    public void Una_tecnologia_que_nunca_se_vio_en_la_cola_no_se_da_por_hecha_por_la_cola()
+    {
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        coach.Update(WithQueue(200, "villager"));
+        coach.Tracker.MarkStarted(1, 200); // el clic visto en el oro
+        coach.Update(WithQueue(260, "villager"));
+        coach.Update(WithQueue(261, "villager"));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
     [Fact]
     public void Una_baja_del_stock_no_es_el_clic_de_algo_que_todavia_no_se_puede_investigar()
     {

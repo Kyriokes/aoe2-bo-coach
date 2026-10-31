@@ -403,6 +403,18 @@ public sealed class Tracker
         Recompute();
     }
 
+    /// <summary>
+    /// El paso terminó según lo que se vio en pantalla sin que el log lo avise: una investigación que pasó por la cola y
+    /// se fue después de su tiempo. Como los de aldeanos por el HUD, "Atrás" lo deshace y no se vuelve a dar.
+    /// </summary>
+    public void MarkSeenDone(int index, double time)
+    {
+        if (_noHud.Contains(index) || _hudDone.ContainsKey(index))
+            return;
+        _hudDone[index] = time;
+        Recompute();
+    }
+
     /// <summary>Lo pagado se devolvió (se canceló): el paso vuelve a estar pendiente.</summary>
     public void ClearStarted(int index)
     {
