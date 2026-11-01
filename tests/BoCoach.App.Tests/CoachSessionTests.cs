@@ -346,7 +346,9 @@ public sealed class CoachSessionTests : IDisposable
             Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
         };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
-        for (var i = 0; i < 6 && session.LiveCoach!.BuildOrder.Name == Scouts.Name; i++)
+        // 12 capturas, como AtLoadingScreen: con 1 s sin reloj y 2 s entre lecturas son 3 intentos (con 6, uno solo, y un
+        // OCR que falla esa vez rompía el test en el CI del 2026-11-01).
+        for (var i = 0; i < 12 && session.LiveCoach!.BuildOrder.Name == Scouts.Name; i++)
             await session.LiveCoach!.StepAsync();
 
         Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
