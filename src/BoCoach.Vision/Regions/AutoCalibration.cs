@@ -174,6 +174,22 @@ public static class AutoCalibration
         foreach (var cell in layout.Cells)
             boxes[HudLayout.RegionOf(cell.Name)] = cell.Name == "age" ? Box(layout.AgeTextRect()) : Box(layout.CellRect(cell));
         boxes[RegionNames.Clock] = ClockBox(screen, Box(layout.ClockRect()), Scaled(ClockSearch, scale));
+        // El log y la cola del mod (idea 1 del usuario, 2026-10-31), solo si en pantalla está su fondo negro: con el mod
+        // de antes (sin reinstalar) siguen donde los pone el juego y quedan las cajas de siempre.
+        if (layout.Log is { } log && BlackShare(screen, Box(log)) >= SideBlack)
+            boxes[RegionNames.EventLog] = Box(log);
+        if (layout.Queue is { } queue)
+        {
+            var m = HudLayout.QueueMargin;
+            var back = Box(new UnitRect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m));
+            if (BlackShare(screen, back) >= SideBlack)
+            {
+                // La lectura toma los íconos desde el borde izquierdo de la caja y busca la fila corriéndose hacia abajo.
+                var icons = Box(queue);
+                var slack = Scaled(QueueSlack, scale);
+                boxes[RegionNames.ProductionQueue] = new PixelRect(icons.X, icons.Y - slack, icons.Width, icons.Height + 3 * slack);
+            }
+        }
         return Finish(screen, reference, boxes, scale, anchors.Select(a => a.Rect).ToList(), layout);
     }
 
@@ -215,6 +231,35 @@ public static class AutoCalibration
         return predicted;
     }
 
+    /// <summary>
+    /// Parte del fondo del log o de la cola que tiene que ser negro puro para tomar sus cajas del diseño (el texto del
+    /// log y los íconos de la cola tapan una parte; el mapa casi nunca tiene negro puro).
+    /// </summary>
+    private const double SideBlack = 0.3;
+
+    /// <summary>Píxeles a 1080p de margen arriba de la fila de íconos de la cola (la lectura la busca hacia abajo).</summary>
+    private const int QueueSlack = 3;
+
+    /// <summary>Qué parte de un rectángulo de la pantalla es negro puro (como el del mod).</summary>
+    private static double BlackShare(CapturedImage screen, PixelRect rect)
+    {
+        var (x0, y0) = (Math.Max(0, rect.X), Math.Max(0, rect.Y));
+        var (x1, y1) = (Math.Min(screen.Width, rect.X + rect.Width), Math.Min(screen.Height, rect.Y + rect.Height));
+        if (x1 <= x0 || y1 <= y0)
+            return 0;
+        var black = 0;
+        for (var y = y0; y < y1; y++)
+        {
+            for (var x = x0; x < x1; x++)
+            {
+                var (r, g, b) = screen.Pixel(x, y);
+                if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
+                    black++;
+            }
+        }
+        return (double)black / ((x1 - x0) * (y1 - y0));
+    }
+
     /// <summary>Parte de la mitad izquierda del rectángulo del reloj que tiene que ser negro puro.</summary>
     private const double ClockRectBlack = 0.4;
 
@@ -253,8 +298,12 @@ public static class AutoCalibration
         // el HUD. No la de la referencia: era la calibración sola anterior, ya escalada, y cada recalibración (cada 5 s
         // sin reloj) la agrandaba un 1,5 %; en la tercera prueba del HUD propio (2026-10-25) quedó en y 121 con la
         // cola en y 50 y el centro urbano parecía parado toda la partida.
-        var queue = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
-        boxes[RegionNames.ProductionQueue] = new PixelRect(Scaled(queue.X, scale), Scaled(queue.Y, scale), Scaled(queue.Width, scale), Scaled(queue.Height, scale));
+        // Con el mod que la corre (HudLayout.Queue), ya viene del diseño.
+        if (!boxes.ContainsKey(RegionNames.ProductionQueue))
+        {
+            var queue = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
+            boxes[RegionNames.ProductionQueue] = new PixelRect(Scaled(queue.X, scale), Scaled(queue.Y, scale), Scaled(queue.Width, scale), Scaled(queue.Height, scale));
+        }
 
         // El panel de puntajes, anclado abajo a la derecha de la pantalla y escalado como el HUD (la caja guardada podía
         // ser la vieja, de 2 renglones).

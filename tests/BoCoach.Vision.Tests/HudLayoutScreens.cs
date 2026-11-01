@@ -27,9 +27,10 @@ internal static class HudLayoutScreens
     /// (números cualquiera) y el rectángulo negro del reloj. Con <paramref name="gdInside"/>, la GD de la app tapa el
     /// medio de cada casillero (negro, dejando <see cref="GdMargin"/> px de borde). Con <paramref name="idleFrame"/>, el
     /// aviso de inactivos del overlay: un marco rojo de 3 px alrededor de la celda de inactivos. <paramref name="clockShift"/>
-    /// corre el reloj esa cantidad de píxeles respecto de donde el diseño lo pone (está en otro panel del juego).
+    /// corre el reloj esa cantidad de píxeles respecto de donde el diseño lo pone (está en otro panel del juego). Con
+    /// <paramref name="sidePanels"/>, el log y la cola del mod sobre su fondo negro (con renglones blancos y tres íconos).
     /// </summary>
-    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0)
+    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0, bool sidePanels = false)
     {
         var canvas = new Canvas(width, height, Grass);
         PixelRect Rect(int x, int y, int w, int h) => new(originX + Px(x, pixelsPerUnit), originY + Px(y, pixelsPerUnit), Px(w, pixelsPerUnit), Px(h, pixelsPerUnit));
@@ -49,6 +50,18 @@ internal static class HudLayoutScreens
         var clock = layout.ClockRect();
         var clockRect = Rect(clock.X, clock.Y, clock.Width, clock.Height);
         canvas.Fill(clockRect with { X = clockRect.X + clockShift }, Black);
+        if (sidePanels && layout.Log is { } log && layout.Queue is { } queue)
+        {
+            var logRect = Rect(log.X, log.Y, log.Width, log.Height);
+            canvas.Fill(logRect, Black);
+            for (var line = 0; line < 4; line++)
+                canvas.Fill(new PixelRect(logRect.X + 6, logRect.Y + 8 + line * 20, logRect.Width / 2, 6), (240, 240, 240));
+            var m = HudLayout.QueueMargin;
+            canvas.Fill(Rect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), Black);
+            var icons = Rect(queue.X, queue.Y, queue.Width, queue.Height);
+            for (var i = 0; i < 3; i++)
+                canvas.Fill(new PixelRect(icons.X + i * icons.Height, icons.Y, icons.Height - 1, icons.Height), (60, 140, 60));
+        }
         return canvas.Image;
     }
 

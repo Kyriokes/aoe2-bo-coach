@@ -163,6 +163,37 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Equal(found.Scale, found.Layout.HudScale);
     }
 
+    // Idea 1 del usuario (2026-10-31): el mod corre el log abajo de la barra y la cola a su derecha, los dos sobre negro.
+    [Fact]
+    public void Con_el_log_y_la_cola_del_mod_toma_sus_cajas_del_diseno()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4, sidePanels: true);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        var log = Layout.Log!;
+        int Px(int units) => (int)Math.Round(units * 0.4286);
+        AssertClose(new PixelRect(6 + Px(log.X), 4 + Px(log.Y), Px(log.Width), Px(log.Height)),
+            found.Layout.PixelsOf(RegionNames.EventLog, screen.Width, screen.Height), 2, "log");
+        var queue = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
+        Assert.InRange(queue.X - (6 + Px(Layout.Queue!.X)), -2, 2);
+        Assert.InRange(4 + Px(Layout.Queue.Y) - queue.Y, 0, 6); // la fila de íconos, con un poco de margen arriba
+    }
+
+    [Fact]
+    public void Sin_el_log_y_la_cola_del_mod_quedan_las_cajas_de_siempre()
+    {
+        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+
+        Assert.NotNull(found);
+        Assert.Equal(RegionLayout.Default.PixelsOf(RegionNames.EventLog, 1920, 1080), found.Layout.PixelsOf(RegionNames.EventLog, 1920, 1080));
+        var queue = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
+        Assert.InRange(queue.X, 0, 1); // la caja de siempre, desde el borde izquierdo
+    }
+
     [Fact]
     public void A_escala_1_5_lo_mismo_al_1_5()
     {
