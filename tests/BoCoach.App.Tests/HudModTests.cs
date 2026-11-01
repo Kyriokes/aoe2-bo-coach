@@ -204,6 +204,26 @@ public sealed class HudModTests : IDisposable
         },
     };
 
+    /// <summary>El menú del juego: fondo de 756×276 pegado a la derecha, con un botón chico y el del árbol.</summary>
+    public static JsonObject MenuPanel() => new()
+    {
+        ["Collection"] = new JsonObject
+        {
+            ["Name"] = "MenuPanel",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 3840, ["yorigin"] = 0, ["width"] = 756, ["height"] = 276, ["alignment"] = "TopRight" },
+            ["Widgets"] = new JsonArray(Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = "Background",
+                ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 756, ["height"] = 276, ["alignment"] = "TopLeft" },
+                ["ZPlane"] = 11,
+                ["ChildWidgets"] = new JsonArray(
+                    Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Menu", ["ViewPort"] = new JsonObject { ["xorigin"] = 673, ["yorigin"] = 56, ["width"] = 64, ["height"] = 64, ["alignment"] = "CentreCentre" } }),
+                    Wrap(new JsonObject { ["Type"] = "Button", ["Name"] = "Techtree", ["ViewPort"] = new JsonObject { ["xorigin"] = 166, ["yorigin"] = 56, ["width"] = 104, ["height"] = 104, ["alignment"] = "CentreCentre" } })),
+            })),
+        },
+    };
+
     /// <summary>Una carpeta de juego con los dos paneles originales.</summary>
     public static string FakeGame(string root)
     {
@@ -214,6 +234,7 @@ public sealed class HudModTests : IDisposable
         File.WriteAllText(Path.Combine(game, "widgetui", "notificationpanel.json"), LogPanel().ToJsonString());
         File.WriteAllText(Path.Combine(game, "widgetui", "technologyprogresspanel.json"), QueuePanel().ToJsonString());
         File.WriteAllText(Path.Combine(game, "widgetui", "blanktoppanel.json"), TopPanel().ToJsonString());
+        File.WriteAllText(Path.Combine(game, "widgetui", "menupanel.json"), MenuPanel().ToJsonString());
         return game;
     }
 
@@ -429,6 +450,23 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(1, (int)Widget(panel, "BlankTop")["StateMaterials"]!["UserStates"]!);
     }
 
+    // Pedido del usuario (2026-11-01): el menú más chico, pegado a la derecha, para ver más texto del reloj.
+    [Fact]
+    public void El_menu_se_achica_pegado_al_borde_derecho()
+    {
+        var layout = Layout();
+        var panel = HudMod.MenuPanel(MenuPanel(), layout)!;
+
+        Assert.Equal(0.7, layout.MenuScale);
+        var background = View(Widget(panel, "Background"));
+        Assert.Equal((227, 0, 529, 193), background); // 756 × 0,7 = 529, corrido 227 para seguir pegado a la derecha
+        Assert.Equal(756, background.X + background.W);
+        Assert.Equal((471, 39, 45, 45), View(Widget(panel, "Menu")));
+        Assert.Equal((116, 39, 73, 73), View(Widget(panel, "Techtree")));
+        var collection = panel["Collection"]!["ViewPort"]!;
+        Assert.Equal((3840, 756), ((int)collection["xorigin"]!, (int)collection["width"]!));
+    }
+
     [Fact]
     public void Instala_en_cada_perfil_con_mods_aunque_no_tenga_lista()
     {
@@ -446,6 +484,7 @@ public sealed class HudModTests : IDisposable
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "notificationpanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "technologyprogresspanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "blanktoppanel.json")));
+        Assert.True(File.Exists(Path.Combine(mod, "widgetui", "menupanel.json")));
         Assert.Contains("bocoach-2026-10", File.ReadAllText(Path.Combine(mod, "info.json")));
     }
 

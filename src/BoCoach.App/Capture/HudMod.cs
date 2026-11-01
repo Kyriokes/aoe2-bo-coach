@@ -40,6 +40,7 @@ public static class HudMod
     private const string LogPanelFile = "notificationpanel.json";
     private const string QueuePanelFile = "technologyprogresspanel.json";
     private const string TopPanelFile = "blanktoppanel.json";
+    private const string MenuPanelFile = "menupanel.json";
 
     /// <summary>
     /// El origen de las colecciones del log y del reloj se mide en unidades de pantalla (3840 de ancho, 0,5 px a 1080p);
@@ -100,7 +101,7 @@ public static class HudMod
             Write(Path.Combine(own, ResourcePanelFile), resources);
             Write(Path.Combine(own, ClockPanelFile), clock);
             // El log y la cola, solo si el diseño los ubica y el juego trae el panel; si no, se borra la copia de antes.
-            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel), (TopPanelFile, TopPanel) })
+            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel), (TopPanelFile, TopPanel), (MenuPanelFile, MenuPanel) })
             {
                 var original = Path.Combine(originals, file);
                 var panel = File.Exists(original) ? build(Read(original), layout) : null;
@@ -377,6 +378,38 @@ public static class HudMod
         return original;
     }
 
+    /// <summary>
+    /// El menú del juego (escudo y botones de arriba a la derecha) a la escala del diseño (<see cref="HudLayout.MenuScale"/>),
+    /// o null si el diseño no lo toca. La colección sigue pegada al borde derecho (alineada <c>TopRight</c>): el fondo
+    /// se achica y se corre a la derecha dentro de ella, y cada botón se escala y se corre igual.
+    /// </summary>
+    public static JsonObject? MenuPanel(JsonObject original, HudLayout layout)
+    {
+        if (layout.MenuScale is not { } scale)
+            return null;
+        foreach (var background in original["Collection"]!["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()))
+        {
+            if (background["ViewPort"] is not JsonObject view)
+                continue;
+            var width = (int)view["width"]!;
+            var shift = (int)Math.Round(width * (1 - scale));
+            Scale(view, scale, shift);
+            foreach (var child in Children(background))
+            {
+                if (child["ViewPort"] is JsonObject childView)
+                    Scale(childView, scale, 0);
+            }
+        }
+        return original;
+
+        static void Scale(JsonObject view, double scale, int shift)
+        {
+            int At(string key) => (int)view[key]!;
+            (view["xorigin"], view["yorigin"]) = (shift + (int)Math.Round(At("xorigin") * scale), (int)Math.Round(At("yorigin") * scale));
+            (view["width"], view["height"]) = ((int)Math.Round(At("width") * scale), (int)Math.Round(At("height") * scale));
+        }
+    }
+
     /// <summary>Saca de la lista de widgets de una colección los que agregó el mod (por si el panel ya estaba armado).</summary>
     private static JsonArray RemoveOurs(JsonArray widgets)
     {
@@ -583,7 +616,7 @@ public static class HudMod
     private static string ModFolder(string mods, ModEntry mod) => Path.Combine(mods, mod.Path.Replace("//", "/").Replace('/', Path.DirectorySeparatorChar));
 
     private static bool TouchesPanels(string mods, ModEntry mod) =>
-        new[] { ResourcePanelFile, ClockPanelFile, LogPanelFile, QueuePanelFile, TopPanelFile }.Any(f => File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", f)));
+        new[] { ResourcePanelFile, ClockPanelFile, LogPanelFile, QueuePanelFile, TopPanelFile, MenuPanelFile }.Any(f => File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", f)));
 
     private static JsonObject Read(string path) =>
         JsonNode.Parse(File.ReadAllText(path), documentOptions: ReadOptions)?.AsObject() ?? throw new InvalidDataException($"{path} está vacío.");

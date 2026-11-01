@@ -119,6 +119,13 @@ public sealed class HudLayout
     /// </summary>
     public UnitRect? Queue { get; private init; }
 
+    /// <summary>
+    /// Escala del menú del juego (escudo y botones de arriba a la derecha), pegado al borde derecho: más chico deja ver
+    /// más texto del reloj (pedido del usuario, 2026-11-01: "(Normal - 1.7)" quedaba detrás de los botones). Null: el
+    /// menú queda como lo trae el juego.
+    /// </summary>
+    public double? MenuScale { get; private init; }
+
     /// <summary>Margen del fondo de la cola alrededor de sus íconos, en unidades del HUD.</summary>
     public const int QueueMargin = 6;
 
@@ -234,6 +241,9 @@ public sealed class HudLayout
         {
             Log = Rect(dto.Log, "log"),
             Queue = Rect(dto.Queue, "queue"),
+            MenuScale = dto.Menu?.Scale is { } scale
+                ? scale is > 0.3 and <= 1 ? scale : throw new InvalidDataException($"{source}: menu.scale tiene que ir de 0,3 a 1.")
+                : null,
         };
         layout.Validate(source);
         return layout;
@@ -280,7 +290,8 @@ public sealed class HudLayout
             c.Separator is { } s ? new SeparatorDto(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Array(s.Color)) : null)),
         new ClockDto(Clock.Gap, Clock.Y, Clock.Width, Clock.Height, Clock.Font, Clock.Points),
         Log is { } log ? new RectDto(log.X, log.Y, log.Width, log.Height) : null,
-        Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null), JsonOptions);
+        Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null,
+        MenuScale is { } menu ? new MenuDto(menu) : null), JsonOptions);
 
     private static HudColor Color(double[]? values, string what, string source) =>
         values is { Length: 3 } ? new HudColor(values[0], values[1], values[2]) : throw new InvalidDataException($"{source}: {what} tiene que ser [r, g, b] de 0 a 1.");
@@ -297,7 +308,8 @@ public sealed class HudLayout
     };
 
     private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock,
-        RectDto? Log = null, RectDto? Queue = null);
+        RectDto? Log = null, RectDto? Queue = null, MenuDto? Menu = null);
+    private sealed record MenuDto(double? Scale);
     private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border, int X = 0);
     private sealed record BorderDto(int Width, double[]? Color);
     private sealed record IconDto(int X, int Y, int Size);
