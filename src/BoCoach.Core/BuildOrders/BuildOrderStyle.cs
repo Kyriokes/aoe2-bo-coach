@@ -4,12 +4,16 @@ namespace BoCoach.Core.BuildOrders;
 public static class BuildOrderStyle
 {
     /// <summary>
-    /// El estilo de una BO por sus pasos: la última unidad militar que entrena (arqueros, exploradores, hombres de
-    /// armas) o, si no entrena ninguna y clica Castillos, "fast_castle". null si no se entiende.
+    /// El estilo de una BO por sus pasos, que es su apertura: la última unidad militar que entrena antes del clic en
+    /// Castillos (arqueros, exploradores, hombres de armas), o la última que entrena si antes no hay ninguna; si no
+    /// entrena ninguna y clica Castillos, "fast_castle". null si no se entiende. Desde el 2026-10-31 "Scouts → CA" de
+    /// los hunos sigue en Castillos con arqueros a caballo y sigue siendo de exploradores.
     /// </summary>
     public static string? Of(BuildOrder bo)
     {
-        var military = bo.Steps.LastOrDefault(s => s.Do == StepAction.Train && s.What is { } w && w != "villager")?.What;
+        var castle = bo.Steps.ToList().FindIndex(s => s is { Do: StepAction.Research, What: "castle_age" });
+        var military = bo.Steps.Take(castle < 0 ? bo.Steps.Count : castle).LastOrDefault(IsMilitary)?.What
+                       ?? bo.Steps.LastOrDefault(IsMilitary)?.What;
         return military switch
         {
             "archer" or "skirmisher" => "archers",
@@ -19,4 +23,6 @@ public static class BuildOrderStyle
             _ => null,
         };
     }
+
+    private static bool IsMilitary(Step s) => s.Do == StepAction.Train && s.What is { } w && w != "villager";
 }
