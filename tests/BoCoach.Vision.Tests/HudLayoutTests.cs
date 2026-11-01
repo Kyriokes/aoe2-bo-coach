@@ -23,12 +23,17 @@ public class HudLayoutTests
         // La barra cubre la pantalla entera a cualquier escala del HUD (el juego la recorta en el borde): pedido del
         // usuario en la tercera prueba (2026-10-25), la de 2720 se veía cortada.
         Assert.Equal((4600, 108), (layout.Bar.Width, layout.Bar.Height));
-        Assert.Equal(10, layout.Cell("wood").X);
+        // Desde la v0.9.67 el log va en el rincón de arriba a la izquierda y la barra empieza a su derecha.
+        Assert.Equal(600, layout.Bar.X);
+        Assert.Equal(610, layout.Cell("wood").X);
+        Assert.Equal(new UnitRect(0, 0, 590, 260), layout.Log);
+        Assert.Equal(new UnitRect(606, 118, 608, 76), layout.Queue);
         Assert.Equal(80, layout.Cell("population").Chip!.Width);
         Assert.Equal(5, layout.Anchors.Count());
         // El reloj va a `gap` del final de la última celda (no de la barra), sobre un campo negro largo que tapa todo
         // su texto ("hh:mm:ss (Normal - 1.7) (Estándar)" se salía del de 230).
-        Assert.Equal(new UnitRect(2734, 12, 800, 84), layout.ClockRect());
+        // El campo negro tapa solo la hora (pedido del usuario, 2026-10-31); el resto del texto sigue sobre la barra.
+        Assert.Equal(new UnitRect(3334, 12, 240, 84), layout.ClockRect());
     }
 
     [Fact]

@@ -22,8 +22,8 @@ public sealed record HudModResult(IReadOnlyList<string> Installed, IReadOnlyList
 /// negros y los números blancos grandes; población, inactivos y edad igual.</item>
 /// <item>worldtimerpanel.json: el reloj a continuación de la barra, grande y con un rectángulo negro detrás.</item>
 /// <item>notificationpanel.json y technologyprogresspanel.json (si el diseño tiene <c>log</c> y <c>queue</c>): el log de
-/// eventos abajo de la barra y la cola de producción a su derecha, los dos sobre un fondo negro (idea 1 del usuario,
-/// 2026-10-31).</item>
+/// eventos en el rincón de arriba a la izquierda (la barra empieza a su derecha) y la cola de producción debajo de la
+/// barra, los dos sobre el gris de la barra (idea 1 del usuario, 2026-10-31).</item>
 /// </list>
 /// Los paneles se arman en la PC del jugador: no se redistribuye el JSON del juego.
 /// </summary>
@@ -173,13 +173,14 @@ public static class HudMod
             ["ChildWidgets"] = new JsonArray(),
         });
         var afterClock = clockRect.X + clockRect.Width;
+        // Con el log en el rincón (HudLayout.Log), la barra empieza a su derecha, en bar.X.
         var children = new JsonArray
         {
-            BarPart("Bar", 0, Math.Min(bar.Width, clockRect.X)),
+            BarPart("Bar", bar.X, Math.Min(bar.Width, clockRect.X) - bar.X),
             BarPart("BarAfterClock", afterClock, Math.Max(0, bar.Width - afterClock)),
-            Border("Top", 0, 0, bar.Width, bar.BorderWidth, bar),
-            Border("Bottom", 0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth, bar),
-            Border("Left", 0, 0, bar.BorderWidth, bar.Height, bar),
+            Border("Top", bar.X, 0, bar.Width - bar.X, bar.BorderWidth, bar),
+            Border("Bottom", bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth, bar),
+            Border("Left", bar.X, 0, bar.BorderWidth, bar.Height, bar),
             Border("Right", bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height, bar),
         };
         var idle = layout.Cell("idle");
@@ -288,9 +289,9 @@ public static class HudMod
 
     /// <summary>
     /// El log de eventos según el diseño (<see cref="HudLayout.Log"/>), o null si el diseño no lo ubica: la colección
-    /// corrida abajo de la barra (su origen, en unidades de pantalla), el cuadro del log y su texto del tamaño del
-    /// diseño (en unidades del HUD), un fondo
-    /// negro detrás (el del juego, <c>BlackPanel</c>, no se ve en la partida) y el chat a continuación.
+    /// corrida al lugar del diseño (su origen, en unidades de pantalla), el cuadro del log y su texto del tamaño del
+    /// diseño (en unidades del HUD), un fondo del gris de la barra detrás (el del juego, <c>BlackPanel</c>, no se ve en
+    /// la partida) y el chat a continuación.
     /// </summary>
     public static JsonObject? LogPanel(JsonObject original, HudLayout layout)
     {
@@ -323,7 +324,7 @@ public static class HudMod
             ["Name"] = $"{Ours}LogBackground",
             ["ViewPort"] = View(0, 0, width, height),
             ["ZPlane"] = 1,
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
             ["ChildWidgets"] = new JsonArray(),
         }));
         return original;
@@ -332,7 +333,7 @@ public static class HudMod
     /// <summary>
     /// La cola de producción según el diseño (<see cref="HudLayout.Queue"/>), o null si el diseño no la ubica: el
     /// widget donde el juego pone los íconos se corre a la fila del diseño (en unidades del HUD, como la barra: en el
-    /// original, y 115 = 50 px a 0,4348) y detrás va un fondo negro con <see cref="HudLayout.QueueMargin"/> de margen.
+    /// original, y 115 = 50 px a 0,4348) y detrás va el gris de la barra con <see cref="HudLayout.QueueMargin"/> de margen.
     /// </summary>
     public static JsonObject? QueuePanel(JsonObject original, HudLayout layout)
     {
@@ -349,7 +350,7 @@ public static class HudMod
             ["Name"] = $"{Ours}QueueBackground",
             ["ViewPort"] = View(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m),
             ["ZPlane"] = 1,
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
             ["ChildWidgets"] = new JsonArray(),
         }));
         return original;

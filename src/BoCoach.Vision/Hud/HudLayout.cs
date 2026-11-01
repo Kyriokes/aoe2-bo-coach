@@ -39,7 +39,12 @@ public sealed record HudCell(
     IReadOnlyList<UnitRect> Backgrounds,
     HudSeparator? Separator);
 
-public sealed record HudBar(int Width, int Height, HudColor Background, int BorderWidth, HudColor BorderColor);
+/// <param name="Width">Hasta dónde llega la barra, desde el borde izquierdo del panel.</param>
+public sealed record HudBar(int Width, int Height, HudColor Background, int BorderWidth, HudColor BorderColor)
+{
+    /// <summary>Dónde empieza la barra (a la derecha del log, si el diseño lo pone en el rincón).</summary>
+    public int X { get; init; }
+}
 
 /// <summary>El reloj va en otro panel del juego: a <see cref="Gap"/> unidades del final de la última celda de la barra.</summary>
 public sealed record HudClock(int Gap, int Y, int Width, int Height, string Font, int Points);
@@ -102,19 +107,19 @@ public sealed class HudLayout
     public HudClock Clock { get; }
 
     /// <summary>
-    /// El log de eventos del juego, abajo de la barra y con fondo negro (idea 1 del usuario, 2026-10-31: sobre el mapa,
-    /// la pausa y los colores del terreno ensuciaban el OCR). Null en los diseños viejos: el log queda donde lo pone el
-    /// juego y su caja es la de la calibración.
+    /// El log de eventos del juego, en el rincón de arriba a la izquierda sobre el gris de la barra (idea 1 del usuario,
+    /// 2026-10-31: sobre el mapa, la pausa y los colores del terreno ensuciaban el OCR; el negro abajo de la barra se veía
+    /// feo). Null en los diseños viejos: el log queda donde lo pone el juego y su caja es la de la calibración.
     /// </summary>
     public UnitRect? Log { get; private init; }
 
     /// <summary>
-    /// La fila de íconos de la cola de producción, a la derecha del log; el mod pone un fondo negro alrededor (sobre el
-    /// mapa, los íconos verdes se confundían con el pasto). Null en los diseños viejos.
+    /// La fila de íconos de la cola de producción, debajo de la barra; el mod pone el gris de la barra alrededor (sobre
+    /// el mapa, los íconos verdes se confundían con el pasto). Null en los diseños viejos.
     /// </summary>
     public UnitRect? Queue { get; private init; }
 
-    /// <summary>Margen del fondo negro de la cola alrededor de sus íconos, en unidades del HUD.</summary>
+    /// <summary>Margen del fondo de la cola alrededor de sus íconos, en unidades del HUD.</summary>
     public const int QueueMargin = 6;
 
     public HudCell Cell(string name) => Cells.First(c => c.Name == name);
@@ -190,7 +195,7 @@ public sealed class HudLayout
             throw new InvalidDataException(Missing("pixels_per_unit_at_1080p"));
         var barDto = dto.Bar ?? throw new InvalidDataException(Missing("bar"));
         var bar = new HudBar(barDto.Width, barDto.Height, Color(barDto.Background, "bar.background", source),
-            barDto.Border?.Width ?? 0, Color(barDto.Border?.Color, "bar.border.color", source));
+            barDto.Border?.Width ?? 0, Color(barDto.Border?.Color, "bar.border.color", source)) { X = barDto.X };
         var clockDto = dto.Clock ?? throw new InvalidDataException(Missing("clock"));
         var clock = new HudClock(clockDto.Gap, clockDto.Y, clockDto.Width, clockDto.Height, clockDto.Font ?? "", clockDto.Points);
         if (!Fonts.Contains(clock.Font))
@@ -223,8 +228,8 @@ public sealed class HudLayout
             cells.Add(new HudCell(name, c.X, c.Width, new HudIcon(icon.X, icon.Y, icon.Size), chip, fields, backgrounds, separator));
         }
         UnitRect? Rect(RectDto? r, string what) => r is null ? null
-            : r.Width > 0 && r.Height > 0 && r.X >= 0 && r.Y >= bar.Height ? new UnitRect(r.X, r.Y, r.Width, r.Height)
-            : throw new InvalidDataException($"{source}: {what} tiene que medir más que 0 y estar abajo de la barra (y {bar.Height} o más).");
+            : r.Width > 0 && r.Height > 0 && r.X >= 0 && r.Y >= 0 && (r.Y >= bar.Height || r.X + r.Width <= bar.X) ? new UnitRect(r.X, r.Y, r.Width, r.Height)
+            : throw new InvalidDataException($"{source}: {what} tiene que medir más que 0 y quedar abajo de la barra (y {bar.Height} o más) o a su izquierda (hasta x {bar.X}).");
         var layout = new HudLayout(dto.Name, dto.PixelsPerUnitAt1080p.Value, bar, cells, clock)
         {
             Log = Rect(dto.Log, "log"),
@@ -239,7 +244,7 @@ public sealed class HudLayout
         HudCell? previous = null;
         foreach (var cell in Cells)
         {
-            if (cell.Width <= 0 || cell.X < 0 || cell.X + cell.Width > Bar.Width)
+            if (cell.Width <= 0 || cell.X < Bar.X || cell.X + cell.Width > Bar.Width)
                 throw new InvalidDataException($"{source}: la celda {cell.Name} se sale de la barra.");
             if (previous is not null && cell.X < previous.X + previous.Width)
                 throw new InvalidDataException($"{source}: la celda {cell.Name} se solapa con {previous.Name}.");
@@ -264,7 +269,7 @@ public sealed class HudLayout
     public string ToJson() => JsonSerializer.Serialize(new Dto(
         Name,
         PixelsPerUnitAt1080p,
-        new BarDto(Bar.Width, Bar.Height, Array(Bar.Background), new BorderDto(Bar.BorderWidth, Array(Bar.BorderColor))),
+        new BarDto(Bar.Width, Bar.Height, Array(Bar.Background), new BorderDto(Bar.BorderWidth, Array(Bar.BorderColor)), Bar.X),
         Cells.ToDictionary(c => c.Name, c => new CellDto(
             c.X,
             c.Width,
@@ -293,7 +298,7 @@ public sealed class HudLayout
 
     private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock,
         RectDto? Log = null, RectDto? Queue = null);
-    private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border);
+    private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border, int X = 0);
     private sealed record BorderDto(int Width, double[]? Color);
     private sealed record IconDto(int X, int Y, int Size);
     private sealed record ChipDto(int X, int Y, int Width, int Height, double[]? Color);
