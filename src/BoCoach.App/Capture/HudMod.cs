@@ -351,14 +351,24 @@ public static class HudMod
     /// La franja con textura que el juego dibuja arriba de toda la pantalla (<c>blanktoppanel.json</c>, 52 unidades de
     /// pantalla de alto), apagada si el log va en el rincón (<see cref="HudLayout.Log"/> a la izquierda de la barra): la
     /// barra la tapaba desde x 0 y, corrida a bar.x, en el rincón se veía encima del log (prueba de la variante A,
-    /// 2026-10-31). Como la textura del panel de recursos, los estados por civ van en <c>None</c>. Null si no hace falta.
+    /// 2026-10-31). Los estados en <c>None</c> no alcanzaron (prueba de la v0.9.71, 2026-11-01: la textura de la civ
+    /// seguía, el juego la pone por código): además la colección, el widget y su imagen van con alto 0. Null si no
+    /// hace falta.
     /// </summary>
     public static JsonObject? TopPanel(JsonObject original, HudLayout layout)
     {
         if (layout.Log is not { } log || log.X + log.Width > layout.Bar.X)
             return null;
-        foreach (var widget in original["Collection"]!["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).SelectMany(All))
+        var collection = original["Collection"]!.AsObject();
+        if (collection["ViewPort"] is JsonObject viewport)
+            viewport["height"] = 0;
+        foreach (var widget in collection["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).SelectMany(All))
         {
+            foreach (var key in new[] { "ViewPort", "Image" })
+            {
+                if (widget[key] is JsonObject rect)
+                    rect["height"] = 0;
+            }
             if (widget["StateMaterials"] is not JsonObject states)
                 continue;
             foreach (var key in states.Select(s => s.Key).Where(k => k.StartsWith("UserState", StringComparison.Ordinal) && k != "UserStates").ToList())

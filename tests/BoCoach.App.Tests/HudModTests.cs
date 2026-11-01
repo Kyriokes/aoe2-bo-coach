@@ -461,6 +461,9 @@ public sealed class HudModTests : IDisposable
 
         Assert.Equal("None", Material(Widget(panel, "BlankTop"), "UserState0"));
         Assert.Equal(1, (int)Widget(panel, "BlankTop")["StateMaterials"]!["UserStates"]!);
+        // Con None la textura de la civ seguía (prueba de la v0.9.71): sin alto no tiene dónde dibujarse.
+        Assert.Equal(0, (int)panel["Collection"]!["ViewPort"]!["height"]!);
+        Assert.Equal(0, View(Widget(panel, "BlankTop")).H);
     }
 
     // Pedido del usuario (2026-11-01): el menú más chico, pegado a la derecha, para ver más texto del reloj.
