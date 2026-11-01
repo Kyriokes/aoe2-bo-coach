@@ -88,11 +88,11 @@ internal static class HudLayoutScreens
     private static void DrawBar(Canvas canvas, HudLayout layout, Func<int, int, int, int, PixelRect> rect)
     {
         var bar = layout.Bar;
-        canvas.Fill(rect(0, 0, bar.Width, bar.Height), ToBytes(bar.Background));
+        canvas.Fill(rect(bar.X, 0, bar.Width - bar.X, bar.Height), ToBytes(bar.Background));
         var border = ToBytes(bar.BorderColor);
-        canvas.Fill(rect(0, 0, bar.Width, bar.BorderWidth), border);
-        canvas.Fill(rect(0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth), border);
-        canvas.Fill(rect(0, 0, bar.BorderWidth, bar.Height), border);
+        canvas.Fill(rect(bar.X, 0, bar.Width - bar.X, bar.BorderWidth), border);
+        canvas.Fill(rect(bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth), border);
+        canvas.Fill(rect(bar.X, 0, bar.BorderWidth, bar.Height), border);
         canvas.Fill(rect(bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height), border);
     }
 
