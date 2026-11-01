@@ -320,6 +320,8 @@ public static class CoachText
             return $"{(step.What is { } what ? StepText.Name(what) : StepText.Describe(step))} (en curso)";
         if (LivePlan.IsVillagerTarget(step))
             return $"Aldeanos a {StepText.Source(step.Assign!.Value)}: {step.Count - goal.Remaining}/{step.Count}";
+        if (goal.EarlierCount > 0)
+            return $"{StepText.Describe(step)} (van {goal.EarlierDone + goal.Completed} de {goal.EarlierCount + goal.Required})";
         return goal.Required > 1 && goal.Completed > 0
             ? $"{StepText.Describe(step)} ({goal.Completed}/{goal.Required})"
             : StepText.Describe(step);

@@ -303,6 +303,22 @@ public class TrackerLanesTests
         Assert.False(tracker.IsLeftBehind(1));
     }
 
+    // Partida 20261031-203835 (hunos): "Construir 2 galerías de tiro (1/2)" con 2 galerías hechas parecía que no había
+    // visto la segunda; la BO pedía una en Feudal y 2 más en Castillos. El texto dice el total.
+    [Fact]
+    public void Lo_mismo_pedido_antes_suma_al_total_del_texto()
+    {
+        var bo = Bo(Build("range1", "archery_range"), Build("smith", "blacksmith"), Build("range2", "archery_range") with { Count = 2 });
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("feudal_age_researched").Event("barracks_built")
+            .Event("archery_range_built").Event("blacksmith_built").Event("archery_range_built").State);
+
+        var step = tracker.Steps[2];
+        Assert.Equal((1, 1, 1), (step.EarlierCount, step.EarlierDone, step.Completed));
+        Assert.Equal("Construir 2 galerías de tiro → madera (van 2 de 3)", CoachText.Goal(step));
+        Assert.Equal("Construir 1 herrería → madera", CoachText.Goal(tracker.Steps[1] with { State = StepState.Pending }));
+    }
+
     // Revisión de la rama: los jemeres suben de edad sin edificios.
     [Fact]
     public void Los_jemeres_hacen_clic_de_edad_sin_edificios()

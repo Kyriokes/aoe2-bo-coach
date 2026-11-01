@@ -36,6 +36,16 @@ public sealed record StepProgress(
     int? AtPop = null)
 {
     public int Remaining => Math.Max(0, Required - Completed);
+
+    /// <summary>
+    /// Cuántos de lo mismo (construir o entrenar la misma entidad) piden los pasos anteriores de la BO, y cuántos de
+    /// esos están hechos: el texto dice el total ("van 2 de 3"). En la partida 20261031-203835 (hunos) "Construir 2
+    /// galerías de tiro (1/2)" con 2 galerías hechas se leía como que no había visto la segunda: la BO pedía 3.
+    /// </summary>
+    public int EarlierCount { get; init; }
+
+    /// <inheritdoc cref="EarlierCount"/>
+    public int EarlierDone { get; init; }
 }
 
 /// <summary>
@@ -678,6 +688,19 @@ public sealed class Tracker
 
             steps[i] = new StepProgress(step, i, state, Math.Min(completed[i], required), required, state == StepState.Done ? at : null, manual,
                 state == StepState.InProgress ? _started[i] : null, _atPop[i]);
+        }
+        for (var i = 0; i < n; i++)
+        {
+            var step = steps[i].Step;
+            if (step.Do is not (StepAction.Build or StepAction.Train) || step.What is not { } what || LivePlan.IsVillagerTarget(step))
+                continue;
+            var earlier = steps.Take(i).Where(s => s.Step.Do == step.Do && s.Step.What == what).ToList();
+            if (earlier.Count > 0)
+                steps[i] = steps[i] with
+                {
+                    EarlierCount = earlier.Sum(s => s.Required),
+                    EarlierDone = earlier.Sum(s => s.State is StepState.Done ? s.Required : s.Completed),
+                };
         }
         _steps = steps;
 
