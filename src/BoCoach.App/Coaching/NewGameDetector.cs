@@ -1,8 +1,8 @@
 namespace BoCoach.App.Coaching;
 
 /// <summary>
-/// D6: un reloj que vuelve para atrás más de <see cref="BackSeconds"/> en <see cref="BackReads"/> lecturas seguidas es
-/// otra partida (sin pantalla de carga leída); una sola lectura para atrás puede ser un error de lectura. Se compara con
+/// D6: un reloj que vuelve para atrás más de <see cref="BackSeconds"/>, hasta cerca del cero (<see cref="NewGameSeconds"/>),
+/// en <see cref="BackReads"/> lecturas seguidas es otra partida (sin pantalla de carga leída); una sola lectura para atrás puede ser un error de lectura. Se compara con
 /// el reloj suavizado, no con la lectura cruda anterior: en la partida 20261031-140712 una captura leyó "09:06:10" por
 /// "00:06:10" y las 3 siguientes (6:11, 6:12, 6:13) parecían "9 horas para atrás": el coach empezaba otra partida y
 /// borraba lo hecho (el telar).
@@ -11,6 +11,13 @@ public sealed class NewGameDetector
 {
     public const double BackSeconds = 5;
     public const int BackReads = 3;
+
+    /// <summary>
+    /// Una partida nueva se reconoce en sus primeros segundos: el reloj crudo tiene que estar cerca del cero. Un reloj
+    /// que vuelve 47 s para atrás a las 26:52 es una lectura mala (partida 20261101-165020: un cuadro del juego tapó el
+    /// último dígito y "00:26:5" se leyó 26:05 tres veces seguidas), no otra partida.
+    /// </summary>
+    public const double NewGameSeconds = 180;
 
     private int _backwards;
 
@@ -21,7 +28,7 @@ public sealed class NewGameDetector
         if (raw is not { } now || smoothed is not { } clock)
             return false;
         // El suavizado nunca deja que el reloj vuelva para atrás: una partida nueva se ve en la lectura cruda.
-        if (now < clock - BackSeconds)
+        if (now < clock - BackSeconds && now <= NewGameSeconds)
         {
             if (++_backwards < BackReads)
                 return false;

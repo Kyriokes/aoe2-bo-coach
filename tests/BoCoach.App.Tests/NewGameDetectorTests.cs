@@ -25,6 +25,14 @@ public class NewGameDetectorTests
     }
 
     [Fact]
+    public void Un_reloj_que_vuelve_un_rato_para_atras_a_mitad_de_partida_es_una_lectura_mala()
+    {
+        // Partida 20261101-165020: un cuadro del juego tapó el último dígito y "00:26:5" se leyó 26:05 (1565) varias
+        // veces seguidas con el reloj en 26:52 (1612): el coach empezaba otra partida y perdía 26 minutos.
+        Assert.False(Any(new NewGameDetector(), (1612, 1612), (1565, 1612), (1565, 1612), (1565, 1612), (1565, 1612), (1620, 1620)));
+    }
+
+    [Fact]
     public void Una_sola_lectura_para_atras_no_alcanza()
     {
         Assert.False(Any(new NewGameDetector(), (1800, 1800), (5, 1800), (1801, 1801), (6, 1801), (1802, 1802)));
