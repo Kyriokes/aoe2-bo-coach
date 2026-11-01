@@ -94,7 +94,17 @@ internal static class HudPreview
                     continue;
                 var font = sample.Contains('/') ? population : numbers;
                 if (font is not null)
-                    canvas.Text(sample, Rect(cell.X + field.X, field.Y, field.Width, field.Height), font, field.Points, ppu, White);
+                    canvas.Text(sample, Rect(cell.X + field.X, field.Y, field.Width, field.Height), font, field.Points, ppu, White, field.AlignLeft);
+            }
+            if (cell.Guide is { } guide && numbers is not null)
+            {
+                // La GD del overlay como la escribe en el diseño mínimo: "+2" en rojo (faltan 2), pegada a la izquierda del hueco.
+                var g = Rect(cell.X + guide.X, guide.Y, guide.Width, guide.Height);
+                var h = Math.Max(2, (int)Math.Round(0.73 * 28 * ppu));
+                var plus = new PixelRect(g.X, g.Y + (g.Height - h) / 2, h, h);
+                canvas.Fill(new PixelRect(plus.X + h / 2 - 1, plus.Y, 2, h), (240, 70, 70));
+                canvas.Fill(new PixelRect(plus.X, plus.Y + h / 2 - 1, h, 2), (240, 70, 70));
+                canvas.Text("2", new PixelRect(g.X + h + 2, g.Y, g.Width - h - 2, g.Height), numbers, 28, ppu, (240, 70, 70), left: true);
             }
         }
         var clock = layout.ClockRect();
@@ -188,7 +198,7 @@ internal static class HudPreview
         /// Un texto centrado en el campo con las plantillas de la letra: cada glifo mide 0,73 × puntos × píxeles por
         /// unidad de alto (lo que mide un dígito del juego) y el ancho típico de la letra.
         /// </summary>
-        public void Text(string text, PixelRect field, GlyphFont font, int points, double ppu, (byte R, byte G, byte B) color)
+        public void Text(string text, PixelRect field, GlyphFont font, int points, double ppu, (byte R, byte G, byte B) color, bool left = false)
         {
             var glyphHeight = Math.Max(2, (int)Math.Round(0.73 * points * ppu));
             // La celda de la plantilla guarda el glifo con su proporción real (centrado, con columnas vacías a los
@@ -200,7 +210,7 @@ internal static class HudPreview
             var inks = glyphs.Select(g => g is null ? (First: 0, Last: GlyphFont.CellWidth - 1) : InkColumns(g)).ToList();
             int Width(int i) => (int)Math.Round((inks[i].Last - inks[i].First + 1) * glyphWidth / (double)GlyphFont.CellWidth);
             var total = Enumerable.Range(0, text.Length).Sum(Width) + (text.Length - 1) * spacing;
-            var x = field.X + (field.Width - total) / 2;
+            var x = left ? field.X : field.X + (field.Width - total) / 2;
             var y = field.Y + (field.Height - glyphHeight) / 2;
             for (var i = 0; i < text.Length; i++)
             {
