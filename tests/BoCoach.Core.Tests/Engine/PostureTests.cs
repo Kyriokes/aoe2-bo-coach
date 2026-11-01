@@ -17,20 +17,106 @@ public class PostureTests
     [Fact]
     public void Sin_postura_se_deduce_aldeanos_la_ultima_unidad_militar_y_la_edad_siguiente()
     {
-        var (posture, derived) = Posture.Effective(Scouts);
+        var (posture, derived) = Posture.Effective(Scouts, Data);
         Assert.True(derived);
         Assert.Equal(["villager", "scout_cavalry"], posture.Queue);
         Assert.Equal("castle_age", posture.NextAge);
 
         // La de 22 de población ya clica Castillos: apunta a Imperial.
-        Assert.Equal("imperial_age", Posture.Effective(Scouts22).Posture.NextAge);
+        Assert.Equal("imperial_age", Posture.Effective(Scouts22, Data).Posture.NextAge);
+    }
+
+    private static readonly BuildOrder HunsCa = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "civs", "huns-mejorada.json"));
+
+    private static BuildOrder Then(BuildOrder bo, string building) =>
+        bo with { Steps = [.. bo.Steps, new Step { Id = "fin", Do = StepAction.Build, What = building, Count = 1 }] };
+
+    // Partida 20261031-215314 (hunos, "Scouts → CA (mejorada)"): la BO entrena exploradores y después construye 3
+    // galerías; con la BO terminada el overlay pedía "Establo parado: poné exploradores en cola" hasta el final,
+    // mientras salían arqueros a caballo.
+    [Fact]
+    public void Se_suman_los_edificios_de_produccion_que_la_BO_construye_despues_de_su_ultima_unidad()
+    {
+        var (posture, derived) = Posture.Effective(HunsCa, Data);
+
+        Assert.True(derived);
+        Assert.Equal(["villager", "scout_cavalry", "archer"], posture.Queue);
+        Assert.Equal("imperial_age", posture.NextAge);
+    }
+
+    [Fact]
+    public void Otro_edificio_igual_al_de_la_ultima_unidad_o_uno_que_no_produce_no_cambian_la_postura()
+    {
+        Assert.Equal(["villager", "scout_cavalry"], Posture.Effective(Then(Scouts, "stable"), Data).Posture.Queue);
+        Assert.Equal(["villager", "scout_cavalry"], Posture.Effective(Then(Scouts, "blacksmith"), Data).Posture.Queue);
+        Assert.Equal(["villager", "scout_cavalry"], Posture.Effective(Then(Scouts, "monastery"), Data).Posture.Queue);
+        Assert.Equal(["villager", "scout_cavalry", "archer"], Posture.Effective(Then(Scouts, "archery_range"), Data).Posture.Queue);
+    }
+
+    private static PlayerState Timeline(params (double Time, string Event)[] events)
+    {
+        var state = new PlayerState();
+        foreach (var (time, e) in events)
+            state.Apply(new GameSnapshot(time, Poor, 25, 30, [new GameEvent(e, time)]));
+        return state;
+    }
+
+    [Fact]
+    public void En_vivo_queda_el_edificio_que_el_jugador_usa_con_la_unidad_que_saca()
+    {
+        var coach = new PostureCoach(HunsCa, Data) { IdleGrace = 0 };
+        var huns = Data.Civ("huns");
+        var state = Timeline((100, "stable_built"), (200, "scout_cavalry_created"),
+            (300, "archery_range_built"), (310, "archery_range_built"), (320, "archery_range_built"));
+
+        // Recién hechas las galerías, se piden las dos cosas.
+        var view = coach.View(state, [new QueueItem("villager")], Age.Castle, huns);
+        Assert.Equal(["villager", "scout_cavalry", "archer"], view.Queue);
+        Assert.Equal(["stable", "archery_range"], view.Gaps.Select(g => g.Building));
+
+        // Con 3 arqueros a caballo (uno de élite) desde el último explorador, el establo queda afuera.
+        foreach (var (time, e) in new[] { (400.0, "cavalry_archer_created"), (430, "cavalry_archer_created"), (460, "heavy_cavalry_archer_created") })
+            state.Apply(new GameSnapshot(time, Poor, 25, 30, [new GameEvent(e, time)]));
+        view = coach.View(state, [new QueueItem("villager")], Age.Castle, huns);
+        Assert.Equal(["villager", "cavalry_archer"], view.Queue);
+        var gap = Assert.Single(view.Gaps);
+        Assert.Equal(("archery_range", "cavalry_archer", 3), (gap.Building, gap.Unit, gap.Count));
+        Assert.Equal("Postura: aldeanos y arqueros a caballo siempre en cola", CoachText.PostureTitle(view));
+
+        // Con dos en cola, falta una galería; la demanda es la de los arqueros a caballo en las 3.
+        view = coach.View(state, [new QueueItem("cavalry_archer"), new QueueItem("cavalry_archer")], Age.Castle, huns);
+        Assert.Equal(1, Assert.Single(view.Gaps).Count);
+        var ca = Data.Get("cavalry_archer");
+        var demand = coach.Demand(view, state, Age.Castle, huns, 0, villagers: false);
+        Assert.Equal(huns.Cost(ca, Age.Castle).Gold * 3 / (huns.Time(ca, Age.Castle) / huns.WorkRate("archery_range", Age.Castle)), demand.Gold, 6);
+
+        // Un explorador suelto vuelve a pedir el establo; si vuelve a los exploradores, las galerías quedan afuera.
+        state.Apply(new GameSnapshot(500, Poor, 25, 30, [new GameEvent("scout_cavalry_created", 500)]));
+        Assert.Equal(["villager", "scout_cavalry", "cavalry_archer"], coach.View(state, [], Age.Castle, huns).Queue);
+        foreach (var time in new[] { 530.0, 560 })
+            state.Apply(new GameSnapshot(time, Poor, 25, 30, [new GameEvent("scout_cavalry_created", time)]));
+        Assert.Equal(["villager", "scout_cavalry"], coach.View(state, [], Age.Castle, huns).Queue);
+    }
+
+    [Fact]
+    public void La_galeria_hecha_solo_para_Castillos_deja_de_pedirse_si_el_jugador_sigue_con_su_unidad()
+    {
+        // Como "Romans Infantry": milicias, y la galería como segundo edificio de Feudal.
+        var coach = new PostureCoach(Then(Scouts, "archery_range"), Data) { IdleGrace = 0 };
+        var state = Timeline((100, "stable_built"), (300, "archery_range_built"),
+            (330, "scout_cavalry_created"), (360, "scout_cavalry_created"), (390, "scout_cavalry_created"));
+
+        var view = coach.View(state, [], Age.Feudal, Data.Civ("any"));
+
+        Assert.Equal(["villager", "scout_cavalry"], view.Queue);
+        Assert.Equal("stable", Assert.Single(view.Gaps).Building);
     }
 
     [Fact]
     public void La_postura_escrita_manda()
     {
         var written = new ClosingPosture { Queue = ["villager", "knight"], NextAge = "castle_age" };
-        var (posture, derived) = Posture.Effective(Scouts with { Posture = written });
+        var (posture, derived) = Posture.Effective(Scouts with { Posture = written }, Data);
 
         Assert.False(derived);
         Assert.Same(written, posture);

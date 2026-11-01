@@ -63,7 +63,7 @@ public static class BuildOrderAnalysis
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             w.WriteString("style", BuildOrderStyle.Of(bo));
-            WriteBuildOrder(w, bo);
+            WriteBuildOrder(w, bo, data);
             WriteStart(w, bo, data);
             WriteIssues(w, validation);
 
@@ -113,7 +113,7 @@ public static class BuildOrderAnalysis
         w.WriteEndObject();
     }
 
-    private static void WriteBuildOrder(Utf8JsonWriter w, BuildOrder bo)
+    private static void WriteBuildOrder(Utf8JsonWriter w, BuildOrder bo, GameData data)
     {
         w.WriteString("id", bo.Id);
         w.WriteString("name", bo.Name);
@@ -133,7 +133,7 @@ public static class BuildOrderAnalysis
             w.WriteNumber("castle_click_time", castle);
         w.WriteEndObject();
         // La postura de cierre (D2), escrita o deducida de los pasos.
-        var (posture, derived) = Posture.Effective(bo);
+        var (posture, derived) = Posture.Effective(bo, data);
         w.WriteStartObject("posture");
         w.WriteString("text", posture.Queue.Count == 0 ? null
             : $"{string.Join(" y ", posture.Queue.Select(u => StepText.Name(u, 2)))} siempre en cola");

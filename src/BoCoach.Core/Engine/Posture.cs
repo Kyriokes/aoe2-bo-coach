@@ -46,17 +46,47 @@ public static class Posture
 {
     private static readonly string[] Ages = ["feudal_age", "castle_age", "imperial_age"];
 
-    /// <summary>La postura de la BO, o la deducida: aldeanos más la última unidad militar que entrena la BO, y la edad siguiente a la última que clica.</summary>
-    public static (ClosingPosture Posture, bool Derived) Effective(BuildOrder bo)
+    /// <summary>
+    /// La postura de la BO, o la deducida: aldeanos más la producción que la BO deja armada, y la edad siguiente a la
+    /// última que clica. La producción es la última unidad militar que entrena la BO más la unidad de cada edificio de
+    /// otro tipo que construye después (<see cref="DefaultUnit"/>): en la partida 20261031-215314 ("Scouts → CA" de los
+    /// hunos: exploradores y después 3 galerías) pedía solo exploradores hasta el final. Se suman y no se reemplazan
+    /// porque un edificio del final puede ser solo el segundo de Feudal para Castillos (la galería de "Romans
+    /// Infantry"): en vivo, <see cref="PostureCoach"/> deja de pedir el que el jugador no usa.
+    /// </summary>
+    public static (ClosingPosture Posture, bool Derived) Effective(BuildOrder bo, GameData data)
     {
         if (bo.Posture is { } written)
             return (written, false);
         var queue = new List<string> { "villager" };
-        if (bo.Steps.LastOrDefault(s => s.Do == StepAction.Train && s.What is { } w && w != "villager") is { What: { } unit })
-            queue.Add(unit);
         var lastAge = bo.Steps.Where(s => s.Do == StepAction.Research && s.What is { } w && Ages.Contains(w)).Select(s => Array.IndexOf(Ages, s.What)).DefaultIfEmpty(-1).Max();
+        var finalAge = lastAge < 0 ? Age.Dark : BuildOrderValidator.AgeOf(Ages[lastAge]) ?? Age.Dark;
+        var lastUnit = bo.Steps.Select((s, i) => (Step: s, Index: i))
+            .LastOrDefault(x => x.Step.Do == StepAction.Train && x.Step.What is { } w && w != "villager");
+        var unitBuilding = lastUnit.Step?.What is { } u && data.TryGet(u, out var unitEntity) ? unitEntity.MadeIn : null;
+        var later = bo.Steps.Skip(lastUnit.Step is null ? 0 : lastUnit.Index + 1)
+            .Where(s => s.Do == StepAction.Build && s.What is { } b && b != unitBuilding && b != BuildOrderValidator.StartingBuilding)
+            .Select(s => DefaultUnit(data, bo.Civ, s.What!, finalAge))
+            .OfType<string>().Distinct().ToList();
+        if (lastUnit.Step is not null)
+            queue.AddRange(later.Prepend(lastUnit.Step.What!).Distinct());
         return (new ClosingPosture { Queue = queue, NextAge = lastAge + 1 < Ages.Length ? Ages[lastAge + 1] : null }, true);
     }
+
+    /// <summary>
+    /// La unidad de la postura para un edificio que la BO construye sin entrenar nada ahí: la primera de ese edificio
+    /// que la civ puede hacer, de la edad más vieja hasta <paramref name="age"/> (galería: arqueros; establo:
+    /// exploradores). null si no produce unidades militares (herrería, mercado) o si es el monasterio: los monjes no se
+    /// sacan sin parar (la de los francos hace caballeros y al final mercado y monasterio). En vivo manda lo que el
+    /// jugador saca ahí (<see cref="PostureCoach"/>).
+    /// </summary>
+    public static string? DefaultUnit(GameData data, string? civ, string building, Age age) => data.Entities
+        .Where(e => e.Value.Kind == EntityKind.Unit && e.Value.MadeIn == building && e.Value.Age <= age
+                    && !NonMilitary.Contains(e.Key) && data.CanMake(civ, e.Key))
+        .OrderBy(e => e.Value.Age).Select(e => e.Key).FirstOrDefault();
+
+    /// <summary>Las unidades que no cuentan como producción de la postura (las que no abandonan la BO, y los monjes).</summary>
+    private static readonly HashSet<string> NonMilitary = ["villager", "fishing_ship", "trade_cart", "transport_ship", "monk"];
 }
 
 /// <summary>Lleva la postura en vivo: los edificios parados (con margen) y la próxima edad.</summary>
@@ -65,8 +95,10 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
     /// <summary>Segundos sin nada en cola para dar por parado un edificio (lo mismo que el centro urbano).</summary>
     public double IdleGrace { get; init; } = 5;
 
-    private readonly (ClosingPosture Posture, bool Derived) _posture = Posture.Effective(bo);
+    private readonly (ClosingPosture Posture, bool Derived) _posture = Posture.Effective(bo, data);
     private readonly Dictionary<string, double> _idleSince = [];
+    private readonly Dictionary<string, string> _lastMade = [];
+    private double? _start;
 
     public ClosingPosture Definition => _posture.Posture;
 
@@ -74,9 +106,10 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
     public PostureView View(PlayerState state, IReadOnlyList<QueueItem>? queue, Age age, CivBonuses civ)
     {
         var posture = _posture.Posture;
+        var units = Live(state, queue);
         var gaps = new List<PostureGap>();
         var reserve = ResourceAmounts.Zero;
-        foreach (var unit in posture.Queue)
+        foreach (var unit in units)
         {
             if (!data.TryGet(unit, out var entity) || entity.MadeIn is not { } building)
                 continue;
@@ -122,7 +155,7 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
                 buildingsMissing = Math.Max(0, 2 - built);
             }
         }
-        return new PostureView(posture.Queue, _posture.Derived, gaps, next, missing, buildingsMissing,
+        return new PostureView(units, _posture.Derived, gaps, next, missing, buildingsMissing,
             next is not null && queue?.Any(i => i.Key == next) == true) { NextAgeNeed = needed };
     }
 
@@ -139,7 +172,7 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
     public ResourceAmounts Demand(PostureView view, PlayerState state, Age age, CivBonuses civ, double savingSeconds, bool villagers)
     {
         var demand = ResourceAmounts.Zero;
-        foreach (var unit in _posture.Posture.Queue)
+        foreach (var unit in view.Queue)
         {
             if (unit == "villager" && !villagers || !data.TryGet(unit, out var entity) || entity.MadeIn is not { } building)
                 continue;
@@ -151,6 +184,55 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
             demand += view.NextAgeNeed * (1 / savingSeconds);
         return demand;
     }
+
+    /// <summary>Unidades que otro edificio de la postura tiene que sacar para dar por dejado a uno (ver <see cref="Live"/>).</summary>
+    public int SwitchUnits { get; init; } = 3;
+
+    /// <summary>
+    /// Las unidades de la postura como las juega el jugador. En cada edificio, la última unidad que salió de ahí según
+    /// la cola o el log (con <see cref="UnitLines"/>, la base de su mejora): la BO deducida pide arqueros en la galería
+    /// y el jugador saca arqueros a caballo. Y un edificio queda afuera si otro de la postura sacó
+    /// <see cref="SwitchUnits"/> unidades desde que este sacó la última (o desde que se construyó, o desde que empezó
+    /// la postura si no hay ninguno): los hunos de "Scouts → CA" dejan el establo por las galerías, y los romanos de
+    /// "Romans Infantry" no usan la galería que hicieron para Castillos. Si nadie produce, se piden todos.
+    /// </summary>
+    private List<string> Live(PlayerState state, IReadOnlyList<QueueItem>? queue)
+    {
+        _start ??= state.Time;
+        var units = new List<string>();
+        var military = new List<(string Unit, string Building)>();
+        foreach (var unit in _posture.Posture.Queue)
+        {
+            if (unit == "villager" || !data.TryGet(unit, out var entity) || entity.MadeIn is not { } building)
+            {
+                units.Add(unit);
+                continue;
+            }
+            if (queue?.LastOrDefault(i => !i.Waiting && IsUnitOf(i.Key, building)) is { } item)
+                _lastMade[building] = UnitLines.Base(item.Key);
+            else if (state.Events.LastOrDefault(e => IsCreatedIn(e, building)) is { } created)
+                _lastMade[building] = UnitLines.Base(Made(created.EventId));
+            military.Add((_lastMade.GetValueOrDefault(building, unit), building));
+        }
+        foreach (var (unit, building) in military)
+        {
+            var since = Math.Max(
+                state.Events.Where(e => IsCreatedIn(e, building) || e.EventId == $"{building}_built").Select(e => e.Time).DefaultIfEmpty(double.MinValue).Max(),
+                state.Events.Any(e => e.EventId == $"{building}_built") || building == BuildOrderValidator.StartingBuilding ? double.MinValue : _start.Value);
+            var left = military.Any(o => o.Building != building
+                                         && state.Events.Count(e => e.Time > since && IsCreatedIn(e, o.Building)) >= SwitchUnits);
+            if (!left && !units.Contains(unit))
+                units.Add(unit);
+        }
+        return units;
+    }
+
+    private static string Made(string eventId) => eventId[..^"_created".Length];
+
+    private bool IsCreatedIn(GameEvent e, string building) => EventConventions.IsUnitCreated(e.EventId) && IsUnitOf(Made(e.EventId), building);
+
+    private bool IsUnitOf(string key, string building) =>
+        data.TryGet(UnitLines.Base(key), out var e) && e.Kind == EntityKind.Unit && e.MadeIn == building;
 
     /// <summary>Cuántos de ese edificio hay según el log (el centro urbano, uno más: el inicial).</summary>
     private static int Built(PlayerState state, string building) =>
