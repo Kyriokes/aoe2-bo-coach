@@ -44,6 +44,8 @@ internal static class HudPreview
         PixelRect Rect(int x, int y, int w, int h) => new(Px(margin + x), Px(margin + y), Px(w), Px(h));
         var bar = layout.Bar;
         canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.Height), ToBytes(bar.Background));
+        // Con el marco del juego (BlackPanel): fondo oscuro y una línea clara de 1 px alrededor del panel entero.
+        var framed = layout.Frame is not null;
         var border = ToBytes(bar.BorderColor);
         canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.BorderWidth), border);
         canvas.Fill(Rect(bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth), border);
@@ -85,14 +87,25 @@ internal static class HudPreview
             var logRect = Rect(log.X, log.Y, log.Width, log.Height);
             foreach (var part in HudLayout.RoundedBottomRight(log, layout.CornerRadius))
                 canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
+            if (framed)
+                Outline(canvas, logRect, bottom: true, left: true, right: false, top: true);
             var line = (int)Math.Round(17 * scale);
             for (var i = 0; i < 10 && 5 + (i + 1) * line <= logRect.Height; i++)
                 canvas.Fill(new PixelRect(logRect.X + 5, logRect.Y + 5 + i * line + line / 3, logRect.Width * (5 + i % 3) / 10, Math.Max(1, line / 3)), White);
         }
         if (layout.Queue is { } queue)
         {
-            foreach (var part in HudLayout.RoundedBottomRight(layout.QueueBack!, layout.CornerRadius))
+            var qb = layout.QueueBack!;
+            foreach (var part in HudLayout.RoundedBottomRight(qb, layout.CornerRadius))
                 canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
+            if (framed)
+            {
+                var qr = Rect(Math.Max(qb.X, layout.Bar.X), layout.Bar.Height, qb.Width - (Math.Max(qb.X, layout.Bar.X) - qb.X), qb.Y + qb.Height - layout.Bar.Height);
+                Outline(canvas, qr, bottom: true, left: false, right: true, top: false);
+                var barRect = Rect(bar.X, 0, Math.Min(bar.Width, (int)(1920 / ppu) - 2 * margin) - bar.X, bar.Height);
+                Outline(canvas, barRect, bottom: false, left: false, right: false, top: true);
+                canvas.Fill(new PixelRect(qr.X + qr.Width, barRect.Y + barRect.Height - 1, barRect.X + barRect.Width - qr.X - qr.Width, 1), (222, 222, 222));
+            }
             for (var i = 0; i < 6; i++)
                 canvas.Fill(Rect(queue.X + i * queue.Height, queue.Y, queue.Height - 2, queue.Height), (60, 120, 60));
         }
@@ -103,6 +116,16 @@ internal static class HudPreview
     }
 
     private static GlyphFont? Optional(string path) => File.Exists(path) ? GlyphFont.Load(path) : null;
+
+    /// <summary>La línea clara de 1 px del marco BlackPanel en los lados pedidos.</summary>
+    private static void Outline(Canvas canvas, PixelRect r, bool top, bool bottom, bool left, bool right)
+    {
+        var light = ((byte)222, (byte)222, (byte)222);
+        if (top) canvas.Fill(new PixelRect(r.X, r.Y, r.Width, 1), light);
+        if (bottom) canvas.Fill(new PixelRect(r.X, r.Y + r.Height - 1, r.Width, 1), light);
+        if (left) canvas.Fill(new PixelRect(r.X, r.Y, 1, r.Height), light);
+        if (right) canvas.Fill(new PixelRect(r.X + r.Width - 1, r.Y, 1, r.Height), light);
+    }
 
     private static (byte R, byte G, byte B) ToBytes(HudColor color)
     {

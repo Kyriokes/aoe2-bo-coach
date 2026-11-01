@@ -257,9 +257,10 @@ public sealed class HudModTests : IDisposable
         var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
         var wood = Widget(panel, "Wood");
-        // El fondo del juego arranca en bar.x (600), donde la barra lo tapa, y los hijos directos van relativos a él
-        // (prueba de la v0.9.72: su textura se veía en el rincón del log). Madera es la primera celda: 610 - 600.
-        Assert.Equal((10, 0, 410, 108), View(wood));
+        // El fondo del juego arranca donde arranca la barra (bar.x menos el solape con el log, 600 - 22 = 578), donde la
+        // barra lo tapa, y los hijos directos van relativos a él (prueba de la v0.9.72: su textura se veía en el rincón
+        // del log). Madera es la primera celda: 610 - 578.
+        Assert.Equal((32, 0, 410, 108), View(wood));
         Assert.Equal("TopLeft", (string?)wood["ViewPort"]!["alignment"]);
         Assert.Equal("None", Material(wood));
         Assert.Equal(42011, (int)wood["Help"]!);
@@ -279,13 +280,13 @@ public sealed class HudModTests : IDisposable
         // abajo: adentro del contenedor (plano 1 + 1) tapaba al stock (plano 2, hermano) en el juego (20261024-224921).
         var siblings = Children(Widget(panel, "Background")).Select(c => (string?)c["Name"]).ToList();
         var back = Widget(panel, "BoCoachBack_wood_0");
-        Assert.Equal((190, 12, 230, 84), View(back));
+        Assert.Equal((212, 12, 230, 84), View(back));
         Assert.Equal(1, (int)back["ZPlaneLocalOffset"]!);
         Assert.True(siblings.IndexOf("BoCoachBack_wood_0") < siblings.IndexOf("Wood"), "el fondo va antes que el contenedor");
         Assert.True(siblings.IndexOf("Wood") < siblings.IndexOf("WoodStorage"), "el stock va después del contenedor");
 
         var storage = Widget(panel, "WoodStorage");
-        Assert.Equal((284, 12, 132, 84), View(storage));
+        Assert.Equal((306, 12, 132, 84), View(storage));
         Assert.Equal(48, Points(storage));
         Assert.Equal(2, (int)storage["ZPlaneLocalOffset"]!);
         Assert.Equal(42202, (int)storage["Help"]!);
@@ -295,18 +296,18 @@ public sealed class HudModTests : IDisposable
         Assert.Equal("None", Material(population, "UserState0"));
         Assert.Equal("Population", Material(Children(population)[0]));
         Assert.Equal((104, 12, 80, 84), View(Children(population).First(c => (string?)c["Name"] == "Workers")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationCount")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
+        Assert.Equal((1862, 12, 180, 84), View(Widget(panel, "PopulationCount")));
+        Assert.Equal((1862, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
+        Assert.Equal((1862, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
 
-        Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
+        Assert.Equal((2062, 12, 84, 84), View(Widget(panel, "Idle")));
         Assert.Equal("IdleVillagerNormal", Material(Widget(panel, "Idle")));
-        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "BoCoachBack_idle_0")));
-        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "IdleWorkers")));
+        Assert.Equal((2152, 12, 80, 84), View(Widget(panel, "BoCoachBack_idle_0")));
+        Assert.Equal((2152, 12, 80, 84), View(Widget(panel, "IdleWorkers")));
         Assert.Equal(10, (int)Widget(panel, "IdleWorkers")["ZPlane"]!);
 
-        Assert.Equal((2230, 12, 84, 84), View(Widget(panel, "AgeUp")));
-        Assert.Equal((2324, 28, 378, 52), View(Widget(panel, "AgeBar")));
+        Assert.Equal((2252, 12, 84, 84), View(Widget(panel, "AgeUp")));
+        Assert.Equal((2346, 28, 378, 52), View(Widget(panel, "AgeBar")));
         var ageText = Widget(panel, "AgeTextLabel");
         Assert.Equal((0, 0, 378, 52), View(ageText));
         Assert.Equal(44, Points(ageText));
@@ -325,8 +326,9 @@ public sealed class HudModTests : IDisposable
         var collection = panel["Collection"]!["ViewPort"]!;
         Assert.Equal((4600, 108), ((int)collection["width"]!, (int)collection["height"]!));
         var background = Widget(panel, "Background");
-        // Desde bar.x: lo que el juego pinte en el fondo queda debajo de la barra gris y no llega al rincón del log.
-        Assert.Equal((600, 0, 4000, 108), View(background));
+        // Desde donde arranca la barra (bar.x menos el solape con el log): lo que el juego pinte en el fondo queda
+        // debajo de la barra y no llega al rincón del log.
+        Assert.Equal((578, 0, 4022, 108), View(background));
         Assert.Equal(9, (int)background["StateMaterials"]!["UserStates"]!);
         foreach (var state in new[] { "UserState0", "UserState8" })
             Assert.Equal("None", Material(background, state));
@@ -335,13 +337,17 @@ public sealed class HudModTests : IDisposable
         // La barra cubre la pantalla entera pero no pasa por debajo del campo negro del reloj (otro panel con el mismo
         // plano 1: no se sabe cuál se dibuja arriba): un tramo hasta el reloj y otro desde su final hasta el borde. El
         // menú del juego (plano 11) queda arriba de la barra.
-        Assert.Equal((0, 0, 2734, 108), View(bar)); // relativa al fondo, que ya empieza en bar.x
-        Assert.Equal("FlatColorWithAlpha", Material(bar));
+        // Con el marco del juego (pedido del usuario, 2026-11-01): cada tramo es un Surround de 9 piezas BlackPanel que
+        // se mete 22 (FrameOverlap) en el log y en el campo del reloj, así el marco no se ve entre ellos. Relativa al
+        // fondo, que ya empieza en 578: hasta el reloj (3334) más el solape.
+        Assert.Equal("Surround", (string?)bar["Type"]);
+        Assert.Equal((0, 0, 2778, 108), View(bar));
+        Assert.Equal("BlackPanel_TL", Material(bar, "StateTLNormal"));
+        Assert.Equal("BlackPanel_CC", Material(bar, "StateCCDisabled"));
+        Assert.True((bool)bar["Box"]!["drawbox"]!);
         var rest = Children(background)[1];
         Assert.Equal("BoCoachBarAfterClock", (string?)rest["Name"]);
-        Assert.Equal((2974, 0, 1026, 108), View(rest));
-        Assert.Equal("FlatColorWithAlpha", Material(rest));
-        Assert.Equal(0.1, (double)bar["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
+        Assert.Equal((2974, 0, 1048, 108), View(rest)); // desde el final del reloj (3574) menos el solape, relativa a 578
         Assert.Null(bar["ZPlaneLocalOffset"]);
         // Sin borde: la barra se junta con el log y la cola en un solo panel gris (pedido del usuario, 2026-11-01).
         Assert.Equal(0, Layout().Bar.BorderWidth);
@@ -389,9 +395,12 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((3334, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
         // El campo negro tapa solo la hora (pedido del usuario, 2026-10-31): el resto del texto sigue sobre la barra.
-        Assert.Equal((0, 12, 240, 84), View(Widget(panel, "BoCoachClockBackground")));
+        // El campo mide el alto entero de la barra y se mete 22 en los dos tramos: con el de la celda quedaba un hueco
+        // arriba y abajo por donde asomaba la textura de la civ (prueba de la v0.9.73).
+        Assert.Equal((-22, 0, 284, 108), View(Widget(panel, "BoCoachClockBackground")));
+        Assert.Equal("Surround", (string?)Widget(panel, "BoCoachClockBackground")["Type"]);
         // Sobre el gris de la barra, no negro: el salto a negro se veía feo (pedido del usuario, 2026-11-01).
-        Assert.Equal(0.1, (double)Widget(panel, "BoCoachClockBackground")["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
+        Assert.Equal("BlackPanel_CC", Material(Widget(panel, "BoCoachClockBackground"), "StateCCNormal"));
         var label = Widget(panel, "WorldTimerLabel");
         Assert.Equal(56, Points(label));
         Assert.Equal((HudMod.ClockTextX, 12 + (84 - 56) / 2, 1000, 56), View(label));
@@ -415,24 +424,18 @@ public sealed class HudModTests : IDisposable
         var viewport = panel["Collection"]!["ViewPort"]!;
         Assert.Equal((Su(log.X), Su(log.Y)), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
         var (w, h) = (log.Width, log.Height);
-        Assert.Equal("BoCoachLogBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
-        // La esquina de abajo a la derecha, redondeada en escalones (pedido del usuario, 2026-11-01).
-        var r = layout.CornerRadius;
-        Assert.Equal((0, 0, w, h - r), View(Widget(panel, "BoCoachLogBackground")));
-        var steps = panel["Collection"]!["Widgets"]!.AsArray().Select(x => x!["Widget"]!.AsObject())
-            .Where(x => ((string?)x["Name"] ?? "").StartsWith("BoCoachLogBackground_", StringComparison.Ordinal)).Select(View).ToList();
-        Assert.NotEmpty(steps);
-        Assert.Equal(h, steps[^1].Y + steps[^1].H);
-        Assert.True(steps.Zip(steps.Skip(1)).All(p => p.Second.W <= p.First.W), "cada escalón más corto");
-        Assert.True(steps[^1].W < w - r / 2, "la última tira bien corta");
-        Assert.Equal("FlatColorWithAlpha", Material(Widget(panel, "BoCoachLogBackground")));
+        // Con el marco del juego, el cuadro del log (ya un Surround de 9 piezas BlackPanel) es el fondo: ningún fondo
+        // propio delante (lo tapaba y se veía liso).
+        Assert.Equal("EventBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
+        Assert.DoesNotContain(panel["Collection"]!["Widgets"]!.AsArray(), x => ((string?)x!["Widget"]!["Name"] ?? "").StartsWith("BoCoachLogBackground", StringComparison.Ordinal));
+        Assert.Equal("BlackPanel_TL", Material(Widget(panel, "EventBackground"), "StateTLNormal"));
         Assert.Equal((0, 0, w, h), View(Widget(panel, "EventBackground")));
+        Assert.Equal((w, h), ((int)Widget(panel, "EventBackground")["Box"]!["width"]!, (int)Widget(panel, "EventBackground")["Box"]!["height"]!));
         Assert.Equal((10, 10, w - 20, h - 20), View(Widget(panel, "TextBox")));
         Assert.Equal(h - 20, (int)Widget(panel, "TextBox")["TextBox"]!["height"]!);
         Assert.True((h - 20) / 40 >= 6, "entran 6 renglones de 40");
         Assert.Equal((0, 0), (Su(log.X), Su(log.Y))); // arriba de todo, a la izquierda
         Assert.True(log.X + log.Width <= layout.Bar.X, "a la izquierda de la barra");
-        Assert.Equal(0.1, (double)Widget(panel, "BoCoachLogBackground")["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
         Assert.Equal(h + 50, (int)Widget(panel, "ChatBackground")["ViewPort"]!["yorigin"]!);
     }
 
@@ -446,12 +449,17 @@ public sealed class HudModTests : IDisposable
         Assert.True(queue.X >= layout.Bar.X && queue.Y >= layout.Bar.Height, "debajo de la barra");
         Assert.Equal((queue.X, queue.Y, queue.Width, queue.Height), View(Widget(panel, "Background")));
         Assert.Equal("BoCoachQueueBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
-        // Un solo panel: el fondo toca el log (x = bar.x, donde termina el log) y la barra (y = su alto).
+        // Un solo panel: el fondo se mete 22 (FrameOverlap) en el log (termina en bar.x) y en la barra, para que el marco
+        // no se vea entre ellos, y llega hasta el final de los íconos con su margen.
         var back = layout.QueueBack!;
-        Assert.Equal((layout.Bar.X, layout.Bar.Height), (back.X, back.Y));
-        Assert.Equal(layout.Log!.X + layout.Log.Width, back.X);
+        var o = HudLayout.FrameOverlap;
+        Assert.Equal((layout.Bar.X - o, layout.Bar.Height - o), (back.X, back.Y));
         Assert.Equal(queue.X + queue.Width + HudLayout.QueueMargin, back.X + back.Width);
-        Assert.Equal((back.X, back.Y, back.Width, back.Height - layout.CornerRadius), View(Widget(panel, "BoCoachQueueBackground")));
+        Assert.Equal(queue.Y + queue.Height + HudLayout.QueueMargin, back.Y + back.Height);
+        var fondo = Widget(panel, "BoCoachQueueBackground");
+        Assert.Equal((back.X, back.Y, back.Width, back.Height), View(fondo));
+        Assert.Equal("Surround", (string?)fondo["Type"]);
+        Assert.Equal("BlackPanel_BR", Material(fondo, "StateBRNormal"));
         // Armado dos veces sale igual (el fondo no se duplica).
         Assert.Equal(panel.ToJsonString(), HudMod.QueuePanel(panel.DeepClone().AsObject(), layout)!.ToJsonString());
     }

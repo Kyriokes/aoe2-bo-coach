@@ -130,15 +130,29 @@ public sealed class HudLayout
     public const int QueueMargin = 6;
 
     /// <summary>
-    /// Radio de las esquinas del panel que dan al mapa, en unidades del HUD (pedido del usuario, 2026-11-01: el borde
-    /// recto contra el juego se veía duro). 0: esquinas rectas.
+    /// Radio de las esquinas del panel que dan al mapa, en unidades del HUD, hechas con escalones. 0: esquinas rectas
+    /// (con <see cref="Frame"/>, las esquinas las trae la textura del juego).
     /// </summary>
     public int CornerRadius { get; private init; }
 
     /// <summary>
+    /// Material de 9 piezas del juego con que el mod dibuja el log, la barra, la cola y el reloj (<c>BlackPanel</c>: el
+    /// del log, los puntajes y los objetivos; un marco fino claro con fondo oscuro translúcido). Pedido del usuario del
+    /// 2026-11-01: un borde a tono con el juego en vez de un corte gris. Null: rectángulos lisos del color de la barra.
+    /// </summary>
+    public string? Frame { get; private init; }
+
+    /// <summary>
+    /// Cuánto se superponen las piezas del panel que se tocan (el log con la barra, la barra con la cola y con el campo
+    /// del reloj) para que el marco de <see cref="Frame"/> no se vea entre ellas: el ancho de una pieza del borde.
+    /// </summary>
+    public const int FrameOverlap = 22;
+
+    /// <summary>
     /// El fondo de la cola. Con el log en el rincón, un solo panel con el log y la barra: va desde el final de la barra
-    /// (bar.x, su alto) hasta el final de la fila de íconos con su margen, tocando el log y la barra. Si no, la fila de
-    /// íconos con <see cref="QueueMargin"/> alrededor. Null sin cola.
+    /// (bar.x, su alto) hasta el final de la fila de íconos con su margen, tocando el log y la barra; con
+    /// <see cref="Frame"/>, además se mete <see cref="FrameOverlap"/> dentro de los dos para tapar sus marcos. Si no,
+    /// la fila de íconos con <see cref="QueueMargin"/> alrededor. Null sin cola.
     /// </summary>
     public UnitRect? QueueBack
     {
@@ -147,9 +161,10 @@ public sealed class HudLayout
             if (Queue is not { } q)
                 return null;
             var m = QueueMargin;
-            return Log is { } log && log.X + log.Width <= Bar.X
-                ? new UnitRect(Bar.X, Bar.Height, q.X + q.Width + m - Bar.X, q.Y + q.Height + m - Bar.Height)
-                : new UnitRect(q.X - m, q.Y - m, q.Width + 2 * m, q.Height + 2 * m);
+            if (Log is not { } log || log.X + log.Width > Bar.X)
+                return new UnitRect(q.X - m, q.Y - m, q.Width + 2 * m, q.Height + 2 * m);
+            var o = Frame is null ? 0 : FrameOverlap;
+            return new UnitRect(Bar.X - o, Bar.Height - o, q.X + q.Width + m - Bar.X + o, q.Y + q.Height + m - Bar.Height + o);
         }
     }
 
@@ -286,6 +301,7 @@ public sealed class HudLayout
         {
             Log = Rect(dto.Log, "log"),
             Queue = Rect(dto.Queue, "queue"),
+            Frame = string.IsNullOrWhiteSpace(dto.Frame) ? null : dto.Frame.Trim(),
             CornerRadius = dto.CornerRadius is { } radius
                 ? radius >= 0 ? radius : throw new InvalidDataException($"{source}: corner_radius no puede ser negativo.")
                 : 0,
@@ -340,7 +356,8 @@ public sealed class HudLayout
         Log is { } log ? new RectDto(log.X, log.Y, log.Width, log.Height) : null,
         Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null,
         MenuScale is { } menu ? new MenuDto(menu) : null,
-        CornerRadius > 0 ? CornerRadius : null), JsonOptions);
+        CornerRadius > 0 ? CornerRadius : null,
+        Frame), JsonOptions);
 
     private static HudColor Color(double[]? values, string what, string source) =>
         values is { Length: 3 } ? new HudColor(values[0], values[1], values[2]) : throw new InvalidDataException($"{source}: {what} tiene que ser [r, g, b] de 0 a 1.");
@@ -357,7 +374,7 @@ public sealed class HudLayout
     };
 
     private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock,
-        RectDto? Log = null, RectDto? Queue = null, MenuDto? Menu = null, int? CornerRadius = null);
+        RectDto? Log = null, RectDto? Queue = null, MenuDto? Menu = null, int? CornerRadius = null, string? Frame = null);
     private sealed record MenuDto(double? Scale);
     private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border, int X = 0);
     private sealed record BorderDto(int Width, double[]? Color);

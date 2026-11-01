@@ -166,21 +166,17 @@ public static class HudMod
         // no se sabe cuál se dibuja arriba, así que va en dos tramos, hasta el reloj y desde su final. El menú del juego
         // (escudo y botones, plano 11) queda arriba de la barra.
         var clockRect = layout.ClockRect();
-        JsonObject BarPart(string name, int x, int width) => Wrap(new JsonObject
-        {
-            ["Type"] = "Base",
-            ["Name"] = $"{Ours}{name}",
-            ["ViewPort"] = View(x, 0, width, bar.Height),
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(bar.Background) },
-            ["ChildWidgets"] = new JsonArray(),
-        });
+        JsonObject BarPart(string name, int x, int width) => Panel($"{Ours}{name}", new UnitRect(x, 0, width, bar.Height), layout);
         var afterClock = clockRect.X + clockRect.Width;
         // Con el log en el rincón (HudLayout.Log), la barra empieza a su derecha, en bar.X. Sin borde (ancho 0), la barra
-        // se junta con el log y la cola en un solo panel.
+        // se junta con el log y la cola en un solo panel. Con el marco del juego (HudLayout.Frame), cada tramo se mete
+        // FrameOverlap en el log y en el campo del reloj para que el marco no se vea entre ellos.
+        var o = layout.Frame is null ? 0 : HudLayout.FrameOverlap;
+        var barStart = layout.Log is not null && bar.X > 0 ? bar.X - o : bar.X;
         var children = new JsonArray
         {
-            BarPart("Bar", bar.X, Math.Min(bar.Width, clockRect.X) - bar.X),
-            BarPart("BarAfterClock", afterClock, Math.Max(0, bar.Width - afterClock)),
+            BarPart("Bar", barStart, Math.Min(bar.Width, clockRect.X) + o - barStart),
+            BarPart("BarAfterClock", afterClock - o, Math.Max(0, bar.Width - afterClock + o)),
         };
         if (bar.BorderWidth > 0)
         {
@@ -254,11 +250,12 @@ public static class HudMod
         // 2026-11-01). Así que el fondo empieza en bar.X, donde la barra gris lo tapa, y los hijos directos se corren.
         if (bar.X > 0)
         {
-            background["ViewPort"] = View(bar.X, 0, bar.Width - bar.X, bar.Height);
+            var left0 = Math.Max(0, barStart);
+            background["ViewPort"] = View(left0, 0, bar.Width - left0, bar.Height);
             foreach (var child in Children(background))
             {
                 if (child["ViewPort"] is JsonObject view && view["xorigin"] is JsonValue x && x.TryGetValue<int>(out var left))
-                    view["xorigin"] = left - bar.X;
+                    view["xorigin"] = left - left0;
             }
         }
         return original;
@@ -293,16 +290,12 @@ public static class HudMod
         // Espectadores e ID de partida van debajo del reloj: se bajan para que el reloj grande no los pise.
         foreach (var below in Children(clock).Where(c => Text(c, "Name") is "SpectatorsIcon" or "GameIDLabel"))
             below["ViewPort"]!["yorigin"] = spec.Y + spec.Height + 12;
-        var back = Wrap(new JsonObject
-        {
-            ["Type"] = "Base",
-            ["Name"] = $"{Ours}ClockBackground",
-            ["ViewPort"] = View(0, spec.Y, spec.Width, spec.Height),
-            // El gris de la barra: el salto a negro se veía feo (pedido del usuario, 2026-11-01); sobre gris el reloj se
-            // lee igual (la tinta de las letras empieza en 50).
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
-            ["ChildWidgets"] = new JsonArray(),
-        });
+        // El campo mide el alto entero de la barra: con el de la celda (y 12, alto 84) quedaba un hueco arriba y abajo por
+        // donde asomaba la textura de la civ (prueba de la v0.9.73, 2026-11-01). Con el marco del juego, se mete
+        // FrameOverlap en los dos tramos de la barra para que no se vea el marco entre ellos. El gris de la barra: el salto
+        // a negro se veía feo; sobre gris el reloj se lee igual (la tinta de las letras empieza en 50).
+        var o = layout.Frame is null ? 0 : HudLayout.FrameOverlap;
+        var back = Panel($"{Ours}ClockBackground", new UnitRect(-o, 0, spec.Width + 2 * o, layout.Bar.Height), layout);
         clock["ChildWidgets"] = new JsonArray([back, .. Detach(clock)]);
         return original;
     }
@@ -338,7 +331,14 @@ public static class HudMod
         }
         if (widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "ChatBackground")?["ViewPort"] is JsonObject chat)
             chat["yorigin"] = height + 50;
-        InsertBackground(widgets, "LogBackground", new UnitRect(0, 0, width, height), layout);
+        if (layout.Frame is { } frame)
+        {
+            // El cuadro del log del juego ya es un Surround de 9 piezas: se le pone el material del diseño (es el mismo
+            // BlackPanel que trae) y no hace falta un fondo propio, que lo tapaba.
+            SetSurround(events, frame);
+        }
+        else
+            InsertBackground(widgets, "LogBackground", new UnitRect(0, 0, width, height), layout);
         return original;
     }
 
@@ -355,7 +355,10 @@ public static class HudMod
         var icons = widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "Background")
             ?? throw new InvalidDataException("No encontré la cola en el panel de producción.");
         icons["ViewPort"] = View(queue.X, queue.Y, queue.Width, queue.Height);
-        InsertBackground(widgets, "QueueBackground", layout.QueueBack!, layout);
+        if (layout.Frame is not null)
+            widgets.Insert(0, Panel($"{Ours}QueueBackground", layout.QueueBack!, layout, zPlane: 1));
+        else
+            InsertBackground(widgets, "QueueBackground", layout.QueueBack!, layout);
         return original;
     }
 
@@ -442,6 +445,47 @@ public static class HudMod
                 ["ChildWidgets"] = new JsonArray(),
             }));
         }
+    }
+
+    /// <summary>
+    /// Un fondo del panel: con <see cref="HudLayout.Frame"/>, un <c>Surround</c> de 9 piezas con ese material (el marco
+    /// fino del juego); si no, un rectángulo liso del color de la barra.
+    /// </summary>
+    private static JsonObject Panel(string name, UnitRect rect, HudLayout layout, int? zPlane = null)
+    {
+        var widget = new JsonObject
+        {
+            ["Type"] = layout.Frame is null ? "Base" : "Surround",
+            ["Name"] = name,
+            ["ViewPort"] = View(rect.X, rect.Y, rect.Width, rect.Height),
+        };
+        if (zPlane is { } z)
+            widget["ZPlane"] = z;
+        if (layout.Frame is { } frame)
+        {
+            widget["Box"] = new JsonObject
+            {
+                ["xorigin"] = rect.X, ["yorigin"] = rect.Y, ["width"] = rect.Width, ["height"] = rect.Height,
+                ["alignment"] = "TopLeft", ["gridstep"] = 32, ["drawbox"] = true,
+            };
+            SetSurround(widget, frame);
+        }
+        else
+            widget["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) };
+        widget["ChildWidgets"] = new JsonArray();
+        return Wrap(widget);
+    }
+
+    /// <summary>Los 18 estados de un <c>Surround</c> (9 piezas, normal y deshabilitado) con las piezas de <paramref name="frame"/>.</summary>
+    private static void SetSurround(JsonObject widget, string frame)
+    {
+        var states = new JsonObject();
+        foreach (var piece in new[] { "TL", "TC", "TR", "CL", "CC", "CR", "BL", "BC", "BR" })
+        {
+            states[$"State{piece}Disabled"] = new JsonObject { ["Material"] = $"{frame}_{piece}" };
+            states[$"State{piece}Normal"] = new JsonObject { ["Material"] = $"{frame}_{piece}" };
+        }
+        widget["StateMaterials"] = states;
     }
 
     /// <summary>Saca de la lista de widgets de una colección los que agregó el mod (por si el panel ya estaba armado).</summary>

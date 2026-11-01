@@ -182,7 +182,9 @@ public static class AutoCalibration
             boxes[RegionNames.EventLog] = Box(log);
         if (layout.Queue is { } queue)
         {
-            var back = Box(layout.QueueBack!);
+            // Con el marco del juego, el fondo se mete en la barra y en el log: se mide solo lo que queda debajo de la barra.
+            var qb = layout.QueueBack!;
+            var back = Box(qb.Y < layout.Bar.Height ? new UnitRect(Math.Max(qb.X, layout.Bar.X), layout.Bar.Height, qb.Width - (Math.Max(qb.X, layout.Bar.X) - qb.X), qb.Y + qb.Height - layout.Bar.Height) : qb);
             if (DarkShare(screen, back, dark) >= SideBlack)
             {
                 // La lectura toma los íconos desde el borde izquierdo de la caja y busca la fila corriéndose hacia abajo.

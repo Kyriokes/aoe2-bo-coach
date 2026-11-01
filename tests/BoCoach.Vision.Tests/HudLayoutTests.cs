@@ -27,8 +27,10 @@ public class HudLayoutTests
         Assert.Equal(600, layout.Bar.X);
         Assert.Equal(610, layout.Cell("wood").X);
         Assert.Equal(new UnitRect(0, 0, 600, 260), layout.Log);
-        Assert.Equal(new UnitRect(600, 108, 620, 92), layout.QueueBack);
-        Assert.Equal(24, layout.CornerRadius);
+        // Con el marco del juego (BlackPanel), el fondo de la cola se mete 22 en el log y en la barra.
+        Assert.Equal("BlackPanel", layout.Frame);
+        Assert.Equal(new UnitRect(578, 86, 642, 114), layout.QueueBack);
+        Assert.Equal(0, layout.CornerRadius);
         Assert.Equal(new UnitRect(606, 118, 608, 76), layout.Queue);
         Assert.Equal(80, layout.Cell("population").Chip!.Width);
         Assert.Equal(5, layout.Anchors.Count());
