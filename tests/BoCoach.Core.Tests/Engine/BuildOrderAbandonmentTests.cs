@@ -172,6 +172,21 @@ public class BuildOrderAbandonmentTests
         Assert.False(detector.Abandoned);
     }
 
+    // Partida 20261031-215314 (hunos, "Scouts → CA"): terminada la BO, los arqueros a caballo que no entrena la daban
+    // por abandonada.
+    [Fact]
+    public void Con_la_BO_terminada_las_unidades_ajenas_no_la_abandonan()
+    {
+        var done = Steps.Select(s => s with { State = StepState.Done }).ToList();
+        var state = Game(700, Units("spearman", 8, 600));
+        var detector = new BuildOrderAbandonment(Archers);
+
+        detector.Update(state, done);
+
+        Assert.False(detector.Abandoned);
+        Assert.False(detector.Gray);
+    }
+
     [Fact]
     public void Con_la_BO_terminada_no_se_abandona_por_tiempo()
     {

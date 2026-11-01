@@ -78,6 +78,14 @@ public sealed class BuildOrderAbandonment
             (_leastMissing, _progressAt) = (missing, state.Time);
         if (Abandoned)
             return;
+        // Con la BO terminada no hay nada que abandonar: sigue su postura (partida 20261031-215314, hunos "Scouts → CA":
+        // terminada a las 23:58, a las 24:38 quedaba abandonada por los arqueros a caballo que la BO no entrena).
+        var finished = steps.All(s => s.State is StepState.Done or StepState.Skipped || leftBehind?.Invoke(s.Index) == true);
+        if (finished)
+        {
+            Gray = false;
+            return;
+        }
 
         var foreign = ForeignUnits(state);
         var lastBoUnit = state.Events.Where(e => EventConventions.Parse(e.EventId) is { Action: StepAction.Train } unit && _boUnits.Contains(unit.What))
@@ -92,8 +100,7 @@ public sealed class BuildOrderAbandonment
                 : $"hiciste {foreign.Count} unidades que la BO no tiene ({names}) y hace {BoUnitPause:0} s que no sale {string.Join(" ni ", _boUnits.Select(u => StepText.Name(u)))}";
             return;
         }
-        var finished = steps.All(s => s.State is StepState.Done or StepState.Skipped || leftBehind?.Invoke(s.Index) == true);
-        if (!finished && state.Time - _progressAt >= MaxStall)
+        if (state.Time - _progressAt >= MaxStall)
             Reason = $"hace {GameClock.Format(state.Time - _progressAt)} que no avanza ningún paso de la BO";
     }
 
