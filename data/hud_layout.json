@@ -5,6 +5,9 @@
 // La barra mide 4600 para cubrir la pantalla entera a cualquier escala del HUD (el juego la recorta en el borde).
 // El reloj va a `gap` del final de la última celda, sobre un campo negro largo que tapa todo su texto
 // ("hh:mm:ss (Normal - 1.7) (Estándar)"); el lector lo lee entero y se queda con el hh:mm:ss del principio.
+// `log` es el log de eventos del juego (8 renglones) abajo de la barra y con fondo negro; `queue` es la fila de íconos
+// de la cola de producción (12 íconos de 76), a su derecha, con un fondo negro alrededor (HudLayout.QueueMargin). Sin ellos, el log y la
+// cola quedan donde los pone el juego.
 {
   "name": "bocoach-2026-10",
   "pixels_per_unit_at_1080p": 0.4286,
@@ -85,5 +88,7 @@
       }
     }
   },
-  "clock": { "gap": 22, "y": 12, "width": 800, "height": 84, "font": "mod_clock", "points": 56 }
+  "clock": { "gap": 22, "y": 12, "width": 800, "height": 84, "font": "mod_clock", "points": 56 },
+  "log": { "x": 0, "y": 112, "width": 700, "height": 420 },
+  "queue": { "x": 712, "y": 118, "width": 912, "height": 76 }
 }

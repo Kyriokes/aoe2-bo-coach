@@ -21,6 +21,9 @@ public sealed record HudModResult(IReadOnlyList<string> Installed, IReadOnlyList
 /// recurso es un contenedor transparente con el ícono del juego, el casillero de color (la GD de la app), los fondos
 /// negros y los números blancos grandes; población, inactivos y edad igual.</item>
 /// <item>worldtimerpanel.json: el reloj a continuación de la barra, grande y con un rectángulo negro detrás.</item>
+/// <item>notificationpanel.json y technologyprogresspanel.json (si el diseño tiene <c>log</c> y <c>queue</c>): el log de
+/// eventos abajo de la barra y la cola de producción a su derecha, los dos sobre un fondo negro (idea 1 del usuario,
+/// 2026-10-31).</item>
 /// </list>
 /// Los paneles se arman en la PC del jugador: no se redistribuye el JSON del juego.
 /// </summary>
@@ -34,6 +37,17 @@ public static class HudMod
 
     private const string ResourcePanelFile = "resourcepanel.json";
     private const string ClockPanelFile = "worldtimerpanel.json";
+    private const string LogPanelFile = "notificationpanel.json";
+    private const string QueuePanelFile = "technologyprogresspanel.json";
+
+    /// <summary>
+    /// Las colecciones del log y del reloj se miden en unidades de pantalla (3840 de ancho, 0,5 px a 1080p); el diseño,
+    /// en las del HUD (<see cref="HudLayout.PixelsPerUnitAt1080p"/> px a 1080p).
+    /// </summary>
+    private const double PixelsPerScreenUnitAt1080p = 0.5;
+
+    /// <summary>Margen del texto del log dentro de su fondo, en unidades de pantalla (el del juego).</summary>
+    private const int LogTextMargin = 10;
 
     /// <summary>Margen izquierdo del texto del reloj dentro de su campo negro, en unidades del panel.</summary>
     public const int ClockTextX = 20;
@@ -82,6 +96,16 @@ public static class HudMod
             Directory.CreateDirectory(own);
             Write(Path.Combine(own, ResourcePanelFile), resources);
             Write(Path.Combine(own, ClockPanelFile), clock);
+            // El log y la cola, solo si el diseño los ubica y el juego trae el panel; si no, se borra la copia de antes.
+            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel) })
+            {
+                var original = Path.Combine(originals, file);
+                var panel = File.Exists(original) ? build(Read(original), layout) : null;
+                if (panel is not null)
+                    Write(Path.Combine(own, file), panel);
+                else if (File.Exists(Path.Combine(own, file)))
+                    File.Delete(Path.Combine(own, file));
+            }
             var info = new JsonObject
             {
                 ["Author"] = "BoCoach",
@@ -101,7 +125,7 @@ public static class HudMod
             foreach (var mod in active.Where(m => ours is null || m.Priority < ours.Priority))
             {
                 if (TouchesPanels(mods, mod))
-                    warnings.Add($"Perfil {name}: \"{mod.Title}\" también cambia el panel de recursos o el reloj"
+                    warnings.Add($"Perfil {name}: \"{mod.Title}\" también cambia el panel de recursos, el reloj, el log o la cola"
                         + (ours is null ? "." : $" y tiene más prioridad ({mod.Priority} contra {ours.Priority}).")
                         + $" Poné \"{Name}\" primero en Mods instalados o apagá ese mod.");
             }
@@ -258,6 +282,85 @@ public static class HudMod
         });
         clock["ChildWidgets"] = new JsonArray([back, .. Detach(clock)]);
         return original;
+    }
+
+    /// <summary>
+    /// El log de eventos según el diseño (<see cref="HudLayout.Log"/>), o null si el diseño no lo ubica: la colección
+    /// corrida abajo de la barra (en unidades de pantalla), el cuadro del log y su texto del tamaño del diseño, un fondo
+    /// negro detrás (el del juego, <c>BlackPanel</c>, no se ve en la partida) y el chat a continuación.
+    /// </summary>
+    public static JsonObject? LogPanel(JsonObject original, HudLayout layout)
+    {
+        if (layout.Log is not { } log)
+            return null;
+        var k = layout.PixelsPerUnitAt1080p / PixelsPerScreenUnitAt1080p;
+        int Su(int units) => (int)Math.Round(units * k);
+        var collection = original["Collection"]!.AsObject();
+        if (collection["ViewPort"] is not JsonObject viewport)
+            collection["ViewPort"] = viewport = View(0, 0, 640, 1000);
+        (viewport["xorigin"], viewport["yorigin"]) = (Su(log.X), Su(log.Y));
+        var widgets = RemoveOurs(collection["Widgets"]!.AsArray());
+        var events = widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "EventBackground")
+            ?? throw new InvalidDataException("No encontré el log en el panel de avisos.");
+        var (width, height) = (Su(log.Width), Su(log.Height));
+        events["ViewPort"] = View(0, 0, width, height);
+        if (events["Box"] is JsonObject box)
+            (box["width"], box["height"]) = (width, height);
+        if (Children(events).FirstOrDefault(c => Text(c, "Name") == "TextBox") is { } text)
+        {
+            text["ViewPort"] = View(LogTextMargin, LogTextMargin, width - 2 * LogTextMargin, height - 2 * LogTextMargin);
+            if (text["TextBox"] is JsonObject inner)
+                (inner["width"], inner["height"]) = (width - 2 * LogTextMargin, height - 2 * LogTextMargin);
+        }
+        if (widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "ChatBackground")?["ViewPort"] is JsonObject chat)
+            chat["yorigin"] = height + 50;
+        widgets.Insert(0, Wrap(new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = $"{Ours}LogBackground",
+            ["ViewPort"] = View(0, 0, width, height),
+            ["ZPlane"] = 1,
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+            ["ChildWidgets"] = new JsonArray(),
+        }));
+        return original;
+    }
+
+    /// <summary>
+    /// La cola de producción según el diseño (<see cref="HudLayout.Queue"/>), o null si el diseño no la ubica: el
+    /// widget donde el juego pone los íconos se corre a la fila del diseño (en unidades del HUD, como la barra: en el
+    /// original, y 115 = 50 px a 0,4348) y detrás va un fondo negro con <see cref="HudLayout.QueueMargin"/> de margen.
+    /// </summary>
+    public static JsonObject? QueuePanel(JsonObject original, HudLayout layout)
+    {
+        if (layout.Queue is not { } queue)
+            return null;
+        var widgets = RemoveOurs(original["Collection"]!["Widgets"]!.AsArray());
+        var icons = widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "Background")
+            ?? throw new InvalidDataException("No encontré la cola en el panel de producción.");
+        icons["ViewPort"] = View(queue.X, queue.Y, queue.Width, queue.Height);
+        var m = HudLayout.QueueMargin;
+        widgets.Insert(0, Wrap(new JsonObject
+        {
+            ["Type"] = "Base",
+            ["Name"] = $"{Ours}QueueBackground",
+            ["ViewPort"] = View(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m),
+            ["ZPlane"] = 1,
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+            ["ChildWidgets"] = new JsonArray(),
+        }));
+        return original;
+    }
+
+    /// <summary>Saca de la lista de widgets de una colección los que agregó el mod (por si el panel ya estaba armado).</summary>
+    private static JsonArray RemoveOurs(JsonArray widgets)
+    {
+        for (var i = widgets.Count - 1; i >= 0; i--)
+        {
+            if ((Text(widgets[i]?["Widget"], "Name") ?? "").StartsWith(Ours, StringComparison.Ordinal))
+                widgets.RemoveAt(i);
+        }
+        return widgets;
     }
 
     /// <summary>Cómo está el mod en cada perfil del juego (para la captura de diagnóstico), un renglón por perfil.</summary>
@@ -455,7 +558,7 @@ public static class HudMod
     private static string ModFolder(string mods, ModEntry mod) => Path.Combine(mods, mod.Path.Replace("//", "/").Replace('/', Path.DirectorySeparatorChar));
 
     private static bool TouchesPanels(string mods, ModEntry mod) =>
-        File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", ResourcePanelFile)) || File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", ClockPanelFile));
+        new[] { ResourcePanelFile, ClockPanelFile, LogPanelFile, QueuePanelFile }.Any(f => File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", f)));
 
     private static JsonObject Read(string path) =>
         JsonNode.Parse(File.ReadAllText(path), documentOptions: ReadOptions)?.AsObject() ?? throw new InvalidDataException($"{path} está vacío.");

@@ -101,6 +101,22 @@ public sealed class HudLayout
 
     public HudClock Clock { get; }
 
+    /// <summary>
+    /// El log de eventos del juego, abajo de la barra y con fondo negro (idea 1 del usuario, 2026-10-31: sobre el mapa,
+    /// la pausa y los colores del terreno ensuciaban el OCR). Null en los diseños viejos: el log queda donde lo pone el
+    /// juego y su caja es la de la calibración.
+    /// </summary>
+    public UnitRect? Log { get; private init; }
+
+    /// <summary>
+    /// La fila de íconos de la cola de producción, a la derecha del log; el mod pone un fondo negro alrededor (sobre el
+    /// mapa, los íconos verdes se confundían con el pasto). Null en los diseños viejos.
+    /// </summary>
+    public UnitRect? Queue { get; private init; }
+
+    /// <summary>Margen del fondo negro de la cola alrededor de sus íconos, en unidades del HUD.</summary>
+    public const int QueueMargin = 6;
+
     public HudCell Cell(string name) => Cells.First(c => c.Name == name);
 
     /// <summary>Las celdas con casillero, en orden: las anclas de la calibración.</summary>
@@ -206,7 +222,14 @@ public sealed class HudLayout
                 : null;
             cells.Add(new HudCell(name, c.X, c.Width, new HudIcon(icon.X, icon.Y, icon.Size), chip, fields, backgrounds, separator));
         }
-        var layout = new HudLayout(dto.Name, dto.PixelsPerUnitAt1080p.Value, bar, cells, clock);
+        UnitRect? Rect(RectDto? r, string what) => r is null ? null
+            : r.Width > 0 && r.Height > 0 && r.X >= 0 && r.Y >= bar.Height ? new UnitRect(r.X, r.Y, r.Width, r.Height)
+            : throw new InvalidDataException($"{source}: {what} tiene que medir más que 0 y estar abajo de la barra (y {bar.Height} o más).");
+        var layout = new HudLayout(dto.Name, dto.PixelsPerUnitAt1080p.Value, bar, cells, clock)
+        {
+            Log = Rect(dto.Log, "log"),
+            Queue = Rect(dto.Queue, "queue"),
+        };
         layout.Validate(source);
         return layout;
     }
@@ -250,7 +273,9 @@ public sealed class HudLayout
             c.Fields.ToDictionary(f => f.Key, f => new FieldDto(f.Value.X, f.Value.Y, f.Value.Width, f.Value.Height, f.Value.Font, f.Value.Points)),
             c.Backgrounds.Select(b => new RectDto(b.X, b.Y, b.Width, b.Height)).ToList(),
             c.Separator is { } s ? new SeparatorDto(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Array(s.Color)) : null)),
-        new ClockDto(Clock.Gap, Clock.Y, Clock.Width, Clock.Height, Clock.Font, Clock.Points)), JsonOptions);
+        new ClockDto(Clock.Gap, Clock.Y, Clock.Width, Clock.Height, Clock.Font, Clock.Points),
+        Log is { } log ? new RectDto(log.X, log.Y, log.Width, log.Height) : null,
+        Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null), JsonOptions);
 
     private static HudColor Color(double[]? values, string what, string source) =>
         values is { Length: 3 } ? new HudColor(values[0], values[1], values[2]) : throw new InvalidDataException($"{source}: {what} tiene que ser [r, g, b] de 0 a 1.");
@@ -266,7 +291,8 @@ public sealed class HudLayout
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock);
+    private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock,
+        RectDto? Log = null, RectDto? Queue = null);
     private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border);
     private sealed record BorderDto(int Width, double[]? Color);
     private sealed record IconDto(int X, int Y, int Size);

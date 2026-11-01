@@ -136,6 +136,56 @@ public sealed class HudModTests : IDisposable
         },
     };
 
+    /// <summary>El panel del log como el del juego: el cuadro de avisos con su texto y el chat debajo.</summary>
+    public static JsonObject LogPanel() => new()
+    {
+        ["Collection"] = new JsonObject
+        {
+            ["Name"] = "NotificationPanel",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 40, ["yorigin"] = 305, ["width"] = 640, ["height"] = 1000, ["alignment"] = "TopLeft" },
+            ["Widgets"] = new JsonArray(
+                Wrap(new JsonObject
+                {
+                    ["Type"] = "Surround",
+                    ["Name"] = "EventBackground",
+                    ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 600, ["height"] = 250, ["alignment"] = "TopLeft" },
+                    ["Box"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 600, ["height"] = 250, ["alignment"] = "TopLeft", ["gridstep"] = 32, ["drawbox"] = true },
+                    ["ZPlane"] = 1,
+                    ["ChildWidgets"] = new JsonArray(Wrap(new JsonObject
+                    {
+                        ["Type"] = "MultiColorTextBox",
+                        ["Name"] = "TextBox",
+                        ["ViewPort"] = new JsonObject { ["xorigin"] = 10, ["yorigin"] = 10, ["width"] = 580, ["height"] = 230, ["alignment"] = "TopLeft" },
+                        ["TextBox"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 580, ["height"] = 230, ["linesize"] = 40, ["autoscroll"] = true },
+                    })),
+                }),
+                Wrap(new JsonObject
+                {
+                    ["Type"] = "Surround",
+                    ["Name"] = "ChatBackground",
+                    ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 300, ["width"] = 600, ["height"] = 500, ["alignment"] = "TopLeft" },
+                })),
+        },
+    };
+
+    /// <summary>El panel de la cola como el del juego: un widget vacío donde el juego pone los íconos.</summary>
+    public static JsonObject QueuePanel() => new()
+    {
+        ["Collection"] = new JsonObject
+        {
+            ["Name"] = "TechnologyProgressPanel",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 3050, ["height"] = 500, ["alignment"] = "TopLeft" },
+            ["Widgets"] = new JsonArray(Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = "Background",
+                ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 115, ["width"] = 3050, ["height"] = 150, ["alignment"] = "TopLeft" },
+                ["ZPlane"] = 1,
+                ["ChildWidgets"] = new JsonArray(),
+            })),
+        },
+    };
+
     /// <summary>Una carpeta de juego con los dos paneles originales.</summary>
     public static string FakeGame(string root)
     {
@@ -143,6 +193,8 @@ public sealed class HudModTests : IDisposable
         Directory.CreateDirectory(Path.Combine(game, "widgetui"));
         File.WriteAllText(Path.Combine(game, "widgetui", "resourcepanel.json"), ResourcePanel().ToJsonString());
         File.WriteAllText(Path.Combine(game, "widgetui", "worldtimerpanel.json"), ClockPanel().ToJsonString());
+        File.WriteAllText(Path.Combine(game, "widgetui", "notificationpanel.json"), LogPanel().ToJsonString());
+        File.WriteAllText(Path.Combine(game, "widgetui", "technologyprogresspanel.json"), QueuePanel().ToJsonString());
         return game;
     }
 
@@ -302,6 +354,46 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(12 + 84 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
     }
 
+    // Idea 1 del usuario (2026-10-31): el log abajo de la barra, más alto, y la cola a su derecha, los dos sobre negro.
+    [Fact]
+    public void El_log_va_abajo_de_la_barra_con_fondo_negro_y_el_chat_debajo()
+    {
+        var layout = Layout();
+        var panel = HudMod.LogPanel(LogPanel(), layout)!;
+
+        // La colección se mide en unidades de pantalla (0,5 px a 1080p) y el diseño en las del HUD (0,4286 px).
+        var k = layout.PixelsPerUnitAt1080p / 0.5;
+        int Su(int units) => (int)Math.Round(units * k);
+        var log = layout.Log!;
+        var viewport = panel["Collection"]!["ViewPort"]!;
+        Assert.Equal((Su(log.X), Su(log.Y)), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
+        var (w, h) = (Su(log.Width), Su(log.Height));
+        Assert.Equal("BoCoachLogBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
+        Assert.Equal((0, 0, w, h), View(Widget(panel, "BoCoachLogBackground")));
+        Assert.Equal("FlatColorWithAlpha", Material(Widget(panel, "BoCoachLogBackground")));
+        Assert.Equal((0, 0, w, h), View(Widget(panel, "EventBackground")));
+        Assert.Equal((10, 10, w - 20, h - 20), View(Widget(panel, "TextBox")));
+        Assert.Equal(h - 20, (int)Widget(panel, "TextBox")["TextBox"]!["height"]!);
+        Assert.True((h - 20) / 40 >= 8, "entran 8 renglones de 40");
+        Assert.Equal(h + 50, (int)Widget(panel, "ChatBackground")["ViewPort"]!["yorigin"]!);
+    }
+
+    [Fact]
+    public void La_cola_va_a_la_derecha_del_log_sobre_un_fondo_negro()
+    {
+        var layout = Layout();
+        var panel = HudMod.QueuePanel(QueuePanel(), layout)!;
+
+        var queue = layout.Queue!;
+        var m = HudLayout.QueueMargin;
+        Assert.True(queue.X > layout.Log!.X + layout.Log.Width, "a la derecha del log");
+        Assert.Equal((queue.X, queue.Y, queue.Width, queue.Height), View(Widget(panel, "Background")));
+        Assert.Equal("BoCoachQueueBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
+        Assert.Equal((queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), View(Widget(panel, "BoCoachQueueBackground")));
+        // Armado dos veces sale igual (el fondo no se duplica).
+        Assert.Equal(panel.ToJsonString(), HudMod.QueuePanel(panel.DeepClone().AsObject(), layout)!.ToJsonString());
+    }
+
     [Fact]
     public void Instala_en_cada_perfil_con_mods_aunque_no_tenga_lista()
     {
@@ -316,6 +408,8 @@ public sealed class HudModTests : IDisposable
         var mod = Path.Combine(Profiles, "111", "mods", "local", HudMod.Name);
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "resourcepanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "worldtimerpanel.json")));
+        Assert.True(File.Exists(Path.Combine(mod, "widgetui", "notificationpanel.json")));
+        Assert.True(File.Exists(Path.Combine(mod, "widgetui", "technologyprogresspanel.json")));
         Assert.Contains("bocoach-2026-10", File.ReadAllText(Path.Combine(mod, "info.json")));
     }
 
