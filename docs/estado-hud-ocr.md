@@ -109,7 +109,34 @@ Haría falta una señal del juego que no existe (un aviso por edificio) o leer e
 - El overlay propio sale en las grabaciones (decisión del usuario) y la guía dinámica tapa el medio de los casilleros: el detector los mide por los bordes.
 - Algunas placas Intel se comen Ctrl+Alt+flechas; hay botones en el panel como respaldo.
 
-## 4. Qué cerraría cada uno
+## 4. Lo que trae el juego y no usamos todavía (revisión del 1/11)
+
+Salió de mirar cómo el juego define las letras, `widgetui/materials.json` y los 50 mods suscriptos del usuario (38 prendidos). Nada de esto está probado en una partida: son posibilidades.
+
+### 4.1 Letras
+
+- La interfaz no usa los `.ttf` de `resources/_common/fonts/`: usa atlas prehechos de campos de distancia con signo (MSDF, seis páginas de 2048×2048 RGBA en DDS y PNG más una tabla binaria `.box` de 7755 glifos, con su copia legible en `.txt`). El ejecutable registra tres por nombre: `combined`, `basic_bold_16` (un bitmap clásico `.fnt`) y `combined_sansserif`; `georgia_european` existe en la carpeta y no lo nombra nada. Los paneles eligen con `FontIndex` (0 en casi todo, 2 en menús, 3 en el log); qué índice es cada atlas no se sabe: se prueba en el juego cambiando el del log.
+- No se puede agregar una cuarta letra (la lista está en el ejecutable). Sí se puede reemplazar una pisando sus archivos desde el mod: hay que regenerar las seis páginas en MSDF con otra tipografía (hay herramientas libres) y rearmar el `.box` deduciendo su formato del `.txt`. Es un trabajo de uno o dos días y cambia esa letra en todo el juego.
+
+### 4.2 Materiales y texturas propias
+
+- `materials.json` tiene tres secciones: `Materials` (4555; tipos `Atlas`, `Texture` y `Color`, con `Blend` `None` o `InverseAlpha`), `AtlasTextures` (40 atlas con cada imagen y sus coordenadas, `Cached: precached`) y `GlobalTextures` (imágenes sueltas por ruta, `Cached: none`). Un mod puede pisar el archivo con una copia más entradas propias: una textura suelta con un material `Texture` y `Blend: None` es un dibujo opaco nuestro. Eso vuelve a abrir el marco del panel: en vez del `BlackPanel` translúcido del juego, nueve piezas nuestras, opacas y con el dibujo que queramos. El costo es regenerar la copia en cada instalación (el archivo cambia con los parches).
+- El juego trae en `Tools_Builds/` las herramientas con que arma sus atlas (`texassemble.exe`, `texconv.exe`) y en `modes/Pompeii/widgetui/` un modo entero con `morematerials.json` y los scripts `build_atlas.ps1` que muestran cómo se define y se compila un atlas propio.
+- `screenoptions.json` tiene la opción "Readability panels" (fondos de legibilidad detrás de los paneles); los mods de interfaz piden apagarla. Falta saber cómo la tiene el usuario y si toca el log.
+
+### 4.3 Señales del juego que se podrían leer
+
+- El escudo de la civ (el del menú, arriba a la derecha) cambia al estado "hover" cuando ya se puede subir de edad: el mod "Age Passage Reminder" solo le pone una textura verde a ese estado (`textures/ingame/panels/<región>/shield_<edad>_<región>_hover.png`). Ningún panel lo nombra: lo asigna el código. Leer ese estado daría "podés subir" directo del juego.
+- `commandpanel.json` trae tablas de estadísticas (`OverviewStats`: población, aldeanos, inactivos, militares, bajas; `EconomyStats`: comida, madera, oro, piedra, aldeanos, reliquias; `ScoreStats`: militar, economía, tecnología, sociedad) y hay paneles de espectador (`spectatortechnologyoverviewpanel.json`: `AgeImage`, `ResearchAmount`, `ResearchItems`). No se sabe si el juego los llena en una partida normal.
+- El panel de comandos también es el del objeto seleccionado (`ObjectName`, vida, dueño, estadísticas): el camino al "panel del aldeano seleccionado" de la sección 3.1.
+
+### 4.4 Los mods del usuario
+
+- "Improved Tech Tree UI" no lee nada de la partida: son 36 imágenes, una por civ, con el árbol dibujado; las marcas verdes y rojas son lo que la civ tiene. Ningún mod puede saber qué se investigó: son JSON e imágenes sin lógica.
+- Dependencias que ya tenemos: "Villager Highlighter" cambia el ícono del aldeano en la cola (la biblioteca de íconos se armó con él prendido) y "Better Civ Emblems" pone las siglas de la civ en el panel de puntajes. Apagarlos cambia lo que se lee.
+- Los mods de interfaz (Custom UI, XavilUI, Streamlined, Minimalistic, Anne_HK) pisan los mismos paneles que nosotros (`resourcepanel`, `worldtimerpanel`, `technologyprogresspanel`, `menupanel`, `mappanel`, `scorepanel`, `commandpanel`) y mueven las colecciones con valores de pantalla; ninguno agrega widgets con datos nuevos. El resto son sprites del mapa, cursores, menús y los dos "Interactive Build Order Guide" (escenarios con voz para practicar BO).
+
+## 5. Qué cerraría cada uno
 
 | Problema | Qué haría falta |
 |---|---|
