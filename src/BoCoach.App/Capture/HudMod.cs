@@ -39,6 +39,7 @@ public static class HudMod
     private const string ClockPanelFile = "worldtimerpanel.json";
     private const string LogPanelFile = "notificationpanel.json";
     private const string QueuePanelFile = "technologyprogresspanel.json";
+    private const string TopPanelFile = "blanktoppanel.json";
 
     /// <summary>
     /// El origen de las colecciones del log y del reloj se mide en unidades de pantalla (3840 de ancho, 0,5 px a 1080p);
@@ -99,7 +100,7 @@ public static class HudMod
             Write(Path.Combine(own, ResourcePanelFile), resources);
             Write(Path.Combine(own, ClockPanelFile), clock);
             // El log y la cola, solo si el diseño los ubica y el juego trae el panel; si no, se borra la copia de antes.
-            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel) })
+            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel), (TopPanelFile, TopPanel) })
             {
                 var original = Path.Combine(originals, file);
                 var panel = File.Exists(original) ? build(Read(original), layout) : null;
@@ -356,6 +357,26 @@ public static class HudMod
         return original;
     }
 
+    /// <summary>
+    /// La franja con textura que el juego dibuja arriba de toda la pantalla (<c>blanktoppanel.json</c>, 52 unidades de
+    /// pantalla de alto), apagada si el log va en el rincón (<see cref="HudLayout.Log"/> a la izquierda de la barra): la
+    /// barra la tapaba desde x 0 y, corrida a bar.x, en el rincón se veía encima del log (prueba de la variante A,
+    /// 2026-10-31). Como la textura del panel de recursos, los estados por civ van en <c>None</c>. Null si no hace falta.
+    /// </summary>
+    public static JsonObject? TopPanel(JsonObject original, HudLayout layout)
+    {
+        if (layout.Log is not { } log || log.X + log.Width > layout.Bar.X)
+            return null;
+        foreach (var widget in original["Collection"]!["Widgets"]!.AsArray().Select(w => w!["Widget"]!.AsObject()).SelectMany(All))
+        {
+            if (widget["StateMaterials"] is not JsonObject states)
+                continue;
+            foreach (var key in states.Select(s => s.Key).Where(k => k.StartsWith("UserState", StringComparison.Ordinal) && k != "UserStates").ToList())
+                states[key] = None();
+        }
+        return original;
+    }
+
     /// <summary>Saca de la lista de widgets de una colección los que agregó el mod (por si el panel ya estaba armado).</summary>
     private static JsonArray RemoveOurs(JsonArray widgets)
     {
@@ -562,7 +583,7 @@ public static class HudMod
     private static string ModFolder(string mods, ModEntry mod) => Path.Combine(mods, mod.Path.Replace("//", "/").Replace('/', Path.DirectorySeparatorChar));
 
     private static bool TouchesPanels(string mods, ModEntry mod) =>
-        new[] { ResourcePanelFile, ClockPanelFile, LogPanelFile, QueuePanelFile }.Any(f => File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", f)));
+        new[] { ResourcePanelFile, ClockPanelFile, LogPanelFile, QueuePanelFile, TopPanelFile }.Any(f => File.Exists(Path.Combine(ModFolder(mods, mod), "widgetui", f)));
 
     private static JsonObject Read(string path) =>
         JsonNode.Parse(File.ReadAllText(path), documentOptions: ReadOptions)?.AsObject() ?? throw new InvalidDataException($"{path} está vacío.");

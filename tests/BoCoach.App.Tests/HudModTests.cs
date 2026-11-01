@@ -186,6 +186,24 @@ public sealed class HudModTests : IDisposable
         },
     };
 
+    /// <summary>La franja con textura de arriba de la pantalla, como la del juego.</summary>
+    public static JsonObject TopPanel() => new()
+    {
+        ["Collection"] = new JsonObject
+        {
+            ["Name"] = "BlankTopPanel",
+            ["ViewPort"] = new JsonObject { ["xorigin"] = 1920, ["yorigin"] = 0, ["width"] = 3840, ["height"] = 52, ["alignment"] = "TopCentre" },
+            ["Widgets"] = new JsonArray(Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = "BlankTop",
+                ["ViewPort"] = new JsonObject { ["xorigin"] = 0, ["yorigin"] = 0, ["width"] = 3840, ["height"] = 52, ["alignment"] = "TopLeft" },
+                ["StateMaterials"] = new JsonObject { ["UserStates"] = 1, ["UserState0"] = new JsonObject { ["Material"] = "CivAsiaTopbar" } },
+                ["ChildWidgets"] = new JsonArray(),
+            })),
+        },
+    };
+
     /// <summary>Una carpeta de juego con los dos paneles originales.</summary>
     public static string FakeGame(string root)
     {
@@ -195,6 +213,7 @@ public sealed class HudModTests : IDisposable
         File.WriteAllText(Path.Combine(game, "widgetui", "worldtimerpanel.json"), ClockPanel().ToJsonString());
         File.WriteAllText(Path.Combine(game, "widgetui", "notificationpanel.json"), LogPanel().ToJsonString());
         File.WriteAllText(Path.Combine(game, "widgetui", "technologyprogresspanel.json"), QueuePanel().ToJsonString());
+        File.WriteAllText(Path.Combine(game, "widgetui", "blanktoppanel.json"), TopPanel().ToJsonString());
         return game;
     }
 
@@ -400,6 +419,16 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(panel.ToJsonString(), HudMod.QueuePanel(panel.DeepClone().AsObject(), layout)!.ToJsonString());
     }
 
+    // Prueba de la variante A (2026-10-31): con la barra corrida, la franja con textura del juego se veía encima del log.
+    [Fact]
+    public void Con_el_log_en_el_rincon_se_apaga_la_franja_de_arriba_del_juego()
+    {
+        var panel = HudMod.TopPanel(TopPanel(), Layout())!;
+
+        Assert.Equal("None", Material(Widget(panel, "BlankTop"), "UserState0"));
+        Assert.Equal(1, (int)Widget(panel, "BlankTop")["StateMaterials"]!["UserStates"]!);
+    }
+
     [Fact]
     public void Instala_en_cada_perfil_con_mods_aunque_no_tenga_lista()
     {
@@ -416,6 +445,7 @@ public sealed class HudModTests : IDisposable
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "worldtimerpanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "notificationpanel.json")));
         Assert.True(File.Exists(Path.Combine(mod, "widgetui", "technologyprogresspanel.json")));
+        Assert.True(File.Exists(Path.Combine(mod, "widgetui", "blanktoppanel.json")));
         Assert.Contains("bocoach-2026-10", File.ReadAllText(Path.Combine(mod, "info.json")));
     }
 
