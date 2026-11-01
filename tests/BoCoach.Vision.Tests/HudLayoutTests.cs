@@ -117,7 +117,7 @@ public class HudLayoutTests
         var wood = layout.Cell("wood");
         Assert.Equal(10, wood.X);
         Assert.Equal(new HudChip(10, 96, 84, 10, new HudColor(0.53, 0.36, 0.16)), wood.Chip);
-        Assert.Equal(36, wood.Fields["villagers"].Points);
+        Assert.Equal(48, wood.Fields["villagers"].Points);
         Assert.Equal(48, wood.Fields["stock"].Points);
         Assert.True(wood.Fields["stock"].AlignLeft);
         Assert.True(wood.Fields["villagers"].AlignLeft);

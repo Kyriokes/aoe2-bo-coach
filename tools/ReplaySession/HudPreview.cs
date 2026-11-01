@@ -93,8 +93,9 @@ internal static class HudPreview
                 if (!Samples[cell.Name].TryGetValue(name, out var sample))
                     continue;
                 var font = sample.Contains('/') ? population : numbers;
+                var pad = field.AlignLeft ? HudLayout.TextPad : 0;
                 if (font is not null)
-                    canvas.Text(sample, Rect(cell.X + field.X, field.Y, field.Width, field.Height), font, field.Points, ppu, White, field.AlignLeft);
+                    canvas.Text(sample, Rect(cell.X + field.X + pad, field.Y, field.Width - pad, field.Height), font, field.Points, ppu, White, field.AlignLeft);
             }
             if (cell.Guide is { } guide && numbers is not null)
             {

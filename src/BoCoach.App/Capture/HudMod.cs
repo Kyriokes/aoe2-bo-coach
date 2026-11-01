@@ -650,7 +650,7 @@ public static class HudMod
                 }));
         }
         var field = cell.Fields[workersField];
-        workers["ViewPort"] = View(field.X, field.Y, field.Width, field.Height);
+        workers["ViewPort"] = Padded(field, 0);
         workers["StateMaterials"] = Font(fontIndex, field.Points, white);
         workers["TextAnchor"] = Anchor(field);
         workers["ZPlaneLocalOffset"] = 2;
@@ -681,7 +681,16 @@ public static class HudMod
     /// <summary>Centrado en su campo o, en el diseño mínimo, pegado a la izquierda (junto al ícono).</summary>
     private static string Anchor(HudField field) => field.AlignLeft ? "CentreLeft" : "CentreCentre";
 
-    private static JsonObject Absolute(HudLayout layout, HudCell cell, HudField field) => View(cell.X + field.X, field.Y, field.Width, field.Height);
+    private static JsonObject Absolute(HudLayout layout, HudCell cell, HudField field) => Padded(field, cell.X);
+
+    /// <summary>
+    /// El ViewPort de la etiqueta de un campo, corrido <paramref name="offsetX"/>: alineada a la izquierda entra
+    /// <see cref="HudLayout.TextPad"/> desde el borde del campo (el lector recorta el campo entero y un dígito pegado al
+    /// borde se tomaba por cortado); centrada, el campo tal cual.
+    /// </summary>
+    private static JsonObject Padded(HudField field, int offsetX) => field.AlignLeft
+        ? View(offsetX + field.X + HudLayout.TextPad, field.Y, Math.Max(1, field.Width - HudLayout.TextPad), field.Height)
+        : View(offsetX + field.X, field.Y, field.Width, field.Height);
 
     private static JsonObject Border(string side, int x, int y, int w, int h, HudBar bar) => Wrap(new JsonObject
     {

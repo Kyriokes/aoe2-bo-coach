@@ -2,7 +2,9 @@
 // La idea: tocar lo menos posible el juego, como los mods de panel más usados. La barra queda donde y como la trae el
 // juego (misma geometría de celdas, 108 de alto), pero opaca, de borde a borde (pasa por detrás del menú del juego, así
 // el reloj tiene fondo) y con el marco fino del juego (`frame`); los números van en blanco: el stock a 48 pt y los
-// aldeanos de cada recurso a 36 pt debajo (a 28 pt medían 9 px y se leían mal: partida 20261101-163015). Debajo de cada ícono hay una franja fina del color del recurso: el ancla de
+// aldeanos de cada recurso debajo, también a 48 pt (a 28 y a 36 pt medían 9 px y se leían mal: partidas
+// 20261101-163015 y 164056; a 48 pt miden 13 px). Un campo con `align: left` lleva el texto HudLayout.TextPad unidades
+// adentro, para que el lector no lo tome por cortado contra el borde del campo. Debajo de cada ícono hay una franja fina del color del recurso: el ancla de
 // la calibración sola (no un casillero grande). Los campos quedan a 4 px o más del borde de la celda: el marco del
 // aviso de inactivos del overlay mide 3 px y, encima del contador, lo invalidaba. El log, la cola de producción, la edad y el menú quedan donde los pone
 // el juego; el reloj va a continuación de las celdas, como en el diseño completo.
@@ -25,7 +27,7 @@
       "chip": { "x": 10, "y": 96, "width": 84, "height": 10, "color": [0.53, 0.36, 0.16] },
       "fields": {
         "stock": { "x": 104, "y": 8, "width": 300, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" },
-        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 36, "align": "left" }
+        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 48, "align": "left" }
       },
       "guide": { "x": 220, "y": 60, "width": 184, "height": 44 }
     },
@@ -35,7 +37,7 @@
       "chip": { "x": 10, "y": 96, "width": 84, "height": 10, "color": [0.88, 0.41, 0.42] },
       "fields": {
         "stock": { "x": 104, "y": 8, "width": 300, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" },
-        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 36, "align": "left" }
+        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 48, "align": "left" }
       },
       "guide": { "x": 220, "y": 60, "width": 184, "height": 44 }
     },
@@ -45,7 +47,7 @@
       "chip": { "x": 10, "y": 96, "width": 84, "height": 10, "color": [0.94, 0.75, 0.10] },
       "fields": {
         "stock": { "x": 104, "y": 8, "width": 300, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" },
-        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 36, "align": "left" }
+        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 48, "align": "left" }
       },
       "guide": { "x": 220, "y": 60, "width": 184, "height": 44 }
     },
@@ -55,7 +57,7 @@
       "chip": { "x": 10, "y": 96, "width": 84, "height": 10, "color": [0.62, 0.62, 0.65] },
       "fields": {
         "stock": { "x": 104, "y": 8, "width": 300, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" },
-        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 36, "align": "left" }
+        "villagers": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 48, "align": "left" }
       },
       "guide": { "x": 220, "y": 60, "width": 184, "height": 44 }
     },
@@ -65,14 +67,14 @@
       "chip": { "x": 10, "y": 96, "width": 84, "height": 10, "color": [0.16, 0.39, 0.90] },
       "fields": {
         "cap": { "x": 104, "y": 8, "width": 270, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" },
-        "total": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 36, "align": "left" }
+        "total": { "x": 104, "y": 60, "width": 110, "height": 44, "font": "hud_numbers", "points": 48, "align": "left" }
       }
     },
     "idle": {
       "x": 2030, "width": 190,
       "icon": { "x": 10, "y": 12, "size": 84 },
       "fields": {
-        "count": { "x": 100, "y": 2, "width": 80, "height": 60, "font": "hud_numbers", "points": 48, "align": "left" }
+        "count": { "x": 100, "y": 12, "width": 80, "height": 52, "font": "hud_numbers", "points": 48, "align": "left" }
       }
     },
     "age": {

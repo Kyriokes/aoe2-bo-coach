@@ -96,6 +96,13 @@ public sealed class HudLayout
     /// <summary>El diseño mínimo (la barra del juego opaca con los números blancos y nada más), al lado del completo.</summary>
     public const string MinimalFileName = "hud_layout_minimo.json";
 
+    /// <summary>
+    /// Cuánto entra el texto de un campo alineado a la izquierda (<see cref="HudField.AlignLeft"/>) desde el borde del
+    /// campo, en unidades del HUD: el mod corre la etiqueta y el lector sigue recortando el campo entero. Pegado al
+    /// borde, el primer dígito tocaba el borde del recorte y la lectura se descartaba por cortada (partida 20261101-164056).
+    /// </summary>
+    public const int TextPad = 12;
+
     /// <summary>Las celdas, en el orden en que van en la barra.</summary>
     public static readonly string[] CellOrder = ["wood", "food", "gold", "stone", "population", "idle", "age"];
 

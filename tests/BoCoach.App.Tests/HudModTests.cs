@@ -404,16 +404,18 @@ public sealed class HudModTests : IDisposable
         var chip = Children(wood).First(c => (string?)c["Name"] == "BoCoachChip");
         Assert.Equal((10, 96, 84, 10), View(chip));
         var workers = Children(wood).First(c => (string?)c["Name"] == "Workers");
-        Assert.Equal((104, 60, 110, 44), View(workers));
-        Assert.Equal(36, Points(workers));
+        // Alineados a la izquierda, la etiqueta entra TextPad (12) desde el borde del campo.
+        Assert.Equal((116, 60, 98, 44), View(workers));
+        Assert.Equal(48, Points(workers));
         Assert.Equal("CentreLeft", (string?)workers["TextAnchor"]);
         var stock = Widget(panel, "WoodStorage");
-        Assert.Equal((114, 8, 300, 52), View(stock));
+        Assert.Equal((126, 8, 288, 52), View(stock));
         Assert.Equal(48, Points(stock));
         Assert.Equal("CentreLeft", (string?)stock["TextAnchor"]);
         Assert.Equal("CentreCentre", (string?)Widget(HudMod.ResourcePanel(ResourcePanel(), Layout()), "WoodStorage")["TextAnchor"]);
 
         Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
+        Assert.Equal((2142, 12, 68, 52), View(Widget(panel, "IdleWorkers")));
         Assert.Equal((2324, 28, 378, 52), View(Widget(panel, "AgeBar")));
         Assert.Null(HudMod.LogPanel(LogPanel(), layout));
         Assert.Null(HudMod.QueuePanel(QueuePanel(), layout));
