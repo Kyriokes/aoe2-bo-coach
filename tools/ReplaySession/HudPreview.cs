@@ -76,22 +76,23 @@ internal static class HudPreview
         }
         var clock = layout.ClockRect();
         var clockRect = Rect(clock.X, clock.Y, clock.Width, clock.Height);
-        canvas.Fill(clockRect, (0, 0, 0));
+        canvas.Fill(clockRect, ToBytes(layout.Bar.Background));
         if (clockFont is not null)
             canvas.Text("00:12:34", clockRect, clockFont, layout.Clock.Points, ppu, White);
         // El log (renglones de 17 px a 1080p, como rayas blancas) y la cola (íconos verdes) sobre el gris de la barra.
         if (layout.Log is { } log)
         {
             var logRect = Rect(log.X, log.Y, log.Width, log.Height);
-            canvas.Fill(logRect, ToBytes(layout.Bar.Background));
+            foreach (var part in HudLayout.RoundedBottomRight(log, layout.CornerRadius))
+                canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
             var line = (int)Math.Round(17 * scale);
             for (var i = 0; i < 10 && 5 + (i + 1) * line <= logRect.Height; i++)
                 canvas.Fill(new PixelRect(logRect.X + 5, logRect.Y + 5 + i * line + line / 3, logRect.Width * (5 + i % 3) / 10, Math.Max(1, line / 3)), White);
         }
         if (layout.Queue is { } queue)
         {
-            var m = HudLayout.QueueMargin;
-            canvas.Fill(Rect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), ToBytes(layout.Bar.Background));
+            foreach (var part in HudLayout.RoundedBottomRight(layout.QueueBack!, layout.CornerRadius))
+                canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
             for (var i = 0; i < 6; i++)
                 canvas.Fill(Rect(queue.X + i * queue.Height, queue.Y, queue.Height - 2, queue.Height), (60, 120, 60));
         }

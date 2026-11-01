@@ -11,6 +11,9 @@
 // HudLayout.QueueMargin de margen). Sin ellos, el log y la cola quedan donde los pone el juego.
 // `menu.scale` achica el menú del juego (escudo y botones de arriba a la derecha), pegado al borde derecho, para que se
 // vea más texto del reloj.
+// Log, barra y cola forman un solo panel gris (la barra sin borde, el log hasta bar.x y el fondo de la cola tocando
+// los dos), con las esquinas que dan al mapa redondeadas en escalones (`corner_radius`, en unidades del HUD), y el
+// campo del reloj también va en el gris de la barra (pedidos del usuario del 2026-11-01).
 {
   "name": "bocoach-2026-10",
   "pixels_per_unit_at_1080p": 0.4286,
@@ -19,7 +22,7 @@
     "width": 4600,
     "height": 108,
     "background": [0.1, 0.1, 0.1],
-    "border": { "width": 2, "color": [0.44, 0.44, 0.44] }
+    "border": { "width": 0, "color": [0.44, 0.44, 0.44] }
   },
   "cells": {
     "wood": {
@@ -93,7 +96,8 @@
     }
   },
   "clock": { "gap": 22, "y": 12, "width": 240, "height": 84, "font": "mod_clock", "points": 56 },
-  "log": { "x": 0, "y": 0, "width": 590, "height": 260 },
+  "log": { "x": 0, "y": 0, "width": 600, "height": 260 },
   "queue": { "x": 606, "y": 118, "width": 608, "height": 76 },
-  "menu": { "scale": 0.7 }
+  "menu": { "scale": 0.7 },
+  "corner_radius": 24
 }

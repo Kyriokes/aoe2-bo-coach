@@ -175,16 +175,20 @@ public static class HudMod
             ["ChildWidgets"] = new JsonArray(),
         });
         var afterClock = clockRect.X + clockRect.Width;
-        // Con el log en el rincón (HudLayout.Log), la barra empieza a su derecha, en bar.X.
+        // Con el log en el rincón (HudLayout.Log), la barra empieza a su derecha, en bar.X. Sin borde (ancho 0), la barra
+        // se junta con el log y la cola en un solo panel.
         var children = new JsonArray
         {
             BarPart("Bar", bar.X, Math.Min(bar.Width, clockRect.X) - bar.X),
             BarPart("BarAfterClock", afterClock, Math.Max(0, bar.Width - afterClock)),
-            Border("Top", bar.X, 0, bar.Width - bar.X, bar.BorderWidth, bar),
-            Border("Bottom", bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth, bar),
-            Border("Left", bar.X, 0, bar.BorderWidth, bar.Height, bar),
-            Border("Right", bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height, bar),
         };
+        if (bar.BorderWidth > 0)
+        {
+            children.Add(Border("Top", bar.X, 0, bar.Width - bar.X, bar.BorderWidth, bar));
+            children.Add(Border("Bottom", bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth, bar));
+            children.Add(Border("Left", bar.X, 0, bar.BorderWidth, bar.Height, bar));
+            children.Add(Border("Right", bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height, bar));
+        }
         var idle = layout.Cell("idle");
         var age = layout.Cell("age");
         var population = layout.Cell("population");
@@ -282,7 +286,9 @@ public static class HudMod
             ["Type"] = "Base",
             ["Name"] = $"{Ours}ClockBackground",
             ["ViewPort"] = View(0, spec.Y, spec.Width, spec.Height),
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(new HudColor(0, 0, 0)) },
+            // El gris de la barra: el salto a negro se veía feo (pedido del usuario, 2026-11-01); sobre gris el reloj se
+            // lee igual (la tinta de las letras empieza en 50).
+            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
             ["ChildWidgets"] = new JsonArray(),
         });
         clock["ChildWidgets"] = new JsonArray([back, .. Detach(clock)]);
@@ -320,15 +326,7 @@ public static class HudMod
         }
         if (widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "ChatBackground")?["ViewPort"] is JsonObject chat)
             chat["yorigin"] = height + 50;
-        widgets.Insert(0, Wrap(new JsonObject
-        {
-            ["Type"] = "Base",
-            ["Name"] = $"{Ours}LogBackground",
-            ["ViewPort"] = View(0, 0, width, height),
-            ["ZPlane"] = 1,
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
-            ["ChildWidgets"] = new JsonArray(),
-        }));
+        InsertBackground(widgets, "LogBackground", new UnitRect(0, 0, width, height), layout);
         return original;
     }
 
@@ -345,16 +343,7 @@ public static class HudMod
         var icons = widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "Background")
             ?? throw new InvalidDataException("No encontré la cola en el panel de producción.");
         icons["ViewPort"] = View(queue.X, queue.Y, queue.Width, queue.Height);
-        var m = HudLayout.QueueMargin;
-        widgets.Insert(0, Wrap(new JsonObject
-        {
-            ["Type"] = "Base",
-            ["Name"] = $"{Ours}QueueBackground",
-            ["ViewPort"] = View(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m),
-            ["ZPlane"] = 1,
-            ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
-            ["ChildWidgets"] = new JsonArray(),
-        }));
+        InsertBackground(widgets, "QueueBackground", layout.QueueBack!, layout);
         return original;
     }
 
@@ -407,6 +396,29 @@ public static class HudMod
             int At(string key) => (int)view[key]!;
             (view["xorigin"], view["yorigin"]) = (shift + (int)Math.Round(At("xorigin") * scale), (int)Math.Round(At("yorigin") * scale));
             (view["width"], view["height"]) = ((int)Math.Round(At("width") * scale), (int)Math.Round(At("height") * scale));
+        }
+    }
+
+    /// <summary>
+    /// El fondo gris del log o de la cola al principio de la colección: el rectángulo con la esquina de abajo a la
+    /// derecha redondeada en escalones (<see cref="HudLayout.RoundedBottomRight"/>); el primero se llama
+    /// <c>BoCoach{name}</c> y los escalones <c>BoCoach{name}_N</c>.
+    /// </summary>
+    private static void InsertBackground(JsonArray widgets, string name, UnitRect rect, HudLayout layout)
+    {
+        var parts = HudLayout.RoundedBottomRight(rect, layout.CornerRadius);
+        for (var i = parts.Count - 1; i >= 0; i--)
+        {
+            var p = parts[i];
+            widgets.Insert(0, Wrap(new JsonObject
+            {
+                ["Type"] = "Base",
+                ["Name"] = i == 0 ? $"{Ours}{name}" : $"{Ours}{name}_{i}",
+                ["ViewPort"] = View(p.X, p.Y, p.Width, p.Height),
+                ["ZPlane"] = 1,
+                ["StateMaterials"] = new JsonObject { ["StateNormal"] = Flat(layout.Bar.Background) },
+                ["ChildWidgets"] = new JsonArray(),
+            }));
         }
     }
 

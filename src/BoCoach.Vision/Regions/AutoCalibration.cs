@@ -182,8 +182,7 @@ public static class AutoCalibration
             boxes[RegionNames.EventLog] = Box(log);
         if (layout.Queue is { } queue)
         {
-            var m = HudLayout.QueueMargin;
-            var back = Box(new UnitRect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m));
+            var back = Box(layout.QueueBack!);
             if (DarkShare(screen, back, dark) >= SideBlack)
             {
                 // La lectura toma los íconos desde el borde izquierdo de la caja y busca la fila corriéndose hacia abajo.

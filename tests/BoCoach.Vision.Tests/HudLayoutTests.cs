@@ -26,7 +26,9 @@ public class HudLayoutTests
         // Desde la v0.9.67 el log va en el rincón de arriba a la izquierda y la barra empieza a su derecha.
         Assert.Equal(600, layout.Bar.X);
         Assert.Equal(610, layout.Cell("wood").X);
-        Assert.Equal(new UnitRect(0, 0, 590, 260), layout.Log);
+        Assert.Equal(new UnitRect(0, 0, 600, 260), layout.Log);
+        Assert.Equal(new UnitRect(600, 108, 620, 92), layout.QueueBack);
+        Assert.Equal(24, layout.CornerRadius);
         Assert.Equal(new UnitRect(606, 118, 608, 76), layout.Queue);
         Assert.Equal(80, layout.Cell("population").Chip!.Width);
         Assert.Equal(5, layout.Anchors.Count());

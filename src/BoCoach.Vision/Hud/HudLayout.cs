@@ -129,6 +129,51 @@ public sealed class HudLayout
     /// <summary>Margen del fondo de la cola alrededor de sus íconos, en unidades del HUD.</summary>
     public const int QueueMargin = 6;
 
+    /// <summary>
+    /// Radio de las esquinas del panel que dan al mapa, en unidades del HUD (pedido del usuario, 2026-11-01: el borde
+    /// recto contra el juego se veía duro). 0: esquinas rectas.
+    /// </summary>
+    public int CornerRadius { get; private init; }
+
+    /// <summary>
+    /// El fondo de la cola. Con el log en el rincón, un solo panel con el log y la barra: va desde el final de la barra
+    /// (bar.x, su alto) hasta el final de la fila de íconos con su margen, tocando el log y la barra. Si no, la fila de
+    /// íconos con <see cref="QueueMargin"/> alrededor. Null sin cola.
+    /// </summary>
+    public UnitRect? QueueBack
+    {
+        get
+        {
+            if (Queue is not { } q)
+                return null;
+            var m = QueueMargin;
+            return Log is { } log && log.X + log.Width <= Bar.X
+                ? new UnitRect(Bar.X, Bar.Height, q.X + q.Width + m - Bar.X, q.Y + q.Height + m - Bar.Height)
+                : new UnitRect(q.X - m, q.Y - m, q.Width + 2 * m, q.Height + 2 * m);
+        }
+    }
+
+    /// <summary>
+    /// Un rectángulo con la esquina de abajo a la derecha redondeada, hecho con rectángulos (el juego solo dibuja
+    /// rectángulos): el cuerpo sin la franja de abajo y, en esa franja, tiras de <paramref name="step"/> de alto cada
+    /// vez más cortas, siguiendo un cuarto de círculo de radio <paramref name="radius"/>.
+    /// </summary>
+    public static IReadOnlyList<UnitRect> RoundedBottomRight(UnitRect rect, int radius, int step = 2)
+    {
+        var r = Math.Min(radius, Math.Min(rect.Width, rect.Height));
+        if (r <= 0)
+            return [rect];
+        var parts = new List<UnitRect> { rect with { Height = rect.Height - r } };
+        for (var y = 0; y < r; y += step)
+        {
+            var height = Math.Min(step, r - y);
+            var t = y + height / 2.0; // distancia al centro del círculo, hacia abajo
+            var inset = (int)Math.Round(r - Math.Sqrt(Math.Max(0, (double)r * r - t * t)));
+            parts.Add(new UnitRect(rect.X, rect.Y + rect.Height - r + y, rect.Width - inset, height));
+        }
+        return parts;
+    }
+
     public HudCell Cell(string name) => Cells.First(c => c.Name == name);
 
     /// <summary>Las celdas con casillero, en orden: las anclas de la calibración.</summary>
@@ -241,6 +286,9 @@ public sealed class HudLayout
         {
             Log = Rect(dto.Log, "log"),
             Queue = Rect(dto.Queue, "queue"),
+            CornerRadius = dto.CornerRadius is { } radius
+                ? radius >= 0 ? radius : throw new InvalidDataException($"{source}: corner_radius no puede ser negativo.")
+                : 0,
             MenuScale = dto.Menu?.Scale is { } scale
                 ? scale is > 0.3 and <= 1 ? scale : throw new InvalidDataException($"{source}: menu.scale tiene que ir de 0,3 a 1.")
                 : null,
@@ -291,7 +339,8 @@ public sealed class HudLayout
         new ClockDto(Clock.Gap, Clock.Y, Clock.Width, Clock.Height, Clock.Font, Clock.Points),
         Log is { } log ? new RectDto(log.X, log.Y, log.Width, log.Height) : null,
         Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null,
-        MenuScale is { } menu ? new MenuDto(menu) : null), JsonOptions);
+        MenuScale is { } menu ? new MenuDto(menu) : null,
+        CornerRadius > 0 ? CornerRadius : null), JsonOptions);
 
     private static HudColor Color(double[]? values, string what, string source) =>
         values is { Length: 3 } ? new HudColor(values[0], values[1], values[2]) : throw new InvalidDataException($"{source}: {what} tiene que ser [r, g, b] de 0 a 1.");
@@ -308,7 +357,7 @@ public sealed class HudLayout
     };
 
     private sealed record Dto(string? Name, [property: JsonPropertyName("pixels_per_unit_at_1080p")] double? PixelsPerUnitAt1080p, BarDto? Bar, Dictionary<string, CellDto>? Cells, ClockDto? Clock,
-        RectDto? Log = null, RectDto? Queue = null, MenuDto? Menu = null);
+        RectDto? Log = null, RectDto? Queue = null, MenuDto? Menu = null, int? CornerRadius = null);
     private sealed record MenuDto(double? Scale);
     private sealed record BarDto(int Width, int Height, double[]? Background, BorderDto? Border, int X = 0);
     private sealed record BorderDto(int Width, double[]? Color);
