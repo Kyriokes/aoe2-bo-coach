@@ -174,18 +174,15 @@ public static class AutoCalibration
         foreach (var cell in layout.Cells)
             boxes[HudLayout.RegionOf(cell.Name)] = cell.Name == "age" ? Box(layout.AgeTextRect()) : Box(layout.CellRect(cell));
         boxes[RegionNames.Clock] = ClockBox(screen, Box(layout.ClockRect()), Scaled(ClockSearch, scale));
-        // El log y la cola del mod (idea 1 del usuario, 2026-10-31), solo si en pantalla está su fondo oscuro (el gris de
-        // la barra, o el negro de la v0.9.65): con el mod de antes (sin reinstalar) siguen donde los pone el juego y quedan
-        // las cajas de siempre.
+        // El log y la cola del mod (idea 1 del usuario, 2026-10-31), solo si en pantalla está su fondo oscuro (el relleno
+        // del panel: el gris de la barra, el oscuro del marco del juego desde la v0.9.75, o el negro de la v0.9.65): con el
+        // mod de antes (sin reinstalar) siguen donde los pone el juego y quedan las cajas de siempre.
         var dark = layout.Bar.Background.Captured is var (br, bg, bb) ? Math.Max(br, Math.Max(bg, bb)) + DarkMargin : DarkMargin;
         if (layout.Log is { } log && DarkShare(screen, Box(log), dark) >= SideBlack)
             boxes[RegionNames.EventLog] = Box(log);
         if (layout.Queue is { } queue)
         {
-            // Con el marco del juego, el fondo se mete en la barra y en el log: se mide solo lo que queda debajo de la barra.
-            var qb = layout.QueueBack!;
-            var back = Box(qb.Y < layout.Bar.Height ? new UnitRect(Math.Max(qb.X, layout.Bar.X), layout.Bar.Height, qb.Width - (Math.Max(qb.X, layout.Bar.X) - qb.X), qb.Y + qb.Height - layout.Bar.Height) : qb);
-            if (DarkShare(screen, back, dark) >= SideBlack)
+            if (DarkShare(screen, Box(layout.QueueBack!), dark) >= SideBlack)
             {
                 // La lectura toma los íconos desde el borde izquierdo de la caja y busca la fila corriéndose hacia abajo.
                 var icons = Box(queue);

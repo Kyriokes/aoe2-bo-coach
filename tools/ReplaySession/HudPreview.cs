@@ -42,15 +42,36 @@ internal static class HudPreview
         var clockFont = Optional(Path.Combine(fontsDir, "mod_clock.json"));
 
         PixelRect Rect(int x, int y, int w, int h) => new(Px(margin + x), Px(margin + y), Px(w), Px(h));
+        PixelRect RectOf(UnitRect r) => Rect(r.X, r.Y, r.Width, r.Height);
         var bar = layout.Bar;
-        canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.Height), ToBytes(bar.Background));
-        // Con el marco del juego (BlackPanel): fondo oscuro y una línea clara de 1 px alrededor del panel entero.
-        var framed = layout.Frame is not null;
-        var border = ToBytes(bar.BorderColor);
-        canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.BorderWidth), border);
-        canvas.Fill(Rect(bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth), border);
-        canvas.Fill(Rect(bar.X, 0, bar.BorderWidth, bar.Height), border);
-        canvas.Fill(Rect(bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height), border);
+        var fill = ToBytes(bar.Background);
+        // Con el marco del juego (BlackPanel): el fondo opaco de cada pieza ahora y las líneas del marco al final, encima
+        // de todo. Sin marco: la barra lisa con su borde, y el log y la cola con las esquinas en escalones.
+        var pieces = layout.FramePieces();
+        if (pieces.Count > 0)
+        {
+            foreach (var piece in pieces)
+                canvas.Fill(RectOf(piece.Base), fill);
+        }
+        else
+        {
+            canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.Height), fill);
+            var border = ToBytes(bar.BorderColor);
+            canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.BorderWidth), border);
+            canvas.Fill(Rect(bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth), border);
+            canvas.Fill(Rect(bar.X, 0, bar.BorderWidth, bar.Height), border);
+            canvas.Fill(Rect(bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height), border);
+            if (layout.Log is { } flatLog)
+            {
+                foreach (var part in HudLayout.RoundedBottomRight(flatLog, layout.CornerRadius))
+                    canvas.Fill(RectOf(part), fill);
+            }
+            if (layout.QueueBack is { } flatQueue)
+            {
+                foreach (var part in HudLayout.RoundedBottomRight(flatQueue, layout.CornerRadius))
+                    canvas.Fill(RectOf(part), fill);
+            }
+        }
 
         foreach (var cell in layout.Cells)
         {
@@ -78,37 +99,26 @@ internal static class HudPreview
         }
         var clock = layout.ClockRect();
         var clockRect = Rect(clock.X, clock.Y, clock.Width, clock.Height);
-        canvas.Fill(clockRect, ToBytes(layout.Bar.Background));
+        if (pieces.Count == 0)
+            canvas.Fill(clockRect, fill);
         if (clockFont is not null)
             canvas.Text("00:12:34", clockRect, clockFont, layout.Clock.Points, ppu, White);
-        // El log (renglones de 17 px a 1080p, como rayas blancas) y la cola (íconos verdes) sobre el gris de la barra.
+        // El log (renglones de 17 px a 1080p, como rayas blancas) y la cola (íconos verdes) sobre el fondo del panel.
         if (layout.Log is { } log)
         {
-            var logRect = Rect(log.X, log.Y, log.Width, log.Height);
-            foreach (var part in HudLayout.RoundedBottomRight(log, layout.CornerRadius))
-                canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
-            if (framed)
-                Outline(canvas, logRect, bottom: true, left: true, right: false, top: true);
+            var logRect = RectOf(log);
             var line = (int)Math.Round(17 * scale);
             for (var i = 0; i < 10 && 5 + (i + 1) * line <= logRect.Height; i++)
                 canvas.Fill(new PixelRect(logRect.X + 5, logRect.Y + 5 + i * line + line / 3, logRect.Width * (5 + i % 3) / 10, Math.Max(1, line / 3)), White);
         }
         if (layout.Queue is { } queue)
         {
-            var qb = layout.QueueBack!;
-            foreach (var part in HudLayout.RoundedBottomRight(qb, layout.CornerRadius))
-                canvas.Fill(Rect(part.X, part.Y, part.Width, part.Height), ToBytes(layout.Bar.Background));
-            if (framed)
-            {
-                var qr = Rect(Math.Max(qb.X, layout.Bar.X), layout.Bar.Height, qb.Width - (Math.Max(qb.X, layout.Bar.X) - qb.X), qb.Y + qb.Height - layout.Bar.Height);
-                Outline(canvas, qr, bottom: true, left: false, right: true, top: false);
-                var barRect = Rect(bar.X, 0, Math.Min(bar.Width, (int)(1920 / ppu) - 2 * margin) - bar.X, bar.Height);
-                Outline(canvas, barRect, bottom: false, left: false, right: false, top: true);
-                canvas.Fill(new PixelRect(qr.X + qr.Width, barRect.Y + barRect.Height - 1, barRect.X + barRect.Width - qr.X - qr.Width, 1), (222, 222, 222));
-            }
             for (var i = 0; i < 6; i++)
                 canvas.Fill(Rect(queue.X + i * queue.Height, queue.Y, queue.Height - 2, queue.Height), (60, 120, 60));
         }
+        // Las líneas del marco (clara afuera y gris adentro, como las del BlackPanel), solo en los lados que dan al mapa.
+        foreach (var piece in pieces)
+            Outline(canvas, RectOf(piece.Rect), piece.Top, piece.Bottom, piece.Left, piece.Right);
 
         Png.Write(canvas.Image, output);
         Console.WriteLine($"Guardado {output}: {width}×{height} px (escala {scale:0.##}; diseño {layout.Name}).");
@@ -117,14 +127,31 @@ internal static class HudPreview
 
     private static GlyphFont? Optional(string path) => File.Exists(path) ? GlyphFont.Load(path) : null;
 
-    /// <summary>La línea clara de 1 px del marco BlackPanel en los lados pedidos.</summary>
+    /// <summary>Las líneas del marco BlackPanel en los lados pedidos: 1 px clara (222) en el borde y 1 px gris (138) adentro.</summary>
     private static void Outline(Canvas canvas, PixelRect r, bool top, bool bottom, bool left, bool right)
     {
         var light = ((byte)222, (byte)222, (byte)222);
-        if (top) canvas.Fill(new PixelRect(r.X, r.Y, r.Width, 1), light);
-        if (bottom) canvas.Fill(new PixelRect(r.X, r.Y + r.Height - 1, r.Width, 1), light);
-        if (left) canvas.Fill(new PixelRect(r.X, r.Y, 1, r.Height), light);
-        if (right) canvas.Fill(new PixelRect(r.X + r.Width - 1, r.Y, 1, r.Height), light);
+        var mid = ((byte)138, (byte)138, (byte)138);
+        if (top)
+        {
+            canvas.Fill(new PixelRect(r.X, r.Y, r.Width, 1), light);
+            canvas.Fill(new PixelRect(r.X, r.Y + 1, r.Width, 1), mid);
+        }
+        if (bottom)
+        {
+            canvas.Fill(new PixelRect(r.X, r.Y + r.Height - 1, r.Width, 1), light);
+            canvas.Fill(new PixelRect(r.X, r.Y + r.Height - 2, r.Width, 1), mid);
+        }
+        if (left)
+        {
+            canvas.Fill(new PixelRect(r.X, r.Y, 1, r.Height), light);
+            canvas.Fill(new PixelRect(r.X + 1, r.Y, 1, r.Height), mid);
+        }
+        if (right)
+        {
+            canvas.Fill(new PixelRect(r.X + r.Width - 1, r.Y, 1, r.Height), light);
+            canvas.Fill(new PixelRect(r.X + r.Width - 2, r.Y, 1, r.Height), mid);
+        }
     }
 
     private static (byte R, byte G, byte B) ToBytes(HudColor color)

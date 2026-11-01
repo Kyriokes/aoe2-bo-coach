@@ -12,9 +12,11 @@
 // `menu.scale` achica el menú del juego (escudo y botones de arriba a la derecha), pegado al borde derecho, para que se
 // vea más texto del reloj.
 // Log, barra, cola y reloj forman un solo panel dibujado con `frame`, un material de 9 piezas del juego (BlackPanel:
-// el marco fino claro con fondo oscuro del log y del panel de puntajes); las piezas que se tocan se superponen 22
-// unidades (HudLayout.FrameOverlap) para que no se vea el marco entre ellas, y las esquinas las trae la textura. Sin
-// `frame`, rectángulos lisos del color de la barra con esquinas en escalones (`corner_radius`).
+// el marco fino claro con fondo oscuro translúcido del log y del panel de puntajes). Cada pieza del panel muestra el
+// marco solo en los lados que dan al mapa (el juego recorta las filas de piezas que se corren fuera del widget:
+// HudLayout.FramePieces) y debajo lleva un fondo liso opaco de `bar.background`, que es el relleno de esas piezas
+// (24, 21, 18): el relleno translúcido del juego sobre el mapa dañaba la lectura del reloj. Sin `frame`, rectángulos
+// lisos del color de la barra con esquinas en escalones (`corner_radius`).
 {
   "name": "bocoach-2026-10",
   "pixels_per_unit_at_1080p": 0.4286,
@@ -22,7 +24,7 @@
     "x": 600,
     "width": 4600,
     "height": 108,
-    "background": [0.1, 0.1, 0.1],
+    "background": [0.094, 0.082, 0.071],
     "border": { "width": 0, "color": [0.44, 0.44, 0.44] }
   },
   "cells": {

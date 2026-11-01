@@ -27,10 +27,15 @@ public class HudLayoutTests
         Assert.Equal(600, layout.Bar.X);
         Assert.Equal(610, layout.Cell("wood").X);
         Assert.Equal(new UnitRect(0, 0, 600, 260), layout.Log);
-        // Con el marco del juego (BlackPanel), el fondo de la cola se mete 22 en el log y en la barra.
+        // Un solo panel: el fondo de la cola va desde el final de la barra (bar.x, su alto) hasta el final de los íconos
+        // con su margen. El marco del juego (BlackPanel) lo dibujan piezas aparte (FramePieces).
         Assert.Equal("BlackPanel", layout.Frame);
-        Assert.Equal(new UnitRect(578, 86, 642, 114), layout.QueueBack);
+        Assert.True(layout.SinglePanel);
+        Assert.Equal(new UnitRect(600, 108, 620, 92), layout.QueueBack);
         Assert.Equal(0, layout.CornerRadius);
+        // El relleno de las piezas del juego (npanel_*: 24, 21, 18): debajo de cada pieza va un fondo liso opaco de ese
+        // color (el relleno translúcido sobre el mapa dañaba la lectura del reloj: prueba de la v0.9.74).
+        Assert.Equal((24, 21, 18), layout.Bar.Background.Captured);
         Assert.Equal(new UnitRect(606, 118, 608, 76), layout.Queue);
         Assert.Equal(80, layout.Cell("population").Chip!.Width);
         Assert.Equal(5, layout.Anchors.Count());
@@ -38,6 +43,61 @@ public class HudLayoutTests
         // su texto ("hh:mm:ss (Normal - 1.7) (Estándar)" se salía del de 230).
         // El campo negro tapa solo la hora (pedido del usuario, 2026-10-31); el resto del texto sigue sobre la barra.
         Assert.Equal(new UnitRect(3334, 12, 240, 84), layout.ClockRect());
+    }
+
+    /// <summary>
+    /// Prueba de la v0.9.74 (2026-11-01): el Box de un Surround se dibuja desde el origen de su ViewPort y el juego
+    /// recorta lo que se sale, así que cada pieza del panel muestra el marco solo en los lados que dan al mapa: por cada
+    /// lado que da a otra pieza, el Box se corre una fila de piezas (FrameClip) hacia afuera y esa fila queda recortada.
+    /// Debajo de cada pieza va un fondo liso opaco que se mete Seam en las piezas vecinas, para que entre dos fondos no
+    /// quede ninguna línea del mapa.
+    /// </summary>
+    [Fact]
+    public void El_marco_del_juego_va_en_seis_piezas_con_el_borde_solo_hacia_el_mapa()
+    {
+        var layout = Repo();
+
+        var pieces = layout.FramePieces();
+        Assert.Equal(["LogTop", "LogBottom", "BarLeft", "BarRight", "Queue", "Clock"], pieces.Select(p => p.Name));
+        var byName = pieces.ToDictionary(p => p.Name);
+        // El log hasta donde termina la cola: arriba e izquierda; el resto del log: izquierda, abajo y derecha (el escalón).
+        Assert.Equal((new UnitRect(0, 0, 600, 200), true, false, true, false), Edges(byName["LogTop"]));
+        Assert.Equal((new UnitRect(0, 200, 600, 60), false, true, true, true), Edges(byName["LogBottom"]));
+        // La barra sobre la cola: solo arriba; desde el final de la cola hasta el borde: arriba, abajo y derecha.
+        Assert.Equal((new UnitRect(600, 0, 620, 108), true, false, false, false), Edges(byName["BarLeft"]));
+        Assert.Equal((new UnitRect(1220, 0, 3380, 108), true, true, false, true), Edges(byName["BarRight"]));
+        Assert.Equal((new UnitRect(600, 108, 620, 92), false, true, false, true), Edges(byName["Queue"]));
+        // El campo del reloj, del alto de la barra: arriba y abajo, donde ya están las líneas de la barra.
+        Assert.Equal((new UnitRect(3334, 0, 240, 108), true, true, false, false), Edges(byName["Clock"]));
+
+        // El Box relativo al ViewPort: cada lado interior corrido FrameClip (32, el gridstep de los Surround del juego).
+        Assert.Equal(32, HudLayout.FrameClip);
+        Assert.Equal(new UnitRect(0, 0, 632, 232), byName["LogTop"].Box);
+        Assert.Equal(new UnitRect(0, -32, 600, 92), byName["LogBottom"].Box);
+        Assert.Equal(new UnitRect(-32, 0, 684, 140), byName["BarLeft"].Box);
+        Assert.Equal(new UnitRect(-32, 0, 3412, 108), byName["BarRight"].Box);
+        Assert.Equal(new UnitRect(-32, -32, 652, 124), byName["Queue"].Box);
+        Assert.Equal(new UnitRect(-32, 0, 304, 108), byName["Clock"].Box);
+        // El fondo opaco: la pieza más Seam (4) hacia cada vecina.
+        Assert.Equal(4, HudLayout.Seam);
+        Assert.Equal(new UnitRect(0, 0, 604, 204), byName["LogTop"].Base);
+        Assert.Equal(new UnitRect(0, 196, 600, 64), byName["LogBottom"].Base);
+        Assert.Equal(new UnitRect(596, 0, 628, 112), byName["BarLeft"].Base);
+        Assert.Equal(new UnitRect(1216, 0, 3384, 108), byName["BarRight"].Base);
+        Assert.Equal(new UnitRect(596, 104, 624, 96), byName["Queue"].Base);
+        Assert.Equal(new UnitRect(3330, 0, 248, 108), byName["Clock"].Base);
+
+        static (UnitRect, bool Top, bool Bottom, bool Left, bool Right) Edges(FramePiece p) => (p.Rect, p.Top, p.Bottom, p.Left, p.Right);
+    }
+
+    [Fact]
+    public void El_marco_pide_el_log_y_la_cola_en_un_solo_panel()
+    {
+        var json = Repo().ToJson().Replace("\"queue\":", "\"cola\":");
+
+        var error = Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json));
+
+        Assert.Contains("frame", error.Message);
     }
 
     [Fact]

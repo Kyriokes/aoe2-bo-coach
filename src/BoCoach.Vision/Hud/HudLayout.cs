@@ -17,6 +17,29 @@ public sealed record HudColor(double R, double G, double B)
 /// <summary>Rectángulo en unidades del panel del juego.</summary>
 public sealed record UnitRect(int X, int Y, int Width, int Height);
 
+/// <summary>
+/// Una pieza del panel dibujada con el marco del juego (<see cref="HudLayout.Frame"/>): su rectángulo en unidades del
+/// HUD y en qué lados se ve el borde (los otros dan a otra pieza). <see cref="Box"/> es el Box del Surround, relativo
+/// al ViewPort, con cada lado interior corrido <see cref="HudLayout.FrameClip"/> hacia afuera para que el juego recorte
+/// esa fila del marco; <see cref="Base"/>, el fondo liso opaco de debajo, metido <see cref="HudLayout.Seam"/> en las
+/// piezas vecinas.
+/// </summary>
+public sealed record FramePiece(string Name, UnitRect Rect, bool Top, bool Bottom, bool Left, bool Right)
+{
+    public UnitRect Box => Grown(HudLayout.FrameClip, relative: true);
+
+    public UnitRect Base => Grown(HudLayout.Seam, relative: false);
+
+    private UnitRect Grown(int by, bool relative)
+    {
+        var left = Left ? 0 : by;
+        var top = Top ? 0 : by;
+        var right = Right ? 0 : by;
+        var bottom = Bottom ? 0 : by;
+        return new UnitRect((relative ? 0 : Rect.X) - left, (relative ? 0 : Rect.Y) - top, Rect.Width + left + right, Rect.Height + top + bottom);
+    }
+}
+
 public sealed record HudIcon(int X, int Y, int Size);
 
 /// <summary>El casillero de color de una celda: ancla de la calibración y lugar de la GD (en población, el total de aldeanos).</summary>
@@ -136,23 +159,31 @@ public sealed class HudLayout
     public int CornerRadius { get; private init; }
 
     /// <summary>
-    /// Material de 9 piezas del juego con que el mod dibuja el log, la barra, la cola y el reloj (<c>BlackPanel</c>: el
-    /// del log, los puntajes y los objetivos; un marco fino claro con fondo oscuro translúcido). Pedido del usuario del
-    /// 2026-11-01: un borde a tono con el juego en vez de un corte gris. Null: rectángulos lisos del color de la barra.
+    /// Material de 9 piezas del juego con que el mod dibuja el marco del panel (<c>BlackPanel</c>: el del log, los
+    /// puntajes y los objetivos; un marco fino claro con fondo oscuro translúcido). Pedido del usuario del 2026-11-01:
+    /// un borde a tono con el juego en vez de un corte gris. Pide <see cref="SinglePanel"/>; las piezas salen de
+    /// <see cref="FramePieces"/>. Null: rectángulos lisos del color de la barra.
     /// </summary>
     public string? Frame { get; private init; }
 
     /// <summary>
-    /// Cuánto se superponen las piezas del panel que se tocan (el log con la barra, la barra con la cola y con el campo
-    /// del reloj) para que el marco de <see cref="Frame"/> no se vea entre ellas: el ancho de una pieza del borde.
+    /// Una fila de piezas del marco, en unidades del HUD (el <c>gridstep</c> de los Surround del juego). El Box de un
+    /// Surround se dibuja desde el origen de su ViewPort y el juego recorta lo que se sale (prueba de la v0.9.74,
+    /// 2026-11-01): por cada lado de una pieza que da a otra pieza, el Box se corre esto hacia afuera y esa fila del
+    /// marco queda recortada, así el borde se ve solo hacia el mapa.
     /// </summary>
-    public const int FrameOverlap = 22;
+    public const int FrameClip = 32;
+
+    /// <summary>
+    /// Cuánto se mete el fondo liso opaco de cada pieza en las piezas vecinas, para que entre dos fondos no quede
+    /// ninguna línea del mapa.
+    /// </summary>
+    public const int Seam = 4;
 
     /// <summary>
     /// El fondo de la cola. Con el log en el rincón, un solo panel con el log y la barra: va desde el final de la barra
-    /// (bar.x, su alto) hasta el final de la fila de íconos con su margen, tocando el log y la barra; con
-    /// <see cref="Frame"/>, además se mete <see cref="FrameOverlap"/> dentro de los dos para tapar sus marcos. Si no,
-    /// la fila de íconos con <see cref="QueueMargin"/> alrededor. Null sin cola.
+    /// (bar.x, su alto) hasta el final de la fila de íconos con su margen, tocando el log y la barra. Si no, la fila de
+    /// íconos con <see cref="QueueMargin"/> alrededor. Null sin cola.
     /// </summary>
     public UnitRect? QueueBack
     {
@@ -161,11 +192,41 @@ public sealed class HudLayout
             if (Queue is not { } q)
                 return null;
             var m = QueueMargin;
-            if (Log is not { } log || log.X + log.Width > Bar.X)
+            if (!SinglePanel)
                 return new UnitRect(q.X - m, q.Y - m, q.Width + 2 * m, q.Height + 2 * m);
-            var o = Frame is null ? 0 : FrameOverlap;
-            return new UnitRect(Bar.X - o, Bar.Height - o, q.X + q.Width + m - Bar.X + o, q.Y + q.Height + m - Bar.Height + o);
+            return new UnitRect(Bar.X, Bar.Height, q.X + q.Width + m - Bar.X, q.Y + q.Height + m - Bar.Height);
         }
+    }
+
+    /// <summary>El log en el rincón a la izquierda de la barra y la cola debajo: los tres forman un solo panel.</summary>
+    public bool SinglePanel => Log is { } log && Queue is not null && log.X + log.Width <= Bar.X;
+
+    /// <summary>
+    /// Las piezas con que el mod dibuja el panel con el marco del juego (<see cref="Frame"/>), en unidades del HUD: el
+    /// log hasta donde termina la cola (borde arriba y a la izquierda) y el resto del log (izquierda, abajo y derecha:
+    /// el escalón), la barra sobre la cola (solo arriba) y desde el final de la cola hasta el borde (arriba, abajo y
+    /// derecha), la cola (abajo y derecha) y el campo del reloj, del alto de la barra (arriba y abajo: las mismas líneas
+    /// de la barra, por si su panel se dibuja encima). Vacía sin <see cref="Frame"/>.
+    /// </summary>
+    public IReadOnlyList<FramePiece> FramePieces()
+    {
+        if (Frame is null || Log is not { } log || QueueBack is not { } queue)
+            return [];
+        var logBottom = log.Y + log.Height;
+        var step = Math.Min(queue.Y + queue.Height, logBottom);
+        var pieces = new List<FramePiece>
+        {
+            new("LogTop", new UnitRect(log.X, log.Y, log.Width, step - log.Y), Top: true, Bottom: step >= logBottom, Left: true, Right: false),
+        };
+        if (step < logBottom)
+            pieces.Add(new("LogBottom", new UnitRect(log.X, step, log.Width, logBottom - step), Top: false, Bottom: true, Left: true, Right: true));
+        var queueRight = queue.X + queue.Width;
+        pieces.Add(new("BarLeft", new UnitRect(Bar.X, 0, queueRight - Bar.X, Bar.Height), Top: true, Bottom: false, Left: false, Right: false));
+        pieces.Add(new("BarRight", new UnitRect(queueRight, 0, Bar.Width - queueRight, Bar.Height), Top: true, Bottom: true, Left: false, Right: true));
+        pieces.Add(new("Queue", queue, Top: false, Bottom: true, Left: false, Right: true));
+        var clock = ClockRect();
+        pieces.Add(new("Clock", new UnitRect(clock.X, 0, clock.Width, Bar.Height), Top: true, Bottom: true, Left: false, Right: false));
+        return pieces;
     }
 
     /// <summary>
@@ -309,6 +370,8 @@ public sealed class HudLayout
                 ? scale is > 0.3 and <= 1 ? scale : throw new InvalidDataException($"{source}: menu.scale tiene que ir de 0,3 a 1.")
                 : null,
         };
+        if (layout.Frame is not null && !layout.SinglePanel)
+            throw new InvalidDataException($"{source}: frame pide log a la izquierda de la barra y queue debajo (un solo panel).");
         layout.Validate(source);
         return layout;
     }
