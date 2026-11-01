@@ -81,6 +81,24 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(overlay.ShowCursorReminder);
     }
 
+    // Prueba de la v0.9.71 (2026-11-01): la calibración sola corrió con el coach andando (el HUD nuevo, la barra corrida)
+    // y la GD seguía dibujándose en los casilleros de la calibración del arranque. El overlay toma las cajas de cada
+    // captura; sin cajas, se queda con las que tenía.
+    [Fact]
+    public void El_overlay_toma_las_cajas_con_que_se_leyo_la_captura()
+    {
+        var coach = new Coach(Scouts, _data.GameData, _data.Events);
+        var view = coach.Update(new GameSnapshot(30, PlanStart.Standard.Stock, 4, 5));
+        var overlay = new OverlayViewModel(_data.GameData, Scouts.Name);
+        var regions = Vision.Regions.RegionLayout.Default;
+
+        overlay.Apply(Frame(view) with { Regions = regions });
+        Assert.Same(regions, overlay.Regions);
+
+        overlay.Apply(Frame(view));
+        Assert.Same(regions, overlay.Regions);
+    }
+
     // Spec 2026-10-30: un renglón fijo por línea, en orden, sin los que no tienen nada que decir.
     [Fact]
     public void El_overlay_muestra_un_renglon_por_linea()

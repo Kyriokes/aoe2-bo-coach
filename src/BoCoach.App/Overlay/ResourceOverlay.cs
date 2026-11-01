@@ -45,7 +45,7 @@ public sealed class ResourceOverlay : Window
     /// <summary>Cada cuánto cambia de color el aviso de inactivos.</summary>
     public static readonly TimeSpan BlinkInterval = TimeSpan.FromMilliseconds(350);
 
-    private readonly RegionLayout _layout;
+    private RegionLayout _layout;
     private readonly Canvas _canvas = new();
     private readonly Dictionary<ResourceTargetViewModel, (Border Box, TextBlock Text)> _items = [];
     private readonly ResourceTargetViewModel? _idle;
@@ -216,6 +216,16 @@ public sealed class ResourceOverlay : Window
     }
 
     private double Scale() => PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1;
+
+    /// <summary>Las cajas nuevas de una recalibración: la GD y el aviso de inactivos se vuelven a ubicar con ellas.</summary>
+    public void SetLayout(RegionLayout layout)
+    {
+        if (ReferenceEquals(layout, _layout))
+            return;
+        _layout = layout;
+        if (_area is { } area)
+            PlaceOver(area);
+    }
 
     private Dictionary<ResourceTargetViewModel, PixelRect> Boxes(PixelRect area) =>
         _items.Keys.Where(t => _layout.Regions.ContainsKey(t.Region)).ToDictionary(t => t, t => _layout.PixelsOf(t.Region, area));

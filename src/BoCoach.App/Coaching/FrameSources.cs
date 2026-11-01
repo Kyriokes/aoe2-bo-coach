@@ -36,6 +36,12 @@ public interface IFrameSource
     Vision.Hud.HudLayout? Hud => null;
 
     /// <summary>
+    /// Las cajas con que se leen las capturas ahora (cambian al recalibrar), o null si no se sabe: el overlay dibuja la
+    /// GD con ellas.
+    /// </summary>
+    RegionLayout? Regions => null;
+
+    /// <summary>
     /// Vuelve a calibrar sobre la pantalla (el coach lo pide mientras no ve el reloj): true si encontró el HUD, y las
     /// capturas que siguen usan las regiones nuevas. Una grabación no calibra.
     /// </summary>
@@ -64,6 +70,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func
     public double HudScale => _layout.HudScale;
 
     public Vision.Hud.HudLayout? Hud => _layout.Hud;
+
+    public RegionLayout? Regions => _layout;
 
     public bool Recalibrate()
     {

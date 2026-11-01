@@ -6,6 +6,7 @@ using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Regions;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
@@ -81,6 +82,7 @@ public sealed class UsageMeter
 /// <param name="Area">Zona del juego en la pantalla en la última captura.</param>
 /// <param name="StartOffset">Segundos del reloj del juego antes de que el jugador empezara a jugar (ver <see cref="SnapshotBuilder.StartOffset"/>).</param>
 /// <param name="HudScale">Tamaño del HUD respecto de 1080p: las franjas de <see cref="HudState.ModBands"/> están medidas a 1080p.</param>
+/// <param name="Regions">Las cajas con que se leyó la captura (<see cref="IFrameSource.Regions"/>), o null.</param>
 /// <param name="Loading">Lo leído en la última pantalla de carga (la de esta partida), o null.</param>
 /// <param name="Me">El jugador de la pantalla de carga con el nombre puesto en la app, o null.</param>
 /// <param name="Civ">La civ con que corre el coach (clave de game_data, o "any").</param>
@@ -105,7 +107,8 @@ public sealed record CoachFrame(
     bool InFront = true,
     bool Waiting = false,
     string? Notice = null,
-    bool InGame = false);
+    bool InGame = false,
+    RegionLayout? Regions = null);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -468,7 +471,7 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice, _clockSeenInGame));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice, _clockSeenInGame, Frames.Regions));
     }
 
     /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>

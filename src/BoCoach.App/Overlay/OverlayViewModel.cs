@@ -50,6 +50,12 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty] public partial string? Suggestion { get; set; }
     [ObservableProperty] public partial string? Alert { get; set; }
 
+    /// <summary>
+    /// Las cajas con que se leen las capturas: al recalibrar cambian, y la GD tiene que dibujarse con las nuevas (prueba
+    /// de la v0.9.71, 2026-11-01: con la barra corrida, la GD seguía en los casilleros de la calibración del arranque).
+    /// </summary>
+    [ObservableProperty] public partial RegionLayout? Regions { get; set; }
+
     /// <summary>El aviso es un clic de edad del rival: su número (1 azul ... 8 naranja, 0 si no se sabe); null si no.</summary>
     [ObservableProperty, NotifyPropertyChangedFor(nameof(RivalClick), nameof(AlertForeground), nameof(AlertBackground))]
     public partial int? RivalSlot { get; set; }
@@ -171,6 +177,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         Behind = lines.Behind;
         Suggestion = lines.Suggestion;
         Alert = lines.Alert;
+        if (frame.Regions is { } regions)
+            Regions = regions;
         RivalSlot = lines.RivalSlot;
         Idle = lines.Idle;
         Distribution = lines.Distribution;

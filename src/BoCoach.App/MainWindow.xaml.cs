@@ -231,9 +231,16 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         _overlay = new CoachOverlay(overlay);
         _overlay.Show();
         _overlay.PlaceOver(area);
-        _resources = new ResourceOverlay(overlay.Resources, Tools.Layout, overlay.IdleAlert);
+        _resources = new ResourceOverlay(overlay.Resources, overlay.Regions ?? Tools.Layout, overlay.IdleAlert);
         _resources.Show();
         _resources.PlaceOver(area);
+        // La calibración sola corre mientras el coach anda (en el menú no encuentra el HUD): la GD sigue a las cajas nuevas.
+        var resources = _resources;
+        overlay.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(OverlayViewModel.Regions) && overlay.Regions is { } regions && _resources == resources)
+                resources.SetLayout(regions);
+        };
         _cursor = new CursorReminder(overlay);
     }
 
