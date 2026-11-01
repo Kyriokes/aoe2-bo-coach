@@ -368,7 +368,10 @@ public static class CoachText
     /// <summary>"Establo parado: poné exploradores en cola" o "Sin establo: los exploradores no tienen dónde salir".</summary>
     public static string GapText(PostureGap gap) => gap.Missing
         ? $"Sin {StepText.Name(gap.Building)}: los {StepText.Name(gap.Unit, 2)} no tienen dónde salir"
-        : $"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count}) parados" : " parado")}: poné {StepText.Name(gap.Unit, 2)} en cola";
+        : $"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count}) parad{Ending(gap.Building)}s" : $" parad{Ending(gap.Building)}")}: poné {StepText.Name(gap.Unit, 2)} en cola";
+
+    /// <summary>"a" si el nombre del edificio es femenino ("galería de tiro", "herrería"), por la primera palabra; si no, "o".</summary>
+    private static string Ending(string building) => StepText.Name(building).Split(' ')[0].EndsWith('a') ? "a" : "o";
 
     private static string Capitalized(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 

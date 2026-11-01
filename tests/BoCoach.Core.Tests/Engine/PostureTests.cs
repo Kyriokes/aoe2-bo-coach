@@ -81,6 +81,7 @@ public class PostureTests
         Assert.Equal(["villager", "cavalry_archer"], view.Queue);
         var gap = Assert.Single(view.Gaps);
         Assert.Equal(("archery_range", "cavalry_archer", 3), (gap.Building, gap.Unit, gap.Count));
+        Assert.Equal("Galerías de tiro (3) paradas: poné arqueros a caballo en cola", CoachText.GapText(gap));
         Assert.Equal("Postura: aldeanos y arqueros a caballo siempre en cola", CoachText.PostureTitle(view));
 
         // Con dos en cola, falta una galería; la demanda es la de los arqueros a caballo en las 3.
