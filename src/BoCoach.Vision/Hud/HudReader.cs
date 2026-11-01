@@ -104,6 +104,13 @@ public sealed class HudReader(HudFonts fonts)
     private static readonly Regex ModClockTime = new(@"^\d\d:\d\d:\d\d", RegexOptions.Compiled);
 
     /// <summary>
+    /// La letra de siempre puede leer la hora sin el cero de adelante; igual pide los dos dígitos de los segundos: con
+    /// el último tapado (partida 20261101-165020, un cuadro del juego sobre el reloj), "00:26:5" se tomaba por 26:05,
+    /// el reloj volvía 47 s para atrás y el coach empezaba otra partida.
+    /// </summary>
+    private static readonly Regex LooseClockTime = new(@"^\d{1,2}:\d\d:\d\d", RegexOptions.Compiled);
+
+    /// <summary>
     /// En pausa el juego oscurece todo: los números del mod (blancos sobre negro puro) se estiran para que lo más
     /// claro vuelva a ser blanco.
     /// </summary>
@@ -237,7 +244,7 @@ public sealed class HudReader(HudFonts fonts)
             {
                 var reading = _clock.Read(clockImage);
                 clockSeconds = TimeAtStart(reading)
-                    ?? (reading.IsUsable && reading.Text.Contains(':') && GameClock.TryParse(reading.Text, out var seconds) ? seconds : null);
+                    ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
                 clockClipped |= reading.Clipped;
             }
             if (clockSeconds is null && clockClipped)
