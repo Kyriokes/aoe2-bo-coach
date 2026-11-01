@@ -72,6 +72,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
         MaxVillagers = settings.MaxVillagers;
         CursorReminders = settings.CursorReminders;
+        HudMinimal = settings.HudMinimal;
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
         Language = GameLanguage.FromCode(settings.GameLanguage);
         PlayerName = settings.PlayerName;
@@ -122,6 +123,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// parado. Se prende y apaga desde la ventana o con Ctrl+Alt+M, y queda guardado.
     /// </summary>
     [ObservableProperty] public partial bool CursorReminders { get; set; }
+
+    /// <summary>Instalar el diseño mínimo del mod del HUD (ver <see cref="CoachSettings.HudMinimal"/>).</summary>
+    [ObservableProperty] public partial bool HudMinimal { get; set; }
+
+    partial void OnHudMinimalChanged(bool value) => SaveSettings();
 
     partial void OnCursorRemindersChanged(bool value)
     {
@@ -354,6 +360,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 Hotkeys = new(Hotkeys),
                 DevMode = _devMode.IsOn,
                 AutoRecord = _devMode.AutoRecord,
+                HudMinimal = HudMinimal,
             }.Save(_settingsPath);
         }
         catch (IOException)

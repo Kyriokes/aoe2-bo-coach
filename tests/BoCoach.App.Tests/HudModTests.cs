@@ -18,6 +18,8 @@ public sealed class HudModTests : IDisposable
 
     public static HudLayout Layout() => HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.FileName));
 
+    public static HudLayout MinimalLayout() => HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.MinimalFileName));
+
     private static JsonObject View(int x, int y, int w, int h) => new() { ["xorigin"] = x, ["yorigin"] = y, ["width"] = w, ["height"] = h, ["alignment"] = "CentreCentre" };
 
     private static (int X, int Y, int W, int H) View(JsonObject widget)
@@ -374,6 +376,51 @@ public sealed class HudModTests : IDisposable
     }
 
     /// <summary>El "N/M" del juego tiene tres estados (blanco, rojo al tope, amarillo): se conservan, a 48 pt.</summary>
+    /// <summary>
+    /// Diseño mínimo (2026-11-01): la barra del juego, opaca de borde a borde y con el marco (una sola pieza, con las
+    /// cuatro líneas: arriba y a los costados caen fuera de la pantalla), las celdas donde las trae el juego, una franja
+    /// fina de color bajo cada ícono, el stock a 48 pt y los aldeanos a 28 pt debajo; sin fondos negros, sin log ni
+    /// cola corridos ni menú achicado. El fondo del juego arranca en 0: la barra lo tapa entera.
+    /// </summary>
+    [Fact]
+    public void El_diseno_minimo_deja_la_barra_del_juego_opaca_con_la_franja_fina_y_los_numeros_blancos()
+    {
+        var layout = MinimalLayout();
+        var panel = HudMod.ResourcePanel(ResourcePanel(), layout);
+
+        var background = Widget(panel, "Background");
+        Assert.Equal((0, 0, 4600, 108), View(background));
+        var names = Children(background).Select(c => (string?)c["Name"]).ToList();
+        Assert.Equal(["BoCoachBarBase", "BoCoachBar", "Wood"], names.Take(3));
+        Assert.Equal((0, 0, 4600, 108), View(Widget(panel, "BoCoachBarBase")));
+        var bar = Widget(panel, "BoCoachBar");
+        Assert.Equal("Surround", (string?)bar["Type"]);
+        Assert.Equal((0, 0, 4600, 108), View(bar));
+        Assert.Equal((0, 0, 4600, 108), Box(bar));
+        Assert.DoesNotContain(names, n => n is not null && n.StartsWith("BoCoachBack_", StringComparison.Ordinal));
+
+        var wood = Widget(panel, "Wood");
+        Assert.Equal((10, 0, 410, 108), View(wood));
+        var chip = Children(wood).First(c => (string?)c["Name"] == "BoCoachChip");
+        Assert.Equal((10, 96, 84, 10), View(chip));
+        var workers = Children(wood).First(c => (string?)c["Name"] == "Workers");
+        Assert.Equal((104, 64, 110, 40), View(workers));
+        Assert.Equal(28, Points(workers));
+        Assert.Equal("CentreLeft", (string?)workers["TextAnchor"]);
+        var stock = Widget(panel, "WoodStorage");
+        Assert.Equal((114, 2, 300, 60), View(stock));
+        Assert.Equal(48, Points(stock));
+        Assert.Equal("CentreLeft", (string?)stock["TextAnchor"]);
+        Assert.Equal("CentreCentre", (string?)Widget(HudMod.ResourcePanel(ResourcePanel(), Layout()), "WoodStorage")["TextAnchor"]);
+
+        Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
+        Assert.Equal((2324, 28, 378, 52), View(Widget(panel, "AgeBar")));
+        Assert.Null(HudMod.LogPanel(LogPanel(), layout));
+        Assert.Null(HudMod.QueuePanel(QueuePanel(), layout));
+        Assert.Null(HudMod.TopPanel(TopPanel(), layout));
+        Assert.Null(HudMod.MenuPanel(MenuPanel(), layout));
+    }
+
     [Fact]
     public void El_N_M_conserva_sus_tres_colores_a_48_pt()
     {

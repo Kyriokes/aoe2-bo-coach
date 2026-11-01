@@ -36,11 +36,28 @@ public sealed partial class ResourceTargetViewModel(string region) : ObservableO
     /// <summary>Aviso que parpadea en rojo y amarillo (el de inactivos, mientras haya aldeanos sin hacer nada).</summary>
     [ObservableProperty] public partial bool Alert { get; set; }
 
+    /// <summary>
+    /// La GD como diferencia con los que hay (diseño mínimo, pedido del usuario del 2026-11-01): "=6" si están justos,
+    /// "+2" si faltan 2, "-5" si sobran 5; sin saber cuántos hay, el objetivo solo. Null sin objetivo.
+    /// </summary>
+    [ObservableProperty] public partial string? Difference { get; set; }
+
     public void Apply(double? target, double? actual, bool estimated)
     {
         Target = target is { } t ? $"{t:0}" : null;
         Match = target is { } goal ? CoachText.Match(goal, actual) : null;
         Estimated = estimated && actual is not null;
         Actual = actual is { } a ? $"{(estimated ? "~" : "")}{a:0}" : null;
+        Difference = DifferenceText(target, actual);
+    }
+
+    public static string? DifferenceText(double? target, double? actual)
+    {
+        if (target is not { } t)
+            return null;
+        if (actual is not { } a)
+            return $"{t:0}";
+        var diff = (int)Math.Round(t) - (int)Math.Round(a);
+        return diff == 0 ? $"={t:0}" : diff > 0 ? $"+{diff}" : $"-{-diff}";
     }
 }

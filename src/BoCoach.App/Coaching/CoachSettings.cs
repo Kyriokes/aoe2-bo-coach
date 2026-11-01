@@ -59,6 +59,13 @@ public sealed class CoachSettings
     /// </summary>
     public bool AutoRecord { get; set; } = true;
 
+    /// <summary>
+    /// Instalar el diseño mínimo del mod (data/hud_layout_minimo.json: la barra del juego opaca con los números blancos)
+    /// en vez del completo (log en el rincón, cola debajo, casilleros). Pedido del usuario del 2026-11-01: el completo
+    /// lee perfecto pero le cambia la estética al juego más de lo que otro jugador aceptaría.
+    /// </summary>
+    public bool HudMinimal { get; set; }
+
     /// <summary>Atajos cambiados por el jugador: id de la acción → combinación ("Ctrl+Alt+Right"); lo que falta es de fábrica.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = [];
 
@@ -92,6 +99,7 @@ public sealed class CoachSettings
                     Hotkeys = Strings(json["hotkeys"]),
                     DevMode = Flag(json["dev_mode"]),
                     AutoRecord = json["auto_record"] is JsonValue record && record.TryGetValue<bool>(out var auto) ? auto : true,
+                    HudMinimal = Flag(json["hud_minimo"]),
                 };
             }
         }
@@ -130,7 +138,7 @@ public sealed class CoachSettings
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
             ["bo_mode"] = BoMode == BuildOrderMode.Manual ? "manual" : "auto",
-            ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord };
+            ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord, ["hud_minimo"] = HudMinimal };
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;
         if (EloTeam is { } eloTeam)

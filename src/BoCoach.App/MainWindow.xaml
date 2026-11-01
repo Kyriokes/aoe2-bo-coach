@@ -38,7 +38,11 @@
                                 ToolTip="Idioma del juego, mod del HUD, una partida rápida contra 7 IA para calibrar y leer tu nombre en la pantalla de carga" />
                         <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
-                                ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: los aldeanos de cada recurso en cuadrados negros y el reloj más grande, que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
+                                ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: el panel de recursos con los números blancos grandes que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
+                        <CheckBox x:Name="HudMinimalBox" IsChecked="{Binding HudMinimal}" VerticalAlignment="Center" Margin="0,0,10,0"
+                                  ToolTip="Mínimo: la barra del juego donde está, opaca, con los números blancos y una franja fina de color bajo cada ícono; el log, la cola y el menú quedan como los trae el juego. Sin marcar: el diseño completo (log en el rincón, cola debajo de la barra, casilleros de color). Después de cambiarlo, volvé a instalar el mod">
+                            <TextBlock Text="Mod mínimo" Foreground="#C9C1B6" />
+                        </CheckBox>
                         <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" Visibility="{Binding RecordButtonVisible, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                         <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
                         <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"

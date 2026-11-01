@@ -10,6 +10,7 @@ using BoCoach.App.Coaching;
 using BoCoach.App.FirstRun;
 using BoCoach.App.Hotkeys;
 using BoCoach.App.Overlay;
+using BoCoach.Vision.Hud;
 using BoCoach.App.Web;
 using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
@@ -45,8 +46,10 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         BuildOrders = new BuildOrdersViewModel(cache, web, this, data.GameData);
         DataContext = BuildOrders;
         // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
+        // El diseño del mod (completo o mínimo) según la casilla "Mod mínimo", que vive en los ajustes del coach.
         Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English,
-            gameData: () => data.GameData, playerName: () => Coach?.PlayerName);
+            gameData: () => data.GameData, playerName: () => Coach?.PlayerName,
+            layout: () => HudLayout.Load(Path.Combine(CoachData.DataDir, Coach?.HudMinimal == true ? HudLayout.MinimalFileName : HudLayout.FileName)));
         ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual
         // y el coach la vuelve a intentar cada tanto hasta encontrar el HUD (arrancó en el menú del juego).
@@ -66,6 +69,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         GameLanguageBox.DataContext = Coach;
         MaxVillagersBox.DataContext = Coach;
         CursorRemindersBox.DataContext = Coach;
+        HudMinimalBox.DataContext = Coach;
         AutoStartBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
         ModeBox.DataContext = Coach;

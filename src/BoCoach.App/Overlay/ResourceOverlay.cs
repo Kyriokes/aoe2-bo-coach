@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using BoCoach.Core.Engine;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 using BoCoach.Vision.Regions;
 
 namespace BoCoach.App.Overlay;
@@ -240,7 +241,22 @@ public sealed class ResourceOverlay : Window
         }
         var scale = Scale();
         var rect = _layout.PixelsOf(target.Region, area);
-        if (target.Band is { } chip && target.Chip)
+        if (GuideRect(target.Region, rect) is { } guide)
+        {
+            // Diseño mínimo: en el hueco que el mod deja a la derecha de los aldeanos, como diferencia ("=6", "+2", "-5"),
+            // sin fondo (la barra ya es opaca) y pegado a la izquierda del hueco.
+            box.Width = guide.Width / scale;
+            box.Height = guide.Height / scale;
+            box.Padding = new Thickness(0);
+            box.CornerRadius = new CornerRadius(0);
+            box.Background = Brushes.Transparent;
+            text.FontSize = Math.Max(7, guide.Height * 0.8) / scale;
+            text.VerticalAlignment = VerticalAlignment.Center;
+            text.TextAlignment = TextAlignment.Left;
+            Canvas.SetLeft(box, (rect.X - area.X + guide.X) / scale);
+            Canvas.SetTop(box, (rect.Y - area.Y + guide.Y) / scale);
+        }
+        else if (target.Band is { } chip && target.Chip)
         {
             // Dentro del casillero del diseño, dejando su marco de color a la vista (la calibración lo reconoce por ahí).
             var margin = ChipMargin(chip);
@@ -292,10 +308,20 @@ public sealed class ResourceOverlay : Window
         Refresh(target);
     }
 
+    /// <summary>
+    /// El hueco de la GD del diseño (<see cref="HudCell.Guide"/>) en píxeles relativos a la caja de la celda (como
+    /// <see cref="ResourceTargetViewModel.Band"/>), o null si el diseño no lo tiene.
+    /// </summary>
+    private PixelRect? GuideRect(string region, PixelRect box) =>
+        _layout.Hud is { } hud && HudLayout.CellOf(region) is { } cellName && hud.Cells.Any(c => c.Name == cellName)
+            ? hud.GuideRect(hud.Cell(cellName), new PixelRect(0, 0, box.Width, box.Height))
+            : null;
+
     private void Refresh(ResourceTargetViewModel target)
     {
         var (box, text) = _items[target];
-        text.Text = target.Target is null ? "" : target.Target + (target.Estimated ? "~" : "");
+        var guide = _area is { } a && _layout.Regions.ContainsKey(target.Region) && GuideRect(target.Region, _layout.PixelsOf(target.Region, a)) is not null;
+        text.Text = target.Target is null ? "" : (guide ? target.Difference ?? target.Target : target.Target) + (target.Estimated ? "~" : "");
         text.Foreground = BrushFor(target.Match);
         box.Visibility = target.Target is null ? Visibility.Collapsed : Visibility.Visible;
     }

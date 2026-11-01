@@ -172,7 +172,7 @@ public static class HudMod
             // línea de arriba: debajo sigue la cola) y desde ahí hasta el borde, cada uno un fondo liso opaco y encima el
             // Surround con los lados interiores recortados (HudLayout.FramePieces). No hace falta partirla alrededor del
             // reloj: su campo es del mismo color y lleva las mismas líneas.
-            var barPieces = pieces.Where(p => p.Name is "BarLeft" or "BarRight").ToList();
+            var barPieces = pieces.Where(p => p.Name is "Bar" or "BarLeft" or "BarRight").ToList();
             barStart = barPieces.Min(p => p.Base.X);
             foreach (var widget in Framed(barPieces.Select(p => (p.Name, p)), layout))
                 children.Add(widget);
@@ -652,7 +652,7 @@ public static class HudMod
         var field = cell.Fields[workersField];
         workers["ViewPort"] = View(field.X, field.Y, field.Width, field.Height);
         workers["StateMaterials"] = Font(fontIndex, field.Points, white);
-        workers["TextAnchor"] = "CentreCentre";
+        workers["TextAnchor"] = Anchor(field);
         workers["ZPlaneLocalOffset"] = 2;
         children.Add(workersEntry);
         widget["ChildWidgets"] = children;
@@ -674,9 +674,12 @@ public static class HudMod
         }
         else
             label["StateMaterials"] = Font(fontIndex, field.Points, white);
-        label["TextAnchor"] = "CentreCentre";
+        label["TextAnchor"] = Anchor(field);
         label["ZPlaneLocalOffset"] = 2;
     }
+
+    /// <summary>Centrado en su campo o, en el diseño mínimo, pegado a la izquierda (junto al ícono).</summary>
+    private static string Anchor(HudField field) => field.AlignLeft ? "CentreLeft" : "CentreCentre";
 
     private static JsonObject Absolute(HudLayout layout, HudCell cell, HudField field) => View(cell.X + field.X, field.Y, field.Width, field.Height);
 
