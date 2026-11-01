@@ -136,7 +136,11 @@ Salió de mirar cómo el juego define las letras, `widgetui/materials.json` y lo
 - Dependencias que ya tenemos: "Villager Highlighter" cambia el ícono del aldeano en la cola (la biblioteca de íconos se armó con él prendido) y "Better Civ Emblems" pone las siglas de la civ en el panel de puntajes. Apagarlos cambia lo que se lee.
 - Los mods de interfaz (Custom UI, XavilUI, Streamlined, Minimalistic, Anne_HK) pisan los mismos paneles que nosotros (`resourcepanel`, `worldtimerpanel`, `technologyprogresspanel`, `menupanel`, `mappanel`, `scorepanel`, `commandpanel`) y mueven las colecciones con valores de pantalla; ninguno agrega widgets con datos nuevos. El resto son sprites del mapa, cursores, menús y los dos "Interactive Build Order Guide" (escenarios con voz para practicar BO).
 
-## 5. Qué cerraría cada uno
+## 5. El mod mínimo (decisión del 1/11)
+
+Después de la revisión de arriba, el usuario fijó el rumbo: el diseño completo lee perfecto pero le cambia la estética al juego más de lo que otro jugador aceptaría. En vez de seguir cambiando el HUD, se mide cuánto hace falta de verdad: `data/hud_layout_minimo.json` es la barra del juego donde la trae el juego, opaca de borde a borde y con su marco, los números blancos pegados al ícono (stock grande, aldeanos chicos debajo), una franja fina de color bajo cada ícono como ancla de la calibración y la GD como diferencia a la derecha de los aldeanos ("=6", "+2", "-5"); el log, la cola y el menú quedan como los trae el juego. Se elige con la casilla "Mod mínimo" de la app y el diseño completo queda como "modo pro". La partida que decide (cuánto se pierde de lectura con el mínimo) está pendiente en `docs/pendientes-usuario.md`.
+
+## 6. Qué cerraría cada uno
 
 | Problema | Qué haría falta |
 |---|---|
