@@ -29,8 +29,7 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
 
     public async Task<IReadOnlyList<ScoreRow>> ReadAsync(CapturedImage panel)
     {
-        var prepared = LoadingScreenReader.DarkOnLight(panel.Resample(Zoom)).Padded(Margin);
-        var lines = await ocr.ReadPreparedLinesAsync(prepared, Zoom, Margin);
+        var lines = await ReadRawAsync(panel);
         var rows = new List<ScoreRow>();
         foreach (var line in lines)
         {
@@ -42,6 +41,112 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
         }
         return rows;
     }
+
+    /// <summary>
+    /// Fondo del panel: el cuartil bajo del canal más alto de la mitad derecha de la fila (el panel es translúcido:
+    /// 55 sobre mapa oscuro, 72 sobre arena; el mapa sin panel pasa de 100). Debajo del panel pueden quedar hasta
+    /// <see cref="SkipBelow"/> filas de mapa, y la banda tiene que tener al menos <see cref="MinBand"/>.
+    /// </summary>
+    private const int PanelBackgroundMax = 90;
+    private const int SkipBelow = 16;
+    private const int MinBand = 10;
+
+    /// <summary>
+    /// La imagen como va al OCR: texto negro sobre blanco, y solo la banda del panel. La región trae mapa arriba del
+    /// panel (el panel crece hacia arriba en partidas por equipos) y, con todo en gris invertido, el OCR de Windows
+    /// a veces no leía nada en capturas casi iguales a otras que sí (20261101-125353: la 1364 se leía y la 1368,
+    /// 1372 y 1376 no; en toda la partida se perdía el 40 % de las lecturas). La banda son las filas de abajo cuyo
+    /// lado derecho es casi todo oscuro; el texto se toma por el canal más alto (el rojo del jugador 2 es oscuro en
+    /// gris) y lo de afuera de la banda queda blanco. Sin banda (otro panel), se invierte todo como antes.
+    /// </summary>
+    public static CapturedImage Prepare(CapturedImage panel)
+    {
+        var top = PanelTop(panel);
+        if (top is null)
+            return LoadingScreenReader.DarkOnLight(panel.Resample(Zoom)).Padded(Margin);
+        // El fondo del panel (la mediana de los cuartiles bajos de sus filas) va a blanco y lo que lo supera en
+        // TextContrast o más, a negro; el mapa a la izquierda del panel y arriba de la banda queda blanco.
+        var levels = Enumerable.Range(top.Value, panel.Height - top.Value).Select(y => Background(panel, y)).OrderBy(v => v).ToList();
+        var background = levels[levels.Count / 2] + 10;
+        var left = PanelLeft(panel, top.Value, background);
+        var output = new byte[panel.Bgra.Length];
+        for (var y = 0; y < panel.Height; y++)
+        {
+            for (var x = 0; x < panel.Width; x++)
+            {
+                var i = (y * panel.Width + x) * 4;
+                var max = Math.Max(panel.Bgra[i], Math.Max(panel.Bgra[i + 1], panel.Bgra[i + 2]));
+                var v = y < top || x < left ? (byte)255 : (byte)(255 - Math.Clamp((max - background) * 255 / TextContrast, 0, 255));
+                (output[i], output[i + 1], output[i + 2], output[i + 3]) = (v, v, v, 255);
+            }
+        }
+        return new CapturedImage(panel.Width, panel.Height, output).Resample(Zoom).Padded(Margin);
+    }
+
+    /// <summary>Cuánto más claro que el fondo tiene que ser un píxel para ir a negro del todo.</summary>
+    private const int TextContrast = 120;
+
+    /// <summary>
+    /// Primera columna del panel (está pegado al borde derecho): desde la izquierda de los íconos, hasta encontrar
+    /// 6 columnas seguidas en que menos de un cuarto de las filas de la banda son fondo (una columna de texto tiene
+    /// menos fondo, pero no tantas seguidas).
+    /// </summary>
+    private static int PanelLeft(CapturedImage panel, int top, int background)
+    {
+        var rows = panel.Height - top;
+        var mapColumns = 0;
+        for (var x = Math.Max(0, panel.Width - IconWidth - 1); x >= 0; x--)
+        {
+            var dark = 0;
+            for (var y = top; y < panel.Height; y++)
+            {
+                var (r, g, b) = panel.Pixel(x, y);
+                if (Math.Max(r, Math.Max(g, b)) <= background + 20)
+                    dark++;
+            }
+            mapColumns = dark < rows / 4 ? mapColumns + 1 : 0;
+            if (mapColumns >= 6)
+                return x + 6;
+        }
+        return 0;
+    }
+
+    /// <summary>El cuartil bajo del canal más alto en la mitad derecha de la fila: el fondo del panel, si la fila es del panel.</summary>
+    private static int Background(CapturedImage panel, int y)
+    {
+        var from = panel.Width / 2;
+        var values = new int[panel.Width - from];
+        for (var x = from; x < panel.Width; x++)
+        {
+            var (r, g, b) = panel.Pixel(x, y);
+            values[x - from] = Math.Max(r, Math.Max(g, b));
+        }
+        Array.Sort(values);
+        return values[values.Length / 4];
+    }
+
+    /// <summary>Primera fila de la banda del panel, pegada (o casi) al borde de abajo; null si abajo no hay panel.</summary>
+    public static int? PanelTop(CapturedImage panel)
+    {
+        var bottom = -1;
+        for (var y = panel.Height - 1; y >= Math.Max(0, panel.Height - SkipBelow); y--)
+        {
+            if (Background(panel, y) < PanelBackgroundMax)
+            {
+                bottom = y;
+                break;
+            }
+        }
+        if (bottom < 0)
+            return null;
+        var top = bottom;
+        while (top > 0 && Background(panel, top - 1) < PanelBackgroundMax)
+            top--;
+        return bottom - top + 1 >= MinBand ? top : null;
+    }
+
+    /// <summary>Los renglones que lee el OCR, antes de reconocer los puntajes.</summary>
+    public Task<IReadOnlyList<OcrTextLine>> ReadRawAsync(CapturedImage panel) => ocr.ReadPreparedLinesAsync(Prepare(panel), Zoom, Margin);
 
     /// <summary>
     /// "UKyriokes: 779/779" → 779. El segundo número es el puntaje más alto del equipo (en 1 contra 1, el mismo; en la
