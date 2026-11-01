@@ -26,13 +26,14 @@ public class PostureTests
         Assert.Equal("imperial_age", Posture.Effective(Scouts22, Data).Posture.NextAge);
     }
 
-    private static readonly BuildOrder HunsCa = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "civs", "huns-mejorada.json"));
+    // La guía original de "Scouts → CA" (la mejorada saca arqueros a caballo desde el 2026-10-31).
+    private static readonly BuildOrder HunsCa = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "civs", "huns.json"));
 
     private static BuildOrder Then(BuildOrder bo, string building) =>
         bo with { Steps = [.. bo.Steps, new Step { Id = "fin", Do = StepAction.Build, What = building, Count = 1 }] };
 
-    // Partida 20261031-215314 (hunos, "Scouts → CA (mejorada)"): la BO entrena exploradores y después construye 3
-    // galerías; con la BO terminada el overlay pedía "Establo parado: poné exploradores en cola" hasta el final,
+    // Partida 20261031-215314 (hunos, "Scouts → CA (mejorada)", la de entonces): la BO entrena exploradores y después
+    // construye 3 galerías; con la BO terminada el overlay pedía "Establo parado: poné exploradores en cola" hasta el final,
     // mientras salían arqueros a caballo.
     [Fact]
     public void Se_suman_los_edificios_de_produccion_que_la_BO_construye_despues_de_su_ultima_unidad()
@@ -42,6 +43,10 @@ public class PostureTests
         Assert.True(derived);
         Assert.Equal(["villager", "scout_cavalry", "archer"], posture.Queue);
         Assert.Equal("imperial_age", posture.NextAge);
+
+        // La mejorada de ahora termina sacando arqueros a caballo: la postura es esa.
+        var mejorada = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "civs", "huns-mejorada.json"));
+        Assert.Equal(["villager", "cavalry_archer"], Posture.Effective(mejorada, Data).Posture.Queue);
     }
 
     [Fact]
