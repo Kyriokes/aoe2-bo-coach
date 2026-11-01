@@ -405,6 +405,7 @@ public sealed class LiveCoach : IDisposable
         var loading = reading ?? _loadingReading;
         // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
         coach.Signals.PlayerSlot = me?.Slot;
+        builder.PlayerSlot = me?.Slot;
         coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
         lock (_gate)
         {

@@ -96,6 +96,12 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
 
     /// <summary>Edificios terminados según el log (y los deducidos), y cuándo salió cada unidad de cada tipo.</summary>
     private readonly Dictionary<string, int> _buildings = new() { [BuildOrders.BuildOrderValidator.StartingBuilding] = 1 };
+
+    /// <summary>Edificios repetidos que delata el puntaje (ver <see cref="ScoreLedger"/>).</summary>
+    private readonly ScoreLedger _ledger = new(data);
+
+    /// <summary>El número del jugador en el panel de puntajes (de la pantalla de carga); si no se sabe, se deduce.</summary>
+    public int? PlayerSlot { get => _ledger.PlayerSlot; set => _ledger.PlayerSlot = value; }
     private readonly Dictionary<string, List<double>> _unitTimes = [];
 
     /// <summary>True si la última población salió de la estimación y no de la pantalla.</summary>
@@ -122,6 +128,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
     public GameSnapshot? Build(ScreenReading reading)
     {
         var now = reading.Clock ?? _lastClock;
+        var pendingBefore = _pendingEvents.Count;
         foreach (var id in reading.NewEvents)
         {
             // Una casa que el tope ya había delatado: el aviso del log llegó tarde y no es otra casa.
@@ -158,6 +165,15 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
             InferHousesFromCap(readCap, now);
         if (reading.Queue is { } queue)
             BuildingsFromQueue(queue);
+        _ledger.Logged(_pendingEvents.Skip(pendingBefore), now);
+        if (reading.Scores is { } scores)
+        {
+            foreach (var building in _ledger.Update(scores, now))
+            {
+                _buildings[building] = _buildings.GetValueOrDefault(building) + 1;
+                _pendingEvents.Add(EventConventions.EventFor(BuildOrders.StepAction.Build, building)!);
+            }
+        }
         if (reading.Clock is { } c)
             _lastClock = c;
 

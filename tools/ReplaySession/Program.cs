@@ -14,7 +14,7 @@
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
-//   coach <grabación | lecturas.csv> <bo.json> [--civ clave] [--fonts ...] [--events ...] [--game-data data/game_data]
+//   coach <grabación | lecturas.csv> <bo.json> [--civ clave] [--slot N] [--fonts ...] [--events ...] [--game-data data/game_data]
 //         [--economy] [--guide] [--allocator exact|greedy] [--until m:ss]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
@@ -30,6 +30,9 @@
 //       "0=villager,3=archer"). Los grupos sin etiqueta (mapa, negro) se descartan.
 //   queue <grabación> <íconos.json> [--every 2]
 //       Lee la cola de producción y muestra cada cambio.
+//   scores <grabación> [--every 4 | --frames 1,2,3] [--raw [--dump carpeta]]
+//       Lee el panel de puntajes (jugador:puntaje) y muestra cada cambio. --raw agrega lo que leyó el OCR y --dump
+//       guarda la imagen preparada de cada captura.
 //   teach <grabación> <captura> <lugar> <clave> <íconos.json> [--row N]
 //       Corrige la biblioteca con un lugar de la cola (0 = el de la izquierda): si se parece a un "?", le pone la clave;
 //       si no, lo agrega. La fila se busca como al leer (o --row si no hay ningún ícono conocido). Clave "-" para lo
@@ -113,6 +116,7 @@ try
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
         "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
+        "scores" => Scores(args[1], args).GetAwaiter().GetResult(),
         "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
@@ -496,6 +500,37 @@ static async Task<int> Ocr(string recording, string region, string[] args)
     return 0;
 }
 
+static async Task<int> Scores(string recording, string[] args)
+{
+    var session = RecordedSession.Load(recording);
+    var reader = new BoCoach.Vision.Hud.ScoresPanelReader(RequiredOcr(args));
+    string? last = null;
+    if (!args.Contains("--every") && !args.Contains("--frames"))
+        args = [.. args, "--every", "4"];
+    foreach (var frame in SelectFrames(session, args))
+    {
+        var panel = session.Image(frame, RegionNames.Scores);
+        var rows = await reader.ReadAsync(panel);
+        var text = string.Join(" | ", rows.Select(r => $"{(r.Slot is { } s ? s.ToString() : "?")}:{r.Score}"));
+        if (args.Contains("--raw"))
+        {
+            // Lo que lee el OCR antes de reconocer los renglones (para ver por qué una captura sale vacía).
+            var raw = await reader.ReadRawAsync(panel);
+            text += $"   [{string.Join(" / ", raw.Select(l => $"{l.Top:0}:{l.Text}"))}]";
+            if (Text(args, "--dump", "") is { Length: > 0 } dump)
+            {
+                Directory.CreateDirectory(dump);
+                Png.Write(ScoresPanelReader.Prepare(panel), Path.Combine(dump, $"{frame:000000}_scores_prepared.png"));
+            }
+        }
+        if (text == last)
+            continue;
+        last = text;
+        Console.WriteLine($"{frame,6}  {text}");
+    }
+    return 0;
+}
+
 // ---- replay: pipeline completo sobre una grabación ----
 static async Task<int> Replay(string recording, string[] args)
 {
@@ -658,7 +693,8 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
     var bo = BuildOrderSerializer.Load(boPath);
     bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
-    var builder = new SnapshotBuilder(data, data.Civ(bo.Civ));
+    // --slot N: el número del jugador en el panel de puntajes (en vivo sale de la pantalla de carga; si no, se deduce).
+    var builder = new SnapshotBuilder(data, data.Civ(bo.Civ)) { PlayerSlot = args.Contains("--slot") ? Option(args, "--slot", 0) : null };
     var allocator = Enum.Parse<BoCoach.Core.Economy.AllocatorKind>(Text(args, "--allocator", "exact"), ignoreCase: true);
     var coach = new Coach(bo, data, catalog, economy: new BoCoach.Core.Economy.EconomySettings { Allocator = allocator });
 
@@ -687,7 +723,9 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
         var head = lines.LanesShown
             ? lines.Lanes.Select(l => $"{l.Label}: {l.Text}{(l.Tone == LaneTone.Waiting ? " [espera]" : l.Tone == LaneTone.Fallback ? " [fallback]" : "")}").ToList()
             : new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).OfType<string>().ToList();
-        var text = string.Join(" | ", head.Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null));
+        // Con la BO terminada, la app muestra la tarjeta (edad siguiente, edificios parados, tecnologías): va también.
+        var card = lines.Compact ? lines.Card.Select(c => c.Text) : [];
+        var text = string.Join(" | ", head.Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null).Concat(card).Distinct());
         if (text == last)
             continue;
         last = text;
