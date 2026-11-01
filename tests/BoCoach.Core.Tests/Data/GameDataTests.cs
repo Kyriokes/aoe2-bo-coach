@@ -150,6 +150,29 @@ public class GameDataTests
         Assert.True(saw.Gather.ContainsKey(GatherSource.Wood));
     }
 
+    // Las mejoras de los arqueros a caballo (para "Scouts → CA" de los hunos): galería, herrería de Castillos y universidad.
+    [Theory]
+    [InlineData("thumb_ring", "archery_range", Age.Castle)]
+    [InlineData("parthian_tactics", "archery_range", Age.Imperial)]
+    [InlineData("heavy_cavalry_archer", "archery_range", Age.Imperial)]
+    [InlineData("bodkin_arrow", "blacksmith", Age.Castle)]
+    [InlineData("leather_archer_armor", "blacksmith", Age.Castle)]
+    [InlineData("ballistics", "university", Age.Castle)]
+    public void Mejoras_de_los_arqueros_a_caballo(string key, string building, Age age)
+    {
+        var tech = V89.Get(key);
+        Assert.Equal((EntityKind.Tech, building, age), (tech.Kind, tech.MadeIn, tech.Age));
+        Assert.True(tech.Time > 0);
+    }
+
+    [Fact]
+    public void Los_tartaros_tienen_gratis_el_anillo_del_pulgar_y_las_tacticas_partas()
+    {
+        var tatars = V89.Civ("tatars");
+        Assert.Equal(ResourceAmounts.Zero, tatars.Cost(V89.Get("thumb_ring"), Age.Castle));
+        Assert.Equal(new ResourceAmounts(300, 250, 0, 0), V89.Civ("huns").Cost(V89.Get("thumb_ring"), Age.Castle));
+    }
+
     // D12: las bonificaciones de civ sobre lo que rinde la comida (recursos 216, 268, 219, 69 y 237 del .dat).
     [Theory]
     [InlineData("tatars", GatherSource.Sheep, 1.57)]

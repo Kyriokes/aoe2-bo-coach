@@ -79,6 +79,12 @@ const NAMES: Readonly<Record<string, readonly [string, string]>> = {
   padded_archer_armor: ["Armadura acolchada", "Armadura acolchada"],
   bloodlines: ["Linaje", "Linaje"],
   husbandry: ["Cría de caballos", "Cría de caballos"],
+  thumb_ring: ["Anillo del pulgar", "Anillo del pulgar"],
+  parthian_tactics: ["Tácticas partas", "Tácticas partas"],
+  heavy_cavalry_archer: ["Arquero a caballo pesado", "Arquero a caballo pesado"],
+  bodkin_arrow: ["Flecha punzante", "Flecha punzante"],
+  leather_archer_armor: ["Armadura de cuero para arqueros", "Armadura de cuero para arqueros"],
+  ballistics: ["Balística", "Balística"],
   coinage: ["Acuñación", "Acuñación"],
 };
 

@@ -1016,6 +1016,78 @@
       "made_in": "stable",
       "age": "castle"
     },
+    "thumb_ring": {
+      "kind": "tech",
+      "dat_id": 437,
+      "dat_name": "Thumb Ring",
+      "cost": {
+        "wood": 250,
+        "food": 300
+      },
+      "time": 45,
+      "made_in": "archery_range",
+      "age": "castle"
+    },
+    "parthian_tactics": {
+      "kind": "tech",
+      "dat_id": 436,
+      "dat_name": "Parthian Tactics",
+      "cost": {
+        "food": 200,
+        "gold": 250
+      },
+      "time": 65,
+      "made_in": "archery_range",
+      "age": "imperial"
+    },
+    "heavy_cavalry_archer": {
+      "kind": "tech",
+      "dat_id": 218,
+      "dat_name": "Heavy Cavalry Archer",
+      "cost": {
+        "food": 900,
+        "gold": 500
+      },
+      "time": 50,
+      "made_in": "archery_range",
+      "age": "imperial"
+    },
+    "bodkin_arrow": {
+      "kind": "tech",
+      "dat_id": 200,
+      "dat_name": "Bodkin Arrow",
+      "cost": {
+        "food": 200,
+        "gold": 100
+      },
+      "time": 35,
+      "made_in": "blacksmith",
+      "age": "castle"
+    },
+    "leather_archer_armor": {
+      "kind": "tech",
+      "dat_id": 212,
+      "dat_name": "Leather Archer Armor",
+      "cost": {
+        "food": 150,
+        "gold": 150
+      },
+      "time": 55,
+      "made_in": "blacksmith",
+      "age": "castle"
+    },
+    "ballistics": {
+      "kind": "tech",
+      "dat_id": 93,
+      "dat_name": "Ballistics",
+      "cost": {
+        "wood": 300,
+        "gold": 175
+      },
+      "time": 60,
+      "made_in": "university",
+      "age": "castle"
+    },
     "coinage": {
       "kind": "tech",
       "dat_id": 23,
@@ -1107,10 +1179,13 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "franks": {
@@ -1188,10 +1263,13 @@
         "camel_rider",
         "cavalry_archer",
         "eagle_scout",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_shaft_mining",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -1296,9 +1374,11 @@
         "eagle_scout",
         "gold_shaft_mining",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
-        "stone_wall"
+        "stone_wall",
+        "thumb_ring"
       ]
     },
     "teutons": {
@@ -1330,11 +1410,14 @@
         "cavalry_archer",
         "eagle_scout",
         "gold_shaft_mining",
+        "heavy_cavalry_archer",
         "husbandry",
         "light_cavalry",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "thumb_ring"
       ]
     },
     "japanese": {
@@ -1856,6 +1939,114 @@
             "food": 128
           }
         ],
+        "thumb_ring": [
+          {
+            "food": 300,
+            "wood": 250
+          },
+          {
+            "food": 285,
+            "wood": 237
+          },
+          {
+            "food": 270,
+            "wood": 225
+          },
+          {
+            "food": 255,
+            "wood": 213
+          }
+        ],
+        "parthian_tactics": [
+          {
+            "food": 200,
+            "gold": 250
+          },
+          {
+            "food": 190,
+            "gold": 237
+          },
+          {
+            "food": 180,
+            "gold": 225
+          },
+          {
+            "food": 170,
+            "gold": 213
+          }
+        ],
+        "heavy_cavalry_archer": [
+          {
+            "food": 900,
+            "gold": 500
+          },
+          {
+            "food": 855,
+            "gold": 475
+          },
+          {
+            "food": 810,
+            "gold": 450
+          },
+          {
+            "food": 765,
+            "gold": 425
+          }
+        ],
+        "bodkin_arrow": [
+          {
+            "food": 200,
+            "gold": 100
+          },
+          {
+            "food": 190,
+            "gold": 95
+          },
+          {
+            "food": 180,
+            "gold": 90
+          },
+          {
+            "food": 170,
+            "gold": 85
+          }
+        ],
+        "leather_archer_armor": [
+          {
+            "food": 150,
+            "gold": 150
+          },
+          {
+            "food": 142,
+            "gold": 142
+          },
+          {
+            "food": 135,
+            "gold": 135
+          },
+          {
+            "food": 128,
+            "gold": 128
+          }
+        ],
+        "ballistics": [
+          {
+            "wood": 300,
+            "gold": 175
+          },
+          {
+            "wood": 285,
+            "gold": 166
+          },
+          {
+            "wood": 270,
+            "gold": 157
+          },
+          {
+            "wood": 255,
+            "gold": 149
+          }
+        ],
         "coinage": [
           {
             "food": 200,
@@ -1899,8 +2090,10 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mangonel",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -2005,6 +2198,7 @@
         "bloodlines",
         "eagle_scout",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -2233,11 +2427,14 @@
         "demolition_raft",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "mongols": {
@@ -2296,9 +2493,12 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -2324,6 +2524,34 @@
           {
             "food": 100
           }
+        ],
+        "bodkin_arrow": [
+          {
+            "food": 200
+          },
+          {
+            "food": 200
+          },
+          {
+            "food": 200
+          },
+          {
+            "food": 200
+          }
+        ],
+        "leather_archer_armor": [
+          {
+            "food": 150
+          },
+          {
+            "food": 150
+          },
+          {
+            "food": 150
+          },
+          {
+            "food": 150
+          }
         ]
       },
       "names": {
@@ -2339,7 +2567,9 @@
         "crossbowman",
         "eagle_scout",
         "gold_shaft_mining",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -2508,15 +2738,18 @@
         "camel_rider",
         "cavalry_archer",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "settlement",
         "stable",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -2606,10 +2839,12 @@
         "cavalry_archer",
         "gold_shaft_mining",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "settlement",
@@ -2811,10 +3046,22 @@
           {},
           {},
           {}
+        ],
+        "leather_archer_armor": [
+          {},
+          {},
+          {},
+          {}
         ]
       },
       "times": {
         "padded_archer_armor": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "leather_archer_armor": [
           0.0,
           0.0,
           0.0,
@@ -2835,6 +3082,7 @@
         "eagle_scout",
         "mangonel",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -2886,7 +3134,9 @@
         "cavalry_archer",
         "eagle_scout",
         "gold_shaft_mining",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -2921,6 +3171,7 @@
         "eagle_scout",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -3131,6 +3382,7 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
@@ -3140,6 +3392,7 @@
         "mill",
         "mining_camp",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
@@ -3286,9 +3539,11 @@
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "portuguese": {
@@ -3305,7 +3560,9 @@
         "demolition_raft",
         "eagle_scout",
         "gold_shaft_mining",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -3338,6 +3595,7 @@
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -3631,6 +3889,7 @@
         "battle_elephant",
         "eagle_scout",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"
@@ -3741,6 +4000,7 @@
         "battle_elephant",
         "eagle_scout",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"
@@ -3767,6 +4027,7 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -3828,7 +4089,9 @@
         "camel_rider",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"
@@ -3885,10 +4148,12 @@
         "camel_rider",
         "eagle_scout",
         "hand_cannoneer",
+        "leather_archer_armor",
         "mule_cart",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "vietnamese": {
@@ -4148,6 +4413,7 @@
         "gold_shaft_mining",
         "hand_cannoneer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -4234,6 +4500,42 @@
           {
             "food": 50
           }
+        ],
+        "bodkin_arrow": [
+          {
+            "food": 100,
+            "gold": 100
+          },
+          {
+            "food": 100,
+            "gold": 100
+          },
+          {
+            "food": 100,
+            "gold": 100
+          },
+          {
+            "food": 100,
+            "gold": 100
+          }
+        ],
+        "leather_archer_armor": [
+          {
+            "food": 75,
+            "gold": 150
+          },
+          {
+            "food": 75,
+            "gold": 150
+          },
+          {
+            "food": 75,
+            "gold": 150
+          },
+          {
+            "food": 75,
+            "gold": 150
+          }
         ]
       },
       "times": {
@@ -4277,6 +4579,34 @@
           1.57,
           1.57,
           1.57
+        ]
+      },
+      "costs": {
+        "thumb_ring": [
+          {},
+          {},
+          {},
+          {}
+        ],
+        "parthian_tactics": [
+          {},
+          {},
+          {},
+          {}
+        ]
+      },
+      "times": {
+        "thumb_ring": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "parthian_tactics": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
         ]
       },
       "names": {
@@ -4368,6 +4698,7 @@
         "eagle_scout",
         "gold_shaft_mining",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer"
       ]
@@ -4653,9 +4984,12 @@
         "camel_rider",
         "cavalry_archer",
         "eagle_scout",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "thumb_ring"
       ]
     },
     "sicilians": {
@@ -4728,9 +5062,12 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw",
         "watch_tower"
       ]
@@ -4797,8 +5134,10 @@
         "eagle_scout",
         "gold_shaft_mining",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mill",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"
@@ -4906,9 +5245,12 @@
         "cavalry_archer",
         "crop_rotation",
         "eagle_scout",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "thumb_ring"
       ]
     },
     "dravidians": {
@@ -5019,8 +5361,10 @@
         "crop_rotation",
         "eagle_scout",
         "gold_shaft_mining",
+        "heavy_cavalry_archer",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_shaft_mining"
@@ -5039,11 +5383,14 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "gurjaras": {
@@ -5072,8 +5419,10 @@
         "battle_elephant",
         "cavalry_archer",
         "eagle_scout",
+        "heavy_cavalry_archer",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"
@@ -5156,9 +5505,11 @@
         "eagle_scout",
         "hand_cannoneer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_shaft_mining",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -5195,12 +5546,15 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "lumber_camp",
         "mining_camp",
         "monastery",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_shaft_mining",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -5221,6 +5575,7 @@
         "monastery",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -5288,8 +5643,10 @@
         "eagle_scout",
         "fire_galley",
         "galley",
+        "heavy_cavalry_archer",
         "husbandry",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "transport_ship"
@@ -5372,7 +5729,9 @@
         "galley",
         "gold_shaft_mining",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_wall",
@@ -5395,6 +5754,7 @@
         "hand_cannoneer",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "scorpion",
         "settlement",
         "steppe_lancer",
@@ -5414,10 +5774,13 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "knight",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "thumb_ring"
       ]
     },
     "wei": {
@@ -5433,6 +5796,7 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "knight",
         "mule_cart",
         "settlement",
@@ -5455,11 +5819,33 @@
         "knight",
         "mangonel",
         "mule_cart",
-        "settlement"
+        "parthian_tactics",
+        "settlement",
+        "thumb_ring"
       ]
     },
     "khitans": {
       "dat_name": "Khitans",
+      "costs": {
+        "heavy_cavalry_archer": [
+          {
+            "food": 450,
+            "gold": 250
+          },
+          {
+            "food": 450,
+            "gold": 250
+          },
+          {
+            "food": 450,
+            "gold": 250
+          },
+          {
+            "food": 450,
+            "gold": 250
+          }
+        ]
+      },
       "times": {
         "spearman": [
           19.13,
@@ -5523,6 +5909,7 @@
         "fire_galley",
         "galley",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
         "scale_barding_armor",
         "settlement",
@@ -5548,10 +5935,12 @@
         "fire_galley",
         "galley",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "mule_cart",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "transport_ship",
         "two_man_saw"
       ]
@@ -5578,6 +5967,7 @@
         "mule_cart",
         "settlement",
         "steppe_lancer",
+        "thumb_ring",
         "transport_ship"
       ]
     },
@@ -5647,6 +6037,7 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
@@ -5656,6 +6047,7 @@
         "mill",
         "mining_camp",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
@@ -5676,6 +6068,7 @@
         "cavalry_archer",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
@@ -5685,10 +6078,12 @@
         "mill",
         "mining_camp",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
         "steppe_lancer",
+        "thumb_ring",
         "two_man_saw"
       ]
     },
@@ -5730,6 +6125,60 @@
             "food": 88,
             "gold": 100
           }
+        ],
+        "thumb_ring": [
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
+          },
+          {
+            "food": 150,
+            "wood": 250
+          }
+        ],
+        "parthian_tactics": [
+          {
+            "food": 100,
+            "gold": 250
+          },
+          {
+            "food": 100,
+            "gold": 250
+          },
+          {
+            "food": 100,
+            "gold": 250
+          },
+          {
+            "food": 100,
+            "gold": 250
+          }
+        ],
+        "heavy_cavalry_archer": [
+          {
+            "food": 450,
+            "gold": 500
+          },
+          {
+            "food": 450,
+            "gold": 500
+          },
+          {
+            "food": 450,
+            "gold": 500
+          },
+          {
+            "food": 450,
+            "gold": 500
+          }
         ]
       },
       "start": {
@@ -5751,6 +6200,7 @@
         "crop_rotation",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "husbandry",
         "knight",
         "light_cavalry",
@@ -5760,11 +6210,13 @@
         "mill",
         "mining_camp",
         "mule_cart",
+        "parthian_tactics",
         "scale_barding_armor",
         "scout_cavalry",
         "stable",
         "steppe_lancer",
-        "stone_shaft_mining"
+        "stone_shaft_mining",
+        "thumb_ring"
       ]
     },
     "saxons": {
@@ -5781,7 +6233,9 @@
         "demolition_raft",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "stone_shaft_mining"
@@ -5802,9 +6256,12 @@
         "eagle_scout",
         "gold_shaft_mining",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
-        "steppe_lancer"
+        "steppe_lancer",
+        "thumb_ring"
       ]
     },
     "danes": {
@@ -5842,7 +6299,9 @@
         "demolition_raft",
         "eagle_scout",
         "hand_cannoneer",
+        "heavy_cavalry_archer",
         "mule_cart",
+        "parthian_tactics",
         "settlement",
         "steppe_lancer",
         "two_man_saw"

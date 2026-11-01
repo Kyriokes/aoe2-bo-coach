@@ -116,6 +116,13 @@ ENTIDADES: dict[str, tuple[str, int]] = {
     "padded_archer_armor": ("tech", 211),
     "bloodlines": ("tech", 435),
     "husbandry": ("tech", 39),
+    # Mejoras de los arqueros a caballo (galería, herrería de Castillos, universidad)
+    "thumb_ring": ("tech", 437),
+    "parthian_tactics": ("tech", 436),
+    "heavy_cavalry_archer": ("tech", 218),
+    "bodkin_arrow": ("tech", 200),
+    "leather_archer_armor": ("tech", 212),
+    "ballistics": ("tech", 93),
     "coinage": ("tech", 23),
 }
 
