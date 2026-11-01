@@ -43,11 +43,11 @@ internal static class HudPreview
 
         PixelRect Rect(int x, int y, int w, int h) => new(Px(margin + x), Px(margin + y), Px(w), Px(h));
         var bar = layout.Bar;
-        canvas.Fill(Rect(0, 0, bar.Width, bar.Height), ToBytes(bar.Background));
+        canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.Height), ToBytes(bar.Background));
         var border = ToBytes(bar.BorderColor);
-        canvas.Fill(Rect(0, 0, bar.Width, bar.BorderWidth), border);
-        canvas.Fill(Rect(0, bar.Height - bar.BorderWidth, bar.Width, bar.BorderWidth), border);
-        canvas.Fill(Rect(0, 0, bar.BorderWidth, bar.Height), border);
+        canvas.Fill(Rect(bar.X, 0, bar.Width - bar.X, bar.BorderWidth), border);
+        canvas.Fill(Rect(bar.X, bar.Height - bar.BorderWidth, bar.Width - bar.X, bar.BorderWidth), border);
+        canvas.Fill(Rect(bar.X, 0, bar.BorderWidth, bar.Height), border);
         canvas.Fill(Rect(bar.Width - bar.BorderWidth, 0, bar.BorderWidth, bar.Height), border);
 
         foreach (var cell in layout.Cells)
@@ -79,19 +79,19 @@ internal static class HudPreview
         canvas.Fill(clockRect, (0, 0, 0));
         if (clockFont is not null)
             canvas.Text("00:12:34", clockRect, clockFont, layout.Clock.Points, ppu, White);
-        // El log (8 renglones de 20 px a 1080p, como rayas blancas) y la cola (íconos grises) sobre su fondo negro.
+        // El log (renglones de 17 px a 1080p, como rayas blancas) y la cola (íconos verdes) sobre el gris de la barra.
         if (layout.Log is { } log)
         {
             var logRect = Rect(log.X, log.Y, log.Width, log.Height);
-            canvas.Fill(logRect, (0, 0, 0));
-            var line = (int)Math.Round(20 * scale);
-            for (var i = 0; i < 8 && 5 + (i + 1) * line <= logRect.Height; i++)
+            canvas.Fill(logRect, ToBytes(layout.Bar.Background));
+            var line = (int)Math.Round(17 * scale);
+            for (var i = 0; i < 10 && 5 + (i + 1) * line <= logRect.Height; i++)
                 canvas.Fill(new PixelRect(logRect.X + 5, logRect.Y + 5 + i * line + line / 3, logRect.Width * (5 + i % 3) / 10, Math.Max(1, line / 3)), White);
         }
         if (layout.Queue is { } queue)
         {
             var m = HudLayout.QueueMargin;
-            canvas.Fill(Rect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), (0, 0, 0));
+            canvas.Fill(Rect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), ToBytes(layout.Bar.Background));
             for (var i = 0; i < 6; i++)
                 canvas.Fill(Rect(queue.X + i * queue.Height, queue.Y, queue.Height - 2, queue.Height), (60, 120, 60));
         }
