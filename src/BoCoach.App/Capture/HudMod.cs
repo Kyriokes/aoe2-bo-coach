@@ -41,12 +41,14 @@ public static class HudMod
     private const string QueuePanelFile = "technologyprogresspanel.json";
 
     /// <summary>
-    /// Las colecciones del log y del reloj se miden en unidades de pantalla (3840 de ancho, 0,5 px a 1080p); el diseño,
-    /// en las del HUD (<see cref="HudLayout.PixelsPerUnitAt1080p"/> px a 1080p).
+    /// El origen de las colecciones del log y del reloj se mide en unidades de pantalla (3840 de ancho, 0,5 px a 1080p);
+    /// los widgets de adentro, como el diseño, en las del HUD (<see cref="HudLayout.PixelsPerUnitAt1080p"/> px a
+    /// 1080p). Primera prueba del log (2026-10-31, grabación 20261031-215314): con el tamaño pasado a unidades de
+    /// pantalla, el fondo de 600×360 midió 260×157 px (0,4348 px por unidad) y no los 304×183 del diseño.
     /// </summary>
     private const double PixelsPerScreenUnitAt1080p = 0.5;
 
-    /// <summary>Margen del texto del log dentro de su fondo, en unidades de pantalla (el del juego).</summary>
+    /// <summary>Margen del texto del log dentro de su fondo, en unidades del HUD (el del juego).</summary>
     private const int LogTextMargin = 10;
 
     /// <summary>Margen izquierdo del texto del reloj dentro de su campo negro, en unidades del panel.</summary>
@@ -286,7 +288,8 @@ public static class HudMod
 
     /// <summary>
     /// El log de eventos según el diseño (<see cref="HudLayout.Log"/>), o null si el diseño no lo ubica: la colección
-    /// corrida abajo de la barra (en unidades de pantalla), el cuadro del log y su texto del tamaño del diseño, un fondo
+    /// corrida abajo de la barra (su origen, en unidades de pantalla), el cuadro del log y su texto del tamaño del
+    /// diseño (en unidades del HUD), un fondo
     /// negro detrás (el del juego, <c>BlackPanel</c>, no se ve en la partida) y el chat a continuación.
     /// </summary>
     public static JsonObject? LogPanel(JsonObject original, HudLayout layout)
@@ -302,7 +305,7 @@ public static class HudMod
         var widgets = RemoveOurs(collection["Widgets"]!.AsArray());
         var events = widgets.Select(w => w!["Widget"]!.AsObject()).FirstOrDefault(w => Text(w, "Name") == "EventBackground")
             ?? throw new InvalidDataException("No encontré el log en el panel de avisos.");
-        var (width, height) = (Su(log.Width), Su(log.Height));
+        var (width, height) = (log.Width, log.Height);
         events["ViewPort"] = View(0, 0, width, height);
         if (events["Box"] is JsonObject box)
             (box["width"], box["height"]) = (width, height);

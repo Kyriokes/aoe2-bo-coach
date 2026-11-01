@@ -361,13 +361,14 @@ public sealed class HudModTests : IDisposable
         var layout = Layout();
         var panel = HudMod.LogPanel(LogPanel(), layout)!;
 
-        // La colección se mide en unidades de pantalla (0,5 px a 1080p) y el diseño en las del HUD (0,4286 px).
+        // El origen de la colección se mide en unidades de pantalla (0,5 px a 1080p); los widgets de adentro, como el
+        // diseño, en las del HUD (en la primera prueba, 600 de ancho midieron 260 px: 0,4348 por unidad).
         var k = layout.PixelsPerUnitAt1080p / 0.5;
         int Su(int units) => (int)Math.Round(units * k);
         var log = layout.Log!;
         var viewport = panel["Collection"]!["ViewPort"]!;
         Assert.Equal((Su(log.X), Su(log.Y)), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
-        var (w, h) = (Su(log.Width), Su(log.Height));
+        var (w, h) = (log.Width, log.Height);
         Assert.Equal("BoCoachLogBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
         Assert.Equal((0, 0, w, h), View(Widget(panel, "BoCoachLogBackground")));
         Assert.Equal("FlatColorWithAlpha", Material(Widget(panel, "BoCoachLogBackground")));
@@ -375,6 +376,7 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((10, 10, w - 20, h - 20), View(Widget(panel, "TextBox")));
         Assert.Equal(h - 20, (int)Widget(panel, "TextBox")["TextBox"]!["height"]!);
         Assert.True((h - 20) / 40 >= 8, "entran 8 renglones de 40");
+        Assert.Equal((0, 96), (Su(log.X), Su(log.Y))); // en la prueba cayó en y 48 px, justo abajo de la barra
         Assert.Equal(h + 50, (int)Widget(panel, "ChatBackground")["ViewPort"]!["yorigin"]!);
     }
 
