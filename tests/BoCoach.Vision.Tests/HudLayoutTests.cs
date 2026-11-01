@@ -117,13 +117,13 @@ public class HudLayoutTests
         var wood = layout.Cell("wood");
         Assert.Equal(10, wood.X);
         Assert.Equal(new HudChip(10, 96, 84, 10, new HudColor(0.53, 0.36, 0.16)), wood.Chip);
-        Assert.Equal(28, wood.Fields["villagers"].Points);
+        Assert.Equal(36, wood.Fields["villagers"].Points);
         Assert.Equal(48, wood.Fields["stock"].Points);
         Assert.True(wood.Fields["stock"].AlignLeft);
         Assert.True(wood.Fields["villagers"].AlignLeft);
         Assert.False(layout.Cell("age").Fields["text"].AlignLeft);
         Assert.False(Repo().Cell("wood").Fields["stock"].AlignLeft);
-        Assert.Equal(new UnitRect(220, 64, 184, 40), wood.Guide);
+        Assert.Equal(new UnitRect(220, 60, 184, 44), wood.Guide);
         Assert.Empty(wood.Backgrounds);
         Assert.Null(layout.Cell("idle").Guide);
         Assert.Equal(5, layout.Anchors.Count());
@@ -135,11 +135,11 @@ public class HudLayoutTests
         var layout = Minimal();
         var wood = layout.Cell("wood");
 
-        // Caja de la celda a 0,4348 px por unidad (178×47): la guía arranca a 220/410 del ancho y 64/108 del alto.
+        // Caja de la celda a 0,4348 px por unidad (178×47): la guía arranca a 220/410 del ancho y 60/108 del alto.
         var again = HudLayout.Parse(layout.ToJson());
         Assert.Equal(wood.Guide, again.Cell("wood").Guide);
         Assert.True(again.Cell("wood").Fields["stock"].AlignLeft);
-        Assert.Equal(new BoCoach.Vision.Capture.PixelRect(96, 28, 80, 17), layout.GuideRect(wood, new BoCoach.Vision.Capture.PixelRect(0, 0, 178, 47)));
+        Assert.Equal(new BoCoach.Vision.Capture.PixelRect(96, 26, 80, 19), layout.GuideRect(wood, new BoCoach.Vision.Capture.PixelRect(0, 0, 178, 47)));
     }
 
     [Fact]

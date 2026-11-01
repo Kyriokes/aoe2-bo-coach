@@ -404,11 +404,11 @@ public sealed class HudModTests : IDisposable
         var chip = Children(wood).First(c => (string?)c["Name"] == "BoCoachChip");
         Assert.Equal((10, 96, 84, 10), View(chip));
         var workers = Children(wood).First(c => (string?)c["Name"] == "Workers");
-        Assert.Equal((104, 64, 110, 40), View(workers));
-        Assert.Equal(28, Points(workers));
+        Assert.Equal((104, 60, 110, 44), View(workers));
+        Assert.Equal(36, Points(workers));
         Assert.Equal("CentreLeft", (string?)workers["TextAnchor"]);
         var stock = Widget(panel, "WoodStorage");
-        Assert.Equal((114, 2, 300, 60), View(stock));
+        Assert.Equal((114, 8, 300, 52), View(stock));
         Assert.Equal(48, Points(stock));
         Assert.Equal("CentreLeft", (string?)stock["TextAnchor"]);
         Assert.Equal("CentreCentre", (string?)Widget(HudMod.ResourcePanel(ResourcePanel(), Layout()), "WoodStorage")["TextAnchor"]);

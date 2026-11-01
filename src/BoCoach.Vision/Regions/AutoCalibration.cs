@@ -313,6 +313,13 @@ public static class AutoCalibration
             var queue = RegionLayout.Default.PixelsOf(RegionNames.ProductionQueue, 1920, 1080);
             boxes[RegionNames.ProductionQueue] = new PixelRect(Scaled(queue.X, scale), Scaled(queue.Y, scale), Scaled(queue.Width, scale), Scaled(queue.Height, scale));
         }
+        // Lo mismo con el log si el diseño no lo corre (diseño mínimo): con la referencia, al pasar del completo al mínimo
+        // quedaba la caja del rincón (sobre la barra) y el log no se leía (partida 20261101-163015).
+        if (hud is { Log: null } && !boxes.ContainsKey(RegionNames.EventLog))
+        {
+            var log = RegionLayout.Default.PixelsOf(RegionNames.EventLog, 1920, 1080);
+            boxes[RegionNames.EventLog] = new PixelRect(Scaled(log.X, scale), Scaled(log.Y, scale), Scaled(log.Width, scale), Scaled(log.Height, scale));
+        }
 
         // El panel de puntajes, anclado abajo a la derecha de la pantalla y escalado como el HUD (la caja guardada podía
         // ser la vieja, de 2 renglones).

@@ -169,6 +169,21 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         AssertClose(new PixelRect(6 + 707, 4, 163, 46), population, 2, RegionNames.Population);
     }
 
+    // Al pasar del diseño completo (log en el rincón) al mínimo, la caja del log tiene que volver a la de siempre, no
+    // quedarse con la de la referencia (partida 20261101-163015: el log sobre la barra, 0 eventos).
+    [Fact]
+    public void Con_el_diseno_minimo_la_caja_del_log_vuelve_a_la_de_siempre()
+    {
+        var screen = HudLayoutScreens.Render(MinimalLayout, 0.4286, originX: 6, originY: 4);
+        var reference = RegionLayout.Default.With(RegionNames.EventLog, new RegionRect(0, 0, 261 / 1920.0, 113 / 1080.0));
+
+        var found = AutoCalibration.Detect(screen, reference, MinimalLayout);
+
+        Assert.NotNull(found);
+        var log = found.Layout.PixelsOf(RegionNames.EventLog, screen.Width, screen.Height);
+        AssertClose(RegionLayout.Default.PixelsOf(RegionNames.EventLog, 1920, 1080), log, 2, RegionNames.EventLog);
+    }
+
     [Fact]
     public void Con_el_diseno_encuentra_los_cinco_casilleros_y_arma_las_cajas_desde_el_diseno()
     {
