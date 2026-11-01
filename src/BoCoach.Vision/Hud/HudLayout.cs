@@ -46,7 +46,11 @@ public sealed record HudIcon(int X, int Y, int Size);
 public sealed record HudChip(int X, int Y, int Width, int Height, HudColor Color);
 
 /// <summary>Un texto que el juego escribe y el lector lee: con qué letra (<see cref="Font"/>) y a qué tamaño lo escribe el mod.</summary>
-public sealed record HudField(int X, int Y, int Width, int Height, string Font, int Points);
+public sealed record HudField(int X, int Y, int Width, int Height, string Font, int Points)
+{
+    /// <summary>Pegado a la izquierda del campo (diseño mínimo: los números junto al ícono) en vez de centrado.</summary>
+    public bool AlignLeft { get; init; }
+}
 
 /// <summary>El "/" entre aldeanos y stock. Sin <see cref="Text"/>, una barrita del color.</summary>
 public sealed record HudSeparator(int X, int Y, int Width, int Height, string? Text, int Points, HudColor Color);
@@ -60,7 +64,15 @@ public sealed record HudCell(
     HudChip? Chip,
     IReadOnlyDictionary<string, HudField> Fields,
     IReadOnlyList<UnitRect> Backgrounds,
-    HudSeparator? Separator);
+    HudSeparator? Separator)
+{
+    /// <summary>
+    /// Dónde escribe el overlay la GD (diseño mínimo, 2026-11-01): un hueco que el mod deja libre a la derecha de los
+    /// aldeanos, donde va la diferencia con lo que pide el reparto ("=6", "+2", "-5"). Null: la GD va dentro del
+    /// casillero (diseño completo) o debajo de la caja (sin diseño).
+    /// </summary>
+    public UnitRect? Guide { get; init; }
+}
 
 /// <param name="Width">Hasta dónde llega la barra, desde el borde izquierdo del panel.</param>
 public sealed record HudBar(int Width, int Height, HudColor Background, int BorderWidth, HudColor BorderColor)
@@ -80,6 +92,9 @@ public sealed record HudClock(int Gap, int Y, int Width, int Height, string Font
 public sealed class HudLayout
 {
     public const string FileName = "hud_layout.json";
+
+    /// <summary>El diseño mínimo (la barra del juego opaca con los números blancos y nada más), al lado del completo.</summary>
+    public const string MinimalFileName = "hud_layout_minimo.json";
 
     /// <summary>Las celdas, en el orden en que van en la barra.</summary>
     public static readonly string[] CellOrder = ["wood", "food", "gold", "stone", "population", "idle", "age"];
@@ -210,8 +225,19 @@ public sealed class HudLayout
     /// </summary>
     public IReadOnlyList<FramePiece> FramePieces()
     {
-        if (Frame is null || Log is not { } log || QueueBack is not { } queue)
+        if (Frame is null)
             return [];
+        if (Log is not { } log || QueueBack is not { } queue)
+        {
+            // Diseño mínimo: la barra sola, de borde a borde (el marco arriba y a los costados cae fuera de la pantalla),
+            // y el campo del reloj con las mismas líneas de arriba y de abajo.
+            var clockOnly = ClockRect();
+            return
+            [
+                new("Bar", new UnitRect(Bar.X, 0, Bar.Width - Bar.X, Bar.Height), Top: true, Bottom: true, Left: true, Right: true),
+                new("Clock", new UnitRect(clockOnly.X, 0, clockOnly.Width, Bar.Height), Top: true, Bottom: true, Left: false, Right: false),
+            ];
+        }
         var logBottom = log.Y + log.Height;
         var step = Math.Min(queue.Y + queue.Height, logBottom);
         var pieces = new List<FramePiece>
@@ -286,6 +312,10 @@ public sealed class HudLayout
         return Proportional(cell, box, f.X, f.Y, f.Width, f.Height);
     }
 
+    /// <summary>Dónde cae la guía (<see cref="HudCell.Guide"/>) dentro de la caja de su celda, en proporción; null si la celda no tiene.</summary>
+    public PixelRect? GuideRect(HudCell cell, PixelRect box) =>
+        cell.Guide is { } g ? Proportional(cell, box, g.X, g.Y, g.Width, g.Height) : null;
+
     /// <summary>Dónde cae el casillero dentro de la caja de su celda, en proporción.</summary>
     public PixelRect ChipRect(HudCell cell, PixelRect box)
     {
@@ -342,7 +372,10 @@ public sealed class HudLayout
                     throw new InvalidDataException(Missing($"el campo {field} de {name}"));
                 if (!Fonts.Contains(f.Font ?? ""))
                     throw new InvalidDataException($"{source}: la letra \"{f.Font}\" del campo {field} de {name} no existe (vale {string.Join(", ", Fonts)}).");
-                fields[field] = new HudField(f.X, f.Y, f.Width, f.Height, f.Font!, f.Points);
+                var align = (f.Align ?? "centre").Trim().ToLowerInvariant();
+                if (align is not ("centre" or "center" or "left"))
+                    throw new InvalidDataException($"{source}: align del campo {field} de {name} tiene que ser \"left\" o \"centre\".");
+                fields[field] = new HudField(f.X, f.Y, f.Width, f.Height, f.Font!, f.Points) { AlignLeft = align == "left" };
             }
             foreach (var extra in (c.Fields?.Keys ?? Enumerable.Empty<string>()).Except(FieldsOf[name]))
                 throw new InvalidDataException($"{source}: la celda {name} no tiene un campo \"{extra}\" (tiene {string.Join(", ", FieldsOf[name])}).");
@@ -353,7 +386,10 @@ public sealed class HudLayout
             HudSeparator? separator = c.Separator is { } s
                 ? new HudSeparator(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Color(s.Color, $"{name}.separator.color", source))
                 : null;
-            cells.Add(new HudCell(name, c.X, c.Width, new HudIcon(icon.X, icon.Y, icon.Size), chip, fields, backgrounds, separator));
+            cells.Add(new HudCell(name, c.X, c.Width, new HudIcon(icon.X, icon.Y, icon.Size), chip, fields, backgrounds, separator)
+            {
+                Guide = c.Guide is { } g ? new UnitRect(g.X, g.Y, g.Width, g.Height) : null,
+            });
         }
         UnitRect? Rect(RectDto? r, string what) => r is null ? null
             : r.Width > 0 && r.Height > 0 && r.X >= 0 && r.Y >= 0 && (r.Y >= bar.Height || r.X + r.Width <= bar.X) ? new UnitRect(r.X, r.Y, r.Width, r.Height)
@@ -370,8 +406,10 @@ public sealed class HudLayout
                 ? scale is > 0.3 and <= 1 ? scale : throw new InvalidDataException($"{source}: menu.scale tiene que ir de 0,3 a 1.")
                 : null,
         };
-        if (layout.Frame is not null && !layout.SinglePanel)
-            throw new InvalidDataException($"{source}: frame pide log a la izquierda de la barra y queue debajo (un solo panel).");
+        // El marco va sobre un solo panel: el log en el rincón con la cola debajo (diseño completo) o la barra sola
+        // (diseño mínimo, sin log ni cola corridos).
+        if (layout.Frame is not null && !layout.SinglePanel && (layout.Log is not null || layout.Queue is not null))
+            throw new InvalidDataException($"{source}: frame pide log a la izquierda de la barra y queue debajo (un solo panel), o ninguno de los dos.");
         layout.Validate(source);
         return layout;
     }
@@ -399,6 +437,8 @@ public sealed class HudLayout
                 Inside("un fondo", b.X, b.Y, b.Width, b.Height);
             if (cell.Separator is { } s)
                 Inside("el separador", s.X, s.Y, s.Width, s.Height);
+            if (cell.Guide is { } g)
+                Inside("la guía", g.X, g.Y, g.Width, g.Height);
             previous = cell;
         }
     }
@@ -412,9 +452,10 @@ public sealed class HudLayout
             c.Width,
             new IconDto(c.Icon.X, c.Icon.Y, c.Icon.Size),
             c.Chip is { } chip ? new ChipDto(chip.X, chip.Y, chip.Width, chip.Height, Array(chip.Color)) : null,
-            c.Fields.ToDictionary(f => f.Key, f => new FieldDto(f.Value.X, f.Value.Y, f.Value.Width, f.Value.Height, f.Value.Font, f.Value.Points)),
+            c.Fields.ToDictionary(f => f.Key, f => new FieldDto(f.Value.X, f.Value.Y, f.Value.Width, f.Value.Height, f.Value.Font, f.Value.Points, f.Value.AlignLeft ? "left" : null)),
             c.Backgrounds.Select(b => new RectDto(b.X, b.Y, b.Width, b.Height)).ToList(),
-            c.Separator is { } s ? new SeparatorDto(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Array(s.Color)) : null)),
+            c.Separator is { } s ? new SeparatorDto(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Array(s.Color)) : null,
+            c.Guide is { } g ? new RectDto(g.X, g.Y, g.Width, g.Height) : null)),
         new ClockDto(Clock.Gap, Clock.Y, Clock.Width, Clock.Height, Clock.Font, Clock.Points),
         Log is { } log ? new RectDto(log.X, log.Y, log.Width, log.Height) : null,
         Queue is { } queue ? new RectDto(queue.X, queue.Y, queue.Width, queue.Height) : null,
@@ -443,9 +484,9 @@ public sealed class HudLayout
     private sealed record BorderDto(int Width, double[]? Color);
     private sealed record IconDto(int X, int Y, int Size);
     private sealed record ChipDto(int X, int Y, int Width, int Height, double[]? Color);
-    private sealed record FieldDto(int X, int Y, int Width, int Height, string? Font, int Points);
+    private sealed record FieldDto(int X, int Y, int Width, int Height, string? Font, int Points, string? Align = null);
     private sealed record RectDto(int X, int Y, int Width, int Height);
     private sealed record SeparatorDto(int X, int Y, int Width, int Height, string? Text, int Points, double[]? Color);
-    private sealed record CellDto(int X, int Width, IconDto? Icon, ChipDto? Chip, Dictionary<string, FieldDto>? Fields, List<RectDto>? Backgrounds, SeparatorDto? Separator);
+    private sealed record CellDto(int X, int Width, IconDto? Icon, ChipDto? Chip, Dictionary<string, FieldDto>? Fields, List<RectDto>? Backgrounds, SeparatorDto? Separator, RectDto? Guide = null);
     private sealed record ClockDto(int Gap, int Y, int Width, int Height, string? Font, int Points);
 }

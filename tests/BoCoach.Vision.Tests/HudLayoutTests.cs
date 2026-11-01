@@ -90,6 +90,58 @@ public class HudLayoutTests
         static (UnitRect, bool Top, bool Bottom, bool Left, bool Right) Edges(FramePiece p) => (p.Rect, p.Top, p.Bottom, p.Left, p.Right);
     }
 
+    private static HudLayout Minimal() => HudLayout.Load(Path.Combine(AppContext.BaseDirectory, HudLayout.MinimalFileName));
+
+    // Diseño mínimo (2026-11-01): la barra del juego opaca de borde a borde, sin log ni cola corridos, con la franja fina
+    // de color bajo cada ícono y el hueco de la GD a la derecha de los aldeanos.
+    [Fact]
+    public void El_diseno_minimo_es_la_barra_sola_con_el_marco_y_la_guia_junto_a_los_aldeanos()
+    {
+        var layout = Minimal();
+
+        Assert.Equal("bocoach-minimo-2026-11", layout.Name);
+        Assert.Equal(0, layout.Bar.X);
+        Assert.Null(layout.Log);
+        Assert.Null(layout.Queue);
+        Assert.Null(layout.MenuScale);
+        Assert.False(layout.SinglePanel);
+        Assert.Equal("BlackPanel", layout.Frame);
+        var pieces = layout.FramePieces();
+        Assert.Equal(["Bar", "Clock"], pieces.Select(p => p.Name));
+        var bar = pieces[0];
+        Assert.Equal((new UnitRect(0, 0, 4600, 108), true, true, true, true), (bar.Rect, bar.Top, bar.Bottom, bar.Left, bar.Right));
+        Assert.Equal(new UnitRect(0, 0, 4600, 108), bar.Box);
+        Assert.Equal(new UnitRect(0, 0, 4600, 108), bar.Base);
+        Assert.Equal(new UnitRect(2734, 0, 240, 108), pieces[1].Rect);
+
+        var wood = layout.Cell("wood");
+        Assert.Equal(10, wood.X);
+        Assert.Equal(new HudChip(10, 96, 84, 10, new HudColor(0.53, 0.36, 0.16)), wood.Chip);
+        Assert.Equal(28, wood.Fields["villagers"].Points);
+        Assert.Equal(48, wood.Fields["stock"].Points);
+        Assert.True(wood.Fields["stock"].AlignLeft);
+        Assert.True(wood.Fields["villagers"].AlignLeft);
+        Assert.False(layout.Cell("age").Fields["text"].AlignLeft);
+        Assert.False(Repo().Cell("wood").Fields["stock"].AlignLeft);
+        Assert.Equal(new UnitRect(220, 64, 184, 40), wood.Guide);
+        Assert.Empty(wood.Backgrounds);
+        Assert.Null(layout.Cell("idle").Guide);
+        Assert.Equal(5, layout.Anchors.Count());
+    }
+
+    [Fact]
+    public void La_guia_va_en_proporcion_dentro_de_la_caja_y_sobrevive_la_ida_y_vuelta()
+    {
+        var layout = Minimal();
+        var wood = layout.Cell("wood");
+
+        // Caja de la celda a 0,4348 px por unidad (178×47): la guía arranca a 220/410 del ancho y 64/108 del alto.
+        var again = HudLayout.Parse(layout.ToJson());
+        Assert.Equal(wood.Guide, again.Cell("wood").Guide);
+        Assert.True(again.Cell("wood").Fields["stock"].AlignLeft);
+        Assert.Equal(new BoCoach.Vision.Capture.PixelRect(96, 28, 80, 17), layout.GuideRect(wood, new BoCoach.Vision.Capture.PixelRect(0, 0, 178, 47)));
+    }
+
     [Fact]
     public void El_marco_pide_el_log_y_la_cola_en_un_solo_panel()
     {

@@ -69,6 +69,36 @@ public class HudLayoutReaderTests
         Assert.Empty(reading.Clipped);
     }
 
+    // Diseño mínimo (2026-11-01): los aldeanos van a 28 pt debajo del stock, sin fondos negros (la barra es opaca) y con
+    // una franja fina de color en vez del casillero. Las plantillas de 48 pt se normalizan por alto, así que leen igual.
+    [Fact]
+    public void Con_el_diseno_minimo_lee_los_aldeanos_chicos_y_el_stock_grande_sin_fondos_negros()
+    {
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, HudLayout.MinimalFileName));
+        var font = Numbers();
+        CapturedImage Box(string cell, Dictionary<string, string> texts) => HudLayoutScreens.Box(layout, layout.Cell(cell), Ppu, texts, font);
+        var boxes = new Dictionary<string, CapturedImage>
+        {
+            [RegionNames.Wood] = Box("wood", new() { ["villagers"] = "14", ["stock"] = "1250" }),
+            [RegionNames.Food] = Box("food", new() { ["villagers"] = "6", ["stock"] = "386" }),
+            [RegionNames.Gold] = Box("gold", new() { ["villagers"] = "10", ["stock"] = "10000" }),
+            [RegionNames.Stone] = Box("stone", new() { ["villagers"] = "0", ["stock"] = "200" }),
+            [RegionNames.Population] = Box("population", new() { ["total"] = "30", ["cap"] = "33/40" }),
+            [RegionNames.IdleVillagers] = Box("idle", new() { ["count"] = "2" }),
+        };
+
+        var reading = new HudReader(Fonts()).Read(boxes.GetValueOrDefault, layout);
+
+        Assert.Equal("bocoach-minimo-2026-11", reading.LayoutName);
+        Assert.Equal((1250, 386, 10000, 200), (reading.Wood, reading.Food, reading.Gold, reading.Stone));
+        Assert.Equal((14, 6, 10, 0), (reading.VillagersOn![Resource.Wood], reading.VillagersOn[Resource.Food], reading.VillagersOn[Resource.Gold], reading.VillagersOn[Resource.Stone]));
+        Assert.Equal(30, reading.Villagers);
+        Assert.Equal((33, 40), (reading.Population, reading.PopulationCap));
+        Assert.Equal(2, reading.IdleVillagers);
+        var woodBox = boxes[RegionNames.Wood];
+        Assert.Equal(layout.ChipRect(layout.Cell("wood"), new PixelRect(0, 0, woodBox.Width, woodBox.Height)), reading.ModBands![RegionNames.Wood]);
+    }
+
     [Fact]
     public void Lee_cinco_cifras_de_stock_y_la_poblacion_al_tope()
     {

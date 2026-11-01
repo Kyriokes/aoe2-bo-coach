@@ -148,6 +148,27 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         [RegionNames.Clock] = new(6 + 1172, 4 + 5, 343, 36),
     };
 
+    private static readonly HudLayout MinimalLayout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, HudLayout.MinimalFileName));
+
+    // Diseño mínimo (2026-11-01): la barra del juego opaca y, en vez de casilleros, una franja fina de color bajo cada ícono.
+    [Fact]
+    public void Con_el_diseno_minimo_encuentra_las_cinco_franjas_finas_y_arma_las_cajas()
+    {
+        var screen = HudLayoutScreens.Render(MinimalLayout, 0.4286, originX: 6, originY: 4);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, MinimalLayout);
+
+        Assert.NotNull(found);
+        Assert.Equal("bocoach-minimo-2026-11", found.Hud!.Name);
+        Assert.Equal(5, found.Squares.Count);
+        Assert.Equal(1.0, found.Scale, 0.03);
+        var wood = found.Layout.PixelsOf(RegionNames.Wood, screen.Width, screen.Height);
+        output.WriteLine($"wood sola {wood}");
+        AssertClose(new PixelRect(6 + 4, 4, 176, 46), wood, 2, RegionNames.Wood);
+        var population = found.Layout.PixelsOf(RegionNames.Population, screen.Width, screen.Height);
+        AssertClose(new PixelRect(6 + 707, 4, 163, 46), population, 2, RegionNames.Population);
+    }
+
     [Fact]
     public void Con_el_diseno_encuentra_los_cinco_casilleros_y_arma_las_cajas_desde_el_diseno()
     {

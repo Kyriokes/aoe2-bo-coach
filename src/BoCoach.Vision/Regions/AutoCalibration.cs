@@ -266,11 +266,17 @@ public static class AutoCalibration
     /// <summary>Parte de la mitad izquierda del rectángulo del reloj que tiene que ser negro puro.</summary>
     private const double ClockRectBlack = 0.4;
 
-    /// <summary>Alto sobre ancho a un cuarto del del casillero del diseño.</summary>
+    /// <summary>
+    /// Alto sobre ancho a un cuarto del del casillero del diseño o, para una franja fina (el diseño mínimo: 10 unidades,
+    /// 4 px), el alto a <see cref="ThinTolerance"/> píxeles del que le toca por el ancho: con 4 px de alto un cuarto es
+    /// un píxel y el suavizado del borde ya lo gasta.
+    /// </summary>
     private static bool ChipShaped(PixelRect rect, HudChip chip) =>
-        rect.Width > 0 && Math.Abs((double)rect.Height / rect.Width - (double)chip.Height / chip.Width) <= ShapeTolerance * chip.Height / chip.Width;
+        rect.Width > 0 && (Math.Abs((double)rect.Height / rect.Width - (double)chip.Height / chip.Width) <= ShapeTolerance * chip.Height / chip.Width
+            || Math.Abs(rect.Height - (double)rect.Width * chip.Height / chip.Width) <= ThinTolerance);
 
     private const double ShapeTolerance = 0.25;
+    private const double ThinTolerance = 1.5;
 
     /// <summary>Pendiente de mínimos cuadrados de Y sobre X (píxeles por unidad), o null sin dos puntos distintos o con pendiente nula.</summary>
     private static double? Slope(IReadOnlyList<(double X, double Y)> points)
