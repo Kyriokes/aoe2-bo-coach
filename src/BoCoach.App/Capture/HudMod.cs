@@ -249,6 +249,18 @@ public static class HudMod
             children.Add(entry);
         }
         background["ChildWidgets"] = children;
+        // El fondo del juego no se apaga con los estados en None: la textura de la civ (el marco rojo y el escudo que
+        // cuelga de CivXResourcePanel) se seguía viendo en el rincón del log, encima del texto (prueba de la v0.9.72,
+        // 2026-11-01). Así que el fondo empieza en bar.X, donde la barra gris lo tapa, y los hijos directos se corren.
+        if (bar.X > 0)
+        {
+            background["ViewPort"] = View(bar.X, 0, bar.Width - bar.X, bar.Height);
+            foreach (var child in Children(background))
+            {
+                if (child["ViewPort"] is JsonObject view && view["xorigin"] is JsonValue x && x.TryGetValue<int>(out var left))
+                    view["xorigin"] = left - bar.X;
+            }
+        }
         return original;
     }
 
