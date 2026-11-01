@@ -131,7 +131,13 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
 
     // ---- Con el diseño (data/hud_layout.json): las anclas son los cinco casilleros de color ----
 
-    private static readonly HudLayout Layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
+    /// <summary>
+    /// El diseño con el que se tomaron las capturas reales y se midieron las cajas de estos tests (barra desde x 0, sin
+    /// log ni cola). El del repo cambió en la v0.9.67 (log en el rincón, barra corrida): lo usan los tests del log y la cola.
+    /// </summary>
+    private static readonly HudLayout Layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "hud_layout-2026-10.json"));
+
+    private static readonly HudLayout RepoLayout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"));
 
     private static readonly Dictionary<string, PixelRect> LayoutBoxes = new()
     {
@@ -167,26 +173,26 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     [Fact]
     public void Con_el_log_y_la_cola_del_mod_toma_sus_cajas_del_diseno()
     {
-        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4, sidePanels: true);
+        var screen = HudLayoutScreens.Render(RepoLayout, 0.4286, originX: 6, originY: 4, sidePanels: true);
 
-        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, RepoLayout);
 
         Assert.NotNull(found);
-        var log = Layout.Log!;
+        var log = RepoLayout.Log!;
         int Px(int units) => (int)Math.Round(units * 0.4286);
         AssertClose(new PixelRect(6 + Px(log.X), 4 + Px(log.Y), Px(log.Width), Px(log.Height)),
             found.Layout.PixelsOf(RegionNames.EventLog, screen.Width, screen.Height), 2, "log");
         var queue = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
-        Assert.InRange(queue.X - (6 + Px(Layout.Queue!.X)), -2, 2);
-        Assert.InRange(4 + Px(Layout.Queue.Y) - queue.Y, 0, 6); // la fila de íconos, con un poco de margen arriba
+        Assert.InRange(queue.X - (6 + Px(RepoLayout.Queue!.X)), -2, 2);
+        Assert.InRange(4 + Px(RepoLayout.Queue.Y) - queue.Y, 0, 6); // la fila de íconos, con un poco de margen arriba
     }
 
     [Fact]
     public void Sin_el_log_y_la_cola_del_mod_quedan_las_cajas_de_siempre()
     {
-        var screen = HudLayoutScreens.Render(Layout, 0.4286, originX: 6, originY: 4);
+        var screen = HudLayoutScreens.Render(RepoLayout, 0.4286, originX: 6, originY: 4);
 
-        var found = AutoCalibration.Detect(screen, RegionLayout.Default, Layout);
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, RepoLayout);
 
         Assert.NotNull(found);
         Assert.Equal(RegionLayout.Default.PixelsOf(RegionNames.EventLog, 1920, 1080), found.Layout.PixelsOf(RegionNames.EventLog, 1920, 1080));

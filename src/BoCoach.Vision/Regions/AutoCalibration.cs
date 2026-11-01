@@ -174,15 +174,17 @@ public static class AutoCalibration
         foreach (var cell in layout.Cells)
             boxes[HudLayout.RegionOf(cell.Name)] = cell.Name == "age" ? Box(layout.AgeTextRect()) : Box(layout.CellRect(cell));
         boxes[RegionNames.Clock] = ClockBox(screen, Box(layout.ClockRect()), Scaled(ClockSearch, scale));
-        // El log y la cola del mod (idea 1 del usuario, 2026-10-31), solo si en pantalla está su fondo negro: con el mod
-        // de antes (sin reinstalar) siguen donde los pone el juego y quedan las cajas de siempre.
-        if (layout.Log is { } log && BlackShare(screen, Box(log)) >= SideBlack)
+        // El log y la cola del mod (idea 1 del usuario, 2026-10-31), solo si en pantalla está su fondo oscuro (el gris de
+        // la barra, o el negro de la v0.9.65): con el mod de antes (sin reinstalar) siguen donde los pone el juego y quedan
+        // las cajas de siempre.
+        var dark = layout.Bar.Background.Captured is var (br, bg, bb) ? Math.Max(br, Math.Max(bg, bb)) + DarkMargin : DarkMargin;
+        if (layout.Log is { } log && DarkShare(screen, Box(log), dark) >= SideBlack)
             boxes[RegionNames.EventLog] = Box(log);
         if (layout.Queue is { } queue)
         {
             var m = HudLayout.QueueMargin;
             var back = Box(new UnitRect(queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m));
-            if (BlackShare(screen, back) >= SideBlack)
+            if (DarkShare(screen, back, dark) >= SideBlack)
             {
                 // La lectura toma los íconos desde el borde izquierdo de la caja y busca la fila corriéndose hacia abajo.
                 var icons = Box(queue);
@@ -232,16 +234,19 @@ public static class AutoCalibration
     }
 
     /// <summary>
-    /// Parte del fondo del log o de la cola que tiene que ser negro puro para tomar sus cajas del diseño (el texto del
-    /// log y los íconos de la cola tapan una parte; el mapa casi nunca tiene negro puro).
+    /// Parte del fondo del log o de la cola que tiene que ser oscuro (el gris de la barra o negro) para tomar sus cajas
+    /// del diseño (el texto del log y los íconos de la cola tapan una parte; el mapa casi nunca es tan oscuro y parejo).
     /// </summary>
     private const double SideBlack = 0.3;
+
+    /// <summary>Cuánto más claro que el gris de la barra puede ser un píxel del fondo del log o de la cola.</summary>
+    private const int DarkMargin = 10;
 
     /// <summary>Píxeles a 1080p de margen arriba de la fila de íconos de la cola (la lectura la busca hacia abajo).</summary>
     private const int QueueSlack = 3;
 
-    /// <summary>Qué parte de un rectángulo de la pantalla es negro puro (como el del mod).</summary>
-    private static double BlackShare(CapturedImage screen, PixelRect rect)
+    /// <summary>Qué parte de un rectángulo de la pantalla es oscuro: los tres canales hasta <paramref name="limit"/>.</summary>
+    private static double DarkShare(CapturedImage screen, PixelRect rect, int limit)
     {
         var (x0, y0) = (Math.Max(0, rect.X), Math.Max(0, rect.Y));
         var (x1, y1) = (Math.Min(screen.Width, rect.X + rect.Width), Math.Min(screen.Height, rect.Y + rect.Height));
@@ -253,7 +258,7 @@ public static class AutoCalibration
             for (var x = x0; x < x1; x++)
             {
                 var (r, g, b) = screen.Pixel(x, y);
-                if (r <= ModPanel.Black && g <= ModPanel.Black && b <= ModPanel.Black)
+                if (r <= limit && g <= limit && b <= limit)
                     black++;
             }
         }

@@ -217,7 +217,7 @@ public sealed class HudModTests : IDisposable
         var panel = HudMod.ResourcePanel(ResourcePanel(), Layout());
 
         var wood = Widget(panel, "Wood");
-        Assert.Equal((10, 0, 410, 108), View(wood));
+        Assert.Equal((610, 0, 410, 108), View(wood)); // la barra empieza en 600, a la derecha del log
         Assert.Equal("TopLeft", (string?)wood["ViewPort"]!["alignment"]);
         Assert.Equal("None", Material(wood));
         Assert.Equal(42011, (int)wood["Help"]!);
@@ -237,13 +237,13 @@ public sealed class HudModTests : IDisposable
         // abajo: adentro del contenedor (plano 1 + 1) tapaba al stock (plano 2, hermano) en el juego (20261024-224921).
         var siblings = Children(Widget(panel, "Background")).Select(c => (string?)c["Name"]).ToList();
         var back = Widget(panel, "BoCoachBack_wood_0");
-        Assert.Equal((190, 12, 230, 84), View(back));
+        Assert.Equal((790, 12, 230, 84), View(back));
         Assert.Equal(1, (int)back["ZPlaneLocalOffset"]!);
         Assert.True(siblings.IndexOf("BoCoachBack_wood_0") < siblings.IndexOf("Wood"), "el fondo va antes que el contenedor");
         Assert.True(siblings.IndexOf("Wood") < siblings.IndexOf("WoodStorage"), "el stock va después del contenedor");
 
         var storage = Widget(panel, "WoodStorage");
-        Assert.Equal((284, 12, 132, 84), View(storage));
+        Assert.Equal((884, 12, 132, 84), View(storage));
         Assert.Equal(48, Points(storage));
         Assert.Equal(2, (int)storage["ZPlaneLocalOffset"]!);
         Assert.Equal(42202, (int)storage["Help"]!);
@@ -253,18 +253,18 @@ public sealed class HudModTests : IDisposable
         Assert.Equal("None", Material(population, "UserState0"));
         Assert.Equal("Population", Material(Children(population)[0]));
         Assert.Equal((104, 12, 80, 84), View(Children(population).First(c => (string?)c["Name"] == "Workers")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationCount")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
-        Assert.Equal((1840, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
+        Assert.Equal((2440, 12, 180, 84), View(Widget(panel, "PopulationCount")));
+        Assert.Equal((2440, 12, 180, 84), View(Widget(panel, "PopulationFlash")));
+        Assert.Equal((2440, 12, 180, 84), View(Widget(panel, "BoCoachBack_population_0")));
 
-        Assert.Equal((2040, 12, 84, 84), View(Widget(panel, "Idle")));
+        Assert.Equal((2640, 12, 84, 84), View(Widget(panel, "Idle")));
         Assert.Equal("IdleVillagerNormal", Material(Widget(panel, "Idle")));
-        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "BoCoachBack_idle_0")));
-        Assert.Equal((2130, 12, 80, 84), View(Widget(panel, "IdleWorkers")));
+        Assert.Equal((2730, 12, 80, 84), View(Widget(panel, "BoCoachBack_idle_0")));
+        Assert.Equal((2730, 12, 80, 84), View(Widget(panel, "IdleWorkers")));
         Assert.Equal(10, (int)Widget(panel, "IdleWorkers")["ZPlane"]!);
 
-        Assert.Equal((2230, 12, 84, 84), View(Widget(panel, "AgeUp")));
-        Assert.Equal((2324, 28, 378, 52), View(Widget(panel, "AgeBar")));
+        Assert.Equal((2830, 12, 84, 84), View(Widget(panel, "AgeUp")));
+        Assert.Equal((2924, 28, 378, 52), View(Widget(panel, "AgeBar")));
         var ageText = Widget(panel, "AgeTextLabel");
         Assert.Equal((0, 0, 378, 52), View(ageText));
         Assert.Equal(44, Points(ageText));
@@ -292,17 +292,17 @@ public sealed class HudModTests : IDisposable
         // La barra cubre la pantalla entera pero no pasa por debajo del campo negro del reloj (otro panel con el mismo
         // plano 1: no se sabe cuál se dibuja arriba): un tramo hasta el reloj y otro desde su final hasta el borde. El
         // menú del juego (plano 11) queda arriba de la barra.
-        Assert.Equal((0, 0, 2734, 108), View(bar));
+        Assert.Equal((600, 0, 2734, 108), View(bar)); // desde bar.x: el log ocupa el rincón
         Assert.Equal("FlatColorWithAlpha", Material(bar));
         var rest = Children(background)[1];
         Assert.Equal("BoCoachBarAfterClock", (string?)rest["Name"]);
-        Assert.Equal((3534, 0, 1066, 108), View(rest));
+        Assert.Equal((3574, 0, 1026, 108), View(rest));
         Assert.Equal("FlatColorWithAlpha", Material(rest));
         Assert.Equal(0.1, (double)bar["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
         Assert.Null(bar["ZPlaneLocalOffset"]);
-        Assert.Equal((0, 0, 4600, 2), View(Widget(panel, "BoCoachBorderTop")));
-        Assert.Equal((0, 106, 4600, 2), View(Widget(panel, "BoCoachBorderBottom")));
-        Assert.Equal((0, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
+        Assert.Equal((600, 0, 4000, 2), View(Widget(panel, "BoCoachBorderTop")));
+        Assert.Equal((600, 106, 4000, 2), View(Widget(panel, "BoCoachBorderBottom")));
+        Assert.Equal((600, 0, 2, 108), View(Widget(panel, "BoCoachBorderLeft")));
         Assert.Equal((4598, 0, 2, 108), View(Widget(panel, "BoCoachBorderRight")));
     }
 
@@ -344,9 +344,10 @@ public sealed class HudModTests : IDisposable
         var viewport = panel["Collection"]!["ViewPort"]!;
         Assert.Equal((0, 0), ((int)viewport["xorigin"]!, (int)viewport["yorigin"]!));
         var anchor = Widget(panel, "WorldTimer")["Anchor"]!;
-        Assert.Equal((2734, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
+        Assert.Equal((3334, 0), ((int)anchor["xorigin"]!, (int)anchor["yorigin"]!));
         Assert.Equal("BoCoachClockBackground", (string?)Children(Widget(panel, "WorldTimer"))[0]["Name"]);
-        Assert.Equal((0, 12, 800, 84), View(Widget(panel, "BoCoachClockBackground")));
+        // El campo negro tapa solo la hora (pedido del usuario, 2026-10-31): el resto del texto sigue sobre la barra.
+        Assert.Equal((0, 12, 240, 84), View(Widget(panel, "BoCoachClockBackground")));
         var label = Widget(panel, "WorldTimerLabel");
         Assert.Equal(56, Points(label));
         Assert.Equal((HudMod.ClockTextX, 12 + (84 - 56) / 2, 1000, 56), View(label));
@@ -354,9 +355,10 @@ public sealed class HudModTests : IDisposable
         Assert.Equal(12 + 84 + 12, (int)Widget(panel, "GameIDLabel")["ViewPort"]!["yorigin"]!);
     }
 
-    // Idea 1 del usuario (2026-10-31): el log abajo de la barra, más alto, y la cola a su derecha, los dos sobre negro.
+    // Idea 1 del usuario (2026-10-31), variante A: el log en el rincón y la cola debajo de la barra, sobre su gris (el
+    // negro abajo de la barra se veía feo).
     [Fact]
-    public void El_log_va_abajo_de_la_barra_con_fondo_negro_y_el_chat_debajo()
+    public void El_log_va_en_el_rincon_sobre_el_gris_de_la_barra_y_el_chat_debajo()
     {
         var layout = Layout();
         var panel = HudMod.LogPanel(LogPanel(), layout)!;
@@ -375,20 +377,22 @@ public sealed class HudModTests : IDisposable
         Assert.Equal((0, 0, w, h), View(Widget(panel, "EventBackground")));
         Assert.Equal((10, 10, w - 20, h - 20), View(Widget(panel, "TextBox")));
         Assert.Equal(h - 20, (int)Widget(panel, "TextBox")["TextBox"]!["height"]!);
-        Assert.True((h - 20) / 40 >= 8, "entran 8 renglones de 40");
-        Assert.Equal((0, 96), (Su(log.X), Su(log.Y))); // en la prueba cayó en y 48 px, justo abajo de la barra
+        Assert.True((h - 20) / 40 >= 6, "entran 6 renglones de 40");
+        Assert.Equal((0, 0), (Su(log.X), Su(log.Y))); // arriba de todo, a la izquierda
+        Assert.True(log.X + log.Width <= layout.Bar.X, "a la izquierda de la barra");
+        Assert.Equal(0.1, (double)Widget(panel, "BoCoachLogBackground")["StateMaterials"]!["StateNormal"]!["Color"]!["r"]!, 2);
         Assert.Equal(h + 50, (int)Widget(panel, "ChatBackground")["ViewPort"]!["yorigin"]!);
     }
 
     [Fact]
-    public void La_cola_va_a_la_derecha_del_log_sobre_un_fondo_negro()
+    public void La_cola_va_debajo_de_la_barra_sobre_su_gris()
     {
         var layout = Layout();
         var panel = HudMod.QueuePanel(QueuePanel(), layout)!;
 
         var queue = layout.Queue!;
         var m = HudLayout.QueueMargin;
-        Assert.True(queue.X > layout.Log!.X + layout.Log.Width, "a la derecha del log");
+        Assert.True(queue.X >= layout.Bar.X && queue.Y >= layout.Bar.Height, "debajo de la barra");
         Assert.Equal((queue.X, queue.Y, queue.Width, queue.Height), View(Widget(panel, "Background")));
         Assert.Equal("BoCoachQueueBackground", (string?)panel["Collection"]!["Widgets"]![0]!["Widget"]!["Name"]);
         Assert.Equal((queue.X - m, queue.Y - m, queue.Width + 2 * m, queue.Height + 2 * m), View(Widget(panel, "BoCoachQueueBackground")));
