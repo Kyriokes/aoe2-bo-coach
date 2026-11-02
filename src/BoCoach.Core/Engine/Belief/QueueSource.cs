@@ -1,0 +1,82 @@
+using BoCoach.Core.Data;
+
+namespace BoCoach.Core.Engine;
+
+/// <summary>Lo que la cola de producción dice en una lectura (ver <see cref="QueueSource"/>).</summary>
+/// <param name="Producers">Edificio → cuántos hay al menos, según los íconos iguales que avanzan a la vez.</param>
+/// <param name="InProgress">Tecnologías en la cola en esta lectura y en la anterior.</param>
+/// <param name="Finished">Tecnologías que estuvieron en la cola y ya no están, pasado su tiempo.</param>
+internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IReadOnlySet<string> InProgress, IReadOnlyList<string> Finished)
+{
+    public static readonly QueueFacts None = new(new Dictionary<string, int>(), new HashSet<string>(), []);
+}
+
+/// <summary>
+/// La cola de producción como fuente de la creencia (fuerza Observada):
+/// <list type="bullet">
+/// <item>Tiene un ícono por edificio trabajando más los que esperan (teñidos): N íconos iguales que avanzan a la vez
+/// son N edificios. En la 20261018-132830 se ven dos arqueros a las 12:14, cuando el log había avisado una sola galería
+/// (las dos terminaron juntas) y el coach seguía pidiendo la segunda hasta que salieron los arqueros, a las 12:53. Por
+/// las dudas se toma el máximo por clave (no se suman claves distintas) y la cuenta tiene que repetirse en dos lecturas
+/// seguidas. Un ícono de algo de una edad que no se alcanzó no cuenta (partida 20261101-230201: una milicia leída
+/// como arquero daba una galería a las 9:37, en la Edad Oscura).</item>
+/// <item>Una tecnología en la cola en dos lecturas seguidas está en curso. Una que estuvo y falta en dos lecturas
+/// seguidas, pasado el 90 % de su tiempo desde que se la vio, terminó aunque el log no lo avise (pedido del usuario del
+/// 2026-10-31: el log no es confiable para las tecnologías). Antes de su tiempo, que falte es un error de lectura.</item>
+/// </list>
+/// </summary>
+internal sealed class QueueSource(GameData data)
+{
+    /// <summary>Parte del tiempo de investigación que tiene que pasar para dar por terminada una tecnología que se fue de la cola.</summary>
+    public const double FinishedShare = 0.9;
+
+    private Dictionary<string, int> _previousCounts = [];
+    private HashSet<string> _previousKeys = [];
+    private readonly Dictionary<string, double> _seen = [];
+
+    /// <param name="age">La edad alcanzada: lo de una edad mayor es una lectura mala.</param>
+    /// <param name="researchTime">Tiempo de investigación de una tecnología (con la civ).</param>
+    public QueueFacts Update(IReadOnlyList<QueueItem> queue, double now, Age age, Func<Entity, double> researchTime)
+    {
+        var counts = new Dictionary<string, int>();
+        foreach (var group in queue.Where(i => !i.Waiting).GroupBy(i => i.Key))
+        {
+            if (!data.TryGet(group.Key, out var entity) || entity.MadeIn is not { } building || !data.TryGet(building, out var producer))
+                continue;
+            if (entity.Age > age || producer.Age > age)
+                continue;
+            counts[building] = Math.Max(counts.GetValueOrDefault(building), group.Count());
+        }
+        var producers = new Dictionary<string, int>();
+        foreach (var (building, count) in counts)
+        {
+            if (_previousCounts.GetValueOrDefault(building) >= count)
+                producers[building] = count;
+        }
+
+        var keys = queue.Select(i => i.Key).ToHashSet();
+        var inProgress = new HashSet<string>();
+        var finished = new List<string>();
+        foreach (var key in keys)
+        {
+            if (data.TryGet(key, out var entity) && entity.Kind == EntityKind.Tech && _previousKeys.Contains(key))
+            {
+                inProgress.Add(key);
+                _seen.TryAdd(key, now);
+            }
+        }
+        foreach (var (tech, seen) in _seen.ToList())
+        {
+            if (keys.Contains(tech) || _previousKeys.Contains(tech))
+                continue;
+            if (now - seen >= FinishedShare * researchTime(data.Get(tech)))
+            {
+                finished.Add(tech);
+                _seen.Remove(tech);
+            }
+        }
+
+        (_previousCounts, _previousKeys) = (counts, keys);
+        return new QueueFacts(producers, inProgress, finished);
+    }
+}
