@@ -3,7 +3,8 @@ using BoCoach.Core.Engine;
 namespace BoCoach.Core.Tests.Engine;
 
 /// <summary>
-/// Edificios repetidos deducidos por el panel de puntajes (partida 20261101-125353): el puntaje sube el 20 % del costo
+/// Edificios repetidos deducidos por el panel de puntajes (`ScoreSource`, la fuente Inferida de la creencia del estado, a través
+/// del `SnapshotBuilder`; partida 20261101-125353): el puntaje sube el 20 % del costo
 /// de cada cosa que se termina, y el log no agrega renglón si "Archery Range Built" ya es el último.
 /// </summary>
 public class ScoreLedgerTests

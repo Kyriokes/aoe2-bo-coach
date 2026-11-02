@@ -4,7 +4,7 @@ using BoCoach.Core.Data;
 namespace BoCoach.Core.Engine;
 
 /// <summary>
-/// Deduce por el panel de puntajes los edificios que terminan sin aviso del log. El puntaje del jugador sube el 20 %
+/// El panel de puntajes como fuente de la creencia (fuerza Inferida): deduce los edificios que terminan sin aviso del log. El puntaje del jugador sube el 20 %
 /// del costo de cada cosa que se termina (una unidad, un edificio, una tecnología) y, lento y parejo, con lo que
 /// recolecta. Si "Archery Range Built" ya es el último renglón del log, una segunda galería no cambia nada en el log,
 /// pero el puntaje sube otros 35 (partida 20261101-125353: 1415 → 1455 con el aviso y 1464 → 1505 seis segundos
@@ -23,7 +23,7 @@ namespace BoCoach.Core.Engine;
 /// se vota: el renglón cuya suba, descontada su economía, coincide con los avisos del log varias veces seguidas.</item>
 /// </list>
 /// </summary>
-public sealed class ScoreLedger(GameData data)
+internal sealed class ScoreSource(GameData data)
 {
     /// <summary>Parte del costo que el juego suma al puntaje.</summary>
     public const double ScoreShare = 0.2;

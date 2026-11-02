@@ -44,6 +44,9 @@ public sealed record GameSnapshot(
 
     /// <summary>Aldeanos inactivos según el HUD, o null si no se leyó.</summary>
     public int? IdleVillagers { get; init; }
+
+    /// <summary>Lo que la creencia del estado (<see cref="StateBelief"/>) cree en esta captura, o null si el snapshot se armó sin ella (una rama, un test).</summary>
+    public BeliefView? Belief { get; init; }
 }
 
 /// <summary>Un renglón del panel de puntajes: el jugador (por su color), su puntaje y si sigue en la Edad Oscura.</summary>
