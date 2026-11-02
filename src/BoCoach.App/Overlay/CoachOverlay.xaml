@@ -39,6 +39,12 @@
                 <TextBlock Text="{Binding MatchupLine}" Foreground="#C9B8E8" FontSize="14" Margin="0,0,0,6" TextWrapping="Wrap"
                            Visibility="{Binding MatchupLine, Converter={StaticResource NotEmptyToVisibility}}" />
 
+                <!-- Crítico (spec 2026-11-02, escalón 1): el clic de edad posible, grande y titilando en verde; la casa que falta, en rojo -->
+                <Border Background="{Binding CriticalBackground}" CornerRadius="4" Padding="6,4" Margin="0,2,0,6"
+                        Visibility="{Binding Critical, Converter={StaticResource NotEmptyToVisibility}}">
+                    <TextBlock Text="{Binding Critical}" Foreground="{Binding CriticalForeground}" FontSize="19" FontWeight="Bold" TextWrapping="Wrap" />
+                </Border>
+
                 <!-- Un renglón fijo por línea (spec 2026-10-30): etiqueta gris y texto blanco, amarillo o gris -->
                 <ItemsControl ItemsSource="{Binding Lanes}" Visibility="{Binding ShowLanes, Converter={StaticResource BoolToVisibility}}">
                     <ItemsControl.ItemTemplate>
@@ -187,7 +193,10 @@
                                             <Setter Property="Foreground" Value="#F08070" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Kind}" Value="Ready">
-                                            <Setter Property="Foreground" Value="#8CD17D" />
+                                            <Setter Property="Foreground" Value="{Binding DataContext.ReadyForeground, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                            <Setter Property="Background" Value="{Binding DataContext.ReadyBackground, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                            <Setter Property="FontSize" Value="19" />
+                                            <Setter Property="FontWeight" Value="Bold" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Kind}" Value="Missing">
                                             <Setter Property="Foreground" Value="#E8C26A" />

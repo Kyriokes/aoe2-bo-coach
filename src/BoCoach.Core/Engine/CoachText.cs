@@ -40,6 +40,22 @@ public sealed record CoachLines(
     /// (1 azul ... 8 naranja; 0 si no se sabe). Null si el aviso es otro.
     /// </summary>
     public int? RivalSlot { get; init; }
+
+    /// <summary>
+    /// Lo crítico (spec 2026-11-02, escalón 1): un solo renglón grande arriba de las líneas. La casa que falta (rojo) o
+    /// el clic de edad que ya se puede hacer (verde, titilando). Null si no hay nada crítico.
+    /// </summary>
+    public string? Critical { get; init; }
+
+    /// <summary>De qué es el renglón crítico.</summary>
+    public CriticalKind CriticalKind { get; init; }
+}
+
+/// <summary>El renglón crítico es algo que hacer ya (verde, titila) o una falta (rojo, fijo).</summary>
+public enum CriticalKind
+{
+    Do,
+    Lack,
 }
 
 /// <summary>Color de un renglón de línea: se puede hacer ya (blanco), espera recursos o población (amarillo), fallback (gris).</summary>
@@ -202,7 +218,28 @@ public static class CoachText
         // Con las líneas, la producción en marcha va en el renglón de Producir solo si ese renglón la usa.
         var produce = shown ? lanes.FirstOrDefault(l => l.Lane == Lane.Produce && l.Text.StartsWith(ProducingPrefix, StringComparison.Ordinal)) : null;
         var running = produce is null ? lines.Running : lines.Running.Where(r => r != produce.Text).ToList();
-        return lines with { Lanes = lanes, LanesShown = shown, Running = running };
+        var critical = Critical(view, data, shown);
+        return lines with { Lanes = lanes, LanesShown = shown, Running = running, Critical = critical?.Text, CriticalKind = critical?.Kind ?? CriticalKind.Do };
+    }
+
+    /// <summary>
+    /// El renglón crítico (spec 2026-11-02, escalón 1): la casa cuando faltan lugares por el ritmo de producción, o el
+    /// clic de edad de la BO cuando ya se puede (edificios, recursos y población): en la partida 20261101-230201 la
+    /// Feudal estuvo 14 s "posible" con la misma frase en blanco y el jugador no lo notó.
+    /// </summary>
+    public static (string Text, CriticalKind Kind)? Critical(CoachView view, GameData? data, bool lanesShown)
+    {
+        if (view.NeedsHouse)
+            return ($"Casa: quedan {Math.Max(0, view.PopulationCap - view.Population)} lugares", CriticalKind.Lack);
+        if (!lanesShown)
+            return null;
+        foreach (var lane in view.Lanes)
+        {
+            if (lane is { Lane: Lane.Research, Step.Step: { Do: StepAction.Research, What: { } what } } && BuildOrderValidator.AgeOf(what) is not null
+                && Waiting(view, lane, data) is null)
+                return ($"Hacé clic en {StepText.Name(what)}", CriticalKind.Do);
+        }
+        return null;
     }
 
     /// <summary>

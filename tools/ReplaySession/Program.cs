@@ -725,7 +725,8 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
             : new[] { lines.Current }.Concat(lines.Goals.Select(g => "+ " + g)).Concat([lines.Status, lines.Next]).OfType<string>().ToList();
         // Con la BO terminada, la app muestra la tarjeta (edad siguiente, edificios parados, tecnologías): va también.
         var card = lines.Compact ? lines.Card.Select(c => c.Text) : [];
-        var text = string.Join(" | ", head.Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null).Concat(card).Distinct());
+        var critical = lines.Critical is { } c ? [$"‼ {c}"] : Array.Empty<string>();
+        var text = string.Join(" | ", critical.Concat(head).Concat(lines.Running).Concat([lines.Deviation, lines.Suggestion, lines.Alert, lines.Idle]).Where(s => s is not null).Concat(card).Distinct());
         if (text == last)
             continue;
         last = text;

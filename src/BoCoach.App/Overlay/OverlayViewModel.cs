@@ -60,9 +60,34 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     [ObservableProperty, NotifyPropertyChangedFor(nameof(RivalClick), nameof(AlertForeground), nameof(AlertBackground))]
     public partial int? RivalSlot { get; set; }
 
-    /// <summary>Medio ciclo del titileo del clic del rival (lo prende y apaga <see cref="Blink"/>).</summary>
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(AlertForeground), nameof(AlertBackground))]
+    /// <summary>Medio ciclo del titileo del clic del rival y del renglón crítico (lo prende y apaga <see cref="Blink"/>).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(AlertForeground), nameof(AlertBackground), nameof(ReadyForeground), nameof(ReadyBackground),
+        nameof(CriticalForeground), nameof(CriticalBackground))]
     public partial bool BlinkOn { get; set; }
+
+    /// <summary>
+    /// El renglón crítico (spec 2026-11-02, escalón 1): la casa que falta o el clic de edad que ya se puede hacer, grande
+    /// arriba de las líneas. Null si no hay nada crítico.
+    /// </summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CriticalForeground), nameof(CriticalBackground))]
+    public partial string? Critical { get; set; }
+
+    /// <summary>El crítico es algo que hacer ya (verde, titila); si no, una falta (rojo, fijo).</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(CriticalForeground), nameof(CriticalBackground))]
+    public partial bool CriticalDo { get; set; }
+
+    /// <summary>El verde de "hacé clic" (el de siempre) y el oscuro del panel en la mitad del titileo.</summary>
+    public Brush ReadyForeground => BlinkOn ? PanelBrush : ReadyBrush;
+
+    /// <summary>El fondo de "hacé clic": verde en la mitad del titileo; si no, transparente.</summary>
+    public Brush ReadyBackground => BlinkOn ? ReadyBrush : Brushes.Transparent;
+
+    public Brush CriticalForeground => CriticalDo ? ReadyForeground : LackBrush;
+
+    public Brush CriticalBackground => CriticalDo ? ReadyBackground : Brushes.Transparent;
+
+    /// <summary>Con la BO terminada, la tarjeta tiene un "Hacé clic en ...": titila como el renglón crítico.</summary>
+    private bool CardReady => Card.Any(c => c.Kind == CardKind.Ready);
 
     /// <summary>El aviso es un clic de edad del rival: más grande y titilando.</summary>
     public bool RivalClick => RivalSlot is not null;
@@ -76,7 +101,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
     /// <summary>Lo llama la ventana cada <see cref="BlinkInterval"/>: alterna el color del clic del rival.</summary>
     public void Blink()
     {
-        if (RivalClick)
+        if (RivalClick || (Critical is not null && CriticalDo) || CardReady)
             BlinkOn = !BlinkOn;
         else if (BlinkOn)
             BlinkOn = false;
@@ -87,6 +112,11 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     /// <summary>El naranja de los avisos (el mismo del XAML).</summary>
     public static readonly Brush AlertBrush = Solid(0xFF, 0xF0, 0xA0, 0x60);
+
+    /// <summary>El verde de "se puede hacer" (el mismo del XAML), el rojo de lo que falta y el fondo del panel.</summary>
+    public static readonly Brush ReadyBrush = Solid(0xFF, 0x8C, 0xD1, 0x7D);
+    public static readonly Brush LackBrush = Solid(0xFF, 0xF0, 0x80, 0x70);
+    public static readonly Brush PanelBrush = Solid(0xFF, 0x1E, 0x1A, 0x16);
 
     /// <summary>Los colores de los jugadores del juego por número (0 = no se sabe: rojo).</summary>
     private static readonly Brush[] PlayerBrushes =
@@ -180,6 +210,8 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         if (frame.Regions is { } regions)
             Regions = regions;
         RivalSlot = lines.RivalSlot;
+        Critical = lines.Critical;
+        CriticalDo = lines.CriticalKind == CriticalKind.Do;
         Idle = lines.Idle;
         Distribution = lines.Distribution;
         DistributionNow = lines.DistributionNow;

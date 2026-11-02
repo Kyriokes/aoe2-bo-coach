@@ -26,6 +26,44 @@ public class CoachTextLanesTests
     private static GameSnapshot At(double time, ResourceAmounts stock, params string[] events) =>
         new(time, stock, 10, 15, events.Select(e => new GameEvent(e, time)).ToArray());
 
+    private static readonly BuildOrder Feudal = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+            new Step { Id = "mill", Do = StepAction.Build, What = "mill", Assign = GatherSource.Berries },
+            new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+        ],
+    };
+
+    // Spec 2026-11-02, escalón 1: en la 20261101-230201 la Feudal estuvo 14 s "posible" con la misma frase en blanco.
+    [Fact]
+    public void El_clic_de_edad_posible_es_el_renglon_critico()
+    {
+        var coach = new Coach(Feudal, TestData.GameData, TestData.Events);
+        var waiting = coach.Update(At(300, new ResourceAmounts(300, 0, 0, 0), "lumber_camp_built", "mill_built"));
+        var ready = coach.Update(At(301, new ResourceAmounts(500, 0, 0, 0)));
+
+        Assert.Null(CoachText.Lines(waiting, TestData.GameData).Critical);
+        var lines = CoachText.Lines(ready, TestData.GameData);
+        Assert.Equal("Hacé clic en Edad Feudal", lines.Critical);
+        Assert.Equal(CriticalKind.Do, lines.CriticalKind);
+    }
+
+    [Fact]
+    public void La_casa_que_falta_es_el_renglon_critico_y_va_antes_que_el_clic()
+    {
+        var coach = new Coach(Feudal, TestData.GameData, TestData.Events);
+        var view = coach.Update(new GameSnapshot(300, new ResourceAmounts(500, 0, 0, 0), 13, 15,
+            [new GameEvent("lumber_camp_built", 300), new GameEvent("mill_built", 300)]));
+
+        var lines = CoachText.Lines(view, TestData.GameData);
+
+        Assert.Equal("Casa: quedan 2 lugares", lines.Critical);
+        Assert.Equal(CriticalKind.Lack, lines.CriticalKind);
+    }
+
     [Fact]
     public void LaneLines_con_el_hacha_esperando()
     {
