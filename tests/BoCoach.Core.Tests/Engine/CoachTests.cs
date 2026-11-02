@@ -385,6 +385,22 @@ public class CoachTests
         Assert.True(coach.Update(At(301, 200, villagers: 21)).NeedsHouse);  // 22/25
     }
 
+    // Spec 2026-11-02, escalón 1: con tres galerías y un establo produciendo, 3 lugares llegan tarde.
+    [Fact]
+    public void Con_varias_galerias_produciendo_la_casa_se_pide_antes()
+    {
+        var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
+        QueueItem[] queue = [new("villager"), new("archer"), new("archer"), new("archer"), new("scout_cavalry")];
+
+        var alone = coach.Update(At(300, 200, villagers: 17));                         // 18/25: 7 libres
+        var busy = coach.Update(At(301, 200, villagers: 17) with { Queue = queue });
+
+        Assert.False(alone.NeedsHouse);
+        Assert.Equal(3, alone.HouseMargin);
+        Assert.True(busy.NeedsHouse);
+        Assert.Equal(7, busy.HouseMargin);
+    }
+
     [Fact]
     public void Sin_BO_quedan_los_recordatorios_en_la_tarjeta_compacta()
     {

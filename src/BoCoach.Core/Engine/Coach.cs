@@ -90,8 +90,14 @@ public sealed record CoachView(
     /// <summary>Si el paso actual es un paso mixto: todas sus metas (ver <see cref="Tracker.CurrentGoals"/>).</summary>
     public IReadOnlyList<StepProgress> Goals { get; init; } = [];
 
-    /// <summary>Recordatorio: quedan <see cref="Coach.HouseMargin"/> lugares de población o menos (y no se llegó a 200).</summary>
+    /// <summary>Recordatorio: quedan <see cref="HouseMargin"/> lugares de población o menos (y no se llegó a 200).</summary>
     public bool NeedsHouse { get; init; }
+
+    /// <summary>
+    /// Con cuántos lugares libres se avisa la casa (<see cref="HousePacing"/>): 3 con el centro urbano solo, más con
+    /// varias galerías y establos produciendo.
+    /// </summary>
+    public int HouseMargin { get; init; } = Coach.HouseMargin;
 
     /// <summary>Recordatorio: el centro urbano está parado y todavía no se llegó al máximo de aldeanos elegido.</summary>
     public bool TownCenterReminder { get; init; }
@@ -681,6 +687,7 @@ public sealed class Coach
             FoodFloor = Economy?.FoodFloor ?? 0,
             Goals = Tracker.CurrentGoals,
             NeedsHouse = NeedsHouse(),
+            HouseMargin = CurrentHouseMargin(),
             TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
             Posture = _postureView,
             Signals = RecentSignals(),
@@ -755,7 +762,19 @@ public sealed class Coach
             villagers: (State.Villagers ?? _villagers ?? 0) < _economySettings.MaxVillagers)
         : null;
 
-    private bool NeedsHouse() => State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= HouseMargin;
+    private bool NeedsHouse() => State.PopulationCap < BuildOrderValidator.MaxPopulation && State.PopulationCap - State.Population <= CurrentHouseMargin();
+
+    /// <summary>
+    /// Casas por ritmo de producción (spec 2026-11-02, escalón 1): el margen sale de lo que produce la cola real (si se
+    /// leyó hace poco; si no, el centro urbano solo) y de lo que se tarda en reaccionar, nunca menos que 3.
+    /// </summary>
+    private int CurrentHouseMargin()
+    {
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = LivePlan.Start(Tracker).Age;
+        var queue = State.Time - _queueSeenAt <= QueueStaleSeconds ? _queue : null;
+        return HousePacing.Margin(HousePacing.ConsumptionRate(queue, _data, civ, age), HousePacing.ReactionSeconds(_data, civ, age));
+    }
 
     /// <summary>
     /// La BO abandonada: sin pasos (ni actual, ni siguiente, ni atrasados, ni producción), solo lo que siempre vale:
@@ -783,6 +802,7 @@ public sealed class Coach
         ActualFromHud = State.VillagersOn is not null,
         FoodFloor = Economy?.FoodFloor ?? 0,
         NeedsHouse = NeedsHouse(),
+        HouseMargin = CurrentHouseMargin(),
         TownCenterReminder = TownCenterIdle() is not null && _villagers < _economySettings.MaxVillagers,
         Signals = RecentSignals(),
         Branch = _branches.View(),
