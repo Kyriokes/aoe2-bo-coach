@@ -33,7 +33,7 @@ Lo que la pantalla no muestra sigue sin creerse: las granjas (el juego no avisa 
 Un registro inmutable por captura:
 
 - `Buildings`: clave → cantidad creída (el centro urbano arranca en 1; el asentamiento de los incas suma a lo que vale, `Entity.CountsAs`).
-- `Research`: clave → `InProgress` (desde cuándo, raw) o `Done`.
+- `Research`: clave → `InProgress` o `Done`.
 - `Units`: clave → cantidad creída (sin aldeanos).
 - `Villagers`, `VillagersOn`, `Population`, `PopulationCap`: lo último leído del HUD (null si nunca).
 - `Age`: la edad alcanzada según el log (una edad investigada, o cualquier entidad avisada de una edad mayor).
