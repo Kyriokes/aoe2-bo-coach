@@ -461,37 +461,57 @@ public class CoachTests
     private static GameSnapshot WithQueue(double time, params string[] queue) =>
         At(time, 200, villagers: 20) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
 
+    /// <summary>La cola pasa por la creencia del estado: la lectura entra por el SnapshotBuilder.</summary>
+    private static ScreenReading QueueReading(double clock, params string[] queue) =>
+        new(clock, 200, 200, 100, 200, 20, null, null, [], Queue: queue.Select(k => new QueueItem(k)).ToList());
+
     [Fact]
     public void Una_tecnologia_que_paso_por_la_cola_y_se_fue_despues_de_su_tiempo_queda_hecha()
     {
+        var builder = new SnapshotBuilder(TestData.GameData);
         var coach = new Coach(Loom, TestData.GameData, TestData.Events);
         StepState LoomState() => coach.Tracker.Steps[1].State;
+        void See(double clock, params string[] queue) => coach.Update(builder.Build(QueueReading(clock, queue))!);
 
-        coach.Update(WithQueue(200, "loom"));
-        coach.Update(WithQueue(201, "loom"));
+        See(200, "loom");
+        See(201, "loom");
         Assert.Equal(StepState.InProgress, LoomState());
 
         // El telar tarda 25 s: a los 10 s una lectura de la cola sin él es un error de lectura.
-        coach.Update(WithQueue(210, "villager"));
-        coach.Update(WithQueue(211, "villager"));
+        See(210, "villager");
+        See(211, "villager");
         Assert.Equal(StepState.InProgress, LoomState());
 
-        coach.Update(WithQueue(226, "villager"));
-        coach.Update(WithQueue(227, "villager"));
+        See(226, "villager");
+        See(227, "villager");
         Assert.Equal(StepState.Done, LoomState());
         Assert.False(coach.Tracker.Steps[1].Manual);
+        Assert.Equal(226, coach.Tracker.Steps[1].DoneAt); // la segunda lectura sin el telar, pasado su tiempo
     }
 
     [Fact]
     public void Una_tecnologia_que_nunca_se_vio_en_la_cola_no_se_da_por_hecha_por_la_cola()
     {
+        var builder = new SnapshotBuilder(TestData.GameData);
         var coach = new Coach(Loom, TestData.GameData, TestData.Events);
-        coach.Update(WithQueue(200, "villager"));
+        coach.Update(builder.Build(QueueReading(200, "villager"))!);
         coach.Tracker.MarkStarted(1, 200); // el clic visto en el oro
-        coach.Update(WithQueue(260, "villager"));
-        coach.Update(WithQueue(261, "villager"));
+        coach.Update(builder.Build(QueueReading(260, "villager"))!);
+        coach.Update(builder.Build(QueueReading(261, "villager"))!);
 
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Un_snapshot_sin_creencia_no_marca_nada_por_la_cola()
+    {
+        // Un snapshot armado a mano (una rama, un test) no trae la creencia: el coach no tira ni marca en curso.
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        coach.Update(WithQueue(200, "loom"));
+        coach.Update(WithQueue(201, "loom"));
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
+        Assert.NotEqual(StepState.Done, coach.Tracker.Steps[1].State);
     }
 
     [Fact]
@@ -559,12 +579,14 @@ public class CoachTests
                 new Step { Id = "s2", Do = StepAction.Research, What = "loom" },
             ],
         };
+        var builder = new SnapshotBuilder(TestData.GameData);
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
-        GameSnapshot Queue(double time, params QueueItem[] queue) => At(time, 200, villagers: 4) with { Queue = queue };
+        void See(double clock, params QueueItem[] queue) =>
+            coach.Update(builder.Build(new ScreenReading(clock, 200, 200, 100, 200, 4, null, null, [], Queue: queue))!);
 
-        coach.Update(Queue(100, new QueueItem("villager"), new QueueItem("loom", Waiting: true)));
+        See(100, new QueueItem("villager"), new QueueItem("loom", Waiting: true));
         Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);   // una lectura sola no alcanza
-        coach.Update(Queue(100.5, new QueueItem("villager"), new QueueItem("loom", Waiting: true)));
+        See(100.5, new QueueItem("villager"), new QueueItem("loom", Waiting: true));
 
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
     }

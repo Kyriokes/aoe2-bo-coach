@@ -431,56 +431,25 @@ public sealed class Coach
         Tracker.Steps.Any(s => s.Step.Do == StepAction.Research && s.Step.What == tech && s.State is StepState.Done or StepState.InProgress or StepState.Skipped);
 
     /// <summary>
-    /// Una investigación de la BO que aparece en la cola (avanzando o esperando) ya se pagó: queda en curso aunque la
-    /// baja del stock no se haya visto. En la 20261018-132830 el clic en Castillos (20:26) no se vio en el stock y la
-    /// cola lo mostraba. Tiene que estar en dos lecturas seguidas de la cola.
+    /// Una investigación de la BO que la creencia del estado tiene en curso (la vio en la cola de producción en dos
+    /// lecturas seguidas) ya se pagó: queda en curso aunque la baja del stock no se haya visto. En la 20261018-132830 el
+    /// clic en Castillos (20:26) no se vio en el stock y la cola lo mostraba. La que termina sin que el log lo avise llega
+    /// como evento sintético "&lt;tech&gt;_researched" y el Tracker la confirma por el camino de siempre.
     /// </summary>
     private bool ResearchInQueue(GameSnapshot snapshot)
     {
-        var previous = _lastQueueKeys;
-        _lastQueueKeys = snapshot.Queue?.Select(i => i.Key).ToHashSet() ?? [];
+        if (snapshot.Belief is not { } belief)
+            return false;
         var started = false;
         foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready))
         {
-            if (step.Step.What is { } tech && _lastQueueKeys.Contains(tech) && previous.Contains(tech))
+            if (step.Step.What is { } tech && belief.InProgress(tech))
             {
                 Tracker.MarkStarted(step.Index, snapshot.Time);
                 started = true;
             }
         }
-        if (snapshot.Queue is not null)
-            FinishedInQueue(snapshot.Time, previous);
         return started;
-    }
-
-    private HashSet<string> _lastQueueKeys = [];
-
-    /// <summary>Cuándo se vio por primera vez en la cola cada investigación en curso de la BO (por paso).</summary>
-    private readonly Dictionary<int, double> _seenInQueue = [];
-
-    /// <summary>
-    /// Pedido del usuario (2026-10-31: "el sistema actual es muy poco confiable"): una investigación en curso que se vio
-    /// en la cola y ya no está en dos lecturas seguidas, pasado el 90 % de su tiempo desde que se la vio, terminó aunque
-    /// el log no lo avise. Antes de su tiempo, que no esté es un error de lectura; una que nunca se vio en la cola (el
-    /// clic visto en el stock) sigue esperando al log.
-    /// </summary>
-    private void FinishedInQueue(double now, HashSet<string> previous)
-    {
-        var civ = _data.Civ(Tracker.BuildOrder.Civ);
-        foreach (var step in Tracker.InProgress.ToList())
-        {
-            if (step.Step.Do != StepAction.Research || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
-                continue;
-            if (_lastQueueKeys.Contains(tech))
-            {
-                _seenInQueue.TryAdd(step.Index, now);
-                continue;
-            }
-            if (previous.Contains(tech) || !_seenInQueue.TryGetValue(step.Index, out var seen))
-                continue;
-            if (now - seen >= 0.9 * civ.Time(entity, Tracker.Age))
-                Tracker.MarkSeenDone(step.Index, now);
-        }
     }
 
     /// <summary>
