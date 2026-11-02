@@ -21,6 +21,20 @@ public class ProductionQueueTests
         Assert.Equal(expected, string.Join(" ", Library.Read(Frame(frame, "20261018-132830"))));
     }
 
+    // Partida 20261101-230201 (aztecas, drush): la milicia no estaba en la biblioteca y, según cuánto verde tenía, se leía
+    // arquero, ballestero, arquero a caballo o carretilla: el coach daba por hecha la galería a las 9:37 (antes de Feudal)
+    // y la carretilla en curso. El arquero recién encolado (borde blanco) salía "?".
+    [Theory]
+    [InlineData(718, "villager militia")]                      // 9:38, recién encolada, con el borde blanco
+    [InlineData(734, "villager militia")]                      // a medio llenar de verde (se leía ballestero)
+    [InlineData(758, "villager militia")]                      // casi lista (se leía arquero a caballo)
+    [InlineData(762, "villager housed")]                       // la siguiente en rojo: sin población
+    [InlineData(1172, "archer")]                               // 15:46, el arquero recién encolado
+    public void Lee_la_milicia_en_todos_sus_tonos(int frame, string expected)
+    {
+        Assert.Equal(expected, string.Join(" ", Library.Read(Frame(frame, "20261101-230201"))));
+    }
+
     // Partida 20261029-211516 (coreanos, v0.9.44 con la caja de la cola en x 0): la carretilla y Castillos esperando,
     // amarillos, se leían como la Feudal en espera.
     [Theory]
