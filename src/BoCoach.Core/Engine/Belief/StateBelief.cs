@@ -89,7 +89,32 @@ public sealed class StateBelief
                 Add(EventConventions.EventFor(StepAction.Build, building)!, EvidenceSource.Score, Strength.Inferred, now, LogLag);
         }
         Hud(reading, now);
+        FreeTechs(now);
         View = Snapshot();
+    }
+
+    private Age _freeTechsAge = (Age)(-1);
+
+    /// <summary>
+    /// Una investigación que a la civ le sale gratis (costo cero con la civ y no cero de base: la collera, el arado pesado
+    /// y la rotación de cultivos de los francos, la carretilla de los vikingos) la da el juego al llegar a su edad
+    /// (partida 20261031-192108: la BO de scouts "any" jugada con francos pedía la collera desde las 10:43 hasta el
+    /// final). Fuerza Avisada: es una regla del juego, no una lectura.
+    /// </summary>
+    private void FreeTechs(double now)
+    {
+        if (_age == _freeTechsAge)
+            return;
+        _freeTechsAge = _age;
+        foreach (var (key, entity) in _data.Entities)
+        {
+            if (entity.Kind != EntityKind.Tech || entity.Age > _age || BuildOrderValidator.AgeOf(key) is not null)
+                continue;
+            if (entity.Cost == ResourceAmounts.Zero || _civ.Cost(entity, _age) != ResourceAmounts.Zero)
+                continue;
+            if (_research.GetValueOrDefault(key) != ResearchStatus.Done)
+                Add(EventConventions.EventFor(StepAction.Research, key)!, EvidenceSource.Civ, Strength.Announced, now, CreditSeconds);
+        }
     }
 
     /// <summary>Lo creído desde la última llamada, en orden (también lo que el log avisó).</summary>

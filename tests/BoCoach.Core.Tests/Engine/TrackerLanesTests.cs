@@ -269,20 +269,21 @@ public class TrackerLanesTests
     [InlineData("britons", false)]
     public void Lo_que_la_civ_tiene_gratis_queda_hecho_al_llegar_a_su_edad(string civ, bool free)
     {
+        // La regla vive en la creencia del estado (StateBelief): la tecnología llega como evento al Tracker.
         var bo = Bo(Build("mill", "mill"), Research("feudal", "feudal_age"), Research("collar", "horse_collar")) with { Civ = civ };
-        var tracker = new Tracker(bo, TestData.GameData);
-        var partida = new Partida().Event("mill_built");
-        tracker.Update(partida.State);
-        Assert.NotEqual(StepState.Done, tracker.Steps[2].State); // en la Edad Oscura todavía no la tiene
+        var builder = new SnapshotBuilder(TestData.GameData, TestData.GameData.Civ(civ));
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        static ScreenReading Reading(double clock, params string[] events) => new(clock, 200, 200, 100, 200, 3, null, null, events);
+        coach.Update(builder.Build(Reading(10, "mill_built"))!);
+        Assert.NotEqual(StepState.Done, coach.Tracker.Steps[2].State); // en la Edad Oscura todavía no la tiene
 
-        partida.Wait(30).Event("feudal_age_researched");
-        tracker.Update(partida.State);
+        coach.Update(builder.Build(Reading(40, "feudal_age_researched"))!);
 
-        Assert.Equal(free, tracker.Steps[2].State == StepState.Done);
+        Assert.Equal(free, coach.Tracker.Steps[2].State == StepState.Done);
         if (free)
         {
-            Assert.Equal(partida.Time, tracker.Steps[2].DoneAt);
-            Assert.Null(tracker.LaneStep(Lane.Research));
+            Assert.Equal(40, coach.Tracker.Steps[2].DoneAt);
+            Assert.Null(coach.Tracker.LaneStep(Lane.Research));
         }
     }
 

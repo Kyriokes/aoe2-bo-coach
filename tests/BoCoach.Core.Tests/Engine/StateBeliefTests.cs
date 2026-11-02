@@ -128,4 +128,29 @@ public class StateBeliefTests
 
         Assert.Equal(1, belief.TakeNew().Count(c => c.EventId == "loom_researched"));
     }
+
+    [Fact]
+    public void Una_tecnologia_gratis_de_la_civ_queda_hecha_al_llegar_a_su_edad()
+    {
+        // Partida 20261031-192108: a los francos el juego les da la collera al llegar a Feudal.
+        var belief = new StateBelief(TestData.GameData, TestData.GameData.Civ("franks"));
+        belief.Observe(Reading(10), 10);
+        Assert.False(belief.View.Done("horse_collar"));
+
+        belief.Observe(Reading(600, "feudal_age_researched"), 600);
+
+        Assert.True(belief.View.Done("horse_collar"));
+        Assert.Contains(belief.TakeNew(), c => c is { EventId: "horse_collar_researched", Source: EvidenceSource.Civ });
+        belief.Observe(Reading(605, "horse_collar_researched"), 605);
+        Assert.DoesNotContain(belief.TakeNew(), c => c.EventId == "horse_collar_researched");
+    }
+
+    [Fact]
+    public void A_quien_no_le_sale_gratis_no_se_le_da()
+    {
+        var belief = new StateBelief(TestData.GameData, TestData.GameData.Civ("britons"));
+        belief.Observe(Reading(600, "feudal_age_researched"), 600);
+
+        Assert.False(belief.View.Done("horse_collar"));
+    }
 }

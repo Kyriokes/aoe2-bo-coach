@@ -247,7 +247,7 @@ public sealed class Tracker
             return false;
         // Lo que el juego no avisa (granjas) se da por hecho con sus compañeras, nunca por el log: no queda atrás
         // (partida 20261031-195651: "Quedó sin hacer: Construir 7 granjas" de 11:57 a 12:31, con el establo).
-        if (EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id))
+        if (EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id))
             return false;
         return _steps.Any(o => o.Index > s.Index && Lanes.Of(o.Step) == lane && !SameGroup(o.Index, s.Index) && !IsHouse(o.Step)
             && (lane == Lane.Build || Producer(o.Step) == Producer(s.Step))
@@ -315,7 +315,7 @@ public sealed class Tracker
         : _steps.Where(s => IsOpen(s) && IsSilent(s));
 
     private static bool IsSilent(StepProgress s) =>
-        s.Step.Group is null && EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id);
+        s.Step.Group is null && EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id);
 
     /// <summary>
     /// Unidades que no son aldeanos y ya empezaron a salir: de este paso, o de un paso anterior con la misma unidad
@@ -490,7 +490,7 @@ public sealed class Tracker
     private string? ConfirmableEvent(Step step)
     {
         var id = EventConventions.EventFor(step);
-        return id is not null && !EventConventions.Unannounced.Contains(id) && (_events is null || _events.Contains(id)) ? id : null;
+        return id is not null && StateBelief.CanObserve(id) && (_events is null || _events.Contains(id)) ? id : null;
     }
 
     private int Required(int index) => _units[index];
@@ -560,7 +560,7 @@ public sealed class Tracker
             // Lo que el juego nunca avisa (granjas), en un paso mixto: hecho cuando las otras metas están hechas (los
             // aldeanos a granjas y sus granjas). Lo que el log avisa pero no se pudo leer espera a un paso posterior:
             // terminar el cuartel no dice que la Feudal terminó.
-            var mates = EventConventions.EventFor(_bo.Steps[i]) is { } silent && EventConventions.Unannounced.Contains(silent)
+            var mates = EventConventions.EventFor(_bo.Steps[i]) is { } silent && !StateBelief.CanObserve(silent)
                 ? Enumerable.Range(0, n).Where(j => j != i && SameGroup(i, j)).ToList()
                 : [];
             if (mates.Count > 0)
@@ -574,7 +574,7 @@ public sealed class Tracker
             // Una investigación empezada da por hechas las granjas sueltas de antes (el clic en Castillos con las granjas
             // pendientes), pero no lo de un paso mixto: el telar se puede pagar temprano sin haber hecho la granja. Vale
             // cualquier línea: lo que nada confirma (granjas, un mensaje que el log no lee) quedaría abierto para siempre.
-            var loose = _bo.Steps[i].Group is null && EventConventions.EventFor(_bo.Steps[i]) is { } ev && EventConventions.Unannounced.Contains(ev);
+            var loose = _bo.Steps[i].Group is null && EventConventions.EventFor(_bo.Steps[i]) is { } ev && !StateBelief.CanObserve(ev);
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
                 .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || (loose && _started.ContainsKey(j))))
                 .Select(j => FirstProgressTime(j, doneAt))
@@ -671,12 +671,6 @@ public sealed class Tracker
                 state = StepState.Done;
                 completed[i] = required;
             }
-            else if (FreeAt(step, i) is { } free)
-            {
-                state = StepState.Done;
-                at = free;
-                completed[i] = required;
-            }
             else if (_started.ContainsKey(i))
             {
                 state = StepState.InProgress;
@@ -721,26 +715,6 @@ public sealed class Tracker
             return _state.Stock.Covers(entity.Cost);
         }
     }
-
-    /// <summary>
-    /// Una investigación que a la civ le sale gratis (costo y tiempo cero en game_data: la collera, el arado pesado y la
-    /// rotación de cultivos de los francos, la carretilla de los vikingos) la da el juego al llegar a su edad: queda
-    /// hecha desde ese momento, sin el log (partida 20261031-192108: la BO de scouts "any" jugada con francos pedía la
-    /// collera desde las 10:43 hasta el final).
-    /// </summary>
-    private double? FreeAt(Step step, int i)
-    {
-        if (step.Do != StepAction.Research || step.What is not { } what || !_data.TryGet(what, out var entity)
-            || entity.Age > Age || BuildOrderValidator.AgeOf(what) is not null)
-            return null;
-        var civ = _data.Civ(_bo.Civ);
-        if (civ.Cost(entity, Age) != ResourceAmounts.Zero || entity.Cost == ResourceAmounts.Zero)
-            return null;
-        return _freeAt.TryGetValue(i, out var at) ? at : _freeAt[i] = _state.Time;
-    }
-
-    /// <summary>Cuándo se vio por primera vez que la civ ya tenía gratis cada investigación (<see cref="FreeAt"/>).</summary>
-    private readonly Dictionary<int, double> _freeAt = [];
 
     private double? FirstProgressTime(int i, double?[] doneAt) =>
         _manualDone.TryGetValue(i, out var manual) ? manual

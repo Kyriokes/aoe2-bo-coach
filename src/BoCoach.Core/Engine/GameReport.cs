@@ -144,7 +144,7 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
         var steps = _steps.Select(s => new StepTiming(s.Index + 1, StepText.Describe(s.Step), _plan.For(s.Step.Id)?.Start,
             s.State == StepState.Done ? s.DoneAt : null)
         {
-            Unannounced = EventConventions.EventFor(s.Step) is { } id && EventConventions.Unannounced.Contains(id),
+            Unannounced = EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id),
         }).ToList();
         var clicks = new List<AgeClick>();
         foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", "Castillos", bo.Targets?.CastleClickTime) })
