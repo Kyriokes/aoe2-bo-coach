@@ -60,6 +60,9 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
     /// <summary>Lo que se cree de la partida después de la última captura.</summary>
     public BeliefView Belief => _belief.View;
 
+    /// <summary>Lo que terminó en el último snapshot, con la fuente que lo dijo (el registro de partida lo guarda).</summary>
+    public IReadOnlyList<Completion> LastCompletions { get; private set; } = [];
+
     /// <summary>True si la última población salió de la estimación y no de la pantalla.</summary>
     public bool PopulationEstimated { get; private set; } = true;
 
@@ -112,7 +115,8 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
         if (reading.Clock is not { } clock)
             return null;
         var time = GameTime(clock, reading);
-        var events = _belief.TakeNew().Select(c => new GameEvent(c.EventId, time)).ToList();
+        LastCompletions = _belief.TakeNew();
+        var events = LastCompletions.Select(c => new GameEvent(c.EventId, time)).ToList();
         return new GameSnapshot(time, _stock, _population, _cap, events)
         {
             Villagers = readVillagers,

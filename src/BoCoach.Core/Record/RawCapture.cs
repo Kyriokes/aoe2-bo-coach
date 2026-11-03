@@ -28,7 +28,7 @@ public static class GameRecordKeys
 /// <param name="VillagersOn">Aldeanos por recurso, solo los leídos (null si ninguno).</param>
 /// <param name="Confidence">Confianza 0 a 1 de cada campo leído por plantillas, por clave ("clock", "food", "food_vil", "vil", "pop", "idle"...).</param>
 /// <param name="Clipped">Regiones con el número cortado por la caja.</param>
-/// <param name="LogLines">Renglones del log de arriba hacia abajo (vacío = sin texto), o null si no se lee el log.</param>
+/// <param name="LogLines">Renglones del log de arriba hacia abajo (vacío = sin texto), o null si no se lee el log. Lo que no es un mensaje del juego va tapado: ahí puede haber chat con nombres.</param>
 /// <param name="AgeText">El texto crudo de la edad, solo en las capturas en que se leyó.</param>
 /// <param name="Queue">La cola de producción, o null si no se lee.</param>
 /// <param name="Scores">El panel de puntajes (sin nombres), solo en las capturas en que se leyó.</param>
@@ -82,8 +82,8 @@ public sealed record RawCapture(
         }
         if (Clipped.Count > 0)
             json["clipped"] = new JsonArray(Clipped.Select(c => (JsonNode?)c).ToArray());
-        if (logChanged && LogLines is { } lines)
-            json["log"] = new JsonArray(lines.Select(l => (JsonNode?)l).ToArray());
+        if (logChanged)
+            json["log"] = LogLines is { } lines ? new JsonArray(lines.Select(l => (JsonNode?)l).ToArray()) : null;
         if (AgeText is { } age)
             json["age"] = age;
         if (Queue is { } queue)
@@ -110,7 +110,7 @@ public sealed record RawCapture(
                 if (Double(value) is { } d)
                     confidence[key] = (float)d;
         var clipped = Strings(json["clipped"]) ?? [];
-        var log = json["log"] is JsonArray ? Strings(json["log"]) : previousLog;
+        var log = json.ContainsKey("log") ? Strings(json["log"]) : previousLog;
         IReadOnlyList<QueueItem>? queue = json["queue"] is JsonArray q
             ? q.OfType<JsonArray>().Where(i => i.Count >= 1 && i[0] is JsonValue).Select(i => new QueueItem(i[0]!.GetValue<string>(), i.Count > 1 && Bool(i[1]))).ToList()
             : null;

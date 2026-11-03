@@ -67,7 +67,8 @@ public sealed class GameRecordFileTests : IDisposable
         var json = Capture(1, ["a"]).ToJson(logChanged: false);
         Assert.False(json.ContainsKey("log"));
         Assert.True(Capture(1, ["a"]).ToJson(logChanged: true).ContainsKey("log"));
-        Assert.False(Capture(1, null).ToJson(logChanged: true).ContainsKey("log"));
+        // La región dejó de leerse: se escribe null, si no se tomarían los renglones de la captura anterior.
+        Assert.Null(RawCapture.FromJson(Capture(1, null).ToJson(logChanged: true), ["a"]).LogLines);
     }
 
     [Fact]
