@@ -318,6 +318,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
+    /// <summary>
+    /// Sin el loop de fondo: el test da los pasos con <see cref="LiveCoach.StepAsync"/>. Con el loop, dos hilos aplicaban
+    /// lecturas a la vez (en la app van todas por el hilo de la interfaz) y la suite daba mal una vez cada tanto.
+    /// </summary>
+    internal bool ManualSteps { get; init; }
+
     /// <summary>El coach en vivo mientras corre (para los tests).</summary>
     public LiveCoach? LiveCoach => _coach;
 
@@ -484,7 +490,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             LastBuildOrderId = bo.Id;
             SaveSettings();
         }
-        _coach.Start();
+        if (!ManualSteps)
+            _coach.Start();
         IsRunning = true;
         Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
     }

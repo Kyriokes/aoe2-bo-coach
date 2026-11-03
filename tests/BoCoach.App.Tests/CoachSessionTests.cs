@@ -233,7 +233,7 @@ public sealed class CoachSessionTests : IDisposable
         try
         {
             Hotkeys.HotkeyMap.Current = new Hotkeys.HotkeyMap(new Dictionary<string, string> { ["advance"] = "Ctrl+Alt+F1" });
-            using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"));
+            using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png")) { ManualSteps = true };
             session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
             Assert.Contains("Ctrl+Alt+F1 avanza", session.Status);
             Assert.Contains("Ctrl+Alt+← retrocede", session.Status);
@@ -329,6 +329,7 @@ public sealed class CoachSessionTests : IDisposable
         // A mano: la sugerida se muestra con su atajo (en Automática el coach cambia solo, ver el test siguiente).
         using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
+            ManualSteps = true,
             PlayerName = "Kyriokes",
             BoMode = BuildOrderMode.Manual,
             Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
@@ -360,6 +361,7 @@ public sealed class CoachSessionTests : IDisposable
             return;
         using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
+            ManualSteps = true,
             PlayerName = "Kyriokes",
             Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
         };
@@ -382,6 +384,7 @@ public sealed class CoachSessionTests : IDisposable
             return null;
         var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
+            ManualSteps = true,
             PlayerName = "Kyriokes",
             Picker = new BuildOrderPicker(source, _data.CivStyles),
         };
@@ -461,6 +464,7 @@ public sealed class CoachSessionTests : IDisposable
         var host = new FakeHost();
         using var session = new CoachSessionViewModel(_data, host, () => null, () => new StillScreen("carga-ia-en-1080p.png"))
         {
+            ManualSteps = true,
             PlayerName = "Kyriokes",
             EloTeamText = eloEquipos,
         };
@@ -477,7 +481,7 @@ public sealed class CoachSessionTests : IDisposable
     [Fact]
     public void Una_pantalla_de_carga_nueva_sin_tu_nombre_borra_el_cruce_anterior()
     {
-        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException());
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException()) { ManualSteps = true };
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
         var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(0, new ResourceAmounts(200, 200, 100, 200), 4, 5));
         static LoadingPlayer Jugador(int slot, string name, string civ) => new(slot, name, "", civ, null, (0, 0, 0));
