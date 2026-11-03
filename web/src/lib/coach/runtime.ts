@@ -1,17 +1,18 @@
+import type { Locale } from "@/i18n/locales";
 import type { AnalysisResult, ImportResult } from "./types";
 
 /** El Core de C# corriendo en WebAssembly (src/BoCoach.Wasm): el mismo validador y Planner que la app. */
 export interface CoachRuntime {
   /** Versión del .dat de los datos del juego cargados (por ejemplo "VER 8.9"). */
   datVersion: string;
-  /** Valida, describe y simula una BO (el JSON de la app). */
-  analyze(buildOrderJson: string): AnalysisResult;
+  /** Valida, describe y simula una BO (el JSON de la app). Los pasos salen en `locale`; los avisos, en castellano. */
+  analyze(buildOrderJson: string, locale?: Locale): AnalysisResult;
   /** Reconoce el formato (BO de la app, guía de RTS Overlay o de buildorderguide.com) y la convierte. */
   importBuildOrder(json: string): ImportResult;
 }
 
 interface CoachExports {
-  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string, maps: string): string; Analyze(json: string): string; Import(json: string): string } } };
+  BoCoach: { Wasm: { Exports: { Init(gameData: string, events: string, maps: string): string; Analyze(json: string, language: string): string; Import(json: string): string } } };
 }
 
 interface DotnetModule {
@@ -28,7 +29,7 @@ export async function startCoach(dotnetModule: DotnetModule, gameDataJson: strin
   const datVersion = coach.Init(gameDataJson, eventsJson, mapsJson);
   return {
     datVersion,
-    analyze: (json) => JSON.parse(coach.Analyze(json)) as AnalysisResult,
+    analyze: (json, locale = "es") => JSON.parse(coach.Analyze(json, locale)) as AnalysisResult,
     importBuildOrder: (json) => JSON.parse(coach.Import(json)) as ImportResult,
   };
 }

@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/locales";
 import { loadCoach } from "./browser";
 import type { AnalysisResult } from "./types";
 
@@ -7,8 +8,8 @@ import type { AnalysisResult } from "./types";
  * si no llega a 300 ms: se probó y `dotnet.create()` no termina dentro de un worker de módulo (ni con `self.window`),
  * así que queda pendiente (PLAN.md, D12). Solo desde componentes de cliente.
  */
-export async function analyzeAsync(json: string): Promise<AnalysisResult> {
+export async function analyzeAsync(json: string, locale?: Locale): Promise<AnalysisResult> {
   const coach = await loadCoach();
   await new Promise((resolve) => setTimeout(resolve, 0));
-  return coach.analyze(json);
+  return coach.analyze(json, locale);
 }

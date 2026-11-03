@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CIV_NAMES } from "./civNames";
+import { CIV_NAMES, CIV_NAMES_EN } from "./civNames";
 import { byline, civLabel, shareDescription, shareFacts, type ShareInfo } from "./share";
 import { siteUrl } from "./site";
 
@@ -52,8 +52,9 @@ describe("vista previa al compartir", () => {
     const latest = readdirSync(dir)
       .filter((f) => /^v\d+(\.\d+)*\.json$/.test(f))
       .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0];
-    const civs = (JSON.parse(readFileSync(join(dir, latest), "utf8")) as { civs: Record<string, { names: { mx: string } }> }).civs;
+    const civs = (JSON.parse(readFileSync(join(dir, latest), "utf8")) as { civs: Record<string, { names: { mx: string; en: string } }> }).civs;
     expect(CIV_NAMES).toEqual(Object.fromEntries(Object.entries(civs).map(([key, civ]) => [key, civ.names.mx])));
+    expect(CIV_NAMES_EN).toEqual(Object.fromEntries(Object.entries(civs).map(([key, civ]) => [key, civ.names.en])));
   });
 });
 

@@ -1,7 +1,9 @@
+import type { Locale } from "@/i18n/locales";
+
 /**
- * Nombre en castellano (Latinoamérica) de cada civ por su clave, el mismo que muestra la app (game_data,
- * civs.<clave>.names.mx). Un test controla que coincida con data/game_data: si un parche agrega civs, se
- * actualiza esta lista.
+ * El nombre de cada civ por su clave y por idioma, el mismo que muestra el juego (game_data, civs.<clave>.names: "mx"
+ * para el castellano, como la app, y "en" para el inglés). Un test controla que coincida con data/game_data: si un
+ * parche agrega civs, se actualizan las dos listas.
  */
 export const CIV_NAMES: Readonly<Record<string, string>> = {
   britons: "Britanos",
@@ -67,3 +69,75 @@ export const CIV_NAMES: Readonly<Record<string, string>> = {
   varangians: "Varegos",
   danes: "Daneses",
 };
+
+export const CIV_NAMES_EN: Readonly<Record<string, string>> = {
+  britons: "Britons",
+  franks: "Franks",
+  goths: "Goths",
+  teutons: "Teutons",
+  japanese: "Japanese",
+  chinese: "Chinese",
+  byzantines: "Byzantines",
+  persians: "Persians",
+  saracens: "Saracens",
+  turks: "Turks",
+  vikings: "Vikings",
+  mongols: "Mongols",
+  celts: "Celts",
+  spanish: "Spanish",
+  aztecs: "Aztecs",
+  mayan: "Maya",
+  huns: "Huns",
+  koreans: "Koreans",
+  italians: "Italians",
+  hindustanis: "Hindustanis",
+  incas: "Inca",
+  magyars: "Magyars",
+  slavs: "Slavs",
+  portuguese: "Portuguese",
+  ethiopians: "Ethiopians",
+  malians: "Malians",
+  berbers: "Berbers",
+  khmer: "Khmer",
+  malay: "Malay",
+  burmese: "Burmese",
+  vietnamese: "Vietnamese",
+  bulgarians: "Bulgarians",
+  tatars: "Tatars",
+  cumans: "Cumans",
+  lithuanians: "Lithuanians",
+  burgundians: "Burgundians",
+  sicilians: "Sicilians",
+  poles: "Poles",
+  bohemians: "Bohemians",
+  dravidians: "Dravidians",
+  bengalis: "Bengalis",
+  gurjaras: "Gurjaras",
+  romans: "Romans",
+  armenians: "Armenians",
+  georgians: "Georgians",
+  achaemenids: "Achaemenids",
+  athenians: "Athenians",
+  spartans: "Spartans",
+  shu: "Shu",
+  wu: "Wu",
+  wei: "Wei",
+  jurchens: "Jurchens",
+  khitans: "Khitans",
+  macedonians: "Macedonians",
+  thracians: "Thracians",
+  puru: "Puru",
+  muisca: "Muisca",
+  mapuche: "Mapuche",
+  tupi: "Tupi",
+  saxons: "Saxons",
+  varangians: "Varangians",
+  danes: "Danes",
+};
+
+const BY_LOCALE: Readonly<Record<Locale, Readonly<Record<string, string>>>> = { es: CIV_NAMES, en: CIV_NAMES_EN };
+
+/** Los nombres de las civs en ese idioma. */
+export function civNames(locale: Locale = "es") {
+  return BY_LOCALE[locale];
+}
