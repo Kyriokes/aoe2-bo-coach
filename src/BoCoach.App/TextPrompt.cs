@@ -9,8 +9,8 @@ public static class TextPrompt
     public static string? Ask(Window owner, string title, string message, string initial = "")
     {
         var box = new TextBox { Text = initial, Margin = new Thickness(0, 8, 0, 14), MinWidth = 380 };
-        var ok = new Button { Content = "Aceptar", IsDefault = true, Style = (Style)Application.Current.FindResource("PrimaryButton") };
-        var cancel = new Button { Content = "Cancelar", IsCancel = true, Margin = new Thickness(0) };
+        var ok = new Button { Content = Texts.Accept, IsDefault = true, Style = (Style)Application.Current.FindResource("PrimaryButton") };
+        var cancel = new Button { Content = Texts.Cancel, IsCancel = true, Margin = new Thickness(0) };
         var window = new Window
         {
             Title = title,
@@ -19,9 +19,7 @@ public static class TextPrompt
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false,
-            Background = (System.Windows.Media.Brush)Application.Current.FindResource("Background"),
-            FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
-            FontSize = 13,
+            Style = (Style)Application.Current.FindResource("AppWindow"),
             Content = new StackPanel
             {
                 Margin = new Thickness(18),
@@ -41,5 +39,49 @@ public static class TextPrompt
             box.SelectAll();
         };
         return window.ShowDialog() == true ? box.Text.Trim() : null;
+    }
+}
+
+/// <summary>Los mensajes y las confirmaciones de la app, con el tema (el MessageBox de Windows es claro).</summary>
+public static class AppDialog
+{
+    /// <summary>Un mensaje con aceptar.</summary>
+    public static void Show(Window owner, string title, string message) =>
+        Open(owner, title, message, Texts.Accept, null);
+
+    /// <summary>Una pregunta por sí o por no.</summary>
+    public static bool Confirm(Window owner, string message) =>
+        Open(owner, Texts.ConfirmTitle, message, Texts.Yes, Texts.No);
+
+    private static bool Open(Window owner, string title, string message, string accept, string? cancel)
+    {
+        var ok = new Button { Content = accept, IsDefault = true, Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0) };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
+        if (cancel is null)
+            ok.IsCancel = true;
+        buttons.Children.Add(ok);
+        if (cancel is not null)
+        {
+            ok.Margin = new Thickness(0, 0, 6, 0);
+            buttons.Children.Add(new Button { Content = cancel, IsCancel = true, Margin = new Thickness(0) });
+        }
+        var window = new Window
+        {
+            Title = title,
+            Owner = owner,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ShowInTaskbar = false,
+            Style = (Style)Application.Current.FindResource("AppWindow"),
+            Content = new StackPanel
+            {
+                Margin = new Thickness(18),
+                Children = { new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap }, buttons },
+            },
+        };
+        ok.Click += (_, _) => window.DialogResult = true;
+        return window.ShowDialog() == true;
     }
 }

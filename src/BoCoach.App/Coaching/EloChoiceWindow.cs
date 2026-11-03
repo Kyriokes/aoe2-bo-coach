@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using BoCoach.Core.Web;
 
 namespace BoCoach.App.Coaching;
@@ -17,19 +16,18 @@ public sealed class EloChoiceWindow : Window
 
     public EloChoiceWindow(IReadOnlyList<EloCandidate> candidates)
     {
-        Title = "¿Cuál sos vos?";
+        Title = Texts.EloChoiceTitle;
+        Style = (Style)Application.Current.FindResource("AppWindow");
         Width = 520;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x1A, 0x16));
 
         var panel = new StackPanel { Margin = new Thickness(18) };
         panel.Children.Add(new TextBlock
         {
-            Text = "Hay varios jugadores con ese nombre. Elegí el tuyo (arriba, el que jugó más hace poco):",
+            Text = Texts.EloChoiceBody,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new SolidColorBrush(Color.FromRgb(0xF4, 0xF2, 0xEE)),
             Margin = new Thickness(0, 0, 0, 10),
         });
         var list = new ListBox { MaxHeight = 320, ItemsSource = candidates.Select(Line).ToList(), SelectedIndex = 0 };
@@ -37,9 +35,9 @@ public sealed class EloChoiceWindow : Window
         panel.Children.Add(list);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0) };
-        var use = new Button { Content = "Usar este", Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var use = new Button { Content = Texts.EloChoiceUse, IsDefault = true, Style = (Style)Application.Current.FindResource("PrimaryButton") };
         use.Click += (_, _) => Accept(candidates, list.SelectedIndex);
-        var cancel = new Button { Content = "Cancelar", Padding = new Thickness(10, 3, 10, 3), IsCancel = true };
+        var cancel = new Button { Content = Texts.Cancel, IsCancel = true, Margin = new Thickness(0) };
         buttons.Children.Add(use);
         buttons.Children.Add(cancel);
         panel.Children.Add(buttons);
@@ -59,7 +57,7 @@ public sealed class EloChoiceWindow : Window
     {
         static string Elo(int? elo) => elo?.ToString(CultureInfo.InvariantCulture) ?? "-";
         var country = string.IsNullOrWhiteSpace(c.Country) ? "" : $" ({c.Country.ToUpperInvariant()})";
-        var last = c.LastMatch is { } date ? $" · última partida {date.ToLocalTime():yyyy-MM-dd}" : " · sin partidas clasificatorias";
-        return $"{c.Alias}{country} · 1v1 {Elo(c.Elo1v1)} · equipos {Elo(c.EloTeam)}{last}";
+        var last = c.LastMatch is { } date ? Texts.EloChoiceLast($"{date.ToLocalTime():yyyy-MM-dd}") : Texts.EloChoiceNoMatches;
+        return Texts.EloChoiceLine(c.Alias, country, Elo(c.Elo1v1), Elo(c.EloTeam), last);
     }
 }

@@ -4,15 +4,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:hotkeys="clr-namespace:BoCoach.App.Hotkeys"
+        xmlns:app="clr-namespace:BoCoach.App"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance hotkeys:HotkeysViewModel}"
-        Title="Atajos" Width="480" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" Background="{StaticResource Background}"
-        FontFamily="Segoe UI" FontSize="13">
+        Title="{x:Static app:Texts.HotkeysTitle}" Width="500" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Style="{StaticResource AppWindow}">
     <StackPanel Margin="18">
-        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,12">
-            Andan aunque el foco esté en el juego. Para cambiar uno, hacé clic en la combinación y apretá la nueva (con Ctrl, Alt o Win). Escape cancela.
-        </TextBlock>
+        <TextBlock Text="{x:Static app:Texts.HotkeysIntro}" Style="{StaticResource Body}" Margin="0,0,0,12" />
         <ItemsControl ItemsSource="{Binding Rows}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="{x:Type hotkeys:HotkeyRowViewModel}">
@@ -26,9 +24,9 @@
                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                             <Button Grid.Column="1" Content="{Binding Text}" Command="{Binding StartCaptureCommand}"
                                     AutomationProperties.Name="{Binding Name}" Margin="0,0,6,0" />
-                            <Button Grid.Column="2" Content="Restaurar" Command="{Binding ResetCommand}" Padding="8,1" />
+                            <Button Grid.Column="2" Content="{x:Static app:Texts.HotkeyRestore}" Command="{Binding ResetCommand}" Margin="0" />
                         </Grid>
-                        <TextBlock Text="{Binding Message}" Foreground="#C0392B" TextWrapping="Wrap" Margin="0,2,0,0">
+                        <TextBlock Text="{Binding Message}" Foreground="{StaticResource Danger}" TextWrapping="Wrap" Margin="0,2,0,0">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Style.Triggers>
@@ -43,6 +41,6 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <Button Content="Restaurar todos" Command="{Binding ResetAllCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+        <Button Content="{x:Static app:Texts.HotkeyRestoreAll}" Command="{Binding ResetAllCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
     </StackPanel>
 </Window>

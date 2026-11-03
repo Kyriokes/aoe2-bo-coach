@@ -12,18 +12,18 @@ public static class HotkeyActions
 
     public static IReadOnlyList<HotkeyAction> All { get; } =
     [
-        new("start_stop", "Empezar o detener el coach", new(CtrlAlt, Key.S), false),
-        new("advance", "Ya está", new(CtrlAlt, Key.Right), false),
-        new("back", "Atrás", new(CtrlAlt, Key.Left), false),
-        new("skip", "Saltear", new(CtrlAlt, Key.Down), false),
-        new("pause", "Pausa", new(CtrlAlt, Key.P), false),
-        new("overlay", "Ocultar el overlay", new(CtrlAlt, Key.H), false),
-        new("cursor_reminders", "Recordatorios en el mouse", new(CtrlAlt, Key.M), false),
-        new("accept_suggestion", "Usar la BO sugerida", new(CtrlAlt, Key.B), false),
-        new("calibrate", "Calibrar a mano", new(CtrlAlt, Key.C), true),
-        new("record", "Grabar", new(CtrlAlt, Key.R), true),
-        new("debug", "Debug del overlay", new(CtrlAlt, Key.D), true),
-        new("diagnostic", "Captura de diagnóstico", new(CtrlAlt, Key.X), true),
+        new("start_stop", Texts.HotkeyStartStop, new(CtrlAlt, Key.S), false),
+        new("advance", Texts.HotkeyAdvance, new(CtrlAlt, Key.Right), false),
+        new("back", Texts.HotkeyBack, new(CtrlAlt, Key.Left), false),
+        new("skip", Texts.HotkeySkip, new(CtrlAlt, Key.Down), false),
+        new("pause", Texts.HotkeyPause, new(CtrlAlt, Key.P), false),
+        new("overlay", Texts.HotkeyOverlay, new(CtrlAlt, Key.H), false),
+        new("cursor_reminders", Texts.HotkeyCursorReminders, new(CtrlAlt, Key.M), false),
+        new("accept_suggestion", Texts.HotkeyAcceptSuggestion, new(CtrlAlt, Key.B), false),
+        new("calibrate", Texts.HotkeyCalibrate, new(CtrlAlt, Key.C), true),
+        new("record", Texts.HotkeyRecord, new(CtrlAlt, Key.R), true),
+        new("debug", Texts.HotkeyDebug, new(CtrlAlt, Key.D), true),
+        new("diagnostic", Texts.HotkeyDiagnostic, new(CtrlAlt, Key.X), true),
     ];
 
     public static HotkeyAction? Find(string id) => All.FirstOrDefault(a => a.Id == id);

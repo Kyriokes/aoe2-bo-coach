@@ -24,10 +24,10 @@ public sealed partial class LiveReadingViewModel : ObservableObject
 {
     private const int MaxEvents = 8;
 
-    public LiveResource Food { get; } = new("Comida");
-    public LiveResource Wood { get; } = new("Madera");
-    public LiveResource Gold { get; } = new("Oro");
-    public LiveResource Stone { get; } = new("Piedra");
+    public LiveResource Food { get; } = new(Texts.ResourceFood);
+    public LiveResource Wood { get; } = new(Texts.ResourceWood);
+    public LiveResource Gold { get; } = new(Texts.ResourceGold);
+    public LiveResource Stone { get; } = new(Texts.ResourceStone);
 
     [ObservableProperty] public partial string Clock { get; set; } = "—";
     [ObservableProperty] public partial string Villagers { get; set; } = "—";
@@ -58,11 +58,11 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         // Si el jugador se quedó quieto al principio, el coach cuenta desde que empezó a jugar y el reloj del juego no.
         Clock = hud?.Clock is { } clock
             ? frame.StartOffset > 0
-                ? $"{GameClock.Format(clock)} · la partida empezó a las {GameClock.Format(frame.StartOffset)} (juego {GameClock.Format(view.Time)})"
+                ? Texts.ClockWithOffset(GameClock.Format(clock), GameClock.Format(frame.StartOffset), GameClock.Format(view.Time))
                 : GameClock.Format(clock)
-            : "no se lee";
+            : Texts.NotRead;
 
-        static string Stock(double? value) => value is { } v ? $"{v:0}" : "no se lee";
+        static string Stock(double? value) => value is { } v ? $"{v:0}" : Texts.NotRead;
         Food.Stock = Stock(hud?.Food);
         Wood.Stock = Stock(hud?.Wood);
         Gold.Stock = Stock(hud?.Gold);
@@ -74,36 +74,36 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         // Lo que se ve en el HUD (con el mod) o, si no, lo que estima la economía; la GD y el reparto de la BO.
         string Plan(Resource r)
         {
-            var seen = hud?.VillagersOn is { } on && on.TryGetValue(r, out var n) ? $"hay {n}"
-                : actual is { } a ? $"hay ~{a[r]:0}"
-                : "hay —";
-            return $"aldeanos: {seen} · GD {(guide is { } g ? $"{g[r]:0}" : "—")} (BO {(bo is { } b ? $"{b[r]:0}" : "—")})";
+            var seen = hud?.VillagersOn is { } on && on.TryGetValue(r, out var n) ? Texts.VillagersSeen(n)
+                : actual is { } a ? Texts.VillagersEstimated($"{a[r]:0}")
+                : Texts.VillagersUnknown;
+            return Texts.VillagersPlan(seen, guide is { } g ? $"{g[r]:0}" : "—", bo is { } b ? $"{b[r]:0}" : "—");
         }
         Food.Villagers = Plan(Resource.Food);
         Wood.Villagers = Plan(Resource.Wood);
         Gold.Villagers = Plan(Resource.Gold);
         Stone.Villagers = Plan(Resource.Stone);
 
-        Villagers = hud?.Villagers is { } v ? $"{v}" : "no se lee";
+        Villagers = hud?.Villagers is { } v ? $"{v}" : Texts.NotRead;
         Idle = hud?.IdleVillagers is { } idle ? $"{idle}" : "—";
-        Population = hud is { Population: { } p, PopulationCap: { } c } ? $"{p}/{c}" : $"{view.Population}/{view.PopulationCap} (estimada)";
-        FoodFloor = view.FoodFloor > 0 ? $"mínimo en comida para no parar el centro urbano: {view.FoodFloor}" : "";
-        Age = hud?.Age is { } age ? BuildOrderValidator.AgeName(age) : "no se lee";
+        Population = hud is { Population: { } p, PopulationCap: { } c } ? $"{p}/{c}" : Texts.PopulationEstimated(view.Population, view.PopulationCap);
+        FoodFloor = view.FoodFloor > 0 ? Texts.FoodFloor((int)view.FoodFloor) : "";
+        Age = hud?.Age is { } age ? BuildOrderValidator.AgeName(age) : Texts.NotRead;
         Queue = hud?.Queue switch
         {
-            null => "Cola de producción: no se lee (calibrá su caja)",
-            [] => "Cola de producción: vacía",
-            var items => $"Cola de producción: {string.Join(", ", items.Select(i => i.Waiting ? $"{QueueName(i.Key)} (espera)" : QueueName(i.Key)))}",
+            null => Texts.QueueNotRead,
+            [] => Texts.QueueEmpty,
+            var items => Texts.QueueItems(string.Join(", ", items.Select(i => i.Waiting ? Texts.QueueWaiting(QueueName(i.Key)) : QueueName(i.Key)))),
         };
         Game = GameText(frame);
         Lanes = Core.Engine.CoachText.LaneLines(view, null).Select(l => $"{l.Label}: {l.Text}").ToList();
-        Step = view.Abandoned is { } reason ? $"BO abandonada: {reason} (\"◀ Atrás\" la retoma)"
-            : view.Current is { } current ? $"Paso {current.Index + 1}/{view.TotalSteps}: {StepText.Describe(current.Step)} ({current.State})"
-            : view.Posture is { } posture ? $"BO terminada. {Core.Engine.CoachText.PostureTitle(posture)}{(posture.Derived ? " (deducida de la BO)" : "")}"
-            : "BO terminada";
+        Step = view.Abandoned is { } reason ? Texts.Abandoned(reason)
+            : view.Current is { } current ? Texts.StepLine(current.Index + 1, view.TotalSteps, StepText.Describe(current.Step), current.State.ToString())
+            : view.Posture is { } posture ? Texts.BuildOrderDoneWith(Core.Engine.CoachText.PostureTitle(posture), posture.Derived)
+            : Texts.BuildOrderDone;
         Problems = hud is { Clipped.Count: > 0 }
-            ? $"Números cortados en: {string.Join(", ", hud.Clipped.Select(RegionNames.Label))}"
-            : frame.Error is { } error ? $"Error: {error}" : "";
+            ? Texts.Clipped(string.Join(", ", hud.Clipped.Select(RegionNames.Label)))
+            : frame.Error is { } error ? Texts.LiveError(error) : "";
         Usage = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
 
         foreach (var e in hud?.NewEvents ?? [])
@@ -121,18 +121,17 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         if (frame.Loading is not { } loading)
             return "";
         static string Player(Vision.Loading.LoadingPlayer p) => $"{p.Name} ({p.Civ ?? "?"})";
-        var map = loading.Map is { } m ? $" · mapa {m}" : "";
+        var map = loading.Map is { } m ? Texts.LoadingMap(m) : "";
         if (frame.Me is not { } me)
-            return $"Partida (pantalla de carga): {string.Join(", ", loading.Players.Select(Player))}{map}. No sé cuál sos: poné \"Tu nombre\" arriba.";
+            return Texts.LoadingNoName(string.Join(", ", loading.Players.Select(Player)), map);
         var allies = loading.Allies(me);
-        return $"Partida (pantalla de carga): vos {Player(me)}"
-            + (allies.Count > 0 ? $" · aliados {string.Join(", ", allies.Select(Player))}" : "")
-            + $" · rivales {string.Join(", ", loading.Opponents(me).Select(Player))}{map}";
+        return Texts.LoadingMe(Player(me), allies.Count > 0 ? Texts.LoadingAllies(string.Join(", ", allies.Select(Player))) : "",
+            string.Join(", ", loading.Opponents(me).Select(Player)), map);
     }
 
     private static string QueueName(string key) => key switch
     {
-        Vision.Hud.IconLibrary.Housed => "sin población",
+        Vision.Hud.IconLibrary.Housed => Texts.QueueHoused,
         Vision.Hud.IconLibrary.Unknown => "?",
         _ when StepText.HasName(key) => StepText.Name(key),
         _ => key,

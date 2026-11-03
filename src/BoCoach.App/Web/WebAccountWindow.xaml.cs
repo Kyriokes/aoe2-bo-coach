@@ -27,7 +27,7 @@ public partial class WebAccountWindow : Window
     private void UpdateLinkStatus()
     {
         var registered = ExePath.Length > 0 && _links.IsRegisteredTo(ExePath);
-        LinkStatus.Text = registered ? "Registrados para esta app." : "Sin registrar.";
+        LinkStatus.Text = registered ? Texts.WebLinksRegistered : Texts.WebLinksNotRegistered;
         RegisterButton.IsEnabled = !registered;
     }
 
@@ -49,15 +49,13 @@ public partial class WebAccountWindow : Window
         // http solo para la web corriendo en esta PC (desarrollo): por la red, el token viajaría sin cifrar.
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !WebLibraryClient.SendsTokenSafely(uri))
         {
-            MessageBox.Show(this, "La dirección de la web tiene que empezar con https://", "Cuenta de la web",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Show(this, Texts.WebAccountTitle, Texts.WebNeedsHttps);
             return;
         }
         var token = TokenBox.Password.Trim();
         if (token.Length > 0 && !token.StartsWith("bocoach_", StringComparison.Ordinal))
         {
-            MessageBox.Show(this, "El token de la app empieza con bocoach_. Copialo de Mi cuenta en la web.", "Cuenta de la web",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            AppDialog.Show(this, Texts.WebAccountTitle, Texts.WebBadToken);
             return;
         }
         Result = _current with { WebUrl = url.TrimEnd('/'), Token = token };

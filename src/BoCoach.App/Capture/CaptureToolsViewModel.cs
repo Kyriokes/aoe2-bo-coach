@@ -82,7 +82,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     /// <summary>Si se encontró la ventana del juego y de qué tamaño (se actualiza en <see cref="Tick"/>).</summary>
     [ObservableProperty] public partial string GameStatus { get; set; } = "";
 
-    public string RecordButtonText => IsRecording ? "■ Detener grabación" : "● Grabar partida";
+    public string RecordButtonText => IsRecording ? Texts.RecordStop : Texts.RecordStart;
 
     public bool IsCalibrated => File.Exists(_regionsPath);
 
@@ -116,7 +116,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         {
             recorder.Stop();
             IsRecording = false;
-            RecordingStatus = $"Grabación guardada: {recorder.Frames} capturas en {recorder.Folder}";
+            RecordingStatus = Texts.RecordingSaved(recorder.Frames, recorder.Folder);
             _recorder = null;
             return;
         }
@@ -141,10 +141,10 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     [RelayCommand]
     private void InstallMod()
     {
-        const string title = "Mod del HUD";
+        var title = Texts.ModTitle;
         if (_findGame() is not { } game)
         {
-            _host.ShowMessage(title, "No encontré Age of Empires II: DE en las bibliotecas de Steam. Abrí el juego y volvé a probar.", true);
+            _host.ShowMessage(title, Texts.ModGameNotFound, true);
             return;
         }
         HudModResult result;
@@ -154,7 +154,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException)
         {
-            _host.ShowMessage(title, $"No se pudo instalar el mod.\n\n{e.Message}", true);
+            _host.ShowMessage(title, Texts.ModFailed(e.Message), true);
             return;
         }
         _host.ShowMessage(title, ModText(result), !result.Ok || result.Warnings.Count > 0);
@@ -165,19 +165,18 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         var lines = new List<string>();
         if (result.Ok)
         {
-            lines.Add($"Listo: el mod \"{HudMod.Name}\" quedó instalado.");
+            lines.Add(Texts.ModInstalled(HudMod.Name));
             lines.Add("");
             lines.AddRange(result.Installed);
             lines.Add("");
-            lines.Add("Si el juego está abierto, cerralo y volvé a abrirlo. En Mods → Mods instalados tiene que figurar activo. "
-                + "Después calibrá la pantalla de nuevo: los cuadrados de los recursos cambian de aspecto.");
+            lines.Add(Texts.ModRestart);
         }
         if (result.Warnings.Count > 0)
         {
             if (lines.Count > 0)
                 lines.Add("");
-            lines.Add("Ojo:");
-            lines.AddRange(result.Warnings.Select(w => $"• {w}"));
+            lines.Add(Texts.ModWarnings);
+            lines.AddRange(result.Warnings.Select(Texts.ModWarning));
         }
         return string.Join("\n", lines);
     }
@@ -195,17 +194,17 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     [RelayCommand]
     private async Task Diagnostic()
     {
-        DiagnosticStatus = $"Captura de diagnóstico en {DiagnosticDelay.TotalSeconds:0} s: volvé al juego…";
+        DiagnosticStatus = Texts.DiagnosticWaiting($"{DiagnosticDelay.TotalSeconds:0}");
         await Task.Delay(DiagnosticDelay);
         try
         {
             var files = await DiagnosticCapture.SaveAsync(_screen, Layout, _regionsPath, _fonts(), _language(), _diagnosticsFolder,
                 _findGame, _gameProfiles, DateTime.Now, _gameData(), _playerName(), LayoutOrNull());
-            DiagnosticStatus = $"Captura de diagnóstico guardada en {Path.GetDirectoryName(files.Image)} ({Path.GetFileNameWithoutExtension(files.Image)}): mandá esa carpeta.";
+            DiagnosticStatus = Texts.DiagnosticSaved(Path.GetDirectoryName(files.Image), Path.GetFileNameWithoutExtension(files.Image));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or InvalidDataException)
         {
-            DiagnosticStatus = $"No se pudo guardar la captura de diagnóstico: {e.Message}";
+            DiagnosticStatus = Texts.DiagnosticFailed(e.Message);
         }
     }
 
@@ -227,14 +226,14 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         }
         catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            CalibrationStatus = $"No se pudo capturar la pantalla para calibrar sola: {e.Message}";
+            CalibrationStatus = Texts.CalibrateCaptureFailed(e.Message);
             return false;
         }
         if (AutoCalibration.Detect(screen, Layout, LayoutOrNull()) is not { } found)
         {
             CalibrationStatus = IsCalibrated
-                ? $"No encontré el HUD del mod en la pantalla: sigue la calibración manual ({File.GetLastWriteTime(_regionsPath):d/M HH:mm})."
-                : "No encontré el HUD del mod en la pantalla: se usan posiciones aproximadas (instalá el mod o calibrá a mano).";
+                ? Texts.HudNotFoundManual(File.GetLastWriteTime(_regionsPath))
+                : Texts.HudNotFoundDefault;
             return false;
         }
         if (IsCalibrated)
@@ -242,9 +241,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         found.Layout.Save(_regionsPath);
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = (found.Hud is { } hud
-                ? $"Calibrada sola con el diseño {hud.Name} para {area.Width}×{area.Height}: {found.Squares.Count} casilleros y el reloj"
-                : $"Calibrada sola para {area.Width}×{area.Height}: {found.Squares.Count} cuadrados y el reloj")
-            + (CapturedImage.NeedsResample(found.Scale) ? $", HUD a escala {found.Scale:0.00}" : "") + ".";
+                ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)
+                : Texts.CalibratedAuto(area.Width, area.Height, found.Squares.Count))
+            + (CapturedImage.NeedsResample(found.Scale) ? Texts.CalibratedScale($"{found.Scale:0.00}") : "") + ".";
         return true;
     }
 
@@ -266,13 +265,12 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     {
         var area = _screen.CaptureArea;
         GameStatus = _screen.GameFound
-            ? $"Juego abierto: {area.Width}×{area.Height} en ({area.X}, {area.Y})."
-            : "Juego cerrado o minimizado.";
+            ? Texts.GameOpen(area.Width, area.Height, area.X, area.Y)
+            : Texts.GameClosed;
 
         if (_recorder is not { IsRecording: true } recorder)
             return;
-        RecordingStatus = $"Grabando {GameClock.Format(recorder.Elapsed.TotalSeconds)} · {recorder.Frames} capturas"
-            + (recorder.LastError is { } error ? $" · último error: {error}" : "");
+        RecordingStatus = Texts.Recording(GameClock.Format(recorder.Elapsed.TotalSeconds), recorder.Frames, recorder.LastError);
     }
 
     public void Dispose() => _recorder?.Stop();
@@ -281,10 +279,10 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     {
         if (!IsCalibrated)
         {
-            CalibrationStatus = "Pantalla sin calibrar: se usan posiciones aproximadas.";
+            CalibrationStatus = Texts.NotCalibrated;
             return;
         }
         var layout = Layout;
-        CalibrationStatus = $"Calibrada para {layout.ReferenceWidth}×{layout.ReferenceHeight} ({File.GetLastWriteTime(_regionsPath):d/M HH:mm}).";
+        CalibrationStatus = Texts.Calibrated(layout.ReferenceWidth, layout.ReferenceHeight, File.GetLastWriteTime(_regionsPath));
     }
 }

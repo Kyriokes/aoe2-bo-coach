@@ -17,7 +17,7 @@ public sealed partial class HotkeysViewModel
         map.Changed += Refresh;
         Refresh();
         foreach (var row in Rows.Where(r => !binder.IsRegistered(r.Id)))
-            row.Stop(map.Get(row.Id) is null ? "Sin atajo (estaba repetido en settings.json)" : $"Otro programa ya usa {map.Text(row.Id)}", true);
+            row.Stop(map.Get(row.Id) is null ? Texts.HotkeyRepeated : Texts.HotkeyTaken(map.Text(row.Id)), true);
     }
 
     public IReadOnlyList<HotkeyRowViewModel> Rows { get; }
@@ -42,7 +42,7 @@ public sealed partial class HotkeysViewModel
         var binding = new HotkeyBinding(modifiers, key);
         if (!binding.IsValid)
         {
-            row.Message = "Tiene que llevar Ctrl, Alt o Win";
+            row.Message = Texts.HotkeyNeedsModifier;
             row.IsError = true;
             return false;
         }
@@ -56,7 +56,7 @@ public sealed partial class HotkeysViewModel
     {
         var missing = _binder.ResetAll();
         foreach (var row in Rows)
-            row.Stop(missing.Contains(row.Id) ? $"Otro programa ya usa {_map.Text(row.Id)}" : null, missing.Contains(row.Id));
+            row.Stop(missing.Contains(row.Id) ? Texts.HotkeyTaken(_map.Text(row.Id)) : null, missing.Contains(row.Id));
     }
 
     /// <summary>Al cerrar la ventana: si un renglón esperaba la combinación, se cancela y los atajos vuelven.</summary>
@@ -79,7 +79,7 @@ public sealed partial class HotkeysViewModel
         row.Capturing = true;
         row.Message = null;
         row.IsError = false;
-        row.Text = "Apretá la nueva…";
+        row.Text = Texts.HotkeyPressNew;
     }
 
     internal void Apply(HotkeyRowViewModel row, HotkeyBinding? binding)
@@ -94,8 +94,8 @@ public sealed partial class HotkeysViewModel
         var target = binding ?? row.Action.Default;
         var message = _binder.Change(row.Id, binding) switch
         {
-            ChangeResult.UsedByOther => $"Ya la usa: {_binder.LastConflict?.Name}",
-            ChangeResult.Rejected => $"Otro programa ya usa {target.Display}",
+            ChangeResult.UsedByOther => Texts.HotkeyUsedBy(_binder.LastConflict?.Name),
+            ChangeResult.Rejected => Texts.HotkeyTaken(target.Display),
             _ => null,
         };
         row.Stop(message, message is not null);

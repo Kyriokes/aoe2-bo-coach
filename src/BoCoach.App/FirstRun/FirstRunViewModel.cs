@@ -50,7 +50,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(WatchButtonText))]
     public partial bool Watching { get; set; }
 
-    public string WatchButtonText => Watching ? "Dejar de mirar" : "Mirar la pantalla";
+    public string WatchButtonText => Watching ? Texts.WatchStop : Texts.WatchStart;
 
     [ObservableProperty] public partial string WatchStatus { get; set; } = "";
 
@@ -75,14 +75,14 @@ public sealed partial class FirstRunViewModel : ObservableObject
     /// <summary>Si la calibración sola ya encontró el HUD del mod en esta pasada del tutorial.</summary>
     [ObservableProperty] public partial bool Calibrated { get; set; }
 
-    [ObservableProperty] public partial string CalibrationStatus { get; set; } = "Todavía no vi el HUD del mod.";
+    [ObservableProperty] public partial string CalibrationStatus { get; set; } = Texts.HudNotSeen;
 
     [RelayCommand]
     private void ToggleWatching()
     {
         Watching = !Watching;
         WatchStatus = Watching
-            ? "Mirando la pantalla cada 2 s. Empezá la partida rápida: la lista de jugadores sale en la pantalla de carga."
+            ? Texts.Watching
             : Players.Count > 0 ? WatchStatus : "";
     }
 
@@ -102,12 +102,12 @@ public sealed partial class FirstRunViewModel : ObservableObject
             if (!Calibrated && _autoCalibrate())
             {
                 Calibrated = true;
-                CalibrationStatus = "Calibrada sola con el HUD del mod.";
+                CalibrationStatus = Texts.HudCalibrated;
             }
             if (Players.Count > 0 && Calibrated)
             {
                 Watching = false;
-                WatchStatus = "Listo: ya leí la pantalla de carga y calibré la pantalla. Podés salir de la partida.";
+                WatchStatus = Texts.WatchDone;
             }
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -115,7 +115,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
             // Como en LiveCoach: cualquier error de una mirada (el juego minimizado da un rectángulo vacío, el OCR)
             // se muestra y se sigue con la próxima. Antes solo se atrapaban dos tipos y el resto llegaba a la
             // ventana como excepción sin atrapar cada 2 s.
-            WatchStatus = $"No pude mirar la pantalla: {e.Message}";
+            WatchStatus = Texts.WatchFailed(e.Message);
         }
         finally
         {
@@ -130,7 +130,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
         {
             if (_createOcr(language) is not { } ocr)
             {
-                WatchStatus = "Windows no tiene el reconocimiento de texto (OCR) instalado: no puedo leer la pantalla de carga.";
+                WatchStatus = Texts.NoOcr;
                 return;
             }
             (_reader, _readerLanguage) = (new LoadingScreenReader(ocr, _data, language.Code), language);
@@ -142,8 +142,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
             Players.Add(player);
         OnPropertyChanged(nameof(HasPlayers));
         SelectedPlayer = Guess(reading, PlayerName);
-        WatchStatus = $"Leí la pantalla de carga: {reading.Players.Count} jugadores. Elegí tu nombre en la lista."
-            + (Calibrated ? "" : " Cuando empiece la partida, me calibro solo con el HUD.");
+        WatchStatus = Texts.PlayersRead(reading.Players.Count) + (Calibrated ? "" : Texts.CalibrateNext);
     }
 
     /// <summary>
