@@ -67,22 +67,42 @@ public sealed class BuildOrdersViewModelTests : IDisposable
 
     private BuildOrdersViewModel ViewModel() => new(_cache, _account, _dialogs, Data);
 
-    private static JsonObject Entry(string code, string name, bool own = false) => new()
+    private static JsonObject Entry(string code, string name, bool own = false, string updated = "2026-10-31T10:00:00Z") => new()
     {
         ["code"] = code, ["name"] = name, ["civ"] = "franks", ["map"] = null, ["style"] = "scouts", ["tags"] = new JsonArray(),
         ["author"] = "Ana", ["guide_author"] = "Cicero", ["own"] = own, ["visibility"] = own ? "private" : "public",
-        ["updated_at"] = "2026-10-31T10:00:00Z", ["feudal_click"] = null, ["castle_click"] = null,
+        ["updated_at"] = updated, ["feudal_click"] = null, ["castle_click"] = null,
     };
 
     private void ServeList(params JsonObject[] items) =>
         _web.Routes["GET /api/app/mis-bo"] = (HttpStatusCode.OK, new JsonObject { ["account"] = "Ana", ["items"] = new JsonArray(items) }.ToJsonString());
 
-    private void ServeBuildOrder(string code, string name) =>
+    private void ServeBuildOrder(string code, string name, string updated = "2026-10-31T10:00:00Z") =>
         _web.Routes[$"GET /api/bo/{code}"] = (HttpStatusCode.OK, new JsonObject
         {
-            ["code"] = code, ["name"] = name, ["author"] = "Ana", ["guide_author"] = "Cicero", ["updated_at"] = "2026-10-31T10:00:00Z",
+            ["code"] = code, ["name"] = name, ["author"] = "Ana", ["guide_author"] = "Cicero", ["updated_at"] = updated,
             ["build_order"] = JsonNode.Parse(BuildOrderSerializer.Serialize(Scouts with { Name = name })),
         }.ToJsonString());
+
+    // Partida 20261102-212823: la elegida republicada en la web seguía siendo la vieja hasta volver a elegirla.
+    [Fact]
+    public async Task Actualizar_la_lista_vuelve_a_bajar_la_elegida_si_la_web_la_tiene_mas_nueva()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        ServeBuildOrder("k7m2xq", "Vieja");
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        await vm.ChooseAsync(vm.Entries[0]);
+        Assert.Equal("Vieja", vm.SelectedBuildOrder?.Name);
+
+        ServeList(Entry("k7m2xq", "Mía", own: true, updated: "2026-11-03T00:23:03Z"));
+        ServeBuildOrder("k7m2xq", "Nueva", "2026-11-03T00:23:03Z");
+        await vm.RefreshAsync();
+
+        Assert.Equal("Nueva", vm.SelectedBuildOrder?.Name);
+        Assert.Equal("k7m2xq", vm.SelectedEntry?.Code);
+    }
 
     [Fact]
     public async Task Sin_cuenta_pide_conectarla_y_no_pide_nada()

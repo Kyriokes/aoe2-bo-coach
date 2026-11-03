@@ -558,6 +558,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var suggestion = picker.Best(match, matchups);
         // La que corre, como está guardada (sin la civ de la partida).
         var running = picker.Current(_coach.BuildOrder.Id) ?? _coach.BuildOrder;
+        // Republicada en la web desde que se bajó (la lista la trae más nueva que la guardada): se baja y el coach
+        // arranca con la nueva (partida 20261102-212823: jugó con la "mejorada" vieja de los aztecas).
+        if (!running.IsNone && picker.InList(running.Id) && !picker.IsFresh(running.Id))
+        {
+            _ = RefreshRunningAsync(picker, running);
+            return;
+        }
         if (suggestion is not null && suggestion.Summary.Key == running.Id)
             return;
         // D6 y parte 4: en automática, cambia a la mejor de la lista cuando puntúa más que la que corre
@@ -575,6 +582,25 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         _suggestion = suggestion;
         Overlay.BoSuggestion = $"Sugerida: {suggestion.Summary.Name} ({suggestion.Reason}). {Key("accept_suggestion")} para usarla";
+    }
+
+    /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
+    private async Task RefreshRunningAsync(BuildOrderPicker picker, BuildOrder running)
+    {
+        var session = _coach;
+        BuildOrder bo;
+        try
+        {
+            bo = await picker.GetAsync(running.Id);
+        }
+        catch (WebLibraryException)
+        {
+            return; // sin internet: sigue con la guardada
+        }
+        if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
+            return;
+        Start(bo, _liveFrames(), _startedAutomatically);
+        Status = $"Coach con \"{bo.Name}\", la versión nueva de la web.";
     }
 
     /// <summary>

@@ -133,6 +133,20 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         var error = await _cache.RefreshAsync();
         RebuildEntries();
         Status = error ?? (Entries.Count == 0 ? "Tu lista está vacía: armá una BO en la web o sumá una con Pegar código." : $"{Entries.Count} BO en tu lista.");
+        await RedownloadStaleAsync();
+    }
+
+    /// <summary>
+    /// La elegida, si la web la tiene más nueva que la guardada (republicada), se baja de nuevo: si no, el coach seguía
+    /// con la vieja (partida 20261102-212823).
+    /// </summary>
+    private async Task RedownloadStaleAsync()
+    {
+        if (SelectedEntry is { } entry && SelectedBuildOrder is not null && !_cache.IsFresh(entry.Code))
+        {
+            _choosing = DownloadSelectedAsync(entry);
+            await _choosing;
+        }
     }
 
     /// <summary>Pide la lista sin tocar el estado de la ventana (al empezar el coach, que escribe el suyo).</summary>
@@ -143,7 +157,10 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         try
         {
             if (await _cache.RefreshAsync() is null)
+            {
                 RebuildEntries();
+                await RedownloadStaleAsync();
+            }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

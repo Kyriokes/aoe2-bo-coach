@@ -23,6 +23,7 @@ internal sealed class RepoBuildOrders(Func<string, bool>? inList = null, Func<st
 
     public BuildOrder? Saved(string code) => AllSaved().FirstOrDefault(b => b.Id == code);
     public IEnumerable<BuildOrder> AllSaved() => All.Where(bo => saved?.Invoke(bo.Id) ?? true);
+    public bool IsFresh(string code) => Saved(code) is not null;
 
     public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) =>
         failing?.Contains(code) == true

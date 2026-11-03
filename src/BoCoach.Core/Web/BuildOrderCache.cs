@@ -52,6 +52,15 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
 
     public bool IsSaved(string code) => Saved(code) is not null;
 
+    /// <summary>La guardada está al día: no hay entrada en la lista, o la guardada no es más vieja que la de la lista.</summary>
+    public bool IsFresh(string code)
+    {
+        if (ReadSaved(code) is not { } saved)
+            return false;
+        var entry = List.Items.FirstOrDefault(i => i.Code == code);
+        return entry is null || saved.UpdatedAt >= entry.UpdatedAt;
+    }
+
     /// <summary>La BO guardada de ese código (con el código como id), o null.</summary>
     public BuildOrder? Saved(string code) => ReadSaved(code)?.BuildOrder;
 
@@ -76,7 +85,7 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
     {
         var saved = ReadSaved(code);
         var entry = List.Items.FirstOrDefault(i => i.Code == code);
-        if (saved is not null && (entry is null || saved.UpdatedAt >= entry.UpdatedAt))
+        if (saved is not null && IsFresh(code))
             return saved.BuildOrder;
         try
         {

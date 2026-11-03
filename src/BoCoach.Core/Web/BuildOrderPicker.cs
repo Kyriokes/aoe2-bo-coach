@@ -9,6 +9,13 @@ public interface IBuildOrderSource
     WebBuildOrderList List { get; }
     BuildOrder? Saved(string code);
     IEnumerable<BuildOrder> AllSaved();
+
+    /// <summary>
+    /// Si la guardada está al día con la lista (o no está en la lista): una republicada en la web (partida
+    /// 20261102-212823: la "mejorada" de los aztecas vieja, con la nueva ya publicada) no lo está, y hay que bajarla.
+    /// </summary>
+    bool IsFresh(string code);
+
     Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default);
 }
 
@@ -20,6 +27,7 @@ public sealed class EmptyBuildOrderSource : IBuildOrderSource
     public WebBuildOrderList List => WebBuildOrderList.Empty;
     public BuildOrder? Saved(string code) => null;
     public IEnumerable<BuildOrder> AllSaved() => [];
+    public bool IsFresh(string code) => false;
 
     public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) =>
         Task.FromException<BuildOrder>(new WebLibraryException("Conectá tu cuenta para elegir BO."));
@@ -49,14 +57,21 @@ public sealed class BuildOrderPicker(IBuildOrderSource source, CivStyles styles)
     /// </summary>
     public static bool CanSwitch(bool inGame, double gameTime) => !inGame && CanSwitchAt(gameTime);
 
-    /// <summary>La última usada, si está guardada y sigue en tu lista.</summary>
-    public BuildOrder? Current(string? lastCode) => lastCode is { Length: > 0 } code && InList(code) ? source.Saved(code) : null;
+    /// <summary>
+    /// La última usada, si está guardada al día y sigue en tu lista. Una republicada en la web (la lista la trae más
+    /// nueva que la guardada) no sirve: se baja con <see cref="GetAsync"/> (en la pantalla de carga, o al elegirla).
+    /// </summary>
+    public BuildOrder? Current(string? lastCode) =>
+        lastCode is { Length: > 0 } code && InList(code) && source.IsFresh(code) ? source.Saved(code) : null;
 
     /// <summary>
     /// Si la BO sigue en tu lista: una que se borró en la web, se hizo privada o dejaste de seguir queda guardada pero
     /// no se usa. Sin lista todavía (nunca se pudo pedir), sirven todas las guardadas.
     /// </summary>
-    private bool InList(string code) => source.List.Items.Count == 0 || source.List.Items.Any(i => i.Code == code);
+    public bool InList(string code) => source.List.Items.Count == 0 || source.List.Items.Any(i => i.Code == code);
+
+    /// <summary>La guardada de ese código está al día con la lista (ver <see cref="IBuildOrderSource.IsFresh"/>).</summary>
+    public bool IsFresh(string code) => source.IsFresh(code);
 
     /// <summary>Si la BO se puede usar en esa partida (de su civ o de cualquiera).</summary>
     public static bool Fits(BuildOrder bo, MatchSetup match) =>

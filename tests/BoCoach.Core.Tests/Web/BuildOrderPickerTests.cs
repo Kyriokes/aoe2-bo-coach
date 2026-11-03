@@ -36,6 +36,11 @@ public class BuildOrderPickerTests
 
         public IEnumerable<BuildOrder> AllSaved() => Stored;
 
+        /// <summary>Códigos que la web republicó: guardados pero viejos.</summary>
+        public HashSet<string> Stale { get; } = [];
+
+        public bool IsFresh(string code) => Saved(code) is not null && !Stale.Contains(code);
+
         public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default)
         {
             Downloads.Add(code);
@@ -95,6 +100,20 @@ public class BuildOrderPickerTests
         Assert.Equal("hunshu", picker.Current("hunshu")?.Id);
         Assert.Null(picker.Current("zzzzzz"));
         Assert.Null(picker.Current(null));
+    }
+
+    // Partida 20261102-212823: la "mejorada" de los aztecas republicada en la web y el coach siguió con la guardada vieja.
+    [Fact]
+    public void La_ultima_usada_no_sirve_si_la_web_la_tiene_mas_nueva()
+    {
+        var source = new FakeSource(Huns);
+        source.Stored.Add(Huns);
+        source.Stale.Add("hunshu");
+        var picker = new BuildOrderPicker(source, Styles);
+
+        Assert.Null(picker.Current("hunshu"));
+        Assert.False(picker.IsFresh("hunshu"));
+        Assert.True(picker.InList("hunshu"));
     }
 
     [Fact]

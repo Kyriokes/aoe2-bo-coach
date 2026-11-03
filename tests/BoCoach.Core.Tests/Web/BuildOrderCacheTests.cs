@@ -41,6 +41,27 @@ public sealed class BuildOrderCacheTests : IDisposable
         Assert.Equal(["k7m2xq"], offline.List.Items.Select(i => i.Code));
     }
 
+    // Partida 20261102-212823: las BO republicadas (--publish) no se volvían a bajar y el coach jugó con la vieja.
+    [Fact]
+    public async Task Una_republicada_en_la_web_no_esta_al_dia_y_se_vuelve_a_bajar()
+    {
+        ServeList(Entry("k7m2xq", "Mía", own: true, updated: "2026-10-31T10:00:00Z"));
+        ServeBuildOrder("k7m2xq", "2026-10-31T10:00:00Z", "Vieja");
+        var cache = Cache();
+        await cache.RefreshAsync();
+        Assert.Equal("Vieja", (await cache.GetAsync("k7m2xq")).Name);
+        Assert.True(cache.IsFresh("k7m2xq"));
+
+        ServeList(Entry("k7m2xq", "Mía", own: true, updated: "2026-11-03T00:23:03Z"));
+        ServeBuildOrder("k7m2xq", "2026-11-03T00:23:03Z", "Nueva");
+        await cache.RefreshAsync();
+
+        Assert.False(cache.IsFresh("k7m2xq"));
+        Assert.Equal("Vieja", cache.Saved("k7m2xq")?.Name); // la guardada sigue ahí por si no hay internet
+        Assert.Equal("Nueva", (await cache.GetAsync("k7m2xq")).Name);
+        Assert.True(cache.IsFresh("k7m2xq"));
+    }
+
     [Fact]
     public async Task Una_BO_se_baja_una_vez_y_queda_con_su_codigo_como_id()
     {
