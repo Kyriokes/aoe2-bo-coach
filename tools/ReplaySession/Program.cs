@@ -250,7 +250,10 @@ static int TeachIcon(string recording, int frame, int slot, string key, string l
     var library = IconLibrary.Load(libraryPath);
     var image = RecordedSession.Load(recording).Image(frame, RegionNames.ProductionQueue);
     var row = args.Contains("--row") ? Option(args, "--row", 0) : library.Row(image) ?? throw new ArgumentException("no hay ningún ícono conocido en la captura: pasá --row");
-    var (taught, change) = library.Teach(ProductionQueue.Features(image, slot * ProductionQueue.IconSize, row), key);
+    // El lugar donde cayó ese ícono si la cola llegó hasta ahí (sigue el paso real); si no, el de siempre.
+    var located = library.Locate(image);
+    var x = slot < located.Count && located[slot].Y == row ? located[slot].X : slot * ProductionQueue.IconSize;
+    var (taught, change) = library.Teach(ProductionQueue.Features(image, x, row), key);
     taught.Save(libraryPath);
     Console.WriteLine($"{change} → {libraryPath} ({taught.Icons.Count} íconos, fila {row})");
     Console.WriteLine($"ahora se lee: {string.Join(" ", taught.Read(image))}");
@@ -656,7 +659,7 @@ static int AutoCalibrate(string screenshot, string[] args)
         var boxes = new Dictionary<string, CapturedImage>();
         foreach (var name in RegionNames.All)
         {
-            boxes[name] = screen.Crop(found.Layout.PixelsOf(name, screen.Width, screen.Height)).Resample(1 / found.Scale);
+            boxes[name] = screen.Crop(found.Layout.PixelsOf(name, screen.Width, screen.Height)).AtHudScale(found.Scale);
             if (dump.Length == 0)
                 continue;
             Png.Write(boxes[name], Path.Combine(dump, $"{name}.png"));
