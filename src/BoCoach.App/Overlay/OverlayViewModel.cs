@@ -1,3 +1,4 @@
+using System.Globalization;
 using BoCoach.App.Coaching;
 using BoCoach.Core;
 using BoCoach.Core.Data;
@@ -28,7 +29,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     [ObservableProperty] public partial string Clock { get; set; } = "--:--";
     [ObservableProperty] public partial string Progress { get; set; } = "";
-    [ObservableProperty] public partial string Current { get; set; } = "Esperando la partida…";
+    [ObservableProperty] public partial string Current { get; set; } = Texts.OverlayWaitingMatch;
     [ObservableProperty] public partial string? Status { get; set; }
     [ObservableProperty] public partial bool StatusReady { get; set; }
     [ObservableProperty] public partial IReadOnlyList<string> Running { get; set; } = [];
@@ -240,7 +241,7 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
         TownCenterReminder = playing && view.TownCenterReminder;
         IdleReminder = playing && IdleAlert.Alert;
         Warning = WarningFor(frame);
-        Debug = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
+        Debug = Texts.OverlayUsage(frame.Usage.ToString(), frame.FrameMs.ToString("0", CultureInfo.InvariantCulture));
     }
 
     private static Resource ResourceOf(string region) => region switch
@@ -260,14 +261,14 @@ public sealed partial class OverlayViewModel(GameData data, string buildOrderNam
 
     private static string? WarningFor(CoachFrame frame) => frame switch
     {
-        { Ended: true } => "Terminó la grabación.",
-        { Paused: true } => $"En pausa: {Hotkeys.HotkeyMap.Current.Text("pause")} para seguir.",
-        { Error: { } error } => $"No se pudo leer la pantalla: {error}",
-        { InFront: false } => "El juego no está al frente.",
-        { Waiting: true } => "Esperando una partida…",
-        { SecondsWithoutClock: >= ClockWarningSeconds } => "No veo el reloj del juego: ¿menú, pantalla de carga o hay que calibrar?",
+        { Ended: true } => Texts.OverlayRecordingEnded,
+        { Paused: true } => Texts.OverlayPaused(Hotkeys.HotkeyMap.Current.Text("pause")),
+        { Error: { } error } => Texts.OverlayCantRead(error),
+        { InFront: false } => Texts.OverlayNotInFront,
+        { Waiting: true } => Texts.OverlayWaitingGame,
+        { SecondsWithoutClock: >= ClockWarningSeconds } => Texts.OverlayNoClock,
         { Notice: { } notice } => notice,
-        { Hud.Clipped.Count: > 0 } => $"No entra el número de {string.Join(", ", frame.Hud!.Clipped.Select(RegionNames.Label).Select(l => l.ToLowerInvariant()))}: agrandá la caja al calibrar.",
+        { Hud.Clipped.Count: > 0 } => Texts.OverlayClipped(string.Join(", ", frame.Hud!.Clipped.Select(Texts.RegionLabel).Select(l => l.ToLowerInvariant()))),
         _ => null,
     };
 }

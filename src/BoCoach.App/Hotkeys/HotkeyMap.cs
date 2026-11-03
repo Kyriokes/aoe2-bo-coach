@@ -41,7 +41,7 @@ public sealed class HotkeyMap
     public HotkeyBinding? Get(string id) => _current.GetValueOrDefault(id);
 
     /// <summary>La combinación para mostrar ("Ctrl+Alt+→"), o "sin atajo".</summary>
-    public string Text(string id) => Get(id)?.Display ?? "sin atajo";
+    public string Text(string id) => Get(id)?.Display ?? Texts.HotkeyNone;
 
     /// <summary>La otra acción que ya tiene esa combinación, o null.</summary>
     public HotkeyAction? UsedBy(HotkeyBinding binding, string exceptId) =>

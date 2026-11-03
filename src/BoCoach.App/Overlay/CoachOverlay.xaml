@@ -1,6 +1,7 @@
 <Window x:Class="BoCoach.App.Overlay.CoachOverlay"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:BoCoach.App"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:overlay="clr-namespace:BoCoach.App.Overlay"
@@ -26,7 +27,7 @@
                 <!-- BO, reloj y progreso -->
                 <DockPanel Margin="0,0,0,4">
                     <TextBlock DockPanel.Dock="Right" Foreground="#C9C1B6" FontSize="12">
-                        <Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="  ·  paso " /><Run Text="{Binding Progress, Mode=OneWay}" />
+                        <Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="{x:Static app:Texts.OverlayStep}" /><Run Text="{Binding Progress, Mode=OneWay}" />
                     </TextBlock>
                     <TextBlock Text="{Binding BuildOrderName}" Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                 </DockPanel>

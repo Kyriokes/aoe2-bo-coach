@@ -41,13 +41,16 @@ public partial class App : Application
         // Una sola app por usuario: si ya hay una abierta, se le pasa el enlace bocoach:// (o que se muestre) y esta cierra.
         if (screenshot is null && !preview)
         {
-            _instance = SingleInstance.Claim(importLink ?? ActivateMessage);
+            _instance = args.Contains(RestartArgument) ? ClaimAfterRestart() : SingleInstance.Claim(importLink ?? ActivateMessage);
             if (_instance is null)
             {
                 Shutdown(0);
                 return;
             }
         }
+
+        // El idioma, antes de la primera ventana: el XAML lee los textos al cargarse. Las capturas lo piden con --lang.
+        Lang.SetDefault(screenshot is null && !preview ? CoachSettings.Load(CoachSettings.DefaultPath).EffectiveLanguage : Argument(args, "--lang"));
 
         CoachData data;
         string? shotDir;
@@ -59,7 +62,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"No se pudieron cargar los datos del juego.\n\n{ex.Message}", "AoE2 BO Coach",
+            MessageBox.Show(Texts.DataLoadFailed(ex.Message), Texts.AppName,
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
             return;
@@ -477,6 +480,20 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    /// <summary>La app se volvió a abrir sola (cambio de idioma): la de antes está terminando de cerrarse, y se la espera.</summary>
+    internal const string RestartArgument = "--restart";
+
+    private static SingleInstance? ClaimAfterRestart()
+    {
+        for (var tries = 0; tries < 50; tries++)
+        {
+            if (SingleInstance.Claim(null) is { } instance)
+                return instance;
+            Thread.Sleep(200);
+        }
+        return null;
+    }
+
     private static string? Argument(string[] args, string name)
     {
         var i = Array.IndexOf(args, name);
@@ -485,7 +502,7 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show($"Ocurrió un error inesperado.\n\n{e.Exception.Message}", "AoE2 BO Coach",
+        MessageBox.Show(Texts.UnexpectedError(e.Exception.Message), Texts.AppName,
             MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }

@@ -1,3 +1,5 @@
+using BoCoach.Core;
+using System.Globalization;
 using BoCoach.Core.Web;
 using System.IO;
 using System.Text.Json;
@@ -22,6 +24,18 @@ public sealed class CoachSettings
 
     /// <summary>Civ con la que se juega (clave de game_data); vacío = la de la BO.</summary>
     public string GameCiv { get; set; } = "";
+
+    /// <summary>Idioma de la app ("es" o "en"), si el jugador eligió uno; vacío = el de Windows (<see cref="EffectiveLanguage"/>).</summary>
+    public string AppLanguage { get; set; } = "";
+
+    /// <summary>
+    /// El idioma con que abre la app: el elegido o, sin elegir, castellano si Windows está en castellano o usa su formato
+    /// regional (mucha gente tiene Windows en inglés con el formato de su país); si no, inglés.
+    /// </summary>
+    public string EffectiveLanguage => AppLanguage.Length > 0 ? AppLanguage : Detect(CultureInfo.CurrentUICulture, CultureInfo.CurrentCulture);
+
+    public static string Detect(CultureInfo interfaceCulture, CultureInfo formatCulture) =>
+        interfaceCulture.TwoLetterISOLanguageName == Lang.Spanish || formatCulture.TwoLetterISOLanguageName == Lang.Spanish ? Lang.Spanish : Lang.English;
 
     /// <summary>Idioma en que está el juego (<see cref="Vision.Ocr.GameLanguage.Code"/>): "en", "es" o "mx".</summary>
     public string GameLanguage { get; set; } = "en";
@@ -88,6 +102,7 @@ public sealed class CoachSettings
                     MaxVillagers = json["max_villagers"]?.GetValue<int>() is { } max ? Clamp(max) : DefaultMaxVillagers,
                     CursorReminders = json["cursor_reminders"]?.GetValue<bool>() ?? true,
                     GameCiv = json["civ"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "",
+                    AppLanguage = json["app_language"] is JsonValue app && app.TryGetValue<string>(out var language) && Lang.All.Contains(language) ? language : "",
                     GameLanguage = Vision.Ocr.GameLanguage.FromCode(json["game_language"]?.GetValue<string>()).Code,
                     PlayerName = json["player_name"]?.GetValue<string>()?.Trim() ?? "",
                     FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
@@ -143,6 +158,8 @@ public sealed class CoachSettings
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
             ["bo_mode"] = BoMode == BuildOrderMode.Manual ? "manual" : "auto",
             ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord, ["hud_minimo"] = HudMinimal, ["share_games"] = ShareGames };
+        if (AppLanguage.Length > 0)
+            json["app_language"] = AppLanguage;
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;
         if (EloTeam is { } eloTeam)

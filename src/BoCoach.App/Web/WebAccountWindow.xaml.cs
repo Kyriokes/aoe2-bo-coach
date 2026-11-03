@@ -40,7 +40,7 @@ public partial class WebAccountWindow : Window
     private void OpenAccountPage(object sender, RoutedEventArgs e)
     {
         if (Uri.TryCreate(UrlBox.Text.Trim(), UriKind.Absolute, out var url) && url.Scheme is "https" or "http")
-            Process.Start(new ProcessStartInfo(new Uri(url, "cuenta").ToString()) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(new Uri(url, Texts.WebPath("cuenta")).ToString()) { UseShellExecute = true });
     }
 
     private void Save(object sender, RoutedEventArgs e)

@@ -1,3 +1,4 @@
+using BoCoach.Core;
 using System.ComponentModel;
 using BoCoach.App.Capture;
 using BoCoach.App.Hotkeys;
@@ -14,6 +15,18 @@ public interface IHomeHost
     void OpenFolder(string path);
 
     void ShowFirstRun();
+
+    /// <summary>Una pregunta de sí o no.</summary>
+    bool Confirm(string message);
+
+    /// <summary>Cierra la app y la vuelve a abrir (cambio de idioma).</summary>
+    void RestartApp();
+}
+
+/// <summary>Un idioma de la app en el selector.</summary>
+public sealed record LanguageOption(string Code)
+{
+    public override string ToString() => Texts.LanguageName(Code);
 }
 
 /// <summary>
@@ -24,6 +37,29 @@ public sealed partial class HomeViewModel : ObservableObject
 {
     private readonly IHomeHost _host;
     private HomeScreen? _preview;
+
+    /// <summary>Los idiomas de la app (los mismos de la web).</summary>
+    public IReadOnlyList<LanguageOption> AppLanguages { get; } = Lang.All.Select(code => new LanguageOption(code)).ToList();
+
+    /// <summary>
+    /// El idioma de la app. Cambiarlo queda guardado y pide reabrir, porque los textos se leen al cargar cada ventana; se
+    /// pregunta porque puede haber una partida en curso.
+    /// </summary>
+    public LanguageOption AppLanguage
+    {
+        get => _appLanguage ??= new LanguageOption(Lang.Current);
+        set
+        {
+            if (value == AppLanguage)
+                return;
+            _appLanguage = value;
+            Coach.AppLanguage = value.Code;
+            if (_host.Confirm(Texts.RestartForLanguage))
+                _host.RestartApp();
+        }
+    }
+
+    private LanguageOption? _appLanguage;
 
     public HomeViewModel(CoachSessionViewModel coach, BuildOrdersViewModel buildOrders, CaptureToolsViewModel tools, IHomeHost host)
     {

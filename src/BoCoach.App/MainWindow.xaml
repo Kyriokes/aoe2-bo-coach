@@ -165,6 +165,8 @@
                     <Button Content="{Binding Tools.RecordButtonText}" Command="{Binding Tools.ToggleRecordingCommand}"
                             Visibility="{Binding Tools.RecordButtonVisible, Converter={StaticResource BoolToVisibility}}"
                             ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                    <ComboBox ItemsSource="{Binding AppLanguages}" SelectedItem="{Binding AppLanguage}" Margin="0,0,8,0" VerticalAlignment="Center"
+                              ToolTip="{x:Static app:Texts.AppLanguageTip}" AutomationProperties.Name="{x:Static app:Texts.AppLanguageLabel}" />
                     <Button Content="{x:Static app:Texts.SupportButton}" Click="Support_Click" ToolTip="{x:Static app:Texts.SupportTip}" />
                     <Button Content="{x:Static app:Texts.HotkeysButton}" Click="Hotkeys_Click" ToolTip="{x:Static app:Texts.HotkeysTip}" />
                     <Button Content="{x:Static app:Texts.SettingsButton}" Click="Settings_Click" ToolTip="{x:Static app:Texts.SettingsTip}" Margin="0" />

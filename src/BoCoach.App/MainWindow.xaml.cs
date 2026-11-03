@@ -148,7 +148,9 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         _firstRun.Closed += (_, _) =>
         {
             _firstRun = null;
-            Coach.FirstRunDone = true;
+            // Al reabrir por el idioma el tutorial sigue pendiente: lo cerró la app, no el jugador.
+            if (!_restarting)
+                Coach.FirstRunDone = true;
         };
         _firstRun.Show();
     }
@@ -349,6 +351,18 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     // ---- Diálogos ----
 
     public bool Confirm(string message) => AppDialog.Confirm(this, message);
+
+    private bool _restarting;
+
+    /// <summary>La de ahora tiene que cerrarse para soltar la instancia única; la nueva la espera (<see cref="App.RestartArgument"/>).</summary>
+    public void RestartApp()
+    {
+        if (Environment.ProcessPath is not { } exe)
+            return;
+        _restarting = true;
+        Process.Start(new ProcessStartInfo(exe, App.RestartArgument) { UseShellExecute = false });
+        Close();
+    }
 
     public string? AskText(string title, string message, string initial = "") => TextPrompt.Ask(this, title, message, initial);
 

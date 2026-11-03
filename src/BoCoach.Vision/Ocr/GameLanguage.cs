@@ -1,3 +1,4 @@
+using BoCoach.Core;
 using BoCoach.Core.Data;
 
 namespace BoCoach.Vision.Ocr;
@@ -46,5 +47,11 @@ public sealed record GameLanguage(string Code, string Label, IReadOnlyList<strin
         return events.PreferringEntitiesOf(data);
     }
 
-    public override string ToString() => Label;
+    /// <summary>Lo que muestra el desplegable en el idioma de la app.</summary>
+    public override string ToString() => !Lang.IsEnglish ? Label : Code switch
+    {
+        "es" => "Spanish (Spain)",
+        "mx" => "Spanish (Latin America)",
+        _ => "English",
+    };
 }

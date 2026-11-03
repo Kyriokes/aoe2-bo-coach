@@ -3,6 +3,7 @@ using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
 using BoCoach.App.Overlay;
 using BoCoach.App.Web;
+using BoCoach.Core;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Engine;
 using BoCoach.Core.Web;
@@ -220,6 +221,9 @@ public sealed class HomeScreenTests : IDisposable
         public void ShowMessage(string title, string text, bool warning) { }
         public void OpenFile(string path) => Files.Add(path);
         public void ShowFirstRun() => FirstRuns++;
+        public bool Confirm(string message) => true;
+        public int Restarts { get; private set; }
+        public void RestartApp() => Restarts++;
     }
 
     private sealed class FakeScreen : IScreenSource
@@ -254,6 +258,20 @@ public sealed class HomeScreenTests : IDisposable
         var tools = new CaptureToolsViewModel(new FakeScreen(), host, Path.Combine(_dir.FullName, "regions.json"), Path.Combine(_dir.FullName, "grabaciones"), () => null, Path.Combine(_dir.FullName, "perfiles"));
         var coach = new CoachSessionViewModel(_data, new FakeCoachHost(), () => null, () => new SilentFrames()) { ReportsFolder = ReportsFolder };
         return (new HomeViewModel(coach, buildOrders, tools, host), coach, host, buildOrders, dialogs);
+    }
+
+    [Fact]
+    public void Cambiar_el_idioma_lo_guarda_y_reabre_la_app()
+    {
+        var (home, coach, host, _, _) = Build();
+
+        Assert.Equal(new LanguageOption(Lang.Spanish), home.AppLanguage);
+        home.AppLanguage = new LanguageOption(Lang.Spanish);
+        Assert.Equal(0, host.Restarts);
+
+        home.AppLanguage = new LanguageOption(Lang.English);
+        Assert.Equal(Lang.English, coach.AppLanguage);
+        Assert.Equal(1, host.Restarts);
     }
 
     private CoachFrame Frame(bool inGame, double time)

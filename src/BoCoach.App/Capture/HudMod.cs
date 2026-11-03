@@ -76,12 +76,12 @@ public static class HudMod
         var originals = Path.Combine(game, "widgetui");
         if (!File.Exists(Path.Combine(originals, ResourcePanelFile)) || !File.Exists(Path.Combine(originals, ClockPanelFile)))
         {
-            warnings.Add($"No encontré los paneles del juego en {game}.");
+            warnings.Add(Texts.ModNoPanels(game));
             return new HudModResult(installed, warnings);
         }
         if (!Directory.Exists(profilesRoot))
         {
-            warnings.Add($"No encontré los perfiles del juego en {profilesRoot}: abrí el juego una vez y volvé a probar.");
+            warnings.Add(Texts.ModNoProfiles(profilesRoot));
             return new HudModResult(installed, warnings);
         }
 
@@ -114,28 +114,26 @@ public static class HudMod
             {
                 ["Author"] = "BoCoach",
                 ["CacheStatus"] = 0,
-                ["Description"] = $"Panel de recursos propio ({layout.Name}): fondo liso, íconos del juego, casillero del coach y campos negros para que BoCoach los lea.",
+                ["Description"] = Texts.ModDescription(layout.Name),
                 ["Title"] = Name,
             };
             Write(Path.Combine(target, "info.json"), info);
 
             var name = Path.GetFileName(profile);
-            installed.Add($"Perfil {name}: diseño {layout.Name}.");
+            installed.Add(Texts.ModInstalledProfile(name, layout.Name));
 
             // Otro mod activo que cambia los mismos paneles y tiene más prioridad (número más bajo) le gana al nuestro.
             var ours = status.FirstOrDefault(IsOurs);
             if (ours is { Enabled: false })
-                warnings.Add($"Perfil {name}: \"{Name}\" está apagado en Mods instalados. Activalo.");
+                warnings.Add(Texts.ModOff(name, Name));
             foreach (var mod in active.Where(m => ours is null || m.Priority < ours.Priority))
             {
                 if (TouchesPanels(mods, mod))
-                    warnings.Add($"Perfil {name}: \"{mod.Title}\" también cambia el panel de recursos, el reloj, el log o la cola"
-                        + (ours is null ? "." : $" y tiene más prioridad ({mod.Priority} contra {ours.Priority}).")
-                        + $" Poné \"{Name}\" primero en Mods instalados o apagá ese mod.");
+                    warnings.Add(Texts.ModConflict(name, mod.Title, mod.Priority, ours?.Priority, Name));
             }
         }
         if (installed.Count == 0)
-            warnings.Add("Ningún perfil del juego tiene carpeta de mods: abrí el juego, entrá una vez a Mods y volvé a probar.");
+            warnings.Add(Texts.ModNoModsFolder);
         return new HudModResult(installed, warnings);
     }
 

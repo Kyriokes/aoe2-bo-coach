@@ -530,7 +530,7 @@ public sealed class LiveCoach : IDisposable
 
     private void RecordFailed(Exception e)
     {
-        _recordNotice = $"No se pudo escribir el registro de la partida: {e.Message}";
+        _recordNotice = Texts.RecordNotWritten(e.Message);
         _recordingStopped = true;
         _recorder = null;
         try
@@ -618,6 +618,6 @@ public sealed class LiveCoach : IDisposable
 
     /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>
     private string? FontNotice => Frames.Hud is not null && _fonts.HudNumbers is null
-        ? "Falta data/fonts/hud_numbers.json: con el diseño nuevo del HUD no se leen los números"
+        ? Texts.MissingHudLetters
         : null;
 }

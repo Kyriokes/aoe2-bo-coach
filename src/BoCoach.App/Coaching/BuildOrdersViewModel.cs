@@ -1,3 +1,4 @@
+using BoCoach.Core;
 using System.IO;
 using System.Collections.ObjectModel;
 using BoCoach.App.Web;
@@ -80,7 +81,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     [ObservableProperty] public partial BuildOrder? SelectedBuildOrder { get; set; }
 
     /// <summary>La sección "Apoyar el proyecto" de la web (Cafecito, PayPal, Ko-fi, Mercado Pago y las metas).</summary>
-    public string SupportUrl => new Uri(_web.Settings.BaseUri, "#apoyar").ToString();
+    public string SupportUrl => new Uri(_web.Settings.BaseUri, Texts.WebPath("") + "#apoyar").ToString();
 
     partial void OnSelectedEntryChanged(BuildOrderEntryViewModel? value)
     {
@@ -270,7 +271,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SearchMore() => _dialogs.OpenUrl(new Uri(_web.Settings.BaseUri, "biblioteca").ToString());
+    private void SearchMore() => _dialogs.OpenUrl(new Uri(_web.Settings.BaseUri, Texts.WebPath("biblioteca")).ToString());
 
     /// <summary>Registra los enlaces bocoach:// (para que la web pueda abrir la app) y abre Mi cuenta en la web.</summary>
     [RelayCommand]
@@ -278,7 +279,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     {
         if (Environment.ProcessPath is { } exe)
             new LinkProtocol().Register(exe);
-        _dialogs.OpenUrl(new Uri(_web.Settings.BaseUri, "cuenta").ToString());
+        _dialogs.OpenUrl(new Uri(_web.Settings.BaseUri, Texts.WebPath("cuenta")).ToString());
         Status = Texts.ConnectInWeb;
     }
 
@@ -334,7 +335,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     private string Detail(WebBuildOrderEntry item)
     {
         var civ = item.Civ == "any" ? Texts.CivAny
-            : _data.Civ(item.Civ).Names.TryGetValue("mx", out var name) ? name.ToLowerInvariant() : item.Civ;
+            : _data.Civ(item.Civ).Label is { } name ? (Lang.IsEnglish ? name : name.ToLowerInvariant()) : item.Civ;
         var who = item.Own ? (item.Visibility == "private" ? Texts.OwnPrivate : Texts.Own) : item.GuideAuthor;
         return $"{civ} · {who}";
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Collections.ObjectModel;
 using BoCoach.Core;
 using BoCoach.Core.BuildOrders;
@@ -102,9 +103,9 @@ public sealed partial class LiveReadingViewModel : ObservableObject
             : view.Posture is { } posture ? Texts.BuildOrderDoneWith(Core.Engine.CoachText.PostureTitle(posture), posture.Derived)
             : Texts.BuildOrderDone;
         Problems = hud is { Clipped.Count: > 0 }
-            ? Texts.Clipped(string.Join(", ", hud.Clipped.Select(RegionNames.Label)))
+            ? Texts.Clipped(string.Join(", ", hud.Clipped.Select(Texts.RegionLabel)))
             : frame.Error is { } error ? Texts.LiveError(error) : "";
-        Usage = $"{frame.Usage} · {frame.FrameMs:0} ms por captura";
+        Usage = Texts.OverlayUsage(frame.Usage.ToString(), frame.FrameMs.ToString("0", CultureInfo.InvariantCulture));
 
         foreach (var e in hud?.NewEvents ?? [])
         {

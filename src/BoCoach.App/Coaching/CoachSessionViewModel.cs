@@ -78,6 +78,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         CursorReminders = settings.CursorReminders;
         HudMinimal = settings.HudMinimal;
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
+        AppLanguage = settings.AppLanguage;
         Language = GameLanguage.FromCode(settings.GameLanguage);
         PlayerName = settings.PlayerName;
         FirstRunDone = settings.FirstRunDone;
@@ -163,6 +164,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// con su OCR y sus frases. Se aplica al empezar el coach.
     /// </summary>
     [ObservableProperty] public partial GameLanguage Language { get; set; } = GameLanguage.English;
+
+    /// <summary>El idioma que eligió el jugador para la app ("" = el de Windows); se aplica al abrirla.</summary>
+    [ObservableProperty] public partial string AppLanguage { get; set; } = "";
+
+    partial void OnAppLanguageChanged(string value) => SaveSettings();
 
     partial void OnLanguageChanged(GameLanguage value) => SaveSettings();
 
@@ -305,7 +311,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            ShareStatus = $"No se pudo anotar el registro para enviarlo: {e.Message}";
+            ShareStatus = Texts.ShareNotWritten(e.Message);
             return;
         }
         await SendPendingRecordsAsync();
@@ -321,12 +327,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             var result = await Sharing.SendPendingAsync(DateTimeOffset.Now);
             if (result.Sent + result.Failed > 0)
                 ShareStatus = result.Failed > 0
-                    ? $"Registro guardado para enviar después ({Sharing.Pending} en espera)."
-                    : "Registro de la partida enviado. ¡Gracias!";
+                    ? Texts.SharePending(Sharing.Pending)
+                    : Texts.ShareSent;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or WebLibraryException)
         {
-            ShareStatus = $"No se pudo enviar el registro: {e.Message}";
+            ShareStatus = Texts.ShareFailed(e.Message);
         }
     }
 
@@ -334,16 +340,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private async Task ForgetSharedAsync()
     {
-        if (Sharing is null || !_host.Confirm("¿Borrar de la web los registros de partida que subió esta PC? Los que tenés guardados acá no se tocan."))
+        if (Sharing is null || !_host.Confirm(Texts.ForgetConfirm))
             return;
         try
         {
             var forgotten = await Sharing.ForgetAsync();
-            ShareStatus = forgotten == 1 ? "Se borró 1 registro de la web." : $"Se borraron {forgotten} registros de la web.";
+            ShareStatus = Texts.Forgotten(forgotten);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or WebLibraryException)
         {
-            ShareStatus = $"No se pudo borrar: {e.Message}";
+            ShareStatus = Texts.ForgetFailed(e.Message);
         }
     }
 
@@ -424,6 +430,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 MaxVillagers = MaxVillagers,
                 CursorReminders = CursorReminders,
                 GameCiv = GameCiv == BoCiv ? "" : GameCiv,
+                AppLanguage = AppLanguage,
                 GameLanguage = Language.Code,
                 PlayerName = PlayerName.Trim(),
                 FirstRunDone = FirstRunDone,
@@ -809,13 +816,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Status = Texts.SuggestedRunning(bo.Name);
     }
 
-    /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>
-    private string? MapName(string key) => _data.Maps.Get(key)?.Name;
+    /// <summary>D10: el nombre de un mapa en el idioma de la app (data/maps.json), o null si no está.</summary>
+    private string? MapName(string key) => _data.Maps.Get(key)?.Label;
 
-    /// <summary>El nombre de una civ en castellano (el de Latinoamérica, o el de España si el juego está así).</summary>
+    /// <summary>El nombre de una civ en el idioma de la app; en castellano, el de Latinoamérica, o el de España si el juego está así.</summary>
     private string CivName(string civ)
     {
         var names = _data.GameData.Civ(civ).Names;
+        if (Lang.IsEnglish)
+            return names.TryGetValue(Lang.English, out var en) ? en : civ;
         return (Language == GameLanguage.SpanishSpain && names.TryGetValue("es", out var es) ? es
             : names.TryGetValue("mx", out var mx) ? mx
             : names.TryGetValue("es", out var other) ? other
@@ -890,8 +899,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return "";
         var reads = ocr?.Language ?? "";
         return reads.StartsWith("es", StringComparison.OrdinalIgnoreCase)
-            ? Texts.GameInLanguage(Language.Label.ToLowerInvariant())
-            : Texts.GameInLanguageNoOcr(Language.Label.ToLowerInvariant());
+            ? Texts.GameInLanguage(Language.ToString())
+            : Texts.GameInLanguageNoOcr(Language.ToString());
     }
 
     public void Stop() => StopCoach(notify: true);
