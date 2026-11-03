@@ -47,46 +47,60 @@ Lo que sí hay de preferencia del visitante:
   (ruta interna solamente) y redirige con 307. Con la cookie en `en`, una ruta sin prefijo redirige con **307**
   (nunca 308: depende de la cookie) a `/en/...`: así, si la app abre `/cuenta`, quien eligió inglés cae en
   `/en/cuenta`. Una ruta con `/en` o la cookie en `es` no redirigen nunca.
-- En la portada en castellano, un aviso chico del lado del cliente ("This site is also in English") si el navegador
-  prefiere inglés (`navigator.language`) y no hay cookie. No toca el HTML del servidor.
+- En todas las páginas, un aviso chico del lado del cliente (`LanguageHint`: "This site is also in English") si el
+  navegador prefiere el otro idioma (`navigator.language`) y no hay cookie: se cae por un enlace o un buscador en
+  cualquier página, no solo en la portada. No redirige ni toca el HTML del servidor. Elegir cualquiera de las dos
+  opciones guarda la cookie y el aviso no vuelve.
 
 Páginas 404: con el root layout en `[locale]`, una URL que no calza con ninguna ruta no pasa por `not-found.tsx` del
 segmento (`global-not-found` sigue experimental en Next 16). Se agrega `app/[locale]/[...rest]/page.tsx`, que llama a
-`notFound()`: así todo 404 sale con la cabecera, el pie y el idioma de la URL. Los 404 y 308 de `/cruces` que
-decide el proxy pasan a `/<locale>/cruces/...`.
+`notFound()`: así todo 404 sale con la cabecera, el pie y el idioma de la URL. Como una página prerenderizada en partes
+ya no puede cambiar el estado, el 404 lo decide el proxy: conoce el primer tramo de cada página (`PAGES` en
+`i18n/routing.ts`; **una página nueva se agrega ahí**) y hace un rewrite a `/<idioma>/404` con estado 404. Los 404 y 308
+de `/cruces` también se responden en el idioma de la ruta. El selector no usa `usePathname` (con el rewrite del
+castellano, el servidor y el navegador dirían otra cosa y la hidratación falla): toma la ruta al hacer clic.
 
 ### 2. Diccionarios en un solo lugar
 
 `web/src/i18n/`:
 
-- `locales.ts`: `Locale` (`"es" | "en"`), `LOCALES`, `DEFAULT_LOCALE` (`es`), `isLocale`, `localePath(locale, ruta)`
-  (`/biblioteca` o `/en/biblioteca`), `stripLocale(ruta)`, `GAME_LANGUAGE` (qué idioma del juego usa cada uno: `es`
-  → `mx`, `en` → `en`), `LANG_TAG` (`es-AR`, `en-US`, para fechas y orden), `OG_LOCALE` (`es_AR`, `en_US`).
+- `locales.ts`: `Locale` (`"es" | "en"`), `LOCALES`, `DEFAULT_LOCALE` (`es`), `isLocale`, `asLocale`, `localePath(locale,
+  ruta)` (`/biblioteca` o `/en/biblioteca`), `stripLocale(ruta)`, `localeAlternates` (canónica y hreflang), `LOCALE_NAME`,
+  `LANG_TAG` (`es-AR`, `en-US`, para fechas y orden), `OG_LOCALE` (`es_AR`, `en_US`). El castellano de la web usa los
+  nombres del juego de Latinoamérica (`names.mx`).
 - `es.ts`: el diccionario en castellano, fuente de verdad; `Dictionary = typeof es`.
 - `en.ts`: tipado como `Dictionary`: si falta una clave, no compila. Las hojas son cadenas con `{marcadores}`
   (`fill(texto, { n: 3 })`); nada de funciones, así el diccionario es datos y se puede pasar al cliente. Los plurales
-  son claves explícitas (`one`, `other`).
-- `index.ts`: `getDictionary(locale)` (sincrónica; los dos diccionarios se importan estáticamente, también en el
-  cliente: unos 20 KB comprimidos los dos; si se suman más idiomas, se parte por importación dinámica).
+  son claves explícitas (`stepsOne`, `stepsOther`). Un enlace dentro de una frase es una etiqueta (`<link>texto</link>`),
+  que dibuja `rich()`: cada idioma ordena la frase como quiere.
+- `index.tsx`: `getDictionary(locale)`, `fill()` y `rich()` (sincrónicas; los dos diccionarios se importan
+  estáticamente, también en el cliente; si se suman muchos idiomas, se parte por importación dinámica).
 - `server.ts`: `currentLocale()` con `next/root-params` (`locale`), para cualquier componente de servidor sin pasar
   props.
-- `client.tsx`: `I18nProvider` (lo pone el layout) y `useI18n()` → `{ locale, dict, href }` para los componentes de
+- `client.tsx`: `I18nProvider` (lo pone el layout) y `useI18n()` → `{ locale, t, href }` para los componentes de
   cliente.
+- `Link.tsx`: `next/link` con la ruta en el idioma de la página. Toda ruta interna va por acá.
+- `routing.ts`: la decisión del proxy, como función pura y testeada.
 
 Reglas: ningún texto que vea el visitante va escrito en un componente; las funciones puras de `lib/` que arman texto
-(`share.ts`, `matchups.ts`, `matchupView.ts`, `filters.ts`, `dbErrors.ts`, `editor/text.ts`, `editor/explain.ts`,
-`editor/guard.ts`, `editor/palette.ts`, `editor/villagers.ts`, `editor/assisted.ts`, `coach/stalls.ts`) reciben
-`locale` y leen el diccionario. Las fechas y los números usan `LANG_TAG`; el orden alfabético de civs también.
+(`share.ts`, `matchups.ts`, `matchupView.ts`, `dbErrors.ts`, `buildOrder.ts`, `support.ts`, `editor/*`) reciben `locale`
+como último parámetro (por defecto `es`) y leen el diccionario. Las acciones de servidor también: `next/root-params` no
+anda en ellas, así que el cliente les pasa el idioma. Las fechas y los números usan `LANG_TAG`; el orden alfabético de
+civs también. Los textos de los datos llevan su inglés al lado: `name_en` y `note_en` en `data/maps.json`, `name_en` y
+`description_en` en `data/donaciones.json` (si faltan, va el castellano; un test exige los de los mapas).
 
-Para agregar un idioma: sumar el código a `LOCALES` (y a `GAME_LANGUAGE`, `LANG_TAG`, `OG_LOCALE`), un `xx.ts` tipado
-como `Dictionary`, la columna en `civNames.ts` (generada de game_data), el idioma en `StepText` del Core y en
+Quedan en castellano, a propósito: la API de la app (`/api/*`, porque la app está en castellano) y lo que escribió cada
+autor en su BO (nombre, descripción, etiquetas, notas de los pasos). Los mensajes que arma la migración de la base se
+explican por su código en otro idioma (`dbErrorMessage`).
+
+Para agregar un idioma: sumar el código a `LOCALES` (y a `LOCALE_NAME`, `LANG_TAG`, `OG_LOCALE`), un `xx.ts` tipado como
+`Dictionary`, la lista en `civNames.ts` (sale de game_data, `civs.<clave>.names`), el idioma en `StepText` del Core y en
 `lib/stepText.ts`, y `content/roadmap.xx.json`. Nada más: las rutas, el sitemap, los `hreflang` y el selector salen de
-`LOCALES`.
+`LOCALES`. Los tests fallan si falta una clave, un marcador, un nombre de entidad o una sección del roadmap.
 
 ### 3. Nombres de civ por idioma
 
-`lib/civNames.ts` pasa a `CIV_NAMES: Record<Locale, Record<string, string>>` con `es` = game_data `names.mx` y `en`
-= `names.en` (62 civs cada una), y `civName(locale, clave)`. El test contra game_data compara cada idioma con su
+`lib/civNames.ts` tiene `CIV_NAMES` (`names.mx`) y `CIV_NAMES_EN` (`names.en`), 62 civs cada una, y `civNames(locale)`. El test contra game_data compara cada idioma con su
 columna. `civLabel(civ, locale)` ("Cualquier civ" / "Any civ").
 
 ### 4. Los pasos en inglés
@@ -139,10 +153,12 @@ sitemap como cualquier página.
 
 ### 8. Pruebas
 
-- `i18n/i18n.test.ts`: los dos diccionarios tienen las mismas claves (lo garantiza el tipo) y los mismos marcadores
-  en cada hoja; `localePath`/`stripLocale`; la decisión del proxy como función pura (`localeRouting(ruta, cookie)`:
-  pasa, rewrite, 308, 307) con sus casos.
-- `civNames.test.ts`: cada idioma contra game_data.
+- `i18n/i18n.test.ts`: los dos diccionarios tienen las mismas claves (lo garantiza el tipo) y los mismos marcadores y
+  etiquetas en cada hoja; `localePath`/`stripLocale`; la decisión del proxy como función pura (`localeRouting(ruta,
+  cookie)`: pasa, rewrite, 308, 307, 404) con sus casos.
+- `i18n/texts.test.ts`: los textos en inglés de las funciones puras. `lib/roadmap.test.ts`: la forma del contenido y que
+  los dos idiomas tengan las mismas secciones.
+- `share.test.ts`: los nombres de las civs de cada idioma contra game_data.
 - `coach.test.ts`: los pasos en los dos idiomas y el nombre obligatorio en los dos.
 - Los tests de `lib/editor/*` y `matchups` pasan `"es"` y siguen comparando los textos de siempre.
 - Criterio de salida: las dos versiones renderizan todas las páginas (con `next start` y `curl`: `/`, `/en`,

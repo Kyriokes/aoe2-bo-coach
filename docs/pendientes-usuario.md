@@ -2,6 +2,10 @@
 
 Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que más destraba.
 
+## La web en inglés y el roadmap
+
+0s. **Leer el roadmap y la versión en inglés antes de publicarlas** (2/11, rama `claude/web-idiomas-roadmap-8c3f0d`). (1) Leé `web/src/content/roadmap.es.json`: es lo que van a leer los jugadores y habla en tu nombre ("lo hace una persona", "casi nadie más la probó"). Cambiá lo que no te cierre: al principio del archivo dice cómo. (2) Lo que cambies, cambialo también en `roadmap.en.json`. (3) Cuando la rama llegue a `main`, entrá a https://aoe2-bo-coach.vercel.app/en y a `/roadmap` y mirá que se vean bien; las URL de siempre siguen en castellano. (4) En Google Search Console (Sitemaps) volvé a mandar `sitemap.xml`: ahora trae las dos versiones de cada página.
+
 ## La creencia del estado (v0.9.83, escalón 2 de la BO por objetivos)
 
 0r. **Probar la v0.9.84: la BO republicada se baja sola** (2/11). En tu partida de las 21:28 la app siguió con la "mejorada" vieja de los aztecas aunque la nueva ya estaba en la web: la guardada no se volvía a bajar. (1) Abrí la v0.9.84 (arriba tiene que decir 0.9.84). (2) Tocá "Actualizar lista": la de aztecas elegida tiene que decir "Bajando..." y quedar "Lista: Aztec 5 Militia Rush (mejorada)" sin que la vuelvas a elegir. (3) Si en vez de eso vas directo al juego, en la pantalla de carga la barra de estado tiene que decir "Coach con ..., la versión nueva de la web" y el coach arranca con la nueva. La nueva se nota en los pasos: "10 aldeanos en madera" y "15 aldeanos en madera" en vez de "7" y "12", y deja 4 más en comida hasta las granjas. (4) Contame también si la casa en rojo durante toda la investigación de la Feudal (el centro urbano no produce y quedan 3 lugares 4 minutos seguidos) te molesta: la saco en ese caso.
