@@ -4,7 +4,7 @@
   "name": "Hera Chinese (mejorada)",
   "civ": "chinese",
   "author": "Hera",
-  "description": "Mejorada con el simulador del coach desde \u0022Hera Chinese\u0022, con la misma estrategia: Antes de \u0022Mover 1 de madera a bayas\u0022: \u002B3 en madera, -3 en caza. Simulada antes: Edad Feudal 8:19, fin 13:00, centro urbano parado 43 s. Despu\u00E9s: Edad Feudal 7:55, fin 12:25, centro urbano parado 43 s. Hera build from video \u0022How To Do The Chinese Opening 2024\u0022 - https://www.youtube.com/watch?v=EKZThgQulOg  Notes: - Use \u0022drop off\u0022 hotkeys on villagers to quickly update the food count and start (and continue) creating villagers as soon as possible - Fuente: https://www.buildorderguide.com/builds/tFPWddfokx2Stuxfkd9V.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 8:21, fin 13:34, centro urbano parado 47 s). Hera build from video \u0022How To Do The Chinese Opening 2024\u0022 - https://www.youtube.com/watch?v=EKZThgQulOg  Notes: - Use \u0022drop off\u0022 hotkeys on villagers to quickly update the food count and start (and continue) creating villagers as soon as possible - Fuente: https://www.buildorderguide.com/builds/tFPWddfokx2Stuxfkd9V.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -86,8 +86,8 @@
       "id": "s9",
       "do": "train",
       "what": "villager",
-      "count": 7,
-      "assign": "wood",
+      "count": 4,
+      "assign": "hunt",
       "after": []
     },
     {
@@ -103,7 +103,7 @@
       "id": "s11",
       "do": "train",
       "what": "villager",
-      "count": 4,
+      "count": 7,
       "assign": "hunt",
       "after": []
     },

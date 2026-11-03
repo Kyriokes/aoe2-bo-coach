@@ -4,7 +4,7 @@
   "name": "Fast Castle \u2192 Hand Cannoneers (mejorada)",
   "civ": "bohemians",
   "author": "Scout Cavalry",
-  "description": "Mejorada con el simulador del coach desde \u0022Fast Castle \u2192 Hand Cannoneers\u0022, con la misma estrategia: Antes de \u0022Construir 2 casas \u2192 madera\u0022: \u002B1 en madera, -1 en caza. Simulada antes: Edad Feudal 8:45, Edad de los Castillos 12:17, fin 16:12, centro urbano parado 32 s. Despu\u00E9s: Edad Feudal 8:45, Edad de los Castillos 12:10, fin 16:05, centro urbano parado 25 s. Fast castle directly into two range hand cannoneers.  Best on Arena. Fuente: https://www.buildorderguide.com/builds/vm4MUf5yp1ERGDt5dke2.",
+  "description": "El simulador del coach no encontr\u00F3 cambios que la mejoren (antes y despu\u00E9s: Edad Feudal 8:45, Edad de los Castillos 13:05, fin 17:00, centro urbano parado 32 s). Fast castle directly into two range hand cannoneers.  Best on Arena. Fuente: https://www.buildorderguide.com/builds/vm4MUf5yp1ERGDt5dke2.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -51,8 +51,8 @@
       "id": "s5",
       "do": "train",
       "what": "villager",
-      "count": 5,
-      "assign": "wood",
+      "count": 1,
+      "assign": "hunt",
       "after": []
     },
     {
@@ -88,7 +88,7 @@
       "id": "s9",
       "do": "train",
       "what": "villager",
-      "count": 4,
+      "count": 5,
       "assign": "hunt",
       "after": []
     },
@@ -96,7 +96,7 @@
       "id": "s10",
       "do": "train",
       "what": "villager",
-      "count": 8,
+      "count": 7,
       "assign": "wood",
       "after": []
     },
@@ -176,7 +176,7 @@
       "id": "s19",
       "do": "train",
       "what": "villager",
-      "count": 9,
+      "count": 8,
       "assign": "wood",
       "after": []
     },

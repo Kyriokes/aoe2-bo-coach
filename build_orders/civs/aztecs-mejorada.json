@@ -4,7 +4,7 @@
   "name": "Aztec 5 Militia Rush (mejorada)",
   "civ": "aztecs",
   "author": "TheViper",
-  "description": "Mejorada con el simulador del coach desde \u0022Aztec 5 Militia Rush\u0022, con la misma estrategia: Antes de \u0022Construir 1 molino \u2192 bayas\u0022: \u002B1 en madera, -1 en caza; Antes de \u0022Mover 1 de caza a madera\u0022: \u002B1 en madera; Antes de \u0022Construir 1 cuartel \u2192 madera\u0022: -1 en madera; \u0022Mover 1 de caza a madera\u0022 antes que \u0022Construir 1 cuartel \u2192 madera\u0022. Simulada antes: Edad Feudal 11:41, fin 16:45, centro urbano parado 14 s. Despu\u00E9s: Edad Feudal 10:50, fin 15:54, centro urbano parado 0 s. 5 Militia Rush with Aztecs Fuente: https://www.buildorderguide.com/builds/XvnfdG3b3EK7Xi2JlOkL.",
+  "description": "Mejorada con el simulador del coach desde \u0022Aztec 5 Militia Rush\u0022, con la misma estrategia: Antes de \u0022Construir 4 granjas \u2192 granjas\u0022: \u002B4 en madera, -4 en ovejas. Simulada antes: Edad Feudal 12:02, fin 17:06, centro urbano parado 14 s. Despu\u00E9s: Edad Feudal 11:48, fin 16:52, centro urbano parado 0 s. 5 Militia Rush with Aztecs Fuente: https://www.buildorderguide.com/builds/XvnfdG3b3EK7Xi2JlOkL.",
   "tags": [
     "mejorada",
     "buildorderguide",
@@ -51,8 +51,8 @@
       "id": "s5",
       "do": "train",
       "what": "villager",
-      "count": 5,
-      "assign": "wood",
+      "count": 1,
+      "assign": "hunt",
       "after": []
     },
     {
@@ -89,7 +89,7 @@
       "id": "s9",
       "do": "train",
       "what": "villager",
-      "count": 1,
+      "count": 2,
       "assign": "hunt",
       "after": []
     },
@@ -114,25 +114,25 @@
       "id": "s12",
       "do": "train",
       "what": "villager",
-      "count": 6,
+      "count": 5,
       "assign": "wood",
       "after": []
     },
     {
       "id": "s13",
-      "do": "move",
-      "count": 1,
-      "assign": "wood",
-      "from": "hunt",
-      "after": []
-    },
-    {
-      "id": "s14",
       "do": "build",
       "what": "barracks",
       "count": 1,
       "assign": "wood",
       "from": "wood",
+      "after": []
+    },
+    {
+      "id": "s14",
+      "do": "move",
+      "count": 1,
+      "assign": "wood",
+      "from": "hunt",
       "after": []
     },
     {
@@ -154,20 +154,12 @@
       "id": "s17",
       "do": "train",
       "what": "villager",
-      "count": 12,
-      "assign": "sheep",
-      "after": []
-    },
-    {
-      "id": "s18",
-      "do": "train",
-      "what": "villager",
-      "count": 7,
+      "count": 10,
       "assign": "wood",
       "after": []
     },
     {
-      "id": "s19",
+      "id": "s18",
       "do": "build",
       "what": "farm",
       "count": 4,
@@ -176,7 +168,7 @@
       "after": []
     },
     {
-      "id": "s20",
+      "id": "s19",
       "do": "research",
       "what": "loom",
       "count": 1,
@@ -184,7 +176,7 @@
       "note": "Start making farms as you have wood, at least 9."
     },
     {
-      "id": "s21",
+      "id": "s20",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -194,22 +186,22 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s22",
+      "id": "s21",
       "do": "train",
       "what": "villager",
-      "count": 12,
+      "count": 15,
       "assign": "wood",
       "after": []
     },
     {
-      "id": "s23",
+      "id": "s22",
       "do": "research",
       "what": "feudal_age",
       "count": 1,
       "after": []
     },
     {
-      "id": "s24",
+      "id": "s23",
       "do": "build",
       "what": "mining_camp",
       "count": 1,
@@ -219,7 +211,7 @@
       "note": "Agregado al importar"
     },
     {
-      "id": "s25",
+      "id": "s24",
       "do": "move",
       "count": 4,
       "assign": "gold",
@@ -227,28 +219,28 @@
       "after": []
     },
     {
-      "id": "s26",
+      "id": "s25",
       "do": "research",
       "what": "double_bit_axe",
       "count": 1,
       "after": []
     },
     {
-      "id": "s27",
+      "id": "s26",
       "do": "research",
       "what": "horse_collar",
       "count": 1,
       "after": []
     },
     {
-      "id": "s28",
+      "id": "s27",
       "do": "research",
       "what": "wheelbarrow",
       "count": 1,
       "after": []
     },
     {
-      "id": "s29",
+      "id": "s28",
       "do": "build",
       "what": "archery_range",
       "count": 1,
@@ -257,7 +249,7 @@
       "after": []
     },
     {
-      "id": "s30",
+      "id": "s29",
       "do": "build",
       "what": "house",
       "count": 1,
@@ -267,7 +259,7 @@
       "note": "Agregada al importar: sin esta casa no hay poblaci\u00F3n"
     },
     {
-      "id": "s31",
+      "id": "s30",
       "do": "train",
       "what": "archer",
       "count": 4,

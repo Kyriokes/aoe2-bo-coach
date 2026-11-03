@@ -24,6 +24,11 @@ public class CivBuildOrdersTests
     {
         var all = All();
         var optimizer = new BuildOrderOptimizer(TestData.GameData);
+        // Con la comida real del mapa también (partida 20261102-204825: la mejorada de los aztecas ganaba un minuto con
+        // comida infinita moviendo aldeanos de comida a madera, y con la comida finita llegaba un minuto más tarde que
+        // la guía). Ocho BO no terminan con comida finita (civs sin molino, Arena, Hideout): ahí los dos puntajes son
+        // iguales y la comparación no dice nada.
+        var finite = new BuildOrderOptimizer(TestData.GameData, new PlannerSettings { Food = FoodSupply.For(TestData.GameData, null) });
         foreach (var civ in TestData.GameData.Civs.Keys)
         {
             var imported = Assert.Single(all, bo => bo.Civ == civ && bo.Tags.Contains("importada"));
@@ -35,6 +40,7 @@ public class CivBuildOrdersTests
                 continue;
             }
             Assert.True(optimizer.Summarize(improved).Score <= optimizer.Summarize(imported).Score, civ);
+            Assert.True(finite.Summarize(improved).Score <= finite.Summarize(imported).Score + 1, $"{civ} con comida finita");
             // La misma estrategia: los mismos edificios, unidades y tecnologías, y los mismos aldeanos en total.
             Assert.Equal(Strategy(imported), Strategy(improved));
             Assert.Equal(LivePlan.Units(imported).Where((_, i) => LivePlan.IsVillagerTarget(imported.Steps[i])).Sum(),
