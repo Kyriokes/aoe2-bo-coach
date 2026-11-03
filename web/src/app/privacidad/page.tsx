@@ -11,13 +11,30 @@ export default function PrivacyPage() {
   return (
     <article className="flex max-w-2xl flex-col gap-4 text-sm text-muted">
       <h1 className="text-2xl font-semibold text-foreground">Privacidad</h1>
-      <p>Última actualización: 19 de octubre de 2026.</p>
+      <p>Última actualización: 2 de noviembre de 2026.</p>
 
       <h2 className="mt-2 text-base font-semibold text-foreground">La app de escritorio</h2>
       <p>
-        BO Coach lee la pantalla del juego en tu PC y todo lo que lee se queda ahí. No manda capturas ni datos de tus
-        partidas a ningún lado. Las grabaciones que hagas se guardan en tu PC, en <code className="font-mono">%LOCALAPPDATA%\BoCoach</code>.
-        La app solo se conecta a esta web si vos lo pedís: para bajar una build order o para publicar una con tu token.
+        BO Coach lee la pantalla del juego en tu PC. Nunca manda capturas de pantalla. Las grabaciones y los registros de
+        cada partida se guardan en tu PC, en <code className="font-mono">%LOCALAPPDATA%\BoCoach</code>. La app se conecta a esta
+        web para bajar tus build orders y, si no lo apagás, para compartir tus partidas.
+      </p>
+
+      <h2 className="mt-2 text-base font-semibold text-foreground">Compartir tus partidas</h2>
+      <p>
+        La opción &quot;Compartir mis partidas para mejorar el coach&quot; viene prendida y se apaga en la ventana de la app o en
+        Primeros pasos. Con ella prendida, al terminar cada partida de un minuto o más se sube un registro con:
+      </p>
+      <ul className="list-disc pl-5">
+        <li>los números que el coach leyó del HUD (reloj, recursos, aldeanos, población, cola de producción y puntajes);</li>
+        <li>los mensajes del juego que reconoció en el log, y lo que creyó, pronosticó y te mostró;</li>
+        <li>tu civ, la del rival de enfrente, el mapa, la build order, la versión de la app y el idioma del juego.</li>
+      </ul>
+      <p>
+        No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego se
+        tapa antes de guardarlo), ni capturas de pantalla. El registro no está atado a tu cuenta de la web: lo identifica un
+        número al azar de esa instalación de la app. Se guarda en Supabase, en un lugar que no es público, y se usa solo
+        para encontrar lo que el coach lee o aconseja mal.
       </p>
 
       <h2 className="mt-2 text-base font-semibold text-foreground">La web</h2>
@@ -36,7 +53,8 @@ export default function PrivacyPage() {
 
       <h2 className="mt-2 text-base font-semibold text-foreground">Borrar tus datos</h2>
       <p>
-        Cada build order tuya la podés borrar desde su página, y los tokens desde <em>Mi cuenta</em>. Para borrar la cuenta entera, pedilo
+        Los registros que subió tu PC se borran con &quot;Borrar lo compartido…&quot; en la ventana de la app. Cada build order tuya
+        la podés borrar desde su página, y los tokens desde <em>Mi cuenta</em>. Para borrar la cuenta entera, pedilo
         en{" "}
         <a href={`${REPO_URL}/issues`} className="text-amber hover:underline">
           GitHub
