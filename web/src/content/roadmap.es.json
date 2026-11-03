@@ -1,0 +1,66 @@
+{
+  "_como_editar": "Este archivo es el texto de la página /roadmap en castellano. Cambiá lo que quieras y hacé push: no hay que tocar ningún componente. Cada sección tiene un título, una intro opcional y una lista de items (title y text). Para sumar un item, copiá uno entero con sus llaves y poné una coma entre items. Si cambiás algo, hacé lo mismo en roadmap.en.json (un test exige que los dos tengan las mismas secciones) y poné la fecha de hoy en 'updated' (AAAA-MM-DD). Esta clave no se muestra en ningún lado.",
+  "title": "Qué viene",
+  "description": "Qué hace hoy BO Coach, qué no hace todavía, qué viene y cómo podés ayudar. No es la versión definitiva: con tu ayuda crece.",
+  "updated": "2026-11-02",
+  "intro": [
+    "BO Coach no es la versión definitiva. Lo hace una persona, jugando sus propias partidas para encontrar lo que falla, y eso tiene un techo: cada partida muestra un error nuevo, casi siempre uno distinto.",
+    "Lo que más lo puede mejorar son las partidas de otros jugadores, con otras civs, otras pantallas y otras formas de jugar. Con tu ayuda el potencial es enorme. Esta página cuenta en qué estado está de verdad, sin maquillaje."
+  ],
+  "sections": [
+    {
+      "id": "hoy",
+      "title": "Qué hace hoy",
+      "items": [
+        { "title": "Sigue tu build order mientras jugás", "text": "Un overlay arriba del juego te marca el paso que toca y se da cuenta solo de lo que ya hiciste." },
+        { "title": "Te dice dónde poner a cada aldeano", "text": "Cuántos tendría que haber en cada recurso, comparado con los que tenés de verdad." },
+        { "title": "Te avisa lo que se te pasa", "text": "Junto al mouse: te faltan casas, el centro urbano está parado, hay aldeanos inactivos." },
+        { "title": "Se acomoda cuando te desviás", "text": "Si hacés algo antes o te atrasás, sigue en vez de trabarse. Si abandonás la build order, deja de pedirte sus pasos." },
+        { "title": "Ve lo que hace el rival", "text": "Por el panel de puntajes se da cuenta de cuándo el rival hace clic para subir de edad y te avisa." },
+        { "title": "Elige la build order por vos", "text": "En la pantalla de carga lee las civs y te sugiere una para tu civ y tu rival. También arranca y se detiene solo." },
+        { "title": "Te da un informe al terminar", "text": "Qué se atrasó, cuánto estuvo parado el centro urbano, cuánto estuviste sin casas y cómo viene ese cruce." },
+        { "title": "Una web para buscar, armar y compartir", "text": "Una biblioteca con una build order por civ, un editor que simula cada cambio y estadísticas reales de cruces." },
+        { "title": "No hace trampa", "text": "Solo mira la pantalla: no lee la memoria del juego, no le inyecta código y no manda teclas ni clics." }
+      ]
+    },
+    {
+      "id": "todavia-no",
+      "title": "Qué no hace todavía",
+      "intro": "Mejor que lo sepas antes de bajarla.",
+      "items": [
+        { "title": "Solo está probado en 1920×1080", "text": "El HUD se reescala, pero la cola de producción y la pantalla de carga todavía esperan esa resolución. En otra puede leer menos." },
+        { "title": "La app está en castellano", "text": "La web ya está en inglés y en castellano, y la app lee el juego en esos dos idiomas, pero sus propios textos están solo en castellano." },
+        { "title": "Rinde mejor con su mod del HUD", "text": "Para saber cuántos aldeanos hay en cada recurso, la app instala un mod que cambia un poco el panel del juego. Sin el mod estima y se equivoca más." },
+        { "title": "No replanifica", "text": "Si la partida se aparta mucho de la build order, te ayuda con lo básico (casas, centro urbano, aldeanos), pero no recalcula un camino nuevo." },
+        { "title": "Casi nadie más la probó", "text": "El primer uso no lo probó nadie más que su autor. Es muy probable que encuentres algo roto en los primeros cinco minutos." }
+      ]
+    },
+    {
+      "id": "viene",
+      "title": "Qué viene",
+      "intro": "Más o menos en este orden. Puede cambiar según lo que aparezca jugando.",
+      "items": [
+        { "title": "Un registro de partida", "text": "La app va a guardar lo que leyó y lo que aconsejó en cada partida, y vas a poder mandarlo si querés, sin video ni capturas. Con eso cada error tuyo se reproduce y se arregla sin que tengas que jugar de nuevo: es lo que más va a acelerar todo." },
+        { "title": "Cualquier resolución", "text": "Que toda la lectura ande en tu pantalla, no solo en 1920×1080." },
+        { "title": "Una app más amigable", "text": "Hoy se nota que la hizo un programador para sí mismo. Viene una versión más linda y más simple para el que solo quiere jugar, también en inglés." },
+        { "title": "Una build order que se replanifica sola", "text": "En vez de seguir una lista fija, que el coach mire cómo viene tu partida y calcule el mejor camino desde ahí hasta el próximo objetivo: si perdiste aldeanos o te atrasaste, te dice qué hacer ahora. Es lo más ambicioso de todo y necesita partidas de otros jugadores para hacerse bien." },
+        { "title": "Más idiomas", "text": "Los que trae el juego, de a poco, empezando por lo que pida la gente." },
+        { "title": "Una beta chica", "text": "Unos pocos jugadores con el registro prendido, antes de cualquier lanzamiento grande. Si te interesa, avisá." }
+      ]
+    },
+    {
+      "id": "ayudar",
+      "title": "Cómo ayudar",
+      "intro": "No hace falta saber programar.",
+      "items": [
+        { "title": "Jugá con la app", "text": "Y cuando esté el registro de partida, dejalo prendido. Cada partida con otra civ, otro mapa u otra pantalla muestra cosas que no se ven jugando siempre igual." },
+        { "title": "Contá lo que anda mal", "text": "Abrí un aviso en GitHub con lo que viste y, si podés, una captura. Un \"me pidió una casa que ya tenía\" sirve muchísimo." },
+        { "title": "Publicá tus build orders", "text": "Armalas en el editor y subilas a la biblioteca, o votá las que te sirvieron para que otros las encuentren." },
+        { "title": "Sumate a la beta", "text": "Si querés estar entre los primeros y no te molesta que se rompa, avisá en GitHub." },
+        { "title": "Ayudá con los idiomas", "text": "Si te molesta una traducción o querés sumar tu idioma, se puede: los textos están todos en archivos simples." },
+        { "title": "Invitame un café", "text": "Es gratis y va a seguir siéndolo. Lo que entra paga el dominio y la web, y se anota a la vista de todos en la portada." }
+      ]
+    }
+  ],
+  "closing": "Si llegaste hasta acá, ya sos de los que pueden hacer que esto crezca. Probala, rompela y contá qué pasó."
+}
