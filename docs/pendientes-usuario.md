@@ -4,7 +4,7 @@ Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que m
 
 ## Lo de la v0.9.85, en este orden (3/11)
 
-Las cuatro partes del camino al público quedaron juntas en la v0.9.85 (rama `fase-9-refinamiento`, todavía no en `main`). Primero jugá una partida (0u: sin la migración, los registros quedan en cola en tu PC sin perderse). Después corré la migración (pasos 1 a 3 de 0s) y leé el roadmap (0t). Recién entonces pedime el push a `main`: la web, el roadmap y la versión pasan a ser públicos. La subida se prueba después del push (pasos 5 a 7 de 0s), porque la ruta que recibe los registros está en la web nueva.
+Las cuatro partes del camino al público están publicadas: la v0.9.85 llegó a `main` el 3/11, con la migración corrida y la release y la web en producción. Falta: mirar en Supabase, Storage, que esté el bucket `registros` (paso 3 de 0s; con la clave pública no se puede ver), jugar una partida y comprobar la subida (pasos 5 a 7 de 0s y 0u), y leer el roadmap (0t), que ya es público y habla en tu nombre.
 
 ## Registro de partida y "Compartir mis partidas" (2/11)
 
