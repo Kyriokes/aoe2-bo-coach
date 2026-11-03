@@ -22,7 +22,9 @@ internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IR
 /// como arquero daba una galería a las 9:37, en la Edad Oscura).</item>
 /// <item>Una tecnología en la cola en dos lecturas seguidas está en curso. Una que estuvo y falta en dos lecturas
 /// seguidas, pasado el 90 % de su tiempo desde que se la vio, terminó aunque el log no lo avise (pedido del usuario del
-/// 2026-10-31: el log no es confiable para las tecnologías). Antes de su tiempo, que falte es un error de lectura.</item>
+/// 2026-10-31: el log no es confiable para las tecnologías). Antes de su tiempo, que falte es un error de lectura. Si
+/// se la vio menos de la mitad de su tiempo no terminó nada: es un parpadeo (en la 20261101-165020, "town_watch" 3
+/// capturas, con el teñido a mitad de camino entre dos íconos) o se canceló.</item>
 /// </list>
 /// </summary>
 internal sealed class QueueSource(GameData data)
@@ -30,9 +32,12 @@ internal sealed class QueueSource(GameData data)
     /// <summary>Parte del tiempo de investigación que tiene que pasar para dar por terminada una tecnología que se fue de la cola.</summary>
     public const double FinishedShare = 0.9;
 
+    /// <summary>Parte de su tiempo que tiene que haberse visto una tecnología en la cola para creer que terminó.</summary>
+    public const double SeenShare = 0.5;
+
     private Dictionary<string, int> _previousCounts = [];
     private HashSet<string> _previousKeys = [];
-    private readonly Dictionary<string, double> _seen = [];
+    private readonly Dictionary<string, (double First, double Last)> _seen = [];
 
     /// <param name="age">La edad alcanzada: lo de una edad mayor es una lectura mala.</param>
     /// <param name="researchTime">Tiempo de investigación de una tecnología (con la civ).</param>
@@ -41,7 +46,8 @@ internal sealed class QueueSource(GameData data)
         var counts = new Dictionary<string, int>();
         foreach (var group in queue.Where(i => !i.Waiting).GroupBy(i => i.Key))
         {
-            if (!data.TryGet(group.Key, out var entity) || entity.MadeIn is not { } building || !data.TryGet(building, out var producer))
+            // Una mejora sale del mismo edificio que su unidad: el arbalestero, que la biblioteca ya reconoce, cuenta como arquero.
+            if (!(data.TryGet(group.Key, out var entity) || data.TryGet(UnitLines.Base(group.Key), out entity)) || entity.MadeIn is not { } building || !data.TryGet(building, out var producer))
                 continue;
             if (entity.Age > age || producer.Age > age)
                 continue;
@@ -62,16 +68,18 @@ internal sealed class QueueSource(GameData data)
             if (data.TryGet(key, out var entity) && entity.Kind == EntityKind.Tech && _previousKeys.Contains(key))
             {
                 inProgress.Add(key);
-                _seen.TryAdd(key, now);
+                _seen[key] = (_seen.TryGetValue(key, out var seen) ? seen.First : now, now);
             }
         }
         foreach (var (tech, seen) in _seen.ToList())
         {
             if (keys.Contains(tech) || _previousKeys.Contains(tech))
                 continue;
-            if (now - seen >= FinishedShare * researchTime(data.Get(tech)))
+            var time = researchTime(data.Get(tech));
+            if (now - seen.First >= FinishedShare * time)
             {
-                finished.Add(tech);
+                if (seen.Last - seen.First >= SeenShare * time)
+                    finished.Add(tech);
                 _seen.Remove(tech);
             }
         }

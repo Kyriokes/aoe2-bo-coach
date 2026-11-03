@@ -94,6 +94,21 @@ public class StateBeliefTests
     }
 
     [Fact]
+    public void Un_parpadeo_de_una_tecnologia_en_la_cola_no_la_da_por_terminada()
+    {
+        // En la 20261101-165020 el teñido de un ícono se leyó "town_watch" 3 capturas.
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(200, ("loom", false)), 200);
+        belief.Observe(Queue(201, ("loom", false)), 201);
+        belief.Observe(Queue(202, ("villager", false)), 202);
+        belief.Observe(Queue(203, ("villager", false)), 203);
+        belief.Observe(Queue(240, ("villager", false)), 240);
+        belief.Observe(Queue(241, ("villager", false)), 241);
+
+        Assert.False(belief.View.Done("loom"));
+    }
+
+    [Fact]
     public void Una_tecnologia_en_la_cola_esta_en_curso_y_al_irse_pasado_su_tiempo_queda_hecha()
     {
         var belief = new StateBelief(TestData.GameData);
@@ -108,6 +123,8 @@ public class StateBeliefTests
         Assert.True(belief.View.InProgress("loom"));
         Assert.False(belief.View.Done("loom"));
 
+        belief.Observe(Queue(217, ("loom", false)), 217);
+        belief.Observe(Queue(218, ("loom", false)), 218);
         belief.Observe(Queue(226, ("villager", false)), 226);
         belief.Observe(Queue(227, ("villager", false)), 227);
 

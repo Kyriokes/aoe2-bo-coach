@@ -482,11 +482,13 @@ public class CoachTests
         See(211, "villager");
         Assert.Equal(StepState.InProgress, LoomState());
 
+        See(217, "loom");
+        See(218, "loom");
         See(226, "villager");
         See(227, "villager");
         Assert.Equal(StepState.Done, LoomState());
         Assert.False(coach.Tracker.Steps[1].Manual);
-        Assert.Equal(226, coach.Tracker.Steps[1].DoneAt); // la segunda lectura sin el telar, pasado su tiempo
+        Assert.Equal(227, coach.Tracker.Steps[1].DoneAt); // la segunda lectura sin el telar, pasado su tiempo
     }
 
     [Fact]
