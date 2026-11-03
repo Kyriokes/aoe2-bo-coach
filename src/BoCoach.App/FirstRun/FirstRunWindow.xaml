@@ -4,14 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:firstRun="clr-namespace:BoCoach.App.FirstRun"
+        xmlns:coaching="clr-namespace:BoCoach.App.Coaching"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance firstRun:FirstRunViewModel}"
         Title="Primeros pasos" Width="600" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" Background="{StaticResource Background}"
-        FontFamily="Segoe UI" FontSize="13">
+        FontFamily="Segoe UI" FontSize="13"
+        MaxHeight="{x:Static SystemParameters.MaximizedPrimaryScreenHeight}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="18">
         <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,14">
-            Cinco pasos para que el coach te lea bien y tenga tus BO. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
+            Seis pasos para que el coach te lea bien y tenga tus BO. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
         </TextBlock>
 
         <!-- 1. Idioma -->
@@ -68,9 +71,16 @@
             <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
         </StackPanel>
 
+        <!-- 6. Compartir las partidas (spec 2026-11-02) -->
+        <TextBlock Text="6. Compartir tus partidas" Style="{StaticResource SectionTitle}" />
+        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,6" Text="{x:Static coaching:RecordSharing.Explanation}" />
+        <CheckBox x:Name="ShareBox" IsChecked="{Binding ShareGames}" Margin="0,0,0,16" Foreground="{StaticResource Muted}"
+                  Content="Compartir mis partidas para mejorar el coach" />
+
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Guardar mi nombre" IsDefault="True" Style="{StaticResource PrimaryButton}" Command="{Binding FinishCommand}" />
             <Button Content="Cerrar" IsCancel="True" Margin="0" />
         </StackPanel>
     </StackPanel>
+    </ScrollViewer>
 </Window>

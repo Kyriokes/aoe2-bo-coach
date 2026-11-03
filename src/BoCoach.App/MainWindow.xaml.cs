@@ -71,9 +71,13 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         CursorRemindersBox.DataContext = Coach;
         HudMinimalBox.DataContext = Coach;
         AutoStartBox.DataContext = Coach;
+        ShareBox.DataContext = Coach;
         LivePanel.DataContext = Coach;
         ModeBox.DataContext = Coach;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
+        // Las capturas de prueba (con su propia carpeta) no comparten nada.
+        if (userDir is null)
+            Coach.Sharing = new RecordSharing(Coach.RecordsFolder, Path.Combine(CoachData.UserDir, "instalacion.json"), () => web.Client, AppVersion.Text);
         Coach.PropertyChanged += async (_, e) =>
         {
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))
@@ -88,6 +92,8 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             BuildOrders.Select(Coach.LastBuildOrderId);
             await BuildOrders.RefreshAsync();
             BuildOrders.Select(Coach.LastBuildOrderId);
+            // Lo que quedó sin enviar de otra vez (sin internet, o se cerró la app).
+            await Coach.SendPendingRecordsAsync();
         };
 
         _tick.Tick += (_, _) =>

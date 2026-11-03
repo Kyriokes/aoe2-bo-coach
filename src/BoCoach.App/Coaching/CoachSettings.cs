@@ -66,6 +66,9 @@ public sealed class CoachSettings
     /// </summary>
     public bool HudMinimal { get; set; }
 
+    /// <summary>"Compartir mis partidas para mejorar el coach" (spec 2026-11-02): prendido salvo que el jugador lo apague.</summary>
+    public bool ShareGames { get; set; } = true;
+
     /// <summary>Atajos cambiados por el jugador: id de la acción → combinación ("Ctrl+Alt+Right"); lo que falta es de fábrica.</summary>
     public Dictionary<string, string> Hotkeys { get; set; } = [];
 
@@ -100,6 +103,7 @@ public sealed class CoachSettings
                     DevMode = Flag(json["dev_mode"]),
                     AutoRecord = json["auto_record"] is JsonValue record && record.TryGetValue<bool>(out var auto) ? auto : true,
                     HudMinimal = Flag(json["hud_minimo"]),
+                    ShareGames = json["share_games"] is JsonValue share && share.TryGetValue<bool>(out var shared) ? shared : true,
                 };
             }
         }
@@ -138,7 +142,7 @@ public sealed class CoachSettings
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
             ["bo_mode"] = BoMode == BuildOrderMode.Manual ? "manual" : "auto",
-            ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord, ["hud_minimo"] = HudMinimal };
+            ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord, ["hud_minimo"] = HudMinimal, ["share_games"] = ShareGames };
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;
         if (EloTeam is { } eloTeam)

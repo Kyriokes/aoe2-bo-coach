@@ -12,7 +12,7 @@ public partial class FirstRunWindow : Window
 {
     private readonly DispatcherTimer _timer = new() { Interval = FirstRunViewModel.WatchInterval };
 
-    /// <param name="languageContext">Lo que tiene el idioma del juego (<c>LanguageOptions</c> y <c>Language</c>): el coach.</param>
+    /// <param name="languageContext">Lo que tiene el idioma del juego (<c>LanguageOptions</c> y <c>Language</c>) y el interruptor de compartir (<c>ShareGames</c>): el coach.</param>
     /// <param name="installMod">El botón "Instalar mod del HUD" de la barra.</param>
     /// <param name="accountContext">Lo que tiene la cuenta de la web (<c>ConnectCommand</c> y <c>AccountText</c>): la sección "Build order".</param>
     public FirstRunWindow(FirstRunViewModel viewModel, object languageContext, ICommand installMod, object? accountContext = null)
@@ -20,6 +20,7 @@ public partial class FirstRunWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         LanguageBox.DataContext = languageContext;
+        ShareBox.DataContext = languageContext;
         AccountBox.DataContext = accountContext;
         InstallModButton.Command = installMod;
         _timer.Tick += async (_, _) => await viewModel.TickAsync();

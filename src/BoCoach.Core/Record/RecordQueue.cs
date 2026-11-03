@@ -36,44 +36,67 @@ public sealed class RecordQueue
     }
 
     /// <summary>Lo que espera salir, lo más viejo primero.</summary>
-    public IReadOnlyList<QueuedRecord> Pending => _items;
+    public IReadOnlyList<QueuedRecord> Pending
+    {
+        get
+        {
+            lock (_items)
+                return _items.ToList();
+        }
+    }
 
     public string PathOf(QueuedRecord record) => Path.Combine(_folder, record.File);
 
     public void Enqueue(string path, string gameId, double length, DateTimeOffset now)
     {
-        if (_items.All(r => r.GameId != gameId))
-            _items.Add(new QueuedRecord(Path.GetFileName(path), gameId, length, now, 0, now));
-        Trim(now);
-        Save();
+        lock (_items)
+        {
+            if (_items.All(r => r.GameId != gameId))
+                _items.Add(new QueuedRecord(Path.GetFileName(path), gameId, length, now, 0, now));
+            Trim(now);
+            Save();
+        }
     }
 
     /// <summary>Lo que ya se puede intentar.</summary>
-    public IReadOnlyList<QueuedRecord> Due(DateTimeOffset now) => _items.Where(r => r.NextTry <= now).ToList();
+    public IReadOnlyList<QueuedRecord> Due(DateTimeOffset now)
+    {
+        lock (_items)
+            return _items.Where(r => r.NextTry <= now).ToList();
+    }
 
     /// <summary>Salió, o no va a salir nunca.</summary>
     public void Remove(QueuedRecord record)
     {
-        _items.RemoveAll(r => r.GameId == record.GameId);
-        Save();
+        lock (_items)
+        {
+            _items.RemoveAll(r => r.GameId == record.GameId);
+            Save();
+        }
     }
 
     /// <summary>No salió: otra vez más tarde, con el doble de espera cada vez.</summary>
     public void Failed(QueuedRecord record, DateTimeOffset now)
     {
-        var index = _items.FindIndex(r => r.GameId == record.GameId);
-        if (index < 0)
-            return;
-        // Con un tope al exponente: de ahí en más la espera ya es la máxima.
-        var doubled = BaseDelay * Math.Pow(2, Math.Min(record.Attempts, 16));
-        _items[index] = record with { Attempts = record.Attempts + 1, NextTry = now + (doubled < MaxDelay ? doubled : MaxDelay) };
-        Save();
+        lock (_items)
+        {
+            var index = _items.FindIndex(r => r.GameId == record.GameId);
+            if (index < 0)
+                return;
+            // Con un tope al exponente: de ahí en más la espera ya es la máxima.
+            var doubled = BaseDelay * Math.Pow(2, Math.Min(record.Attempts, 16));
+            _items[index] = record with { Attempts = record.Attempts + 1, NextTry = now + (doubled < MaxDelay ? doubled : MaxDelay) };
+            Save();
+        }
     }
 
     public void Clear()
     {
-        _items.Clear();
-        Save();
+        lock (_items)
+        {
+            _items.Clear();
+            Save();
+        }
     }
 
     private void Trim(DateTimeOffset now)

@@ -112,6 +112,14 @@
                               ToolTip="{Binding AutoStart, Source={x:Static hotkeys:HotkeyTips.Instance}}">
                         <TextBlock Text="Coach automático" Foreground="#C9C1B6" />
                     </CheckBox>
+                    <StackPanel x:Name="ShareBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <CheckBox IsChecked="{Binding ShareGames}" VerticalAlignment="Center" ToolTip="{x:Static coaching:RecordSharing.Explanation}">
+                            <TextBlock Text="Compartir mis partidas para mejorar el coach" Foreground="#C9C1B6" />
+                        </CheckBox>
+                        <Button Content="Borrar lo compartido…" Command="{Binding ForgetSharedCommand}" Margin="8,0,0,0"
+                                ToolTip="Le pide a la web que borre los registros de partida que subió esta PC" />
+                        <TextBlock Text="{Binding ShareStatus}" Foreground="#A39A8F" FontSize="12" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
                     <CheckBox IsChecked="{Binding AutoRecord, Source={x:Static app:DevMode.Instance}}" VerticalAlignment="Center" Margin="0,0,10,0" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"
                               ToolTip="Modo desarrollador: arranca a grabar cuando empieza una partida y corta cuando termina (o al detener el coach). No toca una grabación hecha a mano">
                         <TextBlock Text="Grabar cada partida sola" Foreground="#F0A050" />
