@@ -94,6 +94,19 @@ public class StateBeliefTests
     }
 
     [Fact]
+    public void Una_tecnologia_que_solo_espero_en_la_cola_no_termina_al_irse()
+    {
+        // En la 20261103-193834, con todo el árbol encolado, lo que se leía en espera salía terminado antes de empezar.
+        var belief = new StateBelief(TestData.GameData);
+        foreach (var at in new[] { 200, 201, 215, 230, 240 })
+            belief.Observe(Queue(at, ("loom", true)), at);
+        belief.Observe(Queue(241, ("villager", false)), 241);
+        belief.Observe(Queue(242, ("villager", false)), 242);
+
+        Assert.False(belief.View.Done("loom"));
+    }
+
+    [Fact]
     public void Un_parpadeo_de_una_tecnologia_en_la_cola_no_la_da_por_terminada()
     {
         // En la 20261101-165020 el teñido de un ícono se leyó "town_watch" 3 capturas.

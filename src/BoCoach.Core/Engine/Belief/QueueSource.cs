@@ -24,7 +24,8 @@ internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IR
 /// seguidas, pasado el 90 % de su tiempo desde que se la vio, terminó aunque el log no lo avise (pedido del usuario del
 /// 2026-10-31: el log no es confiable para las tecnologías). Antes de su tiempo, que falte es un error de lectura. Si
 /// se la vio menos de la mitad de su tiempo no terminó nada: es un parpadeo (en la 20261101-165020, "town_watch" 3
-/// capturas, con el teñido a mitad de camino entre dos íconos) o se canceló.</item>
+/// capturas, con el teñido a mitad de camino entre dos íconos) o se canceló. Su tiempo cuenta desde que avanza, no desde
+/// que espera (20261103-193834, con todo el árbol encolado: la forja salía terminada a las 25:40 y el log la avisó a las 26:53).</item>
 /// </list>
 /// </summary>
 internal sealed class QueueSource(GameData data)
@@ -61,6 +62,7 @@ internal sealed class QueueSource(GameData data)
         }
 
         var keys = queue.Select(i => i.Key).ToHashSet();
+        var advancing = queue.Where(i => !i.Waiting).Select(i => i.Key).ToHashSet();
         var inProgress = new HashSet<string>();
         var finished = new List<string>();
         foreach (var key in keys)
@@ -68,7 +70,8 @@ internal sealed class QueueSource(GameData data)
             if (data.TryGet(key, out var entity) && entity.Kind == EntityKind.Tech && _previousKeys.Contains(key))
             {
                 inProgress.Add(key);
-                _seen[key] = (_seen.TryGetValue(key, out var seen) ? seen.First : now, now);
+                if (advancing.Contains(key))
+                    _seen[key] = (_seen.TryGetValue(key, out var seen) ? seen.First : now, now);
             }
         }
         foreach (var (tech, seen) in _seen.ToList())
