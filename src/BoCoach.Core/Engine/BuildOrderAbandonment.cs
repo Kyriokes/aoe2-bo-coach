@@ -1,4 +1,5 @@
 using BoCoach.Core.BuildOrders;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
@@ -96,12 +97,13 @@ public sealed class BuildOrderAbandonment
         {
             var names = string.Join(", ", foreign.GroupBy(u => u).OrderByDescending(g => g.Count()).Select(g => StepText.Name(g.Key, 2)));
             Reason = _boUnits.Count == 0
-                ? $"hiciste {foreign.Count} unidades que la BO no tiene ({names})"
-                : $"hiciste {foreign.Count} unidades que la BO no tiene ({names}) y hace {BoUnitPause:0} s que no sale {string.Join(" ni ", _boUnits.Select(u => StepText.Name(u)))}";
+                ? L($"hiciste {foreign.Count} unidades que la BO no tiene ({names})", $"you made {foreign.Count} units the BO doesn't have ({names})")
+                : L($"hiciste {foreign.Count} unidades que la BO no tiene ({names}) y hace {BoUnitPause:0} s que no sale {string.Join(" ni ", _boUnits.Select(u => StepText.Name(u)))}",
+                    $"you made {foreign.Count} units the BO doesn't have ({names}) and no {string.Join(" or ", _boUnits.Select(u => StepText.Name(u)))} for {BoUnitPause:0} s");
             return;
         }
         if (state.Time - _progressAt >= MaxStall)
-            Reason = $"hace {GameClock.Format(state.Time - _progressAt)} que no avanza ningún paso de la BO";
+            Reason = L($"hace {GameClock.Format(state.Time - _progressAt)} que no avanza ningún paso de la BO", $"no BO step has advanced for {GameClock.Format(state.Time - _progressAt)}");
     }
 
     /// <summary>El jugador retoma la BO: lo ajeno y el tiempo sin avanzar se cuentan desde ahora.</summary>

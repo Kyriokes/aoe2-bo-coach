@@ -1,4 +1,5 @@
 using BoCoach.Core.Data;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
@@ -83,6 +84,7 @@ public sealed class GameSignals(GameData data)
     public IReadOnlySet<int> AllySlots { get; set; } = new HashSet<int>();
 
     private static readonly string[] ColorNames = ["", "azul", "rojo", "verde", "amarillo", "celeste", "violeta", "gris", "naranja"];
+    private static readonly string[] ColorNamesEn = ["", "blue", "red", "green", "yellow", "cyan", "purple", "gray", "orange"];
 
     /// <summary>Todas las señales vistas en la partida, en orden.</summary>
     public IReadOnlyList<GameSignal> All => _signals;
@@ -193,10 +195,12 @@ public sealed class GameSignals(GameData data)
         if (AllySlots.Contains(player.Slot))
             return;
         var (tech, kind, name) = Ages[age];
+        if (tech == "castle_age")
+            name = L(name, "Castle");
         // Con más de un rival posible, el color dice cuál (en 1 contra 1 no hace falta).
-        var who = _players.Count > 2 && player.Slot is > 0 and <= 8 ? $"El rival {ColorNames[player.Slot]}" : "El rival";
-        var arrives = data.TryGet(tech, out var entity) ? $": llega a las {GameClock.Format(time + entity.Time)}" : "";
-        _signals.Add(new GameSignal(kind, time, $"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}", player.Slot is > 0 and <= 8 ? player.Slot : 0));
+        var who = _players.Count > 2 && player.Slot is > 0 and <= 8 ? L($"El rival {ColorNames[player.Slot]}", $"The {ColorNamesEn[player.Slot]} rival") : L("El rival", "The rival");
+        var arrives = data.TryGet(tech, out var entity) ? L($": llega a las {GameClock.Format(time + entity.Time)}", $": arrives at {GameClock.Format(time + entity.Time)}") : "";
+        _signals.Add(new GameSignal(kind, time, L($"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}", $"{who} clicked {name} ({GameClock.Format(time)}){arrives}"), player.Slot is > 0 and <= 8 ? player.Slot : 0));
     }
 
     /// <summary>Lo que cae el puntaje al pagar esa edad: la décima parte de su costo (sin bonificaciones de civ).</summary>
@@ -212,7 +216,7 @@ public sealed class GameSignals(GameData data)
         {
             var e = state.Events[_seenEvents];
             if (e.EventId == "under_attack" && !_signals.Any(s => s.Kind == "under_attack" && e.Time - s.Time < 30))
-                _signals.Add(new GameSignal("under_attack", e.Time, "¡Te están atacando!"));
+                _signals.Add(new GameSignal("under_attack", e.Time, L("¡Te están atacando!", "You're under attack!")));
         }
     }
 
@@ -230,7 +234,7 @@ public sealed class GameSignals(GameData data)
         else if (time - drop.Since >= VillagerLossSeconds)
         {
             var lost = peak - now;
-            _signals.Add(new GameSignal("villagers_lost", time, $"Perdiste {lost} aldeano{(lost > 1 ? "s" : "")}: reponelos"));
+            _signals.Add(new GameSignal("villagers_lost", time, L($"Perdiste {lost} aldeano{(lost > 1 ? "s" : "")}: reponelos", $"You lost {lost} villager{(lost > 1 ? "s" : "")}: replace them")));
             (_villagerPeak, _villagerDrop) = (now, null);
         }
     }

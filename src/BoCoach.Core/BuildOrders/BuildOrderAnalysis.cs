@@ -15,9 +15,10 @@ namespace BoCoach.Core.BuildOrders;
 public static class BuildOrderAnalysis
 {
     /// <param name="maps">Los mapas (data/maps.json), para los avisos del mapa de la BO (D8).</param>
-    /// <param name="language">El idioma de los pasos, la postura y las ramas (<see cref="StepText.Spanish"/> o <see cref="StepText.English"/>).</param>
+    /// <param name="language">El idioma de los pasos, la postura, las ramas y los avisos (<see cref="StepText.Spanish"/> o <see cref="StepText.English"/>).</param>
     public static string Analyze(string json, GameData data, EventCatalog? events = null, Maps? maps = null, string language = StepText.Spanish)
     {
+        using var scope = Lang.Use(language);
         using var stream = new MemoryStream();
         using (var w = new Utf8JsonWriter(stream))
         {

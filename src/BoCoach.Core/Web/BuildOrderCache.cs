@@ -29,14 +29,14 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
     public async Task<string?> RefreshAsync(CancellationToken cancel = default)
     {
         if (Token() is not { } current)
-            return "Conectá tu cuenta para elegir BO.";
+            return Lang.L("Conectá tu cuenta para elegir BO.", "Connect your account to choose BOs.");
         try
         {
             List = await client().MyBuildOrdersAsync(current, cancel);
         }
         catch (WebLibraryException e) when (e.Status == System.Net.HttpStatusCode.Unauthorized)
         {
-            return $"Conectá tu cuenta de nuevo: {e.Message}";
+            return Lang.L($"Conectá tu cuenta de nuevo: {e.Message}", $"Connect your account again: {e.Message}");
         }
         catch (WebLibraryException e)
         {
@@ -108,7 +108,7 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
     public async Task<WebBuildOrderEntry?> AddAsync(string code, CancellationToken cancel = default)
     {
         if (Token() is not { } current)
-            throw new WebLibraryException("Conectá tu cuenta para sumar BO.");
+            throw new WebLibraryException(Lang.L("Conectá tu cuenta para sumar BO.", "Connect your account to add BOs."));
         await client().SubscribeAsync(code, current, cancel);
         if (await RefreshAsync(cancel) is { } error)
             throw new WebLibraryException(error);

@@ -30,7 +30,7 @@ public sealed class EmptyBuildOrderSource : IBuildOrderSource
     public bool IsFresh(string code) => false;
 
     public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default) =>
-        Task.FromException<BuildOrder>(new WebLibraryException("Conectá tu cuenta para elegir BO."));
+        Task.FromException<BuildOrder>(new WebLibraryException(Lang.L("Conectá tu cuenta para elegir BO.", "Connect your account to choose BOs.")));
 }
 
 /// <summary>Cómo se elige la BO del coach: la sugerida en cada partida, o la que el jugador eligió de su lista.</summary>

@@ -33,7 +33,7 @@ public static class EloLookup
         return new Uri($"{BaseUrl}/community/leaderboard/GetPersonalStat?title=age2&aliases={Uri.EscapeDataString(aliases)}");
     }
 
-    private const string NotUnderstood = "La API del juego respondió algo que no entiendo: probá más tarde.";
+    private static string NotUnderstood => Lang.L("La API del juego respondió algo que no entiendo: probá más tarde.", "The game's API answered something I don't understand: try again later.");
 
     /// <summary>Los candidatos de una respuesta, el que jugó más recientemente primero; vacío si no hay o no se entiende.</summary>
     public static IReadOnlyList<EloCandidate> Parse(string json) => Read(json).Candidates;
@@ -51,7 +51,7 @@ public static class EloLookup
             if (root.ValueKind != JsonValueKind.Object)
                 return new([], NotUnderstood);
             if (root.TryGetProperty("result", out var result) && Number(result, "code", out var code) && code != 0)
-                return code == UnknownAliases ? new([], null) : new([], $"La API del juego respondió un error (código {code}): probá más tarde.");
+                return code == UnknownAliases ? new([], null) : new([], Lang.L($"La API del juego respondió un error (código {code}): probá más tarde.", $"The game's API answered with an error (code {code}): try again later."));
             if (!root.TryGetProperty("statGroups", out var groups) || groups.ValueKind != JsonValueKind.Array)
                 return new([], NotUnderstood);
             var boards = Boards(root);
@@ -94,22 +94,22 @@ public static class EloLookup
             request.Headers.UserAgent.ParseAdd(UserAgent);
             using var response = await http.SendAsync(request, timeout.Token).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
-                return new([], $"La API del juego respondió {(int)response.StatusCode}: probá más tarde.");
+                return new([], Lang.L($"La API del juego respondió {(int)response.StatusCode}: probá más tarde.", $"The game's API answered {(int)response.StatusCode}: try again later."));
             return Read(await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false));
         }
         catch (OperationCanceledException) when (!cancel.IsCancellationRequested)
         {
-            return new([], $"No se pudo consultar la API del juego: no respondió en {Timeout.TotalSeconds:0} s.");
+            return new([], Lang.L($"No se pudo consultar la API del juego: no respondió en {Timeout.TotalSeconds:0} s.", $"Couldn't reach the game's API: no answer in {Timeout.TotalSeconds:0} s."));
         }
         catch (HttpRequestException)
         {
             // Sin el mensaje de .NET: viene en inglés ("No such host is known").
-            return new([], "No se pudo consultar la API del juego: revisá la conexión.");
+            return new([], Lang.L("No se pudo consultar la API del juego: revisá la conexión.", "Couldn't reach the game's API: check your connection."));
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             // Una respuesta demasiado grande o con un charset raro: nunca un cartel de error (spec D10, 6).
-            return new([], "No se pudo consultar la API del juego.");
+            return new([], Lang.L("No se pudo consultar la API del juego.", "Couldn't reach the game's API."));
         }
     }
 

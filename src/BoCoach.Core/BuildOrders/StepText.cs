@@ -3,14 +3,14 @@ using BoCoach.Core.Data;
 namespace BoCoach.Core.BuildOrders;
 
 /// <summary>
-/// Textos para mostrar pasos y entidades (editor, overlay y web), en castellano (<see cref="Spanish"/>, el idioma por
-/// defecto: la app y ReplaySession no pasan ninguno) o en inglés (<see cref="English"/>). Un idioma que no se conoce
-/// se muestra en castellano.
+/// Textos para mostrar pasos y entidades (overlay y web), en castellano (<see cref="Spanish"/>) o en inglés
+/// (<see cref="English"/>). Sin pasar un idioma, el actual (<see cref="Lang"/>). Un idioma que no se conoce se muestra
+/// en castellano.
 /// </summary>
 public static class StepText
 {
-    public const string Spanish = "es";
-    public const string English = "en";
+    public const string Spanish = Lang.Spanish;
+    public const string English = Lang.English;
 
     /// <summary>Los idiomas que tienen diccionario.</summary>
     public static IReadOnlyList<string> Languages { get; } = [Spanish, English];
@@ -182,19 +182,19 @@ public static class StepText
         ["coinage"] = ("Coinage", "Coinage"),
     };
 
-    private static Dictionary<string, (string Singular, string Plural)> NamesFor(string language) =>
-        language == English ? NamesEn : NamesEs;
+    private static Dictionary<string, (string Singular, string Plural)> NamesFor(string? language) =>
+        IsEnglish(language) ? NamesEn : NamesEs;
 
-    private static bool IsEnglish(string language) => language == English;
+    private static bool IsEnglish(string? language) => (language ?? Lang.Current) == English;
 
     /// <summary>Si la entidad tiene nombre en ese idioma (sin nombre, sale la clave con espacios).</summary>
-    public static bool HasName(string key, string language = Spanish) => NamesFor(language).ContainsKey(key);
+    public static bool HasName(string key, string? language = null) => NamesFor(language).ContainsKey(key);
 
     /// <summary>Nombre de una entidad en el idioma; si no hay traducción, la clave con espacios.</summary>
-    public static string Name(string key, int count = 1, string language = Spanish) =>
+    public static string Name(string key, int count = 1, string? language = null) =>
         NamesFor(language).TryGetValue(key, out var n) ? (count == 1 ? n.Singular : n.Plural) : key.Replace('_', ' ');
 
-    public static string Source(GatherSource source, string language = Spanish) => IsEnglish(language)
+    public static string Source(GatherSource source, string? language = null) => IsEnglish(language)
         ? source switch
         {
             GatherSource.Sheep => "sheep",
@@ -218,7 +218,7 @@ public static class StepText
             _ => "piedra",
         };
 
-    public static string Action(StepAction action, string language = Spanish) => IsEnglish(language)
+    public static string Action(StepAction action, string? language = null) => IsEnglish(language)
         ? action switch
         {
             StepAction.Train => "Train",
@@ -239,7 +239,7 @@ public static class StepText
     /// inglés). La web tiene una copia en TypeScript (<c>web/src/lib/stepText.ts</c>) atada por un test: si cambia
     /// algo acá, cambia allá.
     /// </summary>
-    public static string Describe(Step step, string language = Spanish)
+    public static string Describe(Step step, string? language = null)
     {
         var en = IsEnglish(language);
         if (step.Do == StepAction.Move)

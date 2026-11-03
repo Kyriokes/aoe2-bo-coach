@@ -65,14 +65,14 @@ public sealed record VillagerEstimate(ResourceAmounts PerResource, double Effici
 
 public sealed record Suggestion(Resource From, Resource To, int Count)
 {
-    public override string ToString() => $"Pasá {Count} de {Name(From)} a {Name(To)}";
+    public override string ToString() => Lang.L($"Pasá {Count} de {Name(From)} a {Name(To)}", $"Move {Count} from {Name(From)} to {Name(To)}");
 
     public static string Name(Resource r) => r switch
     {
-        Resource.Food => "comida",
-        Resource.Wood => "madera",
-        Resource.Stone => "piedra",
-        _ => "oro",
+        Resource.Food => Lang.L("comida", "food"),
+        Resource.Wood => Lang.L("madera", "wood"),
+        Resource.Stone => Lang.L("piedra", "stone"),
+        _ => Lang.L("oro", "gold"),
     };
 }
 

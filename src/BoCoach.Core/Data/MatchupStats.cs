@@ -156,10 +156,10 @@ public sealed class MatchupStats
     {
         var limits = GameMinuteLimits;
         if (band <= 1)
-            return $"antes de los {limits[0]} min";
+            return Lang.L($"antes de los {limits[0]} min", $"before {limits[0]} min");
         if (band > limits.Count)
-            return $"después de los {limits[^1]} min";
-        return $"de {limits[band - 2]} a {limits[band - 1]} min";
+            return Lang.L($"después de los {limits[^1]} min", $"after {limits[^1]} min");
+        return Lang.L($"de {limits[band - 2]} a {limits[band - 1]} min", $"{limits[band - 2]} to {limits[band - 1]} min");
     }
 
     /// <summary>Si hay datos de esa civ (en 1v1 o en equipos). Las civs de Crónicas no juegan clasificatorias.</summary>

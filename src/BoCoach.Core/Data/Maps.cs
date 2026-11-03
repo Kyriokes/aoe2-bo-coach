@@ -17,6 +17,12 @@ public sealed record GameMap(string Key, string Name, bool Water, IReadOnlySet<G
     /// <summary>D12: cuántas ovejas, jabalíes y arbustos de bayas tiene cada jugador (por defecto, los de Arabia).</summary>
     public IReadOnlyDictionary<GatherSource, int> Food { get; init; } = StandardFood;
 
+    /// <summary>El nombre en inglés, si el archivo lo trae.</summary>
+    public string? NameEn { get; init; }
+
+    /// <summary>El nombre en el idioma actual.</summary>
+    public string Label => Lang.IsEnglish ? NameEn ?? Name : Name;
+
     public bool Has(GatherSource source) => Sources.Contains(source);
 }
 
@@ -87,7 +93,7 @@ public sealed class Maps
             ? list.Select(Text).OfType<string>().Select(ParseSource).OfType<GatherSource>().ToHashSet()
             : AllSources;
         var water = map["water"] is JsonValue w && w.GetValueKind() is JsonValueKind.True or JsonValueKind.False && w.GetValue<bool>();
-        return new GameMap(key.Trim(), Text(map["name"]) ?? key, water, sources, Text(map["note"])) { Food = ReadFood(map["food"]) };
+        return new GameMap(key.Trim(), Text(map["name"]) ?? key, water, sources, Text(map["note"])) { Food = ReadFood(map["food"]), NameEn = Text(map["name_en"]) };
     }
 
     /// <summary>Las cantidades de food que valen (un entero de 0 en adelante de una fuente contada); lo demás queda en el estándar.</summary>

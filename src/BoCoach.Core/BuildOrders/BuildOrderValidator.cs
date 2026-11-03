@@ -1,4 +1,5 @@
 using BoCoach.Core.Data;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.BuildOrders;
 
@@ -12,7 +13,7 @@ public enum Severity
 public sealed record ValidationIssue(Severity Severity, string? StepId, string Message)
 {
     public override string ToString() =>
-        $"{(Severity == Severity.Error ? "Error" : "Aviso")}{(StepId is null ? "" : $" en el paso {StepId}")}: {Message}";
+        $"{(Severity == Severity.Error ? "Error" : L("Aviso", "Warning"))}{(StepId is null ? "" : L($" en el paso {StepId}", $" in step {StepId}"))}: {Message}";
 }
 
 public sealed record ValidationResult(IReadOnlyList<ValidationIssue> Issues)
@@ -88,19 +89,19 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         void Warn(string? step, string message) => issues.Add(new(Severity.Warning, step, message));
 
         if (string.IsNullOrWhiteSpace(bo.Name))
-            Error(null, "La build order no tiene nombre.");
+            Error(null, L("La build order no tiene nombre.", "The build order has no name."));
         if (bo.Steps.Count == 0)
-            Error(null, "La build order no tiene pasos.");
+            Error(null, L("La build order no tiene pasos.", "The build order has no steps."));
         if (!string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase) && gameData.Civs.Count > 0 && !gameData.IsKnownCiv(bo.Civ))
-            Warn(null, $"La civ '{bo.Civ}' no está en los datos del juego: se simula sin sus bonificaciones (usá, por ejemplo, 'britons' o 'any').");
+            Warn(null, L($"La civ '{bo.Civ}' no está en los datos del juego: se simula sin sus bonificaciones (usá, por ejemplo, 'britons' o 'any').", $"The civ '{bo.Civ}' isn't in the game data: it's simulated without its bonuses (use, for example, 'britons' or 'any')."));
 
         var ids = new HashSet<string>();
         foreach (var step in bo.Steps)
         {
             if (string.IsNullOrWhiteSpace(step.Id))
-                Error(null, $"Hay un paso sin id ({Describe(step)}).");
+                Error(null, L($"Hay un paso sin id ({Describe(step)}).", $"There's a step without an id ({Describe(step)})."));
             else if (!ids.Add(step.Id))
-                Error(step.Id, $"El id '{step.Id}' está repetido.");
+                Error(step.Id, L($"El id '{step.Id}' está repetido.", $"The id '{step.Id}' is repeated."));
         }
 
         var map = MapOf(bo, Warn);
@@ -111,7 +112,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             var id = string.IsNullOrWhiteSpace(step.Id) ? null : step.Id;
             ValidateStep(step, id, age, built, ids, Error, Warn, gameData.Civ(bo.Civ));
             if (step.What is { } what && step.Do != StepAction.Move && !gameData.CanMake(bo.Civ, what))
-                Error(id, $"La civ {CivName(bo.Civ)} no tiene {StepText.Name(what)} (según su árbol de tecnologías).");
+                Error(id, L($"La civ {CivName(bo.Civ)} no tiene {StepText.Name(what)} (según su árbol de tecnologías).", $"The {CivName(bo.Civ)} don't have {StepText.Name(what)} (according to their tech tree)."));
             if (map is not null)
                 ValidateMap(step, id, map, Warn);
 
@@ -130,7 +131,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         for (var i = 0; i < units.Length; i++)
         {
             if (units[i] == 0 && Engine.LivePlan.IsVillagerTarget(bo.Steps[i]))
-                Warn(bo.Steps[i].Id, $"Antes de este paso ya hay {bo.Steps[i].Count} o más aldeanos en {StepText.Source(bo.Steps[i].Assign!.Value)}: no entrena ninguno (la cantidad es el total en el recurso, como en el HUD).");
+                Warn(bo.Steps[i].Id, L($"Antes de este paso ya hay {bo.Steps[i].Count} o más aldeanos en {StepText.Source(bo.Steps[i].Assign!.Value)}: no entrena ninguno (la cantidad es el total en el recurso, como en el HUD).",
+                    $"Before this step there are already {bo.Steps[i].Count} or more villagers on {StepText.Source(bo.Steps[i].Assign!.Value)}: it trains none (the amount is the total on the resource, like in the HUD)."));
         }
 
         // "A N de población" que los pasos anteriores nunca alcanzan: el paso no arranca y el coach espera para siempre.
@@ -140,24 +142,26 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             var step = bo.Steps[i];
             if (step.AtPop is { } atPop && atPop > population)
             {
-                Warn(step.Id, $"La población nunca llega a {atPop}: con los pasos anteriores hay {population} (aldeanos y unidades, " +
-                              $"con el explorador). Faltan {atPop - population} aldeanos antes, o bajá 'a N de población'.");
+                Warn(step.Id, L($"La población nunca llega a {atPop}: con los pasos anteriores hay {population} (aldeanos y unidades, " +
+                              $"con el explorador). Faltan {atPop - population} aldeanos antes, o bajá 'a N de población'.",
+                    $"Population never reaches {atPop}: the previous steps give {population} (villagers and units, " +
+                              $"with the scout). Add {atPop - population} villagers before, or lower 'at N pop'."));
             }
             if (step.Do == StepAction.Train && step.What is not null && gameData.TryGet(step.What, out var unit))
                 population += units[i] * Math.Max(1, unit.Pop);
         }
 
         foreach (var cycle in FindCycles(bo.Steps))
-            Error(cycle[0], $"Dependencia circular en 'after': {string.Join(" → ", cycle)}.");
+            Error(cycle[0], L($"Dependencia circular en 'after': {string.Join(" → ", cycle)}.", $"Circular dependency in 'after': {string.Join(" → ", cycle)}."));
 
         // Pasos mixtos: las metas de un grupo van seguidas, y un grupo de una sola meta es un paso simple.
         foreach (var group in bo.Steps.Select((s, i) => (s, i)).Where(x => x.s.Group is not null).GroupBy(x => x.s.Group!))
         {
             var indexes = group.Select(x => x.i).ToList();
             if (indexes[^1] - indexes[0] + 1 != indexes.Count)
-                Error(group.First().s.Id, $"Las metas del paso mixto '{group.Key}' tienen que ir seguidas, sin otros pasos en el medio.");
+                Error(group.First().s.Id, L($"Las metas del paso mixto '{group.Key}' tienen que ir seguidas, sin otros pasos en el medio.", $"The goals of the mixed step '{group.Key}' must be consecutive, with no other steps in between."));
             else if (indexes.Count == 1)
-                Warn(group.First().s.Id, $"El paso mixto '{group.Key}' tiene una sola meta: es un paso simple.");
+                Warn(group.First().s.Id, L($"El paso mixto '{group.Key}' tiene una sola meta: es un paso simple.", $"The mixed step '{group.Key}' has a single goal: it's a simple step."));
         }
 
         ValidateTargets(bo.Targets, Error);
@@ -168,7 +172,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     }
 
     private string CivName(string civ) =>
-        gameData.Civ(civ).Names.TryGetValue("mx", out var name) ? name : civ;
+        gameData.Civ(civ).Label ?? civ;
 
     /// <summary>El mapa de la BO si hay que mirarlo: con mapas cargados, un mapa puesto y conocido (uno desconocido avisa).</summary>
     private GameMap? MapOf(BuildOrder bo, Action<string?, string> warn)
@@ -177,7 +181,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             return null;
         if (maps.Get(bo.Map) is { } map)
             return map;
-        warn(null, $"El mapa '{bo.Map}' no está en maps.json: se revisa como si fuera cualquier mapa (usá, por ejemplo, 'arabia' o 'any').");
+        warn(null, L($"El mapa '{bo.Map}' no está en maps.json: se revisa como si fuera cualquier mapa (usá, por ejemplo, 'arabia' o 'any').", $"The map '{bo.Map}' isn't in maps.json: it's checked as if it were any map (use, for example, 'arabia' or 'any')."));
         return null;
     }
 
@@ -190,12 +194,12 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         foreach (var source in new[] { step.Assign, step.From }.OfType<GatherSource>().Distinct())
         {
             if (!map.Has(source))
-                warn(id, $"El mapa {map.Name} no tiene {StepText.Source(source)}.");
+                warn(id, L($"El mapa {map.Label} no tiene {StepText.Source(source)}.", $"The map {map.Label} has no {StepText.Source(source)}."));
         }
         if (map.Water || step.What is null || !gameData.TryGet(step.What, out var entity))
             return;
         if (step.What == "dock" || entity.MadeIn == "dock")
-            warn(id, $"El mapa {map.Name} no tiene agua: no hay {StepText.Name(step.What, step.Count)}.");
+            warn(id, L($"El mapa {map.Label} no tiene agua: no hay {StepText.Name(step.What, step.Count)}.", $"The map {map.Label} has no water: no {StepText.Name(step.What, step.Count)}."));
     }
 
     /// <summary>
@@ -208,13 +212,13 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         {
             if (!Branch.Signals.TryGetValue(branch.On, out var name))
             {
-                error(null, $"Rama con la señal '{branch.On}', que no existe (son: {string.Join(", ", Branch.Signals.Keys)}).");
+                error(null, L($"Rama con la señal '{branch.On}', que no existe (son: {string.Join(", ", Branch.Signals.Keys)}).", $"Branch with the signal '{branch.On}', which doesn't exist (they are: {string.Join(", ", Branch.Signals.Keys)})."));
                 continue;
             }
             if (branch.Steps.Count == 0)
-                warn(null, $"La rama \"{name}\" no tiene pasos.");
+                warn(null, L($"La rama \"{name}\" no tiene pasos.", $"The branch \"{name}\" has no steps."));
             if (branch.Before is < 0)
-                error(null, $"Rama \"{name}\": 'before' no puede ser negativo.");
+                error(null, L($"Rama \"{name}\": 'before' no puede ser negativo.", $"Branch \"{name}\": 'before' can't be negative."));
             var ids = branch.Steps.Select(s => s.Id).ToHashSet();
             var everything = gameData.Entities.Values.Where(e => e.Kind == EntityKind.Building).Select(e => e.Key).ToHashSet();
             foreach (var step in branch.Steps)
@@ -230,10 +234,10 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         foreach (var unit in posture.Queue)
         {
             if (!gameData.TryGet(unit, out var entity) || entity.Kind != EntityKind.Unit || entity.MadeIn is null)
-                warn(null, $"Postura: '{unit}' no es una unidad que se entrene en un edificio.");
+                warn(null, L($"Postura: '{unit}' no es una unidad que se entrene en un edificio.", $"Posture: '{unit}' isn't a unit trained in a building."));
         }
         if (posture.NextAge is { } next && (AgeOf(next) is not { } target || target <= age))
-            warn(null, $"Postura: '{next}' no es una edad posterior a la última de la BO ({AgeName(age)}).");
+            warn(null, L($"Postura: '{next}' no es una edad posterior a la última de la BO ({AgeName(age)}).", $"Posture: '{next}' isn't an age after the BO's last one ({AgeName(age)})."));
     }
 
     private void ValidateStep(
@@ -241,26 +245,26 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         Action<string?, string> error, Action<string?, string> warn, CivBonuses? civ = null)
     {
         if (step.Count is < 1 or > MaxCount)
-            error(id, $"'count' tiene que estar entre 1 y {MaxCount} (es {step.Count}).");
+            error(id, L($"'count' tiene que estar entre 1 y {MaxCount} (es {step.Count}).", $"'count' must be between 1 and {MaxCount} (it's {step.Count})."));
         if (step.AtPop is < 1 or > MaxPopulation)
-            error(id, $"'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {step.AtPop}).");
+            error(id, L($"'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {step.AtPop}).", $"'at_pop' must be between 1 and {MaxPopulation} (it's {step.AtPop})."));
         if (step.AtTime is < 0)
-            error(id, $"'at_time' no puede ser negativo (es {step.AtTime}).");
+            error(id, L($"'at_time' no puede ser negativo (es {step.AtTime}).", $"'at_time' can't be negative (it's {step.AtTime})."));
         if (step.Builders is not null && step.Do != StepAction.Build)
-            error(id, "'builders' solo se usa en pasos 'build'.");
+            error(id, L("'builders' solo se usa en pasos 'build'.", "'builders' is only used in 'build' steps."));
         else if (step.Builders is < 1 or > MaxCount)
-            error(id, $"'builders' tiene que estar entre 1 y {MaxCount} (es {step.Builders}).");
+            error(id, L($"'builders' tiene que estar entre 1 y {MaxCount} (es {step.Builders}).", $"'builders' must be between 1 and {MaxCount} (it's {step.Builders})."));
 
         foreach (var dep in step.After)
         {
             if (dep == step.Id)
-                error(id, "El paso depende de sí mismo en 'after'.");
+                error(id, L("El paso depende de sí mismo en 'after'.", "The step depends on itself in 'after'."));
             else if (!ids.Contains(dep))
-                error(id, $"'after' menciona el paso '{dep}', que no existe.");
+                error(id, L($"'after' menciona el paso '{dep}', que no existe.", $"'after' mentions the step '{dep}', which doesn't exist."));
         }
 
         if (step.ConfirmBy is not null && events is not null && !events.Contains(step.ConfirmBy))
-            error(id, $"'confirm_by' usa el evento '{step.ConfirmBy}', que no está en events.json.");
+            error(id, L($"'confirm_by' usa el evento '{step.ConfirmBy}', que no está en events.json.", $"'confirm_by' uses the event '{step.ConfirmBy}', which isn't in events.json."));
 
         if (step.Do == StepAction.Move)
         {
@@ -270,12 +274,12 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
         if (string.IsNullOrWhiteSpace(step.What))
         {
-            error(id, $"Falta 'what': ¿qué hay que {Verb(step.Do)}?");
+            error(id, L($"Falta 'what': ¿qué hay que {Verb(step.Do)}?", $"Missing 'what': what should be {Verb(step.Do)}?"));
             return;
         }
         if (!gameData.TryGet(step.What, out var entity))
         {
-            error(id, $"'{step.What}' no existe en los datos del juego.");
+            error(id, L($"'{step.What}' no existe en los datos del juego.", $"'{step.What}' doesn't exist in the game data."));
             return;
         }
 
@@ -287,24 +291,24 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         };
         if (entity.Kind != expectedKind)
         {
-            error(id, $"No se puede {Verb(step.Do)} '{step.What}': es {KindName(entity.Kind)}.");
+            error(id, L($"No se puede {Verb(step.Do)} '{step.What}': es {KindName(entity.Kind)}.", $"'{step.What}' can't be {Verb(step.Do)}: it's {KindName(entity.Kind)}."));
             return;
         }
 
         if (entity.Age > age)
-            error(id, $"'{step.What}' recién está en {AgeName(entity.Age)}, y en este paso todavía estás en {AgeName(age)}.");
+            error(id, L($"'{step.What}' recién está en {AgeName(entity.Age)}, y en este paso todavía estás en {AgeName(age)}.", $"'{step.What}' needs {AgeName(entity.Age)}, and at this step you're still in {AgeName(age)}."));
 
         if (entity.MadeIn is { } place && !built.Contains(place))
-            warn(id, $"'{step.What}' se hace en '{place}', y la BO no lo construye antes de este paso.");
+            warn(id, L($"'{step.What}' se hace en '{place}', y la BO no lo construye antes de este paso.", $"'{step.What}' is made in '{place}', and the BO doesn't build it before this step."));
         if (step.Do == StepAction.Build && (civ ?? CivBonuses.None).Requires(entity) is { } required && !built.Contains(required))
-            warn(id, $"Para construir {StepText.Name(step.What!)} hace falta {StepText.Name(required)} terminado, y la BO no lo construye antes de este paso.");
+            warn(id, L($"Para construir {StepText.Name(step.What!)} hace falta {StepText.Name(required)} terminado, y la BO no lo construye antes de este paso.", $"Building {StepText.Name(step.What!)} needs a finished {StepText.Name(required)}, and the BO doesn't build it before this step."));
 
         if (step.Do == StepAction.Train)
         {
             if (step.What == "villager" && step.Assign is null)
-                error(id, "Falta 'assign': ¿a qué recurso van los aldeanos nuevos?");
+                error(id, L("Falta 'assign': ¿a qué recurso van los aldeanos nuevos?", "Missing 'assign': which resource do the new villagers go to?"));
             if (step.What != "villager" && step.Assign is not null)
-                error(id, $"'assign' solo tiene sentido para aldeanos, no para '{step.What}'.");
+                error(id, L($"'assign' solo tiene sentido para aldeanos, no para '{step.What}'.", $"'assign' only makes sense for villagers, not for '{step.What}'."));
         }
 
         if (step.Do == StepAction.Research && AgeUpRequirements.TryGetValue(step.What, out var req) && age == req.Requires && civ?.NoAgeBuildings != true)
@@ -312,8 +316,10 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             var count = req.Buildings.Count(built.Contains);
             if (AgeUpProgress(step.What, built) < 2)
             {
-                warn(id, $"Para {AgeName(AgeTechs[step.What])} hacen falta 2 edificios de {AgeName(req.Requires)} " +
-                         $"({string.Join(", ", req.Buildings)}); antes de este paso la BO construye {count}.");
+                warn(id, L($"Para {AgeName(AgeTechs[step.What])} hacen falta 2 edificios de {AgeName(req.Requires)} " +
+                         $"({string.Join(", ", req.Buildings)}); antes de este paso la BO construye {count}.",
+                    $"{AgeName(AgeTechs[step.What])} needs 2 {AgeName(req.Requires)} buildings " +
+                         $"({string.Join(", ", req.Buildings)}); before this step the BO builds {count}."));
             }
         }
     }
@@ -321,11 +327,11 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     private static void ValidateMove(Step step, string? id, Action<string?, string> error)
     {
         if (step.What is not null)
-            error(id, "Un paso 'move' no usa 'what'.");
+            error(id, L("Un paso 'move' no usa 'what'.", "A 'move' step doesn't use 'what'."));
         if (step.Assign is null)
-            error(id, "Falta 'assign': ¿a qué recurso van los aldeanos?");
+            error(id, L("Falta 'assign': ¿a qué recurso van los aldeanos?", "Missing 'assign': which resource do the villagers go to?"));
         if (step.From is not null && step.From == step.Assign)
-            error(id, $"'from' y 'assign' son el mismo recurso ({step.From}).");
+            error(id, L($"'from' y 'assign' son el mismo recurso ({step.From}).", $"'from' and 'assign' are the same resource ({step.From})."));
     }
 
     /// <summary>
@@ -345,11 +351,11 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         if (assisted is null)
             return;
         if (assisted.Villagers.Until is < 1 or > MaxPopulation)
-            error(null, $"assisted.villagers.until tiene que estar entre 1 y {MaxPopulation} (es {assisted.Villagers.Until}).");
+            error(null, L($"assisted.villagers.until tiene que estar entre 1 y {MaxPopulation} (es {assisted.Villagers.Until}).", $"assisted.villagers.until must be between 1 and {MaxPopulation} (it's {assisted.Villagers.Until})."));
         if (assisted.Opening.Sheep is < 0 or > 20)
-            error(null, $"assisted.opening.sheep tiene que estar entre 0 y 20 (es {assisted.Opening.Sheep}).");
+            error(null, L($"assisted.opening.sheep tiene que estar entre 0 y 20 (es {assisted.Opening.Sheep}).", $"assisted.opening.sheep must be between 0 and 20 (it's {assisted.Opening.Sheep})."));
         if (assisted.Opening.Berries is not ("auto" or "no"))
-            error(null, $"assisted.opening.berries tiene que ser \"auto\" o \"no\" (es \"{assisted.Opening.Berries}\").");
+            error(null, L($"assisted.opening.berries tiene que ser \"auto\" o \"no\" (es \"{assisted.Opening.Berries}\").", $"assisted.opening.berries must be \"auto\" or \"no\" (it's \"{assisted.Opening.Berries}\")."));
 
         for (var i = 0; i < assisted.Goals.Count; i++)
         {
@@ -358,26 +364,26 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             var kinds = new[] { goal.Age is not null, goal.Unit is not null, goal.TownCenters is not null, goal.Tech is not null }.Count(k => k);
             if (kinds != 1)
             {
-                error(null, $"{where}: tiene que tener exactamente uno de 'age', 'unit', 'town_centers' o 'tech' (tiene {kinds}).");
+                error(null, L($"{where}: tiene que tener exactamente uno de 'age', 'unit', 'town_centers' o 'tech' (tiene {kinds}).", $"{where}: must have exactly one of 'age', 'unit', 'town_centers' or 'tech' (it has {kinds})."));
                 continue;
             }
             if (goal.Age is { } ageTech && !AgeTechs.ContainsKey(ageTech))
-                error(null, $"{where}: '{ageTech}' no es una edad (feudal_age, castle_age o imperial_age).");
+                error(null, L($"{where}: '{ageTech}' no es una edad (feudal_age, castle_age o imperial_age).", $"{where}: '{ageTech}' isn't an age (feudal_age, castle_age or imperial_age)."));
             if (goal.AtPop is < 1 or > MaxPopulation)
-                error(null, $"{where}: 'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {goal.AtPop}).");
+                error(null, L($"{where}: 'at_pop' tiene que estar entre 1 y {MaxPopulation} (es {goal.AtPop}).", $"{where}: 'at_pop' must be between 1 and {MaxPopulation} (it's {goal.AtPop})."));
             if (goal.Unit is { } unit)
             {
                 if (!gameData.TryGet(unit, out var entity) || entity.Kind != EntityKind.Unit)
-                    error(null, $"{where}: '{unit}' no es una unidad conocida.");
+                    error(null, L($"{where}: '{unit}' no es una unidad conocida.", $"{where}: '{unit}' isn't a known unit."));
                 if (goal.Count is not { } count || count < 1 || count > MaxCount)
-                    error(null, $"{where}: 'count' tiene que estar entre 1 y {MaxCount}.");
+                    error(null, L($"{where}: 'count' tiene que estar entre 1 y {MaxCount}.", $"{where}: 'count' must be between 1 and {MaxCount}."));
                 if (goal.Buildings is < 1 or > 10)
-                    error(null, $"{where}: 'buildings' tiene que estar entre 1 y 10 (es {goal.Buildings}).");
+                    error(null, L($"{where}: 'buildings' tiene que estar entre 1 y 10 (es {goal.Buildings}).", $"{where}: 'buildings' must be between 1 and 10 (it's {goal.Buildings})."));
             }
             if (goal.TownCenters is < 2 or > 10)
-                error(null, $"{where}: 'town_centers' tiene que estar entre 2 y 10 (es {goal.TownCenters}).");
+                error(null, L($"{where}: 'town_centers' tiene que estar entre 2 y 10 (es {goal.TownCenters}).", $"{where}: 'town_centers' must be between 2 and 10 (it's {goal.TownCenters})."));
             if (goal.Tech is { } tech && (!gameData.TryGet(tech, out var techEntity) || techEntity.Kind != EntityKind.Tech))
-                error(null, $"{where}: '{tech}' no es una tecnología conocida.");
+                error(null, L($"{where}: '{tech}' no es una tecnología conocida.", $"{where}: '{tech}' isn't a known technology."));
         }
     }
 
@@ -386,15 +392,15 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         if (targets is null)
             return;
         if (targets.FeudalClickTime is <= 0)
-            error(null, "targets.feudal_click_time tiene que ser mayor a 0.");
+            error(null, L("targets.feudal_click_time tiene que ser mayor a 0.", "targets.feudal_click_time must be greater than 0."));
         if (targets.CastleClickTime is <= 0)
-            error(null, "targets.castle_click_time tiene que ser mayor a 0.");
+            error(null, L("targets.castle_click_time tiene que ser mayor a 0.", "targets.castle_click_time must be greater than 0."));
         if (targets.FeudalClickTime is { } f && targets.CastleClickTime is { } c && c <= f)
-            error(null, "targets.castle_click_time tiene que ser posterior a feudal_click_time.");
+            error(null, L("targets.castle_click_time tiene que ser posterior a feudal_click_time.", "targets.castle_click_time must come after feudal_click_time."));
         foreach (var (name, d) in new[] { ("villagers_at_feudal", targets.VillagersAtFeudal), ("villagers_at_castle", targets.VillagersAtCastle) })
         {
             if (d is not null && (d.Food < 0 || d.Wood < 0 || d.Gold < 0 || d.Stone < 0))
-                error(null, $"targets.{name} no puede tener números negativos.");
+                error(null, L($"targets.{name} no puede tener números negativos.", $"targets.{name} can't have negative numbers."));
         }
     }
 
@@ -437,24 +443,24 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
 
     private static string Verb(StepAction action) => action switch
     {
-        StepAction.Train => "entrenar",
-        StepAction.Build => "construir",
-        StepAction.Research => "investigar",
-        _ => "mover",
+        StepAction.Train => L("entrenar", "trained"),
+        StepAction.Build => L("construir", "built"),
+        StepAction.Research => L("investigar", "researched"),
+        _ => L("mover", "moved"),
     };
 
     private static string KindName(EntityKind kind) => kind switch
     {
-        EntityKind.Unit => "una unidad",
-        EntityKind.Building => "un edificio",
-        _ => "una tecnología",
+        EntityKind.Unit => L("una unidad", "a unit"),
+        EntityKind.Building => L("un edificio", "a building"),
+        _ => L("una tecnología", "a technology"),
     };
 
     public static string AgeName(Age age) => age switch
     {
-        Age.Dark => "Edad Oscura",
-        Age.Feudal => "Edad Feudal",
-        Age.Castle => "Edad de los Castillos",
-        _ => "Edad Imperial",
+        Age.Dark => L("Edad Oscura", "Dark Age"),
+        Age.Feudal => L("Edad Feudal", "Feudal Age"),
+        Age.Castle => L("Edad de los Castillos", "Castle Age"),
+        _ => L("Edad Imperial", "Imperial Age"),
     };
 }

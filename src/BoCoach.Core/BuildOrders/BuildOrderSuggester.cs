@@ -24,6 +24,8 @@ public sealed class CivStyles
     private readonly IReadOnlyDictionary<string, List<string>> _civs;
     private readonly IReadOnlyDictionary<string, List<string>> _counters;
     private readonly IReadOnlyDictionary<string, string> _advice;
+    private readonly IReadOnlyDictionary<string, string> _adviceEn;
+    private readonly IReadOnlyDictionary<string, string> _civAdviceEn;
     private readonly IReadOnlyDictionary<string, string> _civAdvice;
     private readonly IReadOnlyDictionary<string, List<string>> _positions;
     private readonly IReadOnlyDictionary<string, List<int>> _windows;
@@ -45,8 +47,12 @@ public sealed class CivStyles
         IReadOnlyDictionary<string, string>? advice = null,
         IReadOnlyDictionary<string, string>? civAdvice = null,
         IReadOnlyDictionary<string, List<string>>? positions = null,
-        IReadOnlyDictionary<string, List<int>>? windows = null)
+        IReadOnlyDictionary<string, List<int>>? windows = null,
+        IReadOnlyDictionary<string, string>? adviceEn = null,
+        IReadOnlyDictionary<string, string>? civAdviceEn = null)
     {
+        _adviceEn = adviceEn ?? new Dictionary<string, string>();
+        _civAdviceEn = civAdviceEn ?? new Dictionary<string, string>();
         _civs = civs;
         _counters = counters ?? DefaultCounters;
         _advice = advice ?? new Dictionary<string, string>();
@@ -77,7 +83,8 @@ public sealed class CivStyles
         if (root["civs"] is not JsonObject civs)
             return new(Lists(root)); // formato viejo: solo las civs
         return new(Lists(civs), root["counters"] is JsonObject c ? Lists(c) : null, Texts(root["advice"]), Texts(root["civ_advice"]),
-            root["positions"] is JsonObject p ? Lists(p) : null, root["windows"] is JsonObject w ? Windows(w) : null);
+            root["positions"] is JsonObject p ? Lists(p) : null, root["windows"] is JsonObject w ? Windows(w) : null,
+            Texts(root["advice_en"]), Texts(root["civ_advice_en"]));
     }
 
     /// <summary>Las ventanas del archivo: listas de franjas de 1 a 5 (lo que no es un número de 1 a 5 se ignora).</summary>
@@ -115,8 +122,8 @@ public sealed class CivStyles
 
     /// <summary>El consejo contra una civ rival: el de esa civ si lo hay, si no el de su estilo típico, o null.</summary>
     public string? AdviceAgainst(string? civ) =>
-        civ is not null && _civAdvice.TryGetValue(civ, out var text) ? text
-        : Of(civ).FirstOrDefault() is { } style && _advice.TryGetValue(style, out var general) ? general
+        civ is not null && (Lang.IsEnglish ? _civAdviceEn : _civAdvice).TryGetValue(civ, out var text) ? text
+        : Of(civ).FirstOrDefault() is { } style && (Lang.IsEnglish ? _adviceEn : _advice).TryGetValue(style, out var general) ? general
         : null;
 }
 
@@ -155,6 +162,14 @@ public static class BuildOrderSuggester
         ["archers"] = "arqueros",
         ["scouts"] = "exploradores",
         ["maa"] = "hombres de armas",
+        ["fast_castle"] = "fast castle",
+    };
+
+    private static readonly IReadOnlyDictionary<string, string> StyleNamesEn = new Dictionary<string, string>
+    {
+        ["archers"] = "archers",
+        ["scouts"] = "scouts",
+        ["maa"] = "men-at-arms",
         ["fast_castle"] = "fast castle",
     };
 
@@ -254,7 +269,7 @@ public static class BuildOrderSuggester
         if (c.Civ is not null && string.Equals(bo.Civ, c.Civ, StringComparison.OrdinalIgnoreCase))
         {
             score += 4;
-            why.Add("de tu civ");
+            why.Add(Lang.L("de tu civ", "for your civ"));
         }
         else if (!string.Equals(bo.Civ, "any", StringComparison.OrdinalIgnoreCase))
         {
@@ -268,7 +283,7 @@ public static class BuildOrderSuggester
                 if (Normalize(bo.Map) == c.MapKey)
                 {
                     score += 2;
-                    why.Add($"para {c.Match.Map}");
+                    why.Add(Lang.L($"para {c.Match.Map}", $"for {c.Match.Map}"));
                 }
                 else
                 {
@@ -278,14 +293,14 @@ public static class BuildOrderSuggester
             else if (bo.Tags.Any(t => Normalize(t) == c.MapKey))
             {
                 score += 2;
-                why.Add($"para {c.Match.Map}");
+                why.Add(Lang.L($"para {c.Match.Map}", $"for {c.Match.Map}"));
             }
         }
         var style = bo.Style;
         if (style is not null && c.Mine.Count > 0 && c.Mine.Contains(style))
         {
             score += c.Mine[0] == style ? 3 : 2;
-            why.Add($"{Name(style)}, típico de tu civ");
+            why.Add(Lang.L($"{Name(style)}, típico de tu civ", $"{Name(style)}, typical of your civ"));
         }
         if (style is not null && c.Duration is { } duration && styles.Window(style) is { Count: > 0 } window)
         {
@@ -298,19 +313,19 @@ public static class BuildOrderSuggester
         if (style is not null && c.FacingStyle is not null && styles.Beats(style, c.FacingStyle))
         {
             score += 2;
-            why.Add($"contra {Name(c.FacingStyle)}");
+            why.Add(Lang.L($"contra {Name(c.FacingStyle)}", $"against {Name(c.FacingStyle)}"));
         }
         if (style is not null)
         {
             var others = c.OtherStyles.Count(o => styles.Beats(style, o));
             score += 0.5 * others;
             if (others > 0)
-                why.Add(others == 1 ? "le gana a otro rival" : $"le gana a {others} rivales más");
+                why.Add(others == 1 ? Lang.L("le gana a otro rival", "beats another rival") : Lang.L($"le gana a {others} rivales más", $"beats {others} more rivals"));
         }
         if (style is not null && c.PositionStyles.Contains(style))
         {
             score += 1;
-            why.Add(c.Match.Position == TeamPosition.Flank ? "para el flanco" : "para el bolsillo");
+            why.Add(c.Match.Position == TeamPosition.Flank ? Lang.L("para el flanco", "for the flank") : Lang.L("para el bolsillo", "for the pocket"));
         }
         // D7: de cada civ hay una importada y su versión "mejorada" con el simulador. Desde el 2026-11-02 gana la
         // importada: las mejoradas no son confiables (con comida infinita el optimizador movía aldeanos de comida a madera
@@ -323,7 +338,7 @@ public static class BuildOrderSuggester
     /// <summary>El consejo contra el rival de enfrente (la excepción de su civ, o el de su estilo típico), o null.</summary>
     public static string? Advice(MatchSetup match, CivStyles styles) => styles.AdviceAgainst(match.Facing);
 
-    private static string Name(string style) => StyleNames.TryGetValue(style, out var name) ? name : style;
+    private static string Name(string style) => (Lang.IsEnglish ? StyleNamesEn : StyleNames).TryGetValue(style, out var name) ? name : style;
 
     private static string Normalize(string? text) =>
         new string((text ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());

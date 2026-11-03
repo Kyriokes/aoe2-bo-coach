@@ -1,6 +1,7 @@
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Economy;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
@@ -130,14 +131,14 @@ public static class CoachText
         return lines;
     }
 
-    private const string ProducingPrefix = "Seguí produciendo";
+    private static string ProducingPrefix => L("Seguí produciendo", "Keep producing");
 
     private static string LaneLabel(Lane lane) => lane switch
     {
-        Lane.Villagers => "Aldeanos",
-        Lane.Build => "Construir",
-        Lane.Research => "Investigar",
-        _ => "Producir",
+        Lane.Villagers => L("Aldeanos", "Villagers"),
+        Lane.Build => L("Construir", "Build"),
+        Lane.Research => L("Investigar", "Research"),
+        _ => L("Producir", "Produce"),
     };
 
     /// <summary>Por qué espera el paso de una línea ("faltan 40 de madera (0:35)", "a 20 de población"), o null si se puede ya.</summary>
@@ -148,21 +149,21 @@ public static class CoachText
         // madera" con 16 de población en la 20261031-145925).
         // Si la población es la del paso (at_pop), el nombre ya la dice ("Edad Feudal a 20 de población"): solo cuánto vas.
         if (lane.Step.AtPop is { } pop && view.Population < pop)
-            return step.AtPop == pop ? $"vas {view.Population}" : $"a {pop} de población (vas {view.Population})";
+            return step.AtPop == pop ? L($"vas {view.Population}", $"now {view.Population}") : L($"a {pop} de población (vas {view.Population})", $"at {pop} pop (now {view.Population})");
         if (lane.Lane != Lane.Villagers)
         {
             var missing = Enum.GetValues<Resource>().Where(r => lane.Missing[r] >= 1)
-                .Select(r => $"{Math.Ceiling(lane.Missing[r]):0} de {Suggestion.Name(r)}").ToList();
+                .Select(r => Amount(lane.Missing[r], r)).ToList();
             if (missing.Count > 0)
             {
                 var eta = lane.Eta is { } at && at - view.Time >= 5 ? $" ({GameClock.Format(at - view.Time)})" : "";
-                return $"faltan {Join(missing)}{eta}";
+                return L($"faltan {Join(missing)}{eta}", $"need {Join(missing)}{eta}");
             }
         }
         if (step.AtTime is { } time && view.Time < time)
-            return $"a los {GameClock.Format(time)}";
+            return L($"a los {GameClock.Format(time)}", $"at {GameClock.Format(time)}");
         if (step.What is { } what && data is not null && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
-            return "sin lugar: hacé una casa";
+            return L("sin lugar: hacé una casa", "no room: build a house");
         return null;
     }
 
@@ -171,9 +172,9 @@ public static class CoachText
         switch (lane)
         {
             case Lane.Villagers when view.VillagerGuide is { } resource:
-                return ($"Aldeano → {Suggestion.Name(resource)}, según lo que falta", false);
+                return (L($"Aldeano → {Suggestion.Name(resource)}, según lo que falta", $"Villager → {Suggestion.Name(resource)}, based on what's short"), false);
             case Lane.Build when view.NeedsHouse:
-                return ($"Casa: quedan {Math.Max(0, view.PopulationCap - view.Population)} lugares", false);
+                return (HouseText(view), false);
             case Lane.Research when view.Techs.Count > 0:
                 return (TechText(view.Techs[0]), false);
             case Lane.Produce:
@@ -207,7 +208,7 @@ public static class CoachText
             {
                 Current = $"{branch.Title}: {StepText.Describe(step.Step)}{progress}",
                 Status = branch.Note,
-                Next = $"Después, la BO: {lines.Current}",
+                Next = L($"Después, la BO: {lines.Current}", $"Then, the BO: {lines.Current}"),
                 Goals = [],
             };
         }
@@ -230,14 +231,14 @@ public static class CoachText
     public static (string Text, CriticalKind Kind)? Critical(CoachView view, GameData? data, bool lanesShown)
     {
         if (view.NeedsHouse)
-            return ($"Casa: quedan {Math.Max(0, view.PopulationCap - view.Population)} lugares", CriticalKind.Lack);
+            return (HouseText(view), CriticalKind.Lack);
         if (!lanesShown)
             return null;
         foreach (var lane in view.Lanes)
         {
             if (lane is { Lane: Lane.Research, Step.Step: { Do: StepAction.Research, What: { } what } } && BuildOrderValidator.AgeOf(what) is not null
                 && Waiting(view, lane, data) is null)
-                return ($"Hacé clic en {StepText.Name(what)}", CriticalKind.Do);
+                return (ClickText(StepText.Name(what)), CriticalKind.Do);
         }
         return null;
     }
@@ -273,16 +274,17 @@ public static class CoachText
         static bool Producing(RunningStep r) => r.Progress.State != StepState.InProgress && r.Progress.Step is { Do: StepAction.Train, What: not null };
         var running = view.Running.Where(r => !goalIndexes.Contains(r.Progress.Index) && !Producing(r)).Select(r => Running(r, view.Time))
             .Concat(view.Running.Where(Producing).GroupBy(r => r.Progress.Step.What!)
-                .Select(g => $"Seguí produciendo {StepText.Name(g.Key, 2)}: {g.Sum(r => r.Progress.Completed)}/{g.Sum(r => r.Progress.Required)}"))
+                .Select(g => $"{ProducingPrefix} {StepText.Name(g.Key, 2)}: {g.Sum(r => r.Progress.Completed)}/{g.Sum(r => r.Progress.Required)}"))
             // Lo que quedó atrás en una línea (ya se hizo algo posterior): no traba el renglón, va aparte.
-            .Concat(view.Lanes.SelectMany(l => l.Behind).Take(2).Select(s => $"Quedó sin hacer: {StepText.Describe(s.Step)}"))
+            .Concat(view.Lanes.SelectMany(l => l.Behind).Take(2).Select(s => L("Quedó sin hacer: ", "Left undone: ") + StepText.Describe(s.Step)))
             .ToList();
         if (view.Abandoned is { } reason)
         {
             // D1: sin los pasos viejos; queda lo que siempre vale. "Atrás" la retoma.
             return new CoachLines(
-                "BO abandonada: seguí con lo básico",
-                $"Porque {reason}. Centro urbano produciendo, casas y nadie inactivo. {backHotkey} vuelve a la BO.",
+                L("BO abandonada: seguí con lo básico", "BO abandoned: stick to the basics"),
+                L($"Porque {reason}. Centro urbano produciendo, casas y nadie inactivo. {backHotkey} vuelve a la BO.",
+                    $"Because {reason}. Keep the town center producing, build houses, no idle villagers. {backHotkey} goes back to the BO."),
                 null,
                 running,
                 null,
@@ -297,9 +299,9 @@ public static class CoachText
             // D2: la BO terminó y queda su postura de cierre. Primero se avisa que terminó y que el panel se achica; con
             // Compact, el overlay muestra solo la tarjeta.
             return new CoachLines(
-                "BO terminada",
+                BoFinished,
                 posture.Queue.Count > 0 ? PostureTitle(posture) : null,
-                "En unos segundos el panel se achica: aparece solo cuando hay algo que hacer",
+                L("En unos segundos el panel se achica: aparece solo cuando hay algo que hacer", "In a few seconds this panel shrinks: it only shows up when there's something to do"),
                 [.. posture.Gaps.Select(GapText), .. running],
                 null,
                 false,
@@ -311,7 +313,7 @@ public static class CoachText
         if (view.Current is not { } current)
         {
             return new CoachLines(
-                view.Finished ? "BO terminada" : "Lo que sigue espera la próxima edad o un edificio",
+                view.Finished ? BoFinished : L("Lo que sigue espera la próxima edad o un edificio", "What's next waits for the next age or a building"),
                 null,
                 null,
                 running,
@@ -324,7 +326,7 @@ public static class CoachText
 
         var title = StepText.Describe(current.Step);
         if (view.SourceVillagers is { } on && current.Step.Assign is { } source)
-            title = $"Aldeanos a {StepText.Source(source)}: {on.Current}/{on.Target}"; // corto y como el contador del HUD
+            title = VillagersOn(source, on.Current, on.Target); // corto y como el contador del HUD
         else if (current.Required > 1 && current.Completed > 0)
             title += $" ({current.Completed}/{current.Required})";
 
@@ -332,7 +334,7 @@ public static class CoachText
         return new CoachLines(
             title,
             Status(view, current, data),
-            view.Next is { } next ? $"Después: {StepText.Describe(next.Step)}" : null,
+            view.Next is { } next ? L("Después: ", "Next: ") + StepText.Describe(next.Step) : null,
             running,
             deviation?.ToString(),
             deviation is { Delta: > BehindThreshold },
@@ -354,11 +356,11 @@ public static class CoachText
         if (goal.State is StepState.Done or StepState.Skipped)
             return $"✓ {StepText.Describe(step)}";
         if (goal.State == StepState.InProgress)
-            return $"{(step.What is { } what ? StepText.Name(what) : StepText.Describe(step))} (en curso)";
+            return (step.What is { } what ? StepText.Name(what) : StepText.Describe(step)) + L(" (en curso)", " (in progress)");
         if (LivePlan.IsVillagerTarget(step))
-            return $"Aldeanos a {StepText.Source(step.Assign!.Value)}: {step.Count - goal.Remaining}/{step.Count}";
+            return VillagersOn(step.Assign!.Value, step.Count - goal.Remaining, step.Count);
         if (goal.EarlierCount > 0)
-            return $"{StepText.Describe(step)} (van {goal.EarlierDone + goal.Completed} de {goal.EarlierCount + goal.Required})";
+            return StepText.Describe(step) + L($" (van {goal.EarlierDone + goal.Completed} de {goal.EarlierCount + goal.Required})", $" ({goal.EarlierDone + goal.Completed} of {goal.EarlierCount + goal.Required} so far)");
         return goal.Required > 1 && goal.Completed > 0
             ? $"{StepText.Describe(step)} ({goal.Completed}/{goal.Required})"
             : StepText.Describe(step);
@@ -378,8 +380,8 @@ public static class CoachText
 
     /// <summary>"Postura: aldeanos y exploradores siempre en cola" (D2).</summary>
     public static string PostureTitle(PostureView posture) => posture.Queue.Count == 0
-        ? "BO terminada"
-        : $"Postura: {Join(posture.Queue.Select(u => StepText.Name(u, 2)).ToList())} siempre en cola";
+        ? BoFinished
+        : L($"Postura: {Join(posture.Queue.Select(u => StepText.Name(u, 2)).ToList())} siempre en cola", $"Posture: {Join(posture.Queue.Select(u => StepText.Name(u, 2)).ToList())} always queued");
 
     /// <summary>La próxima edad de la postura: en curso, qué edificios faltan, qué recursos faltan o "Hacé clic".</summary>
     public static string? PostureStatus(PostureView posture)
@@ -388,24 +390,27 @@ public static class CoachText
             return null;
         var name = StepText.Name(next);
         if (posture.NextAgeInProgress)
-            return $"{name}: en curso";
+            return name + L(": en curso", ": in progress");
         if (posture.NextAgeBuildingsMissing > 0 && BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
         {
             var count = posture.NextAgeBuildingsMissing;
-            return $"Para {name}: te falta{(count > 1 ? "n" : "")} {count} edificio{(count > 1 ? "s" : "")} de {BuildOrderValidator.AgeName(requirement.Requires)}";
+            return L($"Para {name}: te falta{(count > 1 ? "n" : "")} {count} edificio{(count > 1 ? "s" : "")} de {BuildOrderValidator.AgeName(requirement.Requires)}",
+                $"For {name}: you need {count} more {BuildOrderValidator.AgeName(requirement.Requires)} building{(count > 1 ? "s" : "")}");
         }
         var missing = Enum.GetValues<Resource>().Where(r => posture.NextAgeMissing[r] >= 1)
-            .Select(r => $"{Math.Ceiling(posture.NextAgeMissing[r]):0} de {Suggestion.Name(r)}").ToList();
-        return missing.Count == 0 ? $"Hacé clic en {name}" : $"{name}: faltan {Join(missing)} (guardando para la producción)";
+            .Select(r => Amount(posture.NextAgeMissing[r], r)).ToList();
+        return missing.Count == 0 ? ClickText(name) : L($"{name}: faltan {Join(missing)} (guardando para la producción)", $"{name}: need {Join(missing)} (saving for production)");
     }
 
     /// <summary>"Investigá Carretilla (centro urbano)".</summary>
-    public static string TechText(TechReminder tech) => $"Investigá {StepText.Name(tech.Tech)} ({StepText.Name(tech.Building)})";
+    public static string TechText(TechReminder tech) => L("Investigá ", "Research ") + $"{StepText.Name(tech.Tech)} ({StepText.Name(tech.Building)})";
 
     /// <summary>"Establo parado: poné exploradores en cola" o "Sin establo: los exploradores no tienen dónde salir".</summary>
     public static string GapText(PostureGap gap) => gap.Missing
-        ? $"Sin {StepText.Name(gap.Building)}: los {StepText.Name(gap.Unit, 2)} no tienen dónde salir"
-        : $"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count}) parad{Ending(gap.Building)}s" : $" parad{Ending(gap.Building)}")}: poné {StepText.Name(gap.Unit, 2)} en cola";
+        ? L($"Sin {StepText.Name(gap.Building)}: los {StepText.Name(gap.Unit, 2)} no tienen dónde salir",
+            $"No {StepText.Name(gap.Building)}: {StepText.Name(gap.Unit, 2)} have nowhere to train")
+        : L($"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count}) parad{Ending(gap.Building)}s" : $" parad{Ending(gap.Building)}")}: poné {StepText.Name(gap.Unit, 2)} en cola",
+            $"{Capitalized(StepText.Name(gap.Building, gap.Count))}{(gap.Count > 1 ? $" ({gap.Count})" : "")} idle: queue {StepText.Name(gap.Unit, 2)}");
 
     /// <summary>"a" si el nombre del edificio es femenino ("galería de tiro", "herrería"), por la primera palabra; si no, "o".</summary>
     private static string Ending(string building) => StepText.Name(building).Split(' ')[0].EndsWith('a') ? "a" : "o";
@@ -413,28 +418,27 @@ public static class CoachText
     private static string Capitalized(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 
     /// <summary>"Al terminar el paso: madera 4 · comida 6 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
-    public static string NowTargetText(ResourceAmounts t) =>
-        $"Ahora: madera {t.Wood:0} · comida {t.Food:0} · oro {t.Gold:0} · piedra {t.Stone:0}";
+    public static string NowTargetText(ResourceAmounts t) => L("Ahora: ", "Now: ") + Split(t);
 
-    public static string StepTargetText(ResourceAmounts t) =>
-        $"Al terminar el paso: madera {t.Wood:0} · comida {t.Food:0} · oro {t.Gold:0} · piedra {t.Stone:0}";
+    public static string StepTargetText(ResourceAmounts t) => L("Al terminar el paso: ", "When the step ends: ") + Split(t);
+
+    private static string Split(ResourceAmounts t) =>
+        $"{Suggestion.Name(Resource.Wood)} {t.Wood:0} · {Suggestion.Name(Resource.Food)} {t.Food:0} · {Suggestion.Name(Resource.Gold)} {t.Gold:0} · {Suggestion.Name(Resource.Stone)} {t.Stone:0}";
 
     /// <summary>"Reparto: madera 4 · comida 9 · oro 0 · piedra 0", en el orden del HUD del juego.</summary>
-    public static string? DistributionText(ResourceAmounts? d) => d is { } v
-        ? $"Reparto: madera {v.Wood:0} · comida {v.Food:0} · oro {v.Gold:0} · piedra {v.Stone:0}"
-        : null;
+    public static string? DistributionText(ResourceAmounts? d) => d is { } v ? L("Reparto: ", "Split: ") + Split(v) : null;
 
     /// <summary>"Centro urbano parado hace 12 s" (lo que pasó de más desde que tendría que haber salido otro aldeano).</summary>
     public static string? IdleText(double? seconds) =>
-        seconds is { } s ? $"Centro urbano parado hace {(s < 60 ? $"{s:0} s" : GameClock.Format(s))}" : null;
+        seconds is { } s ? L("Centro urbano parado hace ", "Town center idle for ") + (s < 60 ? $"{s:0} s" : GameClock.Format(s)) : null;
 
     /// <summary>Texto de un aviso del log (ver <see cref="Coach.AlertEvents"/>).</summary>
     public static string? AlertText(string? eventId) => eventId switch
     {
-        "farm_exhausted" => "Se agotó una granja: resembrala",
-        "fish_trap_expired" => "Se agotó una trampa de peces",
-        "under_attack" => "¡Te están atacando!",
-        "attacked_by_animals" => "Un animal ataca a tus aldeanos",
+        "farm_exhausted" => L("Se agotó una granja: resembrala", "A farm ran out: reseed it"),
+        "fish_trap_expired" => L("Se agotó una trampa de peces", "A fish trap ran out"),
+        "under_attack" => L("¡Te están atacando!", "You're under attack!"),
+        "attacked_by_animals" => L("Un animal ataca a tus aldeanos", "An animal is attacking your villagers"),
         _ => null,
     };
 
@@ -444,11 +448,11 @@ public static class CoachText
         var step = running.Progress.Step;
         // Lo que el juego no avisa (granjas): no frena la BO, pero sigue en pantalla hasta que avance un paso posterior.
         if (running.Progress.State is StepState.Pending or StepState.Ready && step.Do == StepAction.Build)
-            return $"Hacé también: {StepText.Describe(step)}";
+            return L("Hacé también: ", "Also do: ") + StepText.Describe(step);
         var name = step.What is { } what ? StepText.Name(what) : StepText.Describe(step);
         return running.EndsAt is { } end && end > now
-            ? $"En curso: {name} (termina en {GameClock.Format(end - now)})"
-            : $"En curso: {name}";
+            ? L($"En curso: {name} (termina en {GameClock.Format(end - now)})", $"In progress: {name} (ends in {GameClock.Format(end - now)})")
+            : L($"En curso: {name}", $"In progress: {name}");
     }
 
     /// <summary>
@@ -461,23 +465,40 @@ public static class CoachText
         var villagers = step.Do == StepAction.Train && step.What == "villager";
         var missing = villagers ? [] : Enum.GetValues<Resource>()
             .Where(r => view.Missing[r] >= 1)
-            .Select(r => $"{Math.Ceiling(view.Missing[r]):0} de {Suggestion.Name(r)}")
+            .Select(r => Amount(view.Missing[r], r))
             .ToList();
-        var eta = view.CurrentEta is { } at && at - view.Time >= 5 ? $" (en {GameClock.Format(at - view.Time)})" : "";
+        var eta = view.CurrentEta is { } at && at - view.Time >= 5 ? L($" (en {GameClock.Format(at - view.Time)})", $" (in {GameClock.Format(at - view.Time)})") : "";
 
         if (missing.Count > 0)
-            return $"Faltan {Join(missing)}{eta}";
+            return L($"Faltan {Join(missing)}{eta}", $"Need {Join(missing)}{eta}");
         if (current.AtPop is { } pop && view.Population < pop)
-            return $"A {pop} de población (vas {view.Population})";
+            return L($"A {pop} de población (vas {view.Population})", $"At {pop} pop (now {view.Population})");
         if (step.AtTime is { } time && view.Time < time)
-            return $"A los {GameClock.Format(time)}";
+            return L($"A los {GameClock.Format(time)}", $"At {GameClock.Format(time)}");
         if (step.What is { } what && data.TryGet(what, out var entity) && entity.Pop > 0 && view.Population >= view.PopulationCap)
-            return "Sin lugar: hacé una casa";
-        return current.State == StepState.Ready ? "Ya se puede" : null;
+            return L("Sin lugar: hacé una casa", "No room: build a house");
+        return current.State == StepState.Ready ? L("Ya se puede", "Ready") : null;
     }
 
     private static string Join(IReadOnlyList<string> parts) =>
-        parts.Count == 1 ? parts[0] : $"{string.Join(", ", parts.Take(parts.Count - 1))} y {parts[^1]}";
+        parts.Count == 1 ? parts[0] : $"{string.Join(", ", parts.Take(parts.Count - 1))}{L(" y ", " and ")}{parts[^1]}";
+
+    private static string BoFinished => L("BO terminada", "BO finished");
+
+    private static string HouseText(CoachView view)
+    {
+        var left = Math.Max(0, view.PopulationCap - view.Population);
+        return L($"Casa: quedan {left} lugares", $"House: {left} {(left == 1 ? "slot" : "slots")} left");
+    }
+
+    private static string ClickText(string age) => L($"Hacé clic en {age}", $"Click {age}");
+
+    private static string VillagersOn(GatherSource source, int current, int target) =>
+        L($"Aldeanos a {StepText.Source(source)}: {current}/{target}", $"Villagers on {StepText.Source(source)}: {current}/{target}");
+
+    /// <summary>"40 de madera" ("40 wood").</summary>
+    private static string Amount(double missing, Resource resource) =>
+        L($"{Math.Ceiling(missing):0} de {Suggestion.Name(resource)}", $"{Math.Ceiling(missing):0} {Suggestion.Name(resource)}");
 }
 
 /// <summary>Aldeanos de un recurso contra el reparto: verde, rojo o amarillo en el overlay.</summary>

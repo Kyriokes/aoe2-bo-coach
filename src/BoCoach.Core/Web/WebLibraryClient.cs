@@ -90,7 +90,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         }
         catch (BuildOrderFormatException e)
         {
-            throw new WebLibraryException($"La BO de la web no se pudo leer: {e.Message}", inner: e);
+            throw new WebLibraryException(Lang.L($"La BO de la web no se pudo leer: {e.Message}", $"The BO from the web couldn't be read: {e.Message}"), inner: e);
         }
     }
 
@@ -173,14 +173,14 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     private static void CheckCode(string code)
     {
         if (!WebCode.IsValid(code))
-            throw new WebLibraryException($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).");
+            throw new WebLibraryException(Lang.L($"\"{code}\" no es un código de la biblioteca (son 6 letras y números).", $"\"{code}\" isn't a library code (they're 6 letters and numbers)."));
     }
 
     private void CheckTokenSafe()
     {
         if (!SendsTokenSafely(BaseUrl))
             throw new WebLibraryException(
-                $"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".");
+                Lang.L($"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".", $"The web address ({BaseUrl}) isn't https: the token would travel unencrypted. Change it in \"Web account…\"."));
     }
 
     private static HttpRequestMessage WithToken(HttpRequestMessage request, string? token)
@@ -239,11 +239,11 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         }
         catch (HttpRequestException e)
         {
-            throw new WebLibraryException($"No se pudo conectar con {BaseUrl.Host}: {e.Message}", inner: e);
+            throw new WebLibraryException(Lang.L($"No se pudo conectar con {BaseUrl.Host}: {e.Message}", $"Couldn't connect to {BaseUrl.Host}: {e.Message}"), inner: e);
         }
         catch (TaskCanceledException e) when (!cancel.IsCancellationRequested)
         {
-            throw new WebLibraryException($"{BaseUrl.Host} tardó demasiado en responder.", inner: e);
+            throw new WebLibraryException(Lang.L($"{BaseUrl.Host} tardó demasiado en responder.", $"{BaseUrl.Host} took too long to answer."), inner: e);
         }
         finally
         {
@@ -262,16 +262,16 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         try
         {
             return JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel)) as JsonObject
-                ?? throw new WebLibraryException("La web respondió algo que no es un objeto JSON.");
+                ?? throw new WebLibraryException(Lang.L("La web respondió algo que no es un objeto JSON.", "The web answered something that isn't a JSON object."));
         }
         catch (JsonException e)
         {
-            throw new WebLibraryException("La web respondió algo que no es JSON (¿la dirección es la de la biblioteca?).", inner: e);
+            throw new WebLibraryException(Lang.L("La web respondió algo que no es JSON (¿la dirección es la de la biblioteca?).", "The web answered something that isn't JSON (is that the library's address?)."), inner: e);
         }
         catch (HttpRequestException e)
         {
             // Más grande que MaxResponseContentBufferSize del HttpClient.
-            throw new WebLibraryException("La web respondió algo demasiado grande para ser una BO.", inner: e);
+            throw new WebLibraryException(Lang.L("La web respondió algo demasiado grande para ser una BO.", "The web answered something too big to be a BO."), inner: e);
         }
     }
 
@@ -289,10 +289,10 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         }
         return response.StatusCode switch
         {
-            HttpStatusCode.NotFound => "No está en la biblioteca.",
-            HttpStatusCode.Unauthorized => "El token de la app no es válido: creá uno nuevo en Mi cuenta de la web.",
-            HttpStatusCode.Forbidden => "Esa BO no es tuya.",
-            _ => $"La web respondió {(int)response.StatusCode} ({response.ReasonPhrase}).",
+            HttpStatusCode.NotFound => Lang.L("No está en la biblioteca.", "It isn't in the library."),
+            HttpStatusCode.Unauthorized => Lang.L("El token de la app no es válido: creá uno nuevo en Mi cuenta de la web.", "The app token isn't valid: create a new one in My account on the web."),
+            HttpStatusCode.Forbidden => Lang.L("Esa BO no es tuya.", "That BO isn't yours."),
+            _ => Lang.L($"La web respondió {(int)response.StatusCode} ({response.ReasonPhrase}).", $"The web answered {(int)response.StatusCode} ({response.ReasonPhrase})."),
         };
     }
 }

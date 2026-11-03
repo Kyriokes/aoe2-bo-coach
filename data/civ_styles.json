@@ -32,6 +32,24 @@
     "maa": "arqueros o una torre en la madera, y telar a tiempo antes de su primer ataque",
     "fast_castle": "presioná en Feudal antes de que salgan sus caballeros, o andá también rápido a Castillos"
   },
+  "advice_en": {
+    "archers": "skirmishers and scouts against their archers, and don't leave your gold villagers unprotected",
+    "scouts": "spearmen early and villagers close to the resources; a tower or palisade at the wood helps",
+    "maa": "archers or a tower at the wood, and loom in time before their first attack",
+    "fast_castle": "pressure in Feudal before their knights are out, or go fast to Castle too"
+  },
+  "civ_advice_en": {
+    "britons": "their archers hit from far away: skirmishers, and push before Castle",
+    "mongols": "their scouts hit hard and hunt fast: spearmen early",
+    "huns": "they skip houses and go cavalry: spearmen and palisades",
+    "franks": "their cavalry is the strongest: spearmen, and camels or monks in Castle",
+    "aztecs": "they produce military fast: hold the first push with archers or a tower",
+    "mayan": "their archers are cheap: skirmishers and men-at-arms",
+    "goths": "they mass infantry: archers and towers, and don't run out of gold",
+    "teutons": "they start slow: pressure in Feudal before Castle",
+    "persians": "strong town center and elephants: spearmen, and monks in Castle",
+    "cumans": "they can go to two town centers in Feudal: pressure early"
+  },
   "civ_advice": {
     "britons": "sus arqueros pegan de lejos: hostigadores, y apretá antes de Castillos",
     "mongols": "sus exploradores pegan fuerte y cazan rápido: lanceros temprano",

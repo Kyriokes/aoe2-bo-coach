@@ -1,5 +1,6 @@
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
@@ -10,15 +11,15 @@ public sealed record TargetDeviation(string What, double Estimated, double Targe
     public double Delta => Estimated - Target;
 
     public override string ToString() => Clicked
-        ? $"Clic de {Label(What)} a las {Clock(Estimated)}, objetivo {Clock(Target)}"
-        : $"{Label(What)} estimada en {Clock(Estimated)}, objetivo {Clock(Target)}";
+        ? L($"Clic de {Label(What)} a las {Clock(Estimated)}, objetivo {Clock(Target)}", $"{Label(What)} click at {Clock(Estimated)}, target {Clock(Target)}")
+        : L($"{Label(What)} estimada en {Clock(Estimated)}, objetivo {Clock(Target)}", $"{Label(What)} estimated at {Clock(Estimated)}, target {Clock(Target)}");
 
     public static string Clock(double seconds) => GameClock.Format(seconds);
 
     private static string Label(string what) => what switch
     {
         "feudal_age" => "Feudal",
-        "castle_age" => "Castillos",
+        "castle_age" => L("Castillos", "Castle"),
         "imperial_age" => "Imperial",
         _ => what,
     };

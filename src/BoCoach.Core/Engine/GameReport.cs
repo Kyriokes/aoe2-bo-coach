@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
+using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
@@ -168,80 +169,87 @@ public static class GameReportText
 
     private static string Resource(Resource r) => r switch
     {
-        Data.Resource.Food => "comida",
-        Data.Resource.Wood => "madera",
-        Data.Resource.Gold => "oro",
-        _ => "piedra",
+        Data.Resource.Food => L("comida", "food"),
+        Data.Resource.Wood => L("madera", "wood"),
+        Data.Resource.Gold => L("oro", "gold"),
+        _ => L("piedra", "stone"),
     };
 
     /// <summary>El resumen: lo más importante de cada parte.</summary>
     public static IReadOnlyList<string> Summary(GameReport report)
     {
-        var lines = new List<string> { $"{report.BuildOrder}: {GameClock.Format(report.Length)} de partida." };
+        var lines = new List<string> { L($"{report.BuildOrder}: {GameClock.Format(report.Length)} de partida.", $"{report.BuildOrder}: {GameClock.Format(report.Length)} game.") };
         foreach (var click in report.AgeClicks)
         {
-            var target = click.Target is { } t ? $", objetivo {Clock(t)}" : "";
+            var target = click.Target is { } t ? L($", objetivo {Clock(t)}", $", target {Clock(t)}") : "";
             lines.Add(click switch
             {
-                { Click: { } c } => $"Clic de {click.Age} a las {Clock(c)}{target} (la BO bien jugada: {Clock(click.Planned)}).",
-                { Arrived: { } a } => $"Llegaste a {click.Age} a las {Clock(a)} (el clic no se vio){target}.",
-                _ => $"No hiciste clic en {click.Age}.",
+                { Click: { } c } => L($"Clic de {click.Age} a las {Clock(c)}{target} (la BO bien jugada: {Clock(click.Planned)}).", $"{click.Age} click at {Clock(c)}{target} (the BO played well: {Clock(click.Planned)})."),
+                { Arrived: { } a } => L($"Llegaste a {click.Age} a las {Clock(a)} (el clic no se vio){target}.", $"You reached {click.Age} at {Clock(a)} (the click wasn't seen){target}."),
+                _ => L($"No hiciste clic en {click.Age}.", $"You didn't click {click.Age}."),
             });
         }
         var late = report.Steps.Where(s => s.Delay is > 60).OrderByDescending(s => s.Delay).Take(3).ToList();
         if (late.Count > 0)
-            lines.Add($"Lo que más se atrasó: {string.Join("; ", late.Select(s => $"{s.Text} ({Span(s.Delay!.Value)} tarde)"))}.");
+            lines.Add(L($"Lo que más se atrasó: {string.Join("; ", late.Select(s => $"{s.Text} ({Span(s.Delay!.Value)} tarde)"))}.", $"What fell behind the most: {string.Join("; ", late.Select(s => $"{s.Text} ({Span(s.Delay!.Value)} late)"))}."));
         var notDone = report.Steps.Count(s => s.Done is null);
         if (notDone > 0)
-            lines.Add($"Pasos sin hacer: {notDone} de {report.Steps.Count}.");
+            lines.Add(L($"Pasos sin hacer: {notDone} de {report.Steps.Count}.", $"Steps not done: {notDone} of {report.Steps.Count}."));
         lines.Add(report.TownCenterIdle >= 1
-            ? $"Centro urbano parado: {Span(report.TownCenterIdle)} en total{(report.TownCenterGaps.Count > 0 ? $"; el hueco más largo, {Span(report.TownCenterGaps.Max(g => g.Duration))} desde las {Clock(report.TownCenterGaps.MaxBy(g => g.Duration)!.Start)}" : "")}."
-            : "El centro urbano no paró.");
-        lines.Add($"Aldeanos inactivos: {Span(report.IdleVillagersTime)}. Sin lugar por población: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "vez" : "veces")}).");
+            ? L($"Centro urbano parado: {Span(report.TownCenterIdle)} en total{(report.TownCenterGaps.Count > 0 ? $"; el hueco más largo, {Span(report.TownCenterGaps.Max(g => g.Duration))} desde las {Clock(report.TownCenterGaps.MaxBy(g => g.Duration)!.Start)}" : "")}.",
+                $"Town center idle: {Span(report.TownCenterIdle)} in total{(report.TownCenterGaps.Count > 0 ? $"; the longest gap, {Span(report.TownCenterGaps.Max(g => g.Duration))} from {Clock(report.TownCenterGaps.MaxBy(g => g.Duration)!.Start)}" : "")}.")
+            : L("El centro urbano no paró.", "The town center never stopped."));
+        lines.Add(IdleAndHoused(report));
         foreach (var f in report.Floating.OrderByDescending(f => f.Duration).Take(3))
-            lines.Add($"Acumulaste {Resource(f.Resource)}: {Span(f.Duration)} con más de {GameReportBuilder.FloatingAmount} desde las {Clock(f.Start)} (hasta {f.Peak}).");
+            lines.Add(L($"Acumulaste {Resource(f.Resource)}: {Span(f.Duration)} con más de {GameReportBuilder.FloatingAmount} desde las {Clock(f.Start)} (hasta {f.Peak}).",
+                $"You floated {Resource(f.Resource)}: {Span(f.Duration)} over {GameReportBuilder.FloatingAmount} from {Clock(f.Start)} (up to {f.Peak})."));
         // D10: la sección "El cruce" (spec 5.4).
-        lines.AddRange(report.Matchup.Select((line, i) => i == 0 ? $"El cruce: {line}" : line));
+        lines.AddRange(report.Matchup.Select((line, i) => i == 0 ? L("El cruce: ", "The matchup: ") + line : line));
         return lines;
     }
+
+    private static string IdleAndHoused(GameReport report) => L(
+        $"Aldeanos inactivos: {Span(report.IdleVillagersTime)}. Sin lugar por población: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "vez" : "veces")}).",
+        $"Idle villagers: {Span(report.IdleVillagersTime)}. Housed: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "time" : "times")}).");
 
     /// <summary>La página del informe completo, sin nada de afuera (se abre en el navegador).</summary>
     public static string Html(GameReport report, DateTime date)
     {
         static string E(string text) => WebUtility.HtmlEncode(text);
         var sb = new StringBuilder();
-        sb.Append("<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
-        sb.Append($"<title>Informe: {E(report.BuildOrder)}</title><style>");
+        sb.Append($"<!doctype html><html lang=\"{Current}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
+        sb.Append($"<title>{L("Informe", "Report")}: {E(report.BuildOrder)}</title><style>");
         sb.Append("body{font-family:Segoe UI,system-ui,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;background:#1e1a16;color:#f4f2ee}");
         sb.Append("h1{font-size:22px}h2{font-size:17px;color:#e8c26a;margin-top:28px}table{border-collapse:collapse;width:100%;font-size:14px}");
         sb.Append("td,th{border-bottom:1px solid #5c5046;padding:4px 8px;text-align:left}td.n{text-align:right;font-variant-numeric:tabular-nums}");
         sb.Append(".late{color:#f05a50}.ok{color:#6fd86f}.muted{color:#a39a8f}</style></head><body>");
-        sb.Append($"<h1>{E(report.BuildOrder)}</h1><p class=\"muted\">{date:yyyy-MM-dd HH:mm} · {GameClock.Format(report.Length)} de partida</p>");
-        sb.Append("<h2>Resumen</h2><ul>");
+        sb.Append($"<h1>{E(report.BuildOrder)}</h1><p class=\"muted\">{date:yyyy-MM-dd HH:mm} · {GameClock.Format(report.Length)}{L(" de partida", "")}</p>");
+        sb.Append($"<h2>{L("Resumen", "Summary")}</h2><ul>");
         foreach (var line in Summary(report with { Matchup = [] }).Skip(1))
             sb.Append($"<li>{E(line)}</li>");
         if (report.Matchup.Count > 0)
         {
-            sb.Append("</ul><h2>El cruce</h2><ul>");
+            sb.Append($"</ul><h2>{L("El cruce", "The matchup")}</h2><ul>");
             foreach (var line in report.Matchup)
                 sb.Append($"<li>{E(line)}</li>");
         }
-        sb.Append("</ul><h2>Pasos contra la BO</h2><table><tr><th>#</th><th>Paso</th><th>La BO</th><th>Vos</th><th>Atraso</th></tr>");
+        sb.Append(L("</ul><h2>Pasos contra la BO</h2><table><tr><th>#</th><th>Paso</th><th>La BO</th><th>Vos</th><th>Atraso</th></tr>",
+            "</ul><h2>Steps against the BO</h2><table><tr><th>#</th><th>Step</th><th>The BO</th><th>You</th><th>Delay</th></tr>"));
         foreach (var s in report.Steps)
         {
-            var delay = s.Delay is { } d ? $"<span class=\"{(d > 60 ? "late" : "ok")}\">{(d >= 0 ? "+" : "-")}{Span(Math.Abs(d))}</span>" : (s.Done is null ? "sin hacer" : "-");
+            var delay = s.Delay is { } d ? $"<span class=\"{(d > 60 ? "late" : "ok")}\">{(d >= 0 ? "+" : "-")}{Span(Math.Abs(d))}</span>" : (s.Done is null ? L("sin hacer", "not done") : "-");
             sb.Append($"<tr><td class=\"n\">{s.Number}</td><td>{E(s.Text)}</td><td class=\"n\">{Clock(s.Planned)}</td><td class=\"n\">{Clock(s.Done)}</td><td class=\"n\">{delay}</td></tr>");
         }
-        sb.Append("</table><h2>Centro urbano parado</h2>");
+        sb.Append($"</table><h2>{L("Centro urbano parado", "Town center idle")}</h2>");
         sb.Append(report.TownCenterGaps.Count == 0
-            ? $"<p>{Span(report.TownCenterIdle)} en total, sin huecos de más de {GameReportBuilder.GapSeconds:0} s.</p>"
-            : $"<p>{Span(report.TownCenterIdle)} en total.</p><table><tr><th>Desde</th><th>Duró</th></tr>" +
+            ? L($"<p>{Span(report.TownCenterIdle)} en total, sin huecos de más de {GameReportBuilder.GapSeconds:0} s.</p>", $"<p>{Span(report.TownCenterIdle)} in total, no gaps over {GameReportBuilder.GapSeconds:0} s.</p>")
+            : L($"<p>{Span(report.TownCenterIdle)} en total.</p><table><tr><th>Desde</th><th>Duró</th></tr>", $"<p>{Span(report.TownCenterIdle)} in total.</p><table><tr><th>From</th><th>Lasted</th></tr>") +
               string.Concat(report.TownCenterGaps.Select(g => $"<tr><td class=\"n\">{Clock(g.Start)}</td><td class=\"n\">{Span(g.Duration)}</td></tr>")) + "</table>");
-        sb.Append($"<h2>Inactivos y casas</h2><p>Aldeanos inactivos: {Span(report.IdleVillagersTime)}. Sin lugar por población: {Span(report.HousedTime)} ({report.HousedTimes} {(report.HousedTimes == 1 ? "vez" : "veces")}).</p>");
-        sb.Append("<h2>Recursos acumulados</h2>");
+        sb.Append($"<h2>{L("Inactivos y casas", "Idle villagers and houses")}</h2><p>{E(IdleAndHoused(report))}</p>");
+        sb.Append($"<h2>{L("Recursos acumulados", "Floating resources")}</h2>");
         sb.Append(report.Floating.Count == 0
-            ? $"<p>Nunca más de {GameReportBuilder.FloatingAmount} de algo durante un minuto.</p>"
-            : "<table><tr><th>Recurso</th><th>Desde</th><th>Duró</th><th>Hasta</th></tr>" +
+            ? L($"<p>Nunca más de {GameReportBuilder.FloatingAmount} de algo durante un minuto.</p>", $"<p>Never over {GameReportBuilder.FloatingAmount} of anything for a minute.</p>")
+            : L("<table><tr><th>Recurso</th><th>Desde</th><th>Duró</th><th>Hasta</th></tr>", "<table><tr><th>Resource</th><th>From</th><th>Lasted</th><th>Up to</th></tr>") +
               string.Concat(report.Floating.Select(f => $"<tr><td>{Resource(f.Resource)}</td><td class=\"n\">{Clock(f.Start)}</td><td class=\"n\">{Span(f.Duration)}</td><td class=\"n\">{f.Peak.ToString(CultureInfo.InvariantCulture)}</td></tr>")) + "</table>");
         sb.Append("</body></html>");
         return sb.ToString();

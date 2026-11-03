@@ -145,8 +145,8 @@ public sealed record Branch
     };
 
     /// <summary>El texto de una señal en el idioma (ver <see cref="StepText"/>); una señal desconocida, su clave.</summary>
-    public static string SignalText(string signal, string language = StepText.Spanish) =>
-        (language == StepText.English ? SignalsEn : Signals).GetValueOrDefault(signal, signal);
+    public static string SignalText(string signal, string? language = null) =>
+        ((language ?? Lang.Current) == StepText.English ? SignalsEn : Signals).GetValueOrDefault(signal, signal);
 
     /// <summary>La señal (<see cref="Signals"/>).</summary>
     public string On { get; set; } = "";
