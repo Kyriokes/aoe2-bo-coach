@@ -42,7 +42,7 @@
       "items": [
         { "title": "A game log", "text": "The app will save what it read and what it advised in each game, and you'll be able to send it if you want, with no video or screenshots. That way any bug you hit can be reproduced and fixed without you playing again: it's what will speed everything up the most." },
         { "title": "Any resolution", "text": "All the reading working on your screen, not just at 1920×1080." },
-        { "title": "A friendlier app", "text": "Today you can tell a programmer made it for himself. A nicer, simpler version is coming for people who just want to play, in English too." },
+        { "title": "A friendlier app", "text": "Today you can tell it was built by a programmer, for a programmer. A nicer, simpler version is coming for people who just want to play, in English too." },
         { "title": "A build order that replans itself", "text": "Instead of following a fixed list, the coach would look at how your game is going and work out the best path from there to the next goal: if you lost villagers or fell behind, it tells you what to do now. It's the most ambitious item here and it needs games from other players to get right." },
         { "title": "More languages", "text": "The ones the game ships with, little by little, starting with what people ask for." },
         { "title": "A small beta", "text": "A few players with the game log on, before any big release. If you're interested, let us know." }
