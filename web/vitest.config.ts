@@ -4,7 +4,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     // Los módulos de servidor (import "server-only") se pueden probar con sus dependencias reemplazadas por vi.mock.
-    alias: { "server-only": fileURLToPath(new URL("./vitest.server-only.ts", import.meta.url)) },
+    alias: {
+      "server-only": fileURLToPath(new URL("./vitest.server-only.ts", import.meta.url)),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   test: {
     environment: "node",

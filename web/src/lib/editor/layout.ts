@@ -1,3 +1,5 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import type { Analysis, PlanBlock, PlanJob } from "../coach/types";
 import { entityName, sourceName } from "../stepText";
 import type { GameDataLite } from "./constraints";
@@ -133,20 +135,20 @@ function chainIds(steps: EditorStep[]): Map<string, string> {
   return map;
 }
 
-function unitLabel(step: EditorStep | undefined, what: string, count: number) {
-  if (step && isVillagerTarget(step)) return `${count} ${entityName("villager", count)} → ${sourceName(step.assign)}`;
-  return `${count} ${entityName(what, count)}`;
+function unitLabel(step: EditorStep | undefined, what: string, count: number, locale: Locale) {
+  if (step && isVillagerTarget(step)) return `${count} ${entityName("villager", count, locale)} → ${sourceName(step.assign, locale)}`;
+  return `${count} ${entityName(what, count, locale)}`;
 }
 
 /** El nombre de cada línea de edificio: "Cuartel" si hay uno, "Galería de tiro 1" y "2" si hay varias. */
-function labelsFor(keys: string[]): string[] {
+function labelsFor(keys: string[], locale: Locale): string[] {
   const totals = new Map<string, number>();
   for (const k of keys) totals.set(k, (totals.get(k) ?? 0) + 1);
   const seen = new Map<string, number>();
   return keys.map((k) => {
     const n = (seen.get(k) ?? 0) + 1;
     seen.set(k, n);
-    const name = entityName(k, 1);
+    const name = entityName(k, 1, locale);
     const capital = name[0].toUpperCase() + name.slice(1);
     return (totals.get(k) ?? 0) > 1 ? `${capital} ${n}` : capital;
   });
@@ -157,7 +159,8 @@ function labelsFor(keys: string[]): string[] {
  * sin simulación (BO con errores), cada paso va a la línea de su edificio por la clave, en el orden de la BO. `labels`
  * son los textos como en las guías ("Aldeanos 4 a 6 → ovejas"); los pasos que no están van con el texto del Core.
  */
-export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: GameDataLite | null, labels?: Map<string, string>): Lane[] {
+export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: GameDataLite | null, labels?: Map<string, string>, locale: Locale = "es"): Lane[] {
+  const t = getDictionary(locale).editor.timeline;
   const chains = chainIds(steps);
   const byId = new Map(steps.map((s, i) => [s.id, { step: s, index: i }]));
   const texts = new Map(analysis?.steps.map((s) => [s.id, s.text]) ?? []);
@@ -165,7 +168,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
   const blocksByStep = new Map<string, PlanBlock[]>();
   for (const b of analysis?.blocks ?? []) blocksByStep.set(b.step_id, [...(blocksByStep.get(b.step_id) ?? []), b]);
   const simulated = analysis?.ok === true && analysis.valid && analysis.jobs !== undefined;
-  const textOf = (step: EditorStep) => labels?.get(step.id) ?? texts.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do);
+  const textOf = (step: EditorStep) => labels?.get(step.id) ?? texts.get(step.id) ?? (step.what ? entityName(step.what, step.count, locale) : step.do);
   const item = (step: EditorStep, extra: Partial<LaneItem>): LaneItem => ({
     key: `${step.id}`,
     stepId: step.id,
@@ -183,7 +186,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
     ...extra,
   });
 
-  const villagers: Lane = { id: VILLAGERS_LANE, label: "Aldeanos", icon: "villager", items: [] };
+  const villagers: Lane = { id: VILLAGERS_LANE, label: t.villagersLane, icon: "villager", items: [] };
   const lanes: Lane[] = [];
 
   if (simulated) {
@@ -192,7 +195,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
     for (const j of jobs) if (j.kind === "produce" && j.building) produced.set(j.building, [...(produced.get(j.building) ?? []), j]);
     const ownLane = trainers(data);
     const buildingLanes = (analysis.buildings ?? []).filter((b) => produced.has(b.id) || ownLane.has(b.key) || b.key === "town_center");
-    const labels = labelsFor(buildingLanes.map((b) => b.key));
+    const labels = labelsFor(buildingLanes.map((b) => b.key), locale);
     const laneOf = new Map<string, Lane>();
     buildingLanes.forEach((b, i) => {
       const lane: Lane = { id: b.id, label: labels[i], icon: b.key, items: [] };
@@ -205,7 +208,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
     for (const j of jobs.filter((j) => j.kind === "build")) {
       const lane = j.building ? laneOf.get(j.building) : undefined;
       const entry = byId.get(j.step_id);
-      if (lane && entry) lane.items.push(item(entry.step, { key: `${j.building}:build`, label: `Construir ${entityName(j.what, 1)}`, construction: true, start: j.start, end: j.end }));
+      if (lane && entry) lane.items.push(item(entry.step, { key: `${j.building}:build`, label: fill(t.buildLabel, { name: entityName(j.what, 1, locale) }), construction: true, start: j.start, end: j.end }));
       else loose.set(j.step_id, [...(loose.get(j.step_id) ?? []), j]);
     }
     for (const [stepId, list] of loose) {
@@ -230,7 +233,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
           lane.items.push(
             item(entry.step, {
               key: `${building}:${current.job.step_id}:${current.job.start}`,
-              label: whole ? textOf(entry.step) : unitLabel(entry.step, current.job.what, current.count),
+              label: whole ? textOf(entry.step) : unitLabel(entry.step, current.job.what, current.count, locale),
               start: current.job.start,
               end: current.end,
             }),
@@ -267,7 +270,7 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
     const keyLane = (key: string) => {
       let lane = laneOfKey.get(key);
       if (!lane) {
-        lane = { id: key, label: labelsFor([key])[0], icon: key, items: [] };
+        lane = { id: key, label: labelsFor([key], locale)[0], icon: key, items: [] };
         laneOfKey.set(key, lane);
         lanes.push(lane);
       }

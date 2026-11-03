@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import type { Analysis } from "@/lib/coach/types";
 import { allowedRange, clampCandidate, indexFromTime, snapToBoundary, type GameDataLite, type Range } from "@/lib/editor/constraints";
@@ -8,7 +10,7 @@ import { waitReason } from "@/lib/editor/explain";
 import { neverStartsReason } from "@/lib/editor/guard";
 import { ORDINAL_W, type Scale } from "@/lib/editor/layout";
 import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
-import { COUNT_HINT, DROP_OUTSIDE_TEXT, neverStartsText, notBeforeText, PINNED_TEXT } from "@/lib/editor/text";
+import { neverStartsText, notBeforeText } from "@/lib/editor/text";
 import { guideLabels, type Inserted } from "@/lib/editor/villagers";
 import { formatClock } from "@/lib/buildOrder";
 
@@ -54,6 +56,7 @@ export interface DragState {
 }
 
 interface Options {
+  locale: Locale;
   state: EditorState;
   coach: CoachRuntime | null;
   data: GameDataLite | null;
@@ -163,7 +166,7 @@ export function useTimelineDrag(options: Options) {
       block,
       blockId: block[0].id,
       selectId: block[0].id,
-      range: allowedRange(others, block, data, label),
+      range: allowedRange(others, block, data, label, optionsRef.current.locale),
       pinned,
       starts: others.map((s) => firstOut.get(s.id) ?? byId.get(s.id)?.start ?? null),
       ends: others.map((s) => byId.get(s.id)?.end ?? null),
@@ -219,7 +222,7 @@ export function useTimelineDrag(options: Options) {
         session.previewSteps = optionsRef.current.normalize(state.steps.map((s) => (s.id === session.count!.id ? { ...s, count: value } : s)));
         session.preview = null;
         if (session.previewEnabled && coach) {
-          const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })));
+          const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })), optionsRef.current.locale);
           session.preview = result.ok ? result : null;
         }
       }
@@ -236,7 +239,7 @@ export function useTimelineDrag(options: Options) {
         previewSteps: session.previewSteps,
         preview: session.preview,
         reason: null,
-        label: `${text} ${COUNT_HINT}`,
+        label: `${text} ${getDictionary(optionsRef.current.locale).editor.drag.countHint}`,
         outside: false,
         pointer: { ...pointerRef.current },
         ghostX: 0,
@@ -278,7 +281,7 @@ export function useTimelineDrag(options: Options) {
       session.preview = null;
       if (session.previewEnabled && coach && session.range.lo <= session.range.hi) {
         const started = performance.now();
-        const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })));
+        const result = coach.analyze(JSON.stringify(toJson({ bo: state.bo, steps: session.previewSteps })), optionsRef.current.locale);
         const elapsed = performance.now() - started;
         if (elapsed > SLOW_ANALYZE_MS) {
           slowRef.current = true;
@@ -289,6 +292,8 @@ export function useTimelineDrag(options: Options) {
       }
     }
 
+    const { locale } = optionsRef.current;
+    const dragText = getDictionary(locale).editor.drag;
     let label = reason;
     if (!label && session.preview) {
       // El que manda en la caja: el que no arranca nunca o el último en arrancar (el edificio, no el aldeano que lo hace).
@@ -296,14 +301,14 @@ export function useTimelineDrag(options: Options) {
       const members = session.preview.steps.filter((s) => ids.has(s.id));
       const first = members.find((s) => s.start === null) ?? members.reduce<(typeof members)[number] | undefined>((a, s) => (a === undefined || (s.start ?? 0) > (a.start ?? 0) ? s : a), undefined);
       // Un edificio que hace el próximo aldeano: el cartel dice cuál y cuándo arranca.
-      const builtBy = session.selectId !== session.blockId ? guideLabels(session.previewSteps, session.preview.start).get(session.selectId) : undefined;
-      if (first && builtBy && first.start !== null) label = `${builtBy}: arranca en ${formatClock(first.start)}`;
+      const builtBy = session.selectId !== session.blockId ? guideLabels(session.previewSteps, session.preview.start, locale).get(session.selectId) : undefined;
+      if (first && builtBy && first.start !== null) label = fill(dragText.startsAt, { what: builtBy, time: formatClock(first.start) });
       else if (first) {
-        if (first.start !== null && t < first.start - 1) label = notBeforeText(first.start, waitReason(session.preview, session.block, data) ?? "arranca después del paso anterior");
-        else if (first.start === null && session.preview.valid) label = neverStartsText(waitReason(session.preview, session.block, data));
+        if (first.start !== null && t < first.start - 1) label = notBeforeText(first.start, waitReason(session.preview, session.block, data, locale) ?? dragText.afterPrevious, locale);
+        else if (first.start === null && session.preview.valid) label = neverStartsText(waitReason(session.preview, session.block, data, locale), locale);
       }
     }
-    if (!label && outside) label = DROP_OUTSIDE_TEXT;
+    if (!label && outside) label = dragText.dropOutside;
 
     setDrag({
       source: pending.source,
@@ -341,7 +346,7 @@ export function useTimelineDrag(options: Options) {
       if (session.outside) {
         // nada: soltar fuera de la línea cancela
       } else if (session.range.lo > session.range.hi) {
-        onReject(session.range.loReason ?? session.range.hiReason ?? PINNED_TEXT);
+        onReject(session.range.loReason ?? session.range.hiReason ?? getDictionary(optionsRef.current.locale).editor.drag.pinned);
       } else if (session.candidate < 0) {
         // no llegó a moverse: nada que hacer
       } else if (session.preview) {
@@ -351,7 +356,7 @@ export function useTimelineDrag(options: Options) {
         // no se suelta y se dice qué falta.
         const neverStarts = session.preview.valid && session.preview.steps.some((s) => ids.has(s.id) && s.start === null);
         if (error) onReject(error.message);
-        else if (neverStarts) onReject(neverStartsText(neverStartsReason(session.preview, session.block, data)));
+        else if (neverStarts) onReject(neverStartsText(neverStartsReason(session.preview, session.block, data, optionsRef.current.locale), optionsRef.current.locale));
         else dispatch({ type: "commit", steps: session.previewSteps, analysis: session.preview, selected: session.selectId });
       } else if (pending.source.kind === "palette") {
         dispatch({ type: "setSteps", steps: session.previewSteps, selected: session.selectId });

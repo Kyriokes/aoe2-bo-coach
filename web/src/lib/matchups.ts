@@ -1,3 +1,5 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import { CIV_NAMES } from "./civNames";
 
 /**
@@ -28,13 +30,14 @@ export interface MatchupData {
 const VALUES = 5 * 6 * 6 * 4;
 const SCHEMA_VERSION = 1;
 
-/** Los nombres de los mapas de las estadísticas, los de data/maps.json (un test lo controla). */
-export const MAP_NAMES: Readonly<Record<string, string>> = {
-  arabia: "Arabia",
-  arena: "Arena",
-  black_forest: "Bosque Negro",
-  nomad: "Nómada",
-};
+/** Los nombres de los mapas de las estadísticas en castellano, los de data/maps.json (un test lo controla). */
+export const MAP_NAMES: Readonly<Record<string, string>> = getDictionary("es").matchups.maps;
+
+/** El nombre de un mapa de las estadísticas en ese idioma. */
+export function mapName(key: string, locale: Locale = "es"): string {
+  const names: Readonly<Record<string, string>> = getDictionary(locale).matchups.maps;
+  return Object.hasOwn(names, key) ? names[key] : key;
+}
 
 type Json = Record<string, unknown>;
 
@@ -158,8 +161,8 @@ export function percent(x: number): number {
 }
 
 /** "49 % (46 a 53)". */
-export function chanceText(c: Cell): string {
-  return `${percent(c.p)} % (${percent(c.from)} a ${percent(c.to)})`;
+export function chanceText(c: Cell, locale: Locale = "es"): string {
+  return fill(getDictionary(locale).matchups.chance, { percent: percent(c.p), from: percent(c.from), to: percent(c.to) });
 }
 
 /** La dirección de un cruce, con las claves en orden alfabético: "britons-vs-franks". */
@@ -205,19 +208,21 @@ export function matchupRouting(pathname: string): { redirect: string } | { notFo
 }
 
 /** "todas", "menos de 850", "de 1050 a 1300", "1600 o más". */
-export function eloLabel(data: MatchupData, band: number): string {
+export function eloLabel(data: MatchupData, band: number, locale: Locale = "es"): string {
+  const t = getDictionary(locale).matchups;
   const l = data.eloLimits;
-  if (band <= 0) return "todas";
-  if (band === 1) return `menos de ${l[0]}`;
-  if (band > l.length) return `${l[l.length - 1]} o más`;
-  return `de ${l[band - 2]} a ${l[band - 1]}`;
+  if (band <= 0) return t.eloAll;
+  if (band === 1) return fill(t.eloBelow, { n: l[0] });
+  if (band > l.length) return fill(t.eloAbove, { n: l[l.length - 1] });
+  return fill(t.eloRange, { from: l[band - 2], to: l[band - 1] });
 }
 
 /** "cualquier duración", "menos de 20 min", "de 40 a 55 min", "55 min o más" (minutos del reloj del juego). */
-export function durationLabel(data: MatchupData, band: number): string {
+export function durationLabel(data: MatchupData, band: number, locale: Locale = "es"): string {
+  const t = getDictionary(locale).matchups;
   const m = data.minuteLimits;
-  if (band <= 0) return "cualquier duración";
-  if (band === 1) return `menos de ${m[0]} min`;
-  if (band > m.length) return `${m[m.length - 1]} min o más`;
-  return `de ${m[band - 2]} a ${m[band - 1]} min`;
+  if (band <= 0) return t.durationAll;
+  if (band === 1) return fill(t.durationBelow, { n: m[0] });
+  if (band > m.length) return fill(t.durationAbove, { n: m[m.length - 1] });
+  return fill(t.durationRange, { from: m[band - 2], to: m[band - 1] });
 }

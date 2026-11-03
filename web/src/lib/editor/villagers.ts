@@ -1,3 +1,5 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import type { GameStart } from "../coach/types";
 import { entityName, sourceName } from "../stepText";
 import { insertBlock, snapDown, type EditorStep, type Source } from "./model";
@@ -123,6 +125,7 @@ export function insertByNewVillager(
   start: GameStart,
   villagerId: string,
   available: readonly Source[],
+  locale: Locale = "es",
 ): Inserted {
   const at = snapDown(steps, index);
   const before = steps.slice(0, at);
@@ -134,7 +137,7 @@ export function insertByNewVillager(
 
   const inChain = (i: number) => rest[i].withPrevious || (rest[i + 1]?.withPrevious ?? false);
   if (next && next.assign === destination && (next.count > 1 || !inChain(nextIndex))) {
-    note = `sale de los ${next.count} que iban a ${sourceName(destination)}`;
+    note = fill(getDictionary(locale).editor.villagers.from, { n: next.count, source: sourceName(destination, locale) });
     if (next.count > 1) {
       rest = rest.map((s, i) => (i === nextIndex ? { ...s, count: s.count - 1 } : s));
     } else {
@@ -162,7 +165,7 @@ export function insertByNewVillager(
  * Un paso nuevo de la paleta en el índice `index`: un edificio (menos las granjas) lo construye el próximo aldeano si
  * en ese lugar no quedan aldeanos sin tarea; lo demás toma sus aldeanos de lo que hay ahí (`placeNew`).
  */
-export function insertNewStep(steps: EditorStep[], step: EditorStep, index: number, start: GameStart, villagerId: string, available: readonly Source[]): Inserted {
+export function insertNewStep(steps: EditorStep[], step: EditorStep, index: number, start: GameStart, villagerId: string, available: readonly Source[], locale: Locale = "es"): Inserted {
   const at = snapDown(steps, index);
   const before = steps.slice(0, at);
   // Aldeanos al mismo lugar que la tanda de arriba: se suman a esa tanda ("Aldeanos 4 a 6 → ovejas"), no son otra fila.
@@ -172,7 +175,7 @@ export function insertNewStep(steps: EditorStep[], step: EditorStep, index: numb
     return { steps: merged, block: [merged[at - 1]], blockId: previous.id, selectId: previous.id, note: null };
   }
   if (step.do === "build" && step.what !== "farm" && villagersAfter(before, start).idle === 0) {
-    return insertByNewVillager(steps, step, at, start, villagerId, available);
+    return insertByNewVillager(steps, step, at, start, villagerId, available, locale);
   }
   const placed = placeNew(step, before, start);
   return { steps: insertBlock(steps, [placed], at), block: [placed], blockId: placed.id, selectId: placed.id, note: null };
@@ -208,8 +211,9 @@ export function removeNewVillagerBuild(steps: EditorStep[], buildId: string): Ed
 }
 
 /** "Aldeanos 4 a 6", "Aldeano 7". */
-function villagersText(n: { first: number; last: number }) {
-  return n.first === n.last ? `Aldeano ${n.first}` : `Aldeanos ${n.first} a ${n.last}`;
+function villagersText(n: { first: number; last: number }, locale: Locale) {
+  const t = getDictionary(locale).editor.villagers;
+  return n.first === n.last ? fill(t.one, { n: n.first }) : fill(t.many, { first: n.first, last: n.last });
 }
 
 /**
@@ -217,15 +221,15 @@ function villagersText(n: { first: number; last: number }) {
  * maderero → madera" en un edificio que construye el próximo aldeano. Los demás pasos no están (van con el texto del
  * Core).
  */
-export function guideLabels(steps: EditorStep[], start: GameStart): Map<string, string> {
+export function guideLabels(steps: EditorStep[], start: GameStart, locale: Locale = "es"): Map<string, string> {
   const numbers = villagerNumbers(steps, start);
   const labels = new Map<string, string>();
   steps.forEach((step, i) => {
     const n = numbers.get(step.id);
-    if (n && step.assign) labels.set(step.id, `${villagersText(n)} → ${sourceName(step.assign)}`);
+    if (n && step.assign) labels.set(step.id, `${villagersText(n, locale)} → ${sourceName(step.assign, locale)}`);
     if (step.what && isBuiltByNewVillager(steps, i, start)) {
       const v = numbers.get(steps[i - 1].id)!;
-      labels.set(step.id, `${villagersText(v)}: ${entityName(step.what, 1)}${step.assign ? ` → ${sourceName(step.assign)}` : ""}`);
+      labels.set(step.id, `${villagersText(v, locale)}: ${entityName(step.what, 1, locale)}${step.assign ? ` → ${sourceName(step.assign, locale)}` : ""}`);
     }
   });
   return labels;
@@ -240,7 +244,7 @@ export function chainLabel(chain: EditorStep[], all: EditorStep[], labels: Map<s
   chain.forEach((step, k) => {
     const next = chain[k + 1];
     // El aldeano del edificio que lo sigue ya está en el texto del edificio.
-    if (next && isVillagerStep(step) && labels.get(next.id)?.startsWith("Aldeano") && hasNewVillagerShape(all, all.indexOf(next))) return;
+    if (next && isVillagerStep(step) && labels.has(next.id) && hasNewVillagerShape(all, all.indexOf(next))) return;
     parts.push(labels.get(step.id) ?? capitalize(textOf(step)));
   });
   return parts.join(" + ");

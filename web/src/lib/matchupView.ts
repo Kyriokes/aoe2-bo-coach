@@ -1,5 +1,7 @@
-import { CIV_NAMES } from "./civNames";
-import { MAP_NAMES, oneVsOne, pairSlug, parseSlug, percent, team, trend, type Cell, type MatchupData } from "./matchups";
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
+import { civNames } from "./civNames";
+import { mapName, oneVsOne, pairSlug, parseSlug, percent, team, trend, type Cell, type MatchupData } from "./matchups";
 
 /**
  * Lo que necesita cada página de /cruces, sacado de las estadísticas: solo los casilleros de esa página, así el
@@ -33,24 +35,20 @@ export function matchupStaticParams(data: MatchupData | null): { slug: string }[
  * cruce"); null si el slug no es una civ ni una pareja en orden alfabético. Las civs van en plural y con artículo:
  * "les ganan los britanos a los francos".
  */
-export function matchupPageMeta(slug: string): { title: string; description: string; path: string } | null {
+export function matchupPageMeta(slug: string, locale: Locale = "es"): { title: string; description: string; path: string } | null {
   const parsed = parseSlug(slug);
   if (!parsed) return null;
+  const t = getDictionary(locale).matchups;
+  const names = civNames(locale);
   if ("civ" in parsed) {
-    const civ = CIV_NAMES[parsed.civ];
-    return {
-      title: `${civ}: contra qué civs ganan`,
-      description: `Cuánto les ganan los ${civ.toLowerCase()} a cada civ de Age of Empires II en 1v1 y cómo les va por equipos, por mapa y Elo, con partidas clasificatorias reales.`,
-      path: `/cruces/${parsed.civ}`,
-    };
+    const civ = names[parsed.civ];
+    const values = { civ, civLower: civ.toLowerCase() };
+    return { title: fill(t.civTitle, values), description: fill(t.civDescription, values), path: `/cruces/${parsed.civ}` };
   }
   if (!parsed.canonical) return null;
-  const [a, b] = [CIV_NAMES[parsed.a], CIV_NAMES[parsed.b]];
-  return {
-    title: `${a} contra ${b.toLowerCase()}: estadísticas del cruce`,
-    description: `Cuánto les ganan los ${a.toLowerCase()} a los ${b.toLowerCase()} en Age of Empires II por mapa, Elo y duración de la partida, con partidas clasificatorias reales.`,
-    path: `/cruces/${pairSlug(parsed.a, parsed.b)}`,
-  };
+  const [a, b] = [names[parsed.a], names[parsed.b]];
+  const values = { a, b, aLower: a.toLowerCase(), bLower: b.toLowerCase() };
+  return { title: fill(t.pairTitle, values), description: fill(t.pairDescription, values), path: `/cruces/${pairSlug(parsed.a, parsed.b)}` };
 }
 
 /** Un rival con sus 30 casilleros de duración "todas": el índice es mapa · 6 + franja de Elo. */
@@ -116,12 +114,12 @@ export interface PairSummary {
 }
 
 /** El cruce desde `a` en todos los mapas y todas las franjas de Elo. */
-export function pairSummary(data: MatchupData, a: string, b: string): PairSummary {
+export function pairSummary(data: MatchupData, a: string, b: string, locale: Locale = "es"): PairSummary {
   const general = oneVsOne(data, a, b, 0, 0, 0);
   if (!general) throw new Error(`No hay datos del cruce ${a} contra ${b}.`);
   const maps = [
-    { key: null, name: "Todos los mapas", cell: general },
-    ...data.mapKeys.map((key, i) => ({ key, name: MAP_NAMES[key] ?? key, cell: oneVsOne(data, a, b, i + 1, 0, 0) ?? general })),
+    { key: null, name: getDictionary(locale).matchups.allMaps, cell: general },
+    ...data.mapKeys.map((key, i) => ({ key, name: mapName(key, locale), cell: oneVsOne(data, a, b, i + 1, 0, 0) ?? general })),
   ];
   return { general, rivalPercent: 100 - percent(general.p), maps, estimated: general.n === 0 };
 }
@@ -136,28 +134,35 @@ export function durationText(
   civName: string,
   labelOf: (band: number) => string,
   where: string | null,
+  locale: Locale = "es",
 ): string | null {
+  const dict = getDictionary(locale).matchups;
   const t = trend(cellOf);
   if (t) {
-    return (
-      `${civName} ganan más en partidas ${t.favorsShort ? "cortas" : "largas"}: ` +
-      `${percent(t.short.p)} % en ${labelOf(t.shortBand)}, ${percent(t.long.p)} % en ${labelOf(t.longBand)}.`
-    );
+    return fill(t.favorsShort ? dict.trendShort : dict.trendLong, {
+      civ: civName,
+      shortPercent: percent(t.short.p),
+      shortLabel: labelOf(t.shortBand),
+      longPercent: percent(t.long.p),
+      longLabel: labelOf(t.longBand),
+    });
   }
   const withGames = [1, 2, 3, 4, 5].filter((band) => (cellOf(band)?.n ?? 0) > 0).length;
   // "Sin diferencia clara", no "parejo": que los rangos se toquen no prueba que no haya diferencia.
-  if (withGames >= 2) return "Sin diferencia clara por duración.";
-  return withGames === 0 ? mapLine({ p: 0, from: 0, to: 0, n: 0 }, where) : null;
+  if (withGames >= 2) return dict.noClearDifference;
+  return withGames === 0 ? mapLine({ p: 0, from: 0, to: 0, n: 0 }, where, locale) : null;
 }
 
 /** Lo elegido en el gráfico para el aviso de estimado: "Nómada", "esa franja de Elo", "Nómada en esa franja de Elo". */
-export function selectionPlace(mapName: string | null, eloBand: number): string | null {
-  if (eloBand <= 0) return mapName;
-  return mapName ? `${mapName} en esa franja de Elo` : "esa franja de Elo";
+export function selectionPlace(map: string | null, eloBand: number, locale: Locale = "es"): string | null {
+  if (eloBand <= 0) return map;
+  const t = getDictionary(locale).matchups;
+  return map ? fill(t.selectionMapElo, { map }) : t.selectionElo;
 }
 
 /** El aviso de un casillero sin partidas (sale del modelo), o null si tiene. */
-export function mapLine(cell: Cell, mapName: string | null): string | null {
+export function mapLine(cell: Cell, place: string | null, locale: Locale = "es"): string | null {
   if (cell.n > 0) return null;
-  return mapName ? `Estimado: no hay partidas de este cruce en ${mapName}.` : "Estimado: no hay partidas de este cruce.";
+  const t = getDictionary(locale).matchups;
+  return place ? fill(t.estimatedIn, { place }) : t.estimated;
 }

@@ -1,9 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent } from "react";
 import { publishBuildOrder, updateBuildOrder } from "@/app/actions";
+import { fill, rich } from "@/i18n";
+import { useI18n } from "@/i18n/client";
+import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
@@ -63,10 +66,10 @@ function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
 }
 
 /** Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. */
-function settle(state: EditorState, coach: CoachRuntime | null): EditorState {
+function settle(state: EditorState, coach: CoachRuntime | null, locale: Locale): EditorState {
   // Una BO asistida se genera fuera de la página (en el worker, ver el efecto de BuildOrderEditor): tarda más.
   if (!coach || state.analyzedRevision >= state.revision || state.bo.assisted !== undefined) return state;
-  const result = coach.analyze(JSON.stringify(toJson(state)));
+  const result = coach.analyze(JSON.stringify(toJson(state)), locale);
   return result.ok ? reduce(state, { type: "analyzed", analysis: result, revision: state.revision }) : state;
 }
 
@@ -86,6 +89,8 @@ export function BuildOrderEditor({
   /** La que tiene la BO que se edita; una nueva arranca privada. */
   initialVisibility?: Visibility;
 }) {
+  const { locale, t: dict, href } = useI18n();
+  const t = dict.editor;
   const router = useRouter();
   const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [state, setState] = useState<EditorState>(initialState);
@@ -131,21 +136,21 @@ export function BuildOrderEditor({
       const builds = KEEPS_BUILDERS.has(action.type) ? newVillagerBuilds(prev.steps, before) : new Set<string>();
       let next = reduce(prev, action);
       if (builds.size > 0) next = withSteps(next, syncNewVillagerBuilds(next.steps, builds, before));
-      next = settle(next, coach);
+      next = settle(next, coach, locale);
       const after = next.analysis?.start;
       if (builds.size > 0 && after && after.population !== before.population) {
-        next = settle(withSteps(next, syncNewVillagerBuilds(next.steps, builds, after)), coach);
+        next = settle(withSteps(next, syncNewVillagerBuilds(next.steps, builds, after)), coach, locale);
       }
-      const reason = isGuarded(action) ? brokenBy(prev.analysis, next.analysis, next.steps, dataRef.current) : null;
+      const reason = isGuarded(action) ? brokenBy(prev.analysis, next.analysis, next.steps, dataRef.current, locale) : null;
       if (reason) {
-        showNotice(`No se puede: ${reason}`);
+        showNotice(fill(t.noCan, { reason }));
         return false;
       }
       stateRef.current = next;
       setState(next);
       return true;
     },
-    [coach, showNotice],
+    [coach, locale, showNotice, t.noCan],
   );
 
   // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva.
@@ -157,22 +162,22 @@ export function BuildOrderEditor({
           setState((prev) => newAssisted(prev));
           return;
         }
-        const result = runtime.analyze(initialJson);
+        const result = runtime.analyze(initialJson, locale);
         if (result.ok) {
           setStrip(null);
           lastPlanRef.current = null;
           setState((prev) => reduce(prev, { type: "load", analysis: result }));
-          if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
-        } else showNotice(`No se pudo leer la BO: ${result.error}`);
+          if (result.assisted?.regenerated) showNotice(t.regenerated);
+        } else showNotice(fill(t.readFailed, { error: result.error }));
       })
       .catch((error: unknown) => setRuntimeError(error instanceof Error ? error.message : String(error)));
     loadGameData()
       .then(setData)
       .catch((error: unknown) => setRuntimeError(error instanceof Error ? error.message : String(error)));
-    loadMaps()
+    loadMaps(locale)
       .then(setMaps)
       .catch(() => setMaps([]));
-  }, [initialJson, showNotice]);
+  }, [initialJson, locale, showNotice, t.readFailed, t.regenerated]);
 
   // El ancho de la línea de tiempo (la escala se calcula acá, así el arrastre y la línea usan la misma).
   useEffect(() => {
@@ -192,26 +197,26 @@ export function BuildOrderEditor({
       // Una guía de buildorderguide.com o de RTS Overlay se convierte primero; una BO de la app se analiza tal cual.
       const imported = coach.importBuildOrder(json);
       if (!imported.ok) {
-        showNotice(`No se pudo leer la BO: ${imported.error}`);
+        showNotice(fill(t.readFailed, { error: imported.error }));
         return;
       }
-      const result = coach.analyze(imported.source === "bocoach" ? json : JSON.stringify(imported.build_order));
+      const result = coach.analyze(imported.source === "bocoach" ? json : JSON.stringify(imported.build_order), locale);
       if (!result.ok) {
-        showNotice(`No se pudo leer la BO: ${result.error}`);
+        showNotice(fill(t.readFailed, { error: result.error }));
         return;
       }
       if (imported.source !== "bocoach") {
         const from = imported.source === "buildorderguide" ? "buildorderguide.com" : "RTS Overlay";
         const warnings = imported.warnings.slice(0, 3).join(" · ");
-        const more = imported.warnings.length > 3 ? ` (y ${imported.warnings.length - 3} más)` : "";
-        showNotice(warnings ? `Importada de ${from}, revisala: ${warnings}${more}` : `Importada de ${from}.`);
+        const more = imported.warnings.length > 3 ? fill(t.importedMore, { n: imported.warnings.length - 3 }) : "";
+        showNotice(warnings ? fill(t.importedCheck, { from, warnings, more }) : fill(t.importedFrom, { from }));
       }
       setStrip(null);
       lastPlanRef.current = null;
       dispatch({ type: "load", analysis: result });
-      if (result.assisted?.regenerated) showNotice("Se recalculó con el generador nuevo.");
+      if (result.assisted?.regenerated) showNotice(t.regenerated);
     },
-    [coach, dispatch, showNotice],
+    [coach, dispatch, locale, showNotice, t],
   );
 
   // D12: el modo asistido. Cada cambio genera la BO de nuevo en el worker, juntando los toques seguidos; la franja
@@ -222,8 +227,8 @@ export function BuildOrderEditor({
     () =>
       (state.analysis?.assisted?.goals ?? [])
         .filter((g) => g.end !== null && plan?.goals[g.index])
-        .map((g) => ({ t: g.end!, label: goalLabel(plan!.goals[g.index], (unit) => data?.entities[unit]?.made_in), dashed: true })),
-    [data, plan, state.analysis],
+        .map((g) => ({ t: g.end!, label: goalLabel(plan!.goals[g.index], (unit) => data?.entities[unit]?.made_in, locale), dashed: true })),
+    [data, locale, plan, state.analysis],
   );
   const debounce = useRef(debouncer(DEBOUNCE_MS));
   const sequence = useRef(0);
@@ -234,17 +239,17 @@ export function BuildOrderEditor({
     const before = state.analysis;
     debounce.current.schedule(() => {
       const id = ++sequence.current;
-      analyzeAsync(json)
+      analyzeAsync(json, locale)
         .then((result) => {
           if (id !== sequence.current || !result.ok) return;
           const buildingOf = (unit: string) => dataRef.current?.entities[unit]?.made_in;
-          setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf));
+          setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf, locale));
           lastPlanRef.current = plan;
           setState((prev) => reduce(prev, { type: "generated", analysis: result, revision }));
         })
-        .catch((error: unknown) => showNotice(`No se pudo generar la BO: ${error instanceof Error ? error.message : String(error)}`));
+        .catch((error: unknown) => showNotice(fill(t.generateFailed, { error: error instanceof Error ? error.message : String(error) })));
     });
-  }, [plan, showNotice, state.analysis, state.analyzedRevision, state.bo, state.revision]);
+  }, [locale, plan, showNotice, state.analysis, state.analyzedRevision, state.bo, state.revision, t.generateFailed]);
 
   const changePlan = useCallback(
     (next: AssistedPlan, change: string) => {
@@ -258,17 +263,17 @@ export function BuildOrderEditor({
   const toManualMode = useCallback(() => {
     if (!state.analysis) return;
     const { bo, steps } = toManual(state.analysis);
-    const next = settle({ ...state, bo, steps, revision: state.revision + 1 }, coach);
+    const next = settle({ ...state, bo, steps, revision: state.revision + 1 }, coach, locale);
     stateRef.current = next;
     setState(next);
     setStrip(null);
     lastPlanRef.current = null;
-  }, [coach, state]);
+  }, [coach, locale, state]);
 
   const labels = useMemo(() => new Map(state.analysis?.steps.map((s) => [s.id, s.text]) ?? []), [state.analysis]);
-  const label = useCallback((step: EditorStep) => labels.get(step.id) ?? (step.what ? entityName(step.what, step.count) : step.do), [labels]);
+  const label = useCallback((step: EditorStep) => labels.get(step.id) ?? (step.what ? entityName(step.what, step.count, locale) : step.do), [labels, locale]);
   const map = maps.find((m) => m.key === state.bo.map) ?? null;
-  const palette = useMemo(() => (data ? paletteBar(data, state.bo.civ, map) : null), [data, state.bo.civ, map]);
+  const palette = useMemo(() => (data ? paletteBar(data, state.bo.civ, map, locale) : null), [data, locale, state.bo.civ, map]);
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
   // En el celular la columna de nombres es angosta y la línea se desplaza de costado si no entra.
@@ -285,7 +290,7 @@ export function BuildOrderEditor({
     return chain ? chain.to + 1 : state.steps.length;
   }, [state.selected, state.steps]);
   // La paleta en ese lugar: solo lo que se puede agregar ahí.
-  const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data, state.bo.civ) : null), [palette, data, state.steps, insertIndex, state.bo.civ]);
+  const paletteNow = useMemo(() => (palette && data ? paletteHere(palette, state.steps, insertIndex(), data, state.bo.civ, locale) : null), [palette, data, locale, state.steps, insertIndex, state.bo.civ]);
   const paletteAll = useMemo(() => (palette ? allItems(palette) : []), [palette]);
 
   // El arranque de la partida (con la civ) y lo que hacen los aldeanos iniciales: el primer paso de la BO.
@@ -293,7 +298,7 @@ export function BuildOrderEditor({
   const opening = useMemo(() => detectOpening(state.steps, start), [state.steps, start]);
   const sources = useMemo(() => (map ? map.sources : SOURCES), [map]);
   // La BO como en las guías: "Aldeanos 4 a 6 → ovejas", "Aldeano 7: campamento maderero → madera".
-  const guide = useMemo(() => guideLabels(state.steps, start), [state.steps, start]);
+  const guide = useMemo(() => guideLabels(state.steps, start, locale), [locale, state.steps, start]);
   const builtByNew = useMemo(() => newVillagerBuilds(state.steps, start), [state.steps, start]);
   const textOf = useCallback((step: EditorStep) => guide.get(step.id) ?? label(step), [guide, label]);
   const insertAfter = useMemo(() => {
@@ -303,16 +308,16 @@ export function BuildOrderEditor({
 
   /** Un paso nuevo de la paleta en ese lugar: sus aldeanos de lo que hay ahí, o un edificio que hace el próximo aldeano. */
   const insertNew = useCallback(
-    (steps: EditorStep[], step: EditorStep, index: number): Inserted => insertNewStep(steps, step, index, start, nextId({ bo: state.bo, steps: [...steps, step] }), sources),
-    [sources, start, state.bo],
+    (steps: EditorStep[], step: EditorStep, index: number): Inserted => insertNewStep(steps, step, index, start, nextId({ bo: state.bo, steps: [...steps, step] }), sources, locale),
+    [locale, sources, start, state.bo],
   );
   const normalize = useCallback((steps: EditorStep[]) => syncNewVillagerBuilds(steps, newVillagerBuilds(state.steps, start), start), [start, state.steps]);
   /** Lo que se cuenta cuando el editor decidió algo que no se ve: "Aldeano 7: campamento maderero → madera (sale de los 4...)". */
   const tellInserted = useCallback(
     (inserted: Inserted) => {
-      if (inserted.note) showNotice(`${guideLabels(inserted.steps, start).get(inserted.selectId) ?? "Listo"} (${inserted.note}).`);
+      if (inserted.note) showNotice(`${guideLabels(inserted.steps, start, locale).get(inserted.selectId) ?? t.done} (${inserted.note}).`);
     },
-    [showNotice, start],
+    [locale, showNotice, start, t.done],
   );
 
   /**
@@ -322,16 +327,16 @@ export function BuildOrderEditor({
   const insertAt = useCallback(
     (step: EditorStep, index: number) => {
       if (!data) return;
-      const range = allowedRange(state.steps, [step], data, label);
+      const range = allowedRange(state.steps, [step], data, label, locale);
       if (range.lo > range.hi) {
-        showNotice(`No se puede: ${range.loReason ?? range.hiReason ?? "no hay lugar para ese paso"}`);
+        showNotice(fill(t.noCan, { reason: range.loReason ?? range.hiReason ?? t.noPlace }));
         return;
       }
       const at = snapDownTo(state.steps, Math.min(Math.max(index, range.lo), range.hi));
       const inserted = insertNew(state.steps, step, at);
       if (dispatch({ type: "setSteps", steps: inserted.steps, selected: inserted.selectId })) tellInserted(inserted);
     },
-    [data, dispatch, insertNew, label, showNotice, state.steps, tellInserted],
+    [data, dispatch, insertNew, label, locale, showNotice, state.steps, t.noCan, t.noPlace, tellInserted],
   );
   /** Borrar: un edificio que hace el próximo aldeano se lleva a su aldeano (que vuelve a su tanda si la hay). */
   const removeStep = useCallback(
@@ -353,14 +358,14 @@ export function BuildOrderEditor({
         const without = state.steps.filter((s) => s.id !== id);
         // Si encabezaba un paso mixto, el que sigue pasa a encabezarlo.
         if (!state.steps[i].withPrevious && without[i]?.withPrevious) without[i] = { ...without[i], withPrevious: false };
-        const inserted = insertByNewVillager(without, { ...state.steps[i], withPrevious: false }, i, start, nextId(state), sources);
+        const inserted = insertByNewVillager(without, { ...state.steps[i], withPrevious: false }, i, start, nextId(state), sources, locale);
         if (dispatch({ type: "setSteps", steps: inserted.steps, selected: id })) tellInserted(inserted);
         return;
       }
       if (isNew) dispatch({ type: "setSteps", steps: detachNewVillager(state.steps, id, builder ?? undefined) });
       else dispatch({ type: "update", id, patch: { from: builder ?? undefined } });
     },
-    [dispatch, sources, start, state, tellInserted],
+    [dispatch, locale, sources, start, state, tellInserted],
   );
   const changeOpening = useCallback(
     (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
@@ -372,13 +377,14 @@ export function BuildOrderEditor({
       dispatch({ type: "setField", field: "civ", value: civ });
       if (data && opening.kind === "houses" && !canMake(data, civ, "house")) {
         dispatch({ type: "setSteps", steps: withOpening(state.steps, { kind: "direct", source: opening.source }, { ...start, houses: false }, nextId(state)) });
-        showNotice("Esa civ no hace casas: los aldeanos iniciales van directo a " + (opening.source === "sheep" ? "las ovejas" : "su recurso") + ".");
+        showNotice(fill(t.noHouses, { place: opening.source === "sheep" ? t.noHousesSheep : t.noHousesSource }));
       }
     },
-    [data, dispatch, opening, showNotice, start, state],
+    [data, dispatch, opening, showNotice, start, state, t.noHouses, t.noHousesSheep, t.noHousesSource],
   );
 
   const { drag, startBoxDrag, startPaletteDrag } = useTimelineDrag({
+    locale,
     state,
     coach,
     data,
@@ -401,20 +407,20 @@ export function BuildOrderEditor({
       const chain = blockOf(state.steps, id);
       if (!chain) return;
       const { others, block } = splitBlock(state.steps, chain.from, chain.to);
-      const range = allowedRange(others, block, data, label);
+      const range = allowedRange(others, block, data, label, locale);
       const target = direction < 0 ? snapDownTo(others, chain.from - 1) : snapUp(others, chain.from + 1);
       if (target === chain.from) return;
       if (target < range.lo) {
-        showNotice(range.loReason ?? "No puede ir más antes");
+        showNotice(range.loReason ?? t.noEarlier);
         return;
       }
       if (target > range.hi) {
-        showNotice(range.hiReason ?? "No puede ir más después");
+        showNotice(range.hiReason ?? t.noLater);
         return;
       }
       dispatch({ type: "move", blockFrom: chain.from, blockTo: chain.to, index: target });
     },
-    [data, state.steps, label, showNotice, dispatch],
+    [data, state.steps, label, locale, showNotice, dispatch, t.noEarlier, t.noLater],
   );
 
   const narrow = useNarrow();
@@ -440,12 +446,12 @@ export function BuildOrderEditor({
     const castle = state.analysis.castle_click ?? null;
     setPublishError(null);
     startTransition(async () => {
-      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle, visibility) : await publishBuildOrder(json, feudal, castle, visibility);
+      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle, visibility, locale) : await publishBuildOrder(json, feudal, castle, visibility, locale);
       if (!result.ok) {
         setPublishError(result.error);
         return;
       }
-      router.push(`/bo/${editCode ?? (result.value as string)}`);
+      router.push(href(`/bo/${editCode ?? (result.value as string)}`));
     });
   }
 
@@ -517,7 +523,7 @@ export function BuildOrderEditor({
   if (runtimeError) {
     return (
       <p role="alert" className="text-sm text-red">
-        No se pudo cargar el simulador: {runtimeError}
+        {fill(t.loadFailed, { error: runtimeError })}
       </p>
     );
   }
@@ -537,7 +543,7 @@ export function BuildOrderEditor({
       />
       {!coach || !data ? (
         <p role="status" className="text-sm text-faint">
-          Cargando el motor de la app en el navegador…
+          {t.loadingEngine}
         </p>
       ) : null}
       {notice ? (
@@ -547,25 +553,25 @@ export function BuildOrderEditor({
       ) : null}
       <BoFields
         bo={state.bo}
-        maps={maps.length > 0 ? maps : [{ key: "any", name: "Cualquiera", water: true, sources: [...SOURCES] }]}
+        maps={maps.length > 0 ? maps : [{ key: "any", name: t.any, water: true, sources: [...SOURCES] }]}
         onField={(field, value) => {
-          changeRef.current = field === "civ" ? `civ ${value}` : field === "map" ? `mapa ${value}` : field;
+          changeRef.current = field === "civ" ? fill(t.changeCiv, { value }) : field === "map" ? fill(t.changeMap, { value }) : field;
           if (field === "civ" && !plan) changeCiv(value);
           else dispatch({ type: "setField", field, value });
         }}
         onTags={(tags) => dispatch({ type: "setTags", tags })}
       />
-      <div role="tablist" aria-label="Modo del editor" className="flex gap-2">
+      <div role="tablist" aria-label={t.modeLabel} className="flex gap-2">
         <button
           type="button"
           role="tab"
           aria-selected={plan !== null}
           className={plan ? "button-primary" : "button"}
           disabled={!plan && state.steps.length > 1}
-          title={!plan && state.steps.length > 1 ? "Una BO manual no vuelve a asistida: los objetivos no se pueden adivinar desde los pasos." : undefined}
+          title={!plan && state.steps.length > 1 ? t.assistedDisabled : undefined}
           onClick={() => !plan && dispatch({ type: "setAssisted", assisted: defaultPlan() })}
         >
-          Asistido
+          {t.assisted}
         </button>
         <button
           type="button"
@@ -573,10 +579,10 @@ export function BuildOrderEditor({
           aria-selected={plan === null}
           className={plan ? "button" : "button-primary"}
           onClick={() => {
-            if (plan && window.confirm("La BO pasa a manual: se quedan los pasos y se borran los objetivos. No se puede volver atrás.")) toManualMode();
+            if (plan && window.confirm(t.toManualConfirm)) toManualMode();
           }}
         >
-          Manual
+          {t.manual}
         </button>
       </div>
       {plan && state.analysis && !state.analysis.valid ? <EditorSummary analysis={state.analysis} /> : null}
@@ -650,7 +656,7 @@ export function BuildOrderEditor({
           {paletteNow ? (
             <div className="sticky bottom-3 z-30 flex justify-center">
               <button type="button" className="button-primary px-4 py-2.5 text-base shadow-lg" onClick={() => setSheetOpen(true)}>
-                + Agregar {insertAfter ? "abajo del elegido" : "al final"}
+                {insertAfter ? t.addBelowSelected : t.addAtEnd}
               </button>
             </div>
           ) : null}
@@ -672,7 +678,7 @@ export function BuildOrderEditor({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Agregar un paso"
+            aria-label={t.addStep}
             className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
@@ -680,9 +686,9 @@ export function BuildOrderEditor({
             }}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold">Agregar un paso</p>
+              <p className="text-sm font-semibold">{t.addStep}</p>
               <button type="button" className="button" onClick={() => setSheetOpen(false)}>
-                Listo
+                {t.close}
               </button>
             </div>
             {notice ? <p className="rounded-md border border-amber px-3 py-2 text-sm text-amber">{notice}</p> : null}
@@ -692,34 +698,36 @@ export function BuildOrderEditor({
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="button" onClick={download} disabled={!canDownload}>
-          Descargar .json
+          {t.download}
         </button>
         <fieldset className="ml-auto flex flex-wrap items-center gap-3 text-sm">
-          <legend className="sr-only">Quién la ve</legend>
+          <legend className="sr-only">{t.visibilityLegend}</legend>
           {(["public", "private"] as const).map((value) => (
             <label key={value} className="flex cursor-pointer items-center gap-1.5">
               <input type="radio" name="visibility" value={value} checked={visibility === value} onChange={() => setVisibility(value)} />
-              {value === "public" ? "Pública" : "Privada"}
+              {value === "public" ? t.public : t.private}
             </label>
           ))}
-          <span className="text-xs text-faint">{visibility === "private" ? "Solo la ven vos y tu app." : "Aparece en la biblioteca."}</span>
+          <span className="text-xs text-faint">{visibility === "private" ? t.privateHint : t.publicHint}</span>
         </fieldset>
         <button type="button" className="button-primary" onClick={publish} disabled={!canPublish}>
-          {pending ? "Guardando…" : editCode ? "Guardar la nueva versión" : visibility === "private" ? "Guardar privada" : "Publicar en la biblioteca"}
+          {pending ? t.saving : editCode ? t.saveVersion : visibility === "private" ? t.savePrivate : t.publish}
         </button>
       </div>
       {!loggedIn ? (
         <p className="text-sm text-faint">
-          Para publicarla hace falta{" "}
-          <Link href="/login?volver=/subir" className="text-amber hover:underline">
-            iniciar sesión
-          </Link>
-          ; descargarla no.
+          {rich(t.needLogin, {
+            link: (text) => (
+              <Link href={`/login?volver=${href("/subir")}`} className="text-amber hover:underline">
+                {text}
+              </Link>
+            ),
+          })}
         </p>
       ) : null}
       {analysisIsCurrent && !state.analysis!.valid ? (
         <p role="alert" className="text-sm text-red">
-          Corregí los errores antes de publicar.
+          {t.fixErrors}
         </p>
       ) : null}
       {publishError ? (

@@ -3,6 +3,8 @@
  * React: la web lo lee de /coach/donaciones.json (lo copia scripts/build-coach.mjs) y suma el progreso de cada meta.
  */
 
+import { LANG_TAG, type Locale } from "@/i18n/locales";
+
 export const SUPPORT_SITES = ["cafecito", "paypal", "kofi", "mercado_pago"] as const;
 export type SupportSite = (typeof SUPPORT_SITES)[number];
 
@@ -61,8 +63,11 @@ export function emptySupport(): Support {
   return { links: {}, currency: "ARS", goals: [], donations: [] };
 }
 
-/** Lee el archivo (tiene comentarios de línea); lo que no sirve se ignora en vez de romper la página. */
-export function parseSupport(source: string): Support {
+/**
+ * Lee el archivo (tiene comentarios de línea); lo que no sirve se ignora en vez de romper la página. Cada meta puede
+ * traer su texto en otro idioma ("name_en", "description_en"); si no, va el castellano.
+ */
+export function parseSupport(source: string, locale: Locale = "es"): Support {
   const json = source.replace(/^\s*\/\/.*$/gm, "");
   let root: Record<string, unknown>;
   try {
@@ -80,7 +85,8 @@ export function parseSupport(source: string): Support {
   for (const raw of Array.isArray(root.goals) ? root.goals : []) {
     const g = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
     if (!text(g.id) || !text(g.name) || amount(g.target) === 0) continue;
-    support.goals.push({ id: text(g.id), name: text(g.name), target: amount(g.target), ...(text(g.description) ? { description: text(g.description) } : {}) });
+    const description = text(g[`description_${locale}`]) || text(g.description);
+    support.goals.push({ id: text(g.id), name: text(g[`name_${locale}`]) || text(g.name), target: amount(g.target), ...(description ? { description } : {}) });
   }
   for (const raw of Array.isArray(root.donations) ? root.donations : []) {
     const d = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
@@ -138,10 +144,10 @@ export function tally(support: Support): Tally {
   };
 }
 
-/** "$ 30.000" en el formato de Argentina (o la moneda que sea). */
-export function formatAmount(value: number, currency: string) {
+/** "$ 30.000" en el formato del idioma (o la moneda que sea). */
+export function formatAmount(value: number, currency: string, locale: Locale = "es") {
   try {
-    return new Intl.NumberFormat("es-AR", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+    return new Intl.NumberFormat(LANG_TAG[locale], { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
   } catch {
     return `${Math.round(value)} ${currency}`;
   }

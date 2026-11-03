@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
 import { formatClock } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { blockLines } from "@/lib/coach/stalls";
 import type { Analysis, AnalysisResult, Issue } from "@/lib/coach/types";
-import { BLOCK_TEXT, blockReason } from "@/lib/editor/text";
+import { blockReason, blockText } from "@/lib/editor/text";
 import { Timeline } from "./Timeline";
 
 type State = { status: "loading" } | { status: "error"; message: string } | { status: "done"; result: AnalysisResult };
@@ -24,6 +26,7 @@ export function BuildOrderView({
   onAnalysis?: (result: AnalysisResult) => void;
   fallback?: ReactNode;
 }) {
+  const { locale, t } = useI18n();
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -31,7 +34,7 @@ export function BuildOrderView({
     loadCoach()
       .then((coach) => {
         if (cancelled) return;
-        const result = coach.analyze(json);
+        const result = coach.analyze(json, locale);
         setState({ status: "done", result });
         onAnalysis?.(result);
       })
@@ -41,13 +44,13 @@ export function BuildOrderView({
     return () => {
       cancelled = true;
     };
-  }, [json, onAnalysis]);
+  }, [json, locale, onAnalysis]);
 
   if (state.status === "loading")
     return (
       <div className="flex flex-col gap-3">
         <p role="status" className="text-sm text-faint">
-          Simulando la BO con el motor de la app…
+          {t.sim.loading}
         </p>
         {fallback}
       </div>
@@ -56,7 +59,7 @@ export function BuildOrderView({
     return (
       <div className="flex flex-col gap-3">
         <p role="alert" className="text-sm text-red">
-          No se pudo cargar el simulador: {state.message}
+          {fill(t.sim.loadFailed, { error: state.message })}
         </p>
         {fallback}
       </div>
@@ -71,6 +74,7 @@ export function BuildOrderView({
 }
 
 function AnalysisView({ analysis }: { analysis: Analysis }) {
+  const { locale, t } = useI18n();
   const linesByStep = blockLines(analysis.blocks ?? []);
   const issues = new Map<string, string[]>();
   for (const issue of analysis.issues) {
@@ -82,16 +86,16 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
   return (
     <div className="flex flex-col gap-5">
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Clic de Feudal" value={analysis.feudal_click} target={target} />
-        <Stat label="Clic de Castillos" value={analysis.castle_click} target={analysis.targets.castle_click_time} />
+        <Stat label={t.sim.feudalClick} value={analysis.feudal_click} target={target} />
+        <Stat label={t.sim.castleClick} value={analysis.castle_click} target={analysis.targets.castle_click_time} />
         <div className="rounded-md border border-line bg-panel p-3">
-          <dt className="text-xs text-faint">Pasos</dt>
+          <dt className="text-xs text-faint">{t.sim.steps}</dt>
           <dd className="text-lg font-semibold">{analysis.steps.length}</dd>
         </div>
         <div className="rounded-md border border-line bg-panel p-3">
-          <dt className="text-xs text-faint">Validación</dt>
+          <dt className="text-xs text-faint">{t.sim.validation}</dt>
           <dd className={`text-lg font-semibold ${analysis.valid ? "text-green" : "text-red"}`}>
-            {analysis.valid ? (analysis.issues.length > 0 ? "Con avisos" : "Sin problemas") : "Con errores"}
+            {analysis.valid ? (analysis.issues.length > 0 ? t.sim.withWarnings : t.sim.noProblems) : t.sim.withErrors}
           </dd>
         </div>
       </dl>
@@ -110,11 +114,11 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
               {(linesByStep.get(step.id) ?? []).map(({ kind, block: b }, j) =>
                 kind === "stall" ? (
                   <p key={j} className="text-xs text-orange">
-                    Se traba de {formatClock(b.from)} a {formatClock(b.to)}: {BLOCK_TEXT[b.reason]}
+                    {fill(t.sim.stall, { from: formatClock(b.from), to: formatClock(b.to), reason: blockText(b.reason, locale) })}
                   </p>
                 ) : (
                   <p key={j} className="text-xs text-faint">
-                    Espera de {formatClock(b.from)} a {formatClock(b.to)}: {blockReason(b)}
+                    {fill(t.sim.wait, { from: formatClock(b.from), to: formatClock(b.to), reason: blockReason(b, undefined, locale) })}
                   </p>
                 ),
               )}
@@ -139,6 +143,7 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
 
 /** Los problemas del validador, errores en rojo y avisos en ámbar (también los usa el editor). */
 export function IssuesList({ issues }: { issues: Issue[] }) {
+  const { t } = useI18n();
   if (issues.length === 0) return null;
   return (
     <ul className="flex flex-col gap-1 rounded-md border border-line bg-panel p-3 text-sm">
@@ -148,31 +153,34 @@ export function IssuesList({ issues }: { issues: Issue[] }) {
           {issue.message}
         </li>
       ))}
+      {t.sim.coreLanguageNote ? <li className="text-xs text-faint">{t.sim.coreLanguageNote}</li> : null}
     </ul>
   );
 }
 
 /** La postura de cierre (D2): qué queda siempre en cola y a qué edad se apunta. */
 export function PostureLine({ posture }: { posture: Analysis["posture"] }) {
+  const { t } = useI18n();
   if (!posture?.text && !posture?.next_age) return null;
   return (
     <p className="rounded-md border border-line bg-panel p-3 text-sm">
-      <span className="text-faint">Al terminar: </span>
-      {[posture.text, posture.next_age ? `y después, ${posture.next_age}` : null].filter(Boolean).join(", ")}
-      {posture.derived ? <span className="text-xs text-faint"> (deducido de los pasos)</span> : null}
+      <span className="text-faint">{t.sim.atEnd}</span>
+      {[posture.text, posture.next_age ? fill(t.sim.andThen, { age: posture.next_age }) : null].filter(Boolean).join(", ")}
+      {posture.derived ? <span className="text-xs text-faint">{t.sim.derived}</span> : null}
     </p>
   );
 }
 
 /** Las ramas (D3): los pasos que se agregan con cada señal de la partida. */
 export function BranchList({ branches }: { branches: Analysis["branches"] }) {
+  const { t } = useI18n();
   return (
     <>
       {(branches ?? []).map((branch, i) => (
         <div key={i} className="rounded-md border border-line bg-panel p-3 text-sm">
           <p>
             <span className="font-semibold">{branch.on}</span>
-            {branch.before ? <span className="text-faint"> (antes de {branch.before})</span> : null}
+            {branch.before ? <span className="text-faint">{fill(t.sim.branchBefore, { time: branch.before })}</span> : null}
             {branch.note ? <span className="text-muted">: {branch.note}</span> : null}
           </p>
           <ol className="mt-1 list-decimal pl-5 text-muted">
@@ -188,13 +196,14 @@ export function BranchList({ branches }: { branches: Analysis["branches"] }) {
 
 /** Una tarjeta con un clic de edad y, si hay, el objetivo de la BO (en rojo con más de 15 s de atraso). */
 export function Stat({ label, value, target }: { label: string; value?: number | null; target?: number }) {
+  const { t } = useI18n();
   const delta = value != null && target != null ? value - target : null;
   return (
     <div className="rounded-md border border-line bg-panel p-3">
       <dt className="text-xs text-faint">{label}</dt>
       <dd className="text-lg font-semibold">{value != null ? formatClock(value) : "—"}</dd>
       {target != null ? (
-        <dd className={`text-xs ${delta !== null && delta > 15 ? "text-red" : "text-green"}`}>objetivo {formatClock(target)}</dd>
+        <dd className={`text-xs ${delta !== null && delta > 15 ? "text-red" : "text-green"}`}>{fill(t.sim.target, { time: formatClock(target) })}</dd>
       ) : null}
     </div>
   );

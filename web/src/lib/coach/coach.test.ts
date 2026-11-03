@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { describeStep, type StepLike } from "../stepText";
+import { LOCALES, type Locale } from "@/i18n/locales";
+import { describeStep, hasEntityName, type StepLike } from "../stepText";
 import type { CoachRuntime } from "./runtime";
 import { coachDir, repoDir as repo, startTestCoach } from "./testing";
 import type { Analysis } from "./types";
@@ -66,14 +67,18 @@ describe("importar guías", () => {
   });
 });
 
-describe("los pasos escritos desde el servidor dicen lo mismo que el Core", () => {
-  const texts = (json: string) => (coach.analyze(json) as Analysis).steps.map((step) => step.text);
-  const described = (json: string) => (JSON.parse(json) as { steps: StepLike[] }).steps.map(describeStep);
+describe.each(LOCALES.map((locale) => [locale] as [Locale]))("los pasos escritos desde el servidor dicen lo mismo que el Core (%s)", (locale) => {
+  const texts = (json: string) => (coach.analyze(json, locale) as Analysis).steps.map((step) => step.text);
+  const described = (json: string) => (JSON.parse(json) as { steps: StepLike[] }).steps.map((step) => describeStep(step, locale));
+  const gameData = () => JSON.parse(readFileSync(join(coachDir, "game_data.json"), "utf8")) as { entities: Record<string, unknown> };
+
+  it("toda entidad del juego tiene nombre en este idioma (si no, saldría en otro)", () => {
+    expect(Object.keys(gameData().entities).filter((key) => !hasEntityName(key, locale))).toEqual([]);
+  });
 
   it("con cada entidad del juego, en singular y en plural, y cada forma de paso", () => {
-    const gameData = JSON.parse(readFileSync(join(coachDir, "game_data.json"), "utf8")) as { entities: Record<string, unknown> };
     const steps: Record<string, unknown>[] = [];
-    for (const what of [...Object.keys(gameData.entities), "dragon_volador"]) {
+    for (const what of [...Object.keys(gameData().entities), "dragon_volador"]) {
       steps.push({ id: `a${steps.length}`, do: "train", what, count: 1 });
       steps.push({ id: `a${steps.length}`, do: "build", what, count: 2, builders: 3, assign: "wood" });
       steps.push({ id: `a${steps.length}`, do: "research", what });
@@ -101,4 +106,11 @@ describe("los pasos escritos desde el servidor dicen lo mismo que el Core", () =
       }
     }
   });
+});
+
+it("en inglés los pasos están en inglés", () => {
+  expect(describeStep({ do: "train", what: "villager", count: 6, assign: "sheep" }, "en")).toBe("6 villagers on sheep");
+  expect(describeStep({ do: "research", what: "feudal_age", at_pop: 22 }, "en")).toBe("Research Feudal Age at 22 pop");
+  const result = coach.analyze(readFileSync(join(repo, "tests", "fixtures", "build_orders", "scouts_feudal.json"), "utf8"), "en") as Analysis;
+  expect(result.steps[0].text).toBe("Build 2 houses (3 builders) → sheep");
 });

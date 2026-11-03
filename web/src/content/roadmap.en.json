@@ -1,0 +1,66 @@
+{
+  "_como_editar": "This file is the text of the /en/roadmap page. Change whatever you want and push: no component needs touching. Each section has a title, an optional intro and a list of items (title and text). To add an item, copy a whole one with its braces and put a comma between items. If you change something, do the same in roadmap.es.json (a test requires both to have the same sections) and set today's date in 'updated' (YYYY-MM-DD). This key isn't shown anywhere.",
+  "title": "Roadmap",
+  "description": "What BO Coach does today, what it can't do yet, what's coming and how you can help. This isn't the final version: it grows with your help.",
+  "updated": "2026-11-02",
+  "intro": [
+    "BO Coach isn't the final version. It's made by one person, playing their own games to find what breaks, and that has a ceiling: every game shows one new bug, almost always a different one.",
+    "What can improve it most is games from other players, with other civs, other screens and other ways of playing. With your help the potential is huge. This page tells you where it really stands, no makeup."
+  ],
+  "sections": [
+    {
+      "id": "today",
+      "title": "What it does today",
+      "items": [
+        { "title": "Follows your build order while you play", "text": "An overlay on top of the game shows the current step and notices on its own what you already did." },
+        { "title": "Tells you where to put every villager", "text": "How many there should be on each resource, compared to how many you really have." },
+        { "title": "Warns you about what you miss", "text": "Next to your mouse: out of houses, idle town center, idle villagers." },
+        { "title": "Adjusts when you stray", "text": "If you do something early or run late, it carries on instead of getting stuck. If you abandon the build order, it stops asking for its steps." },
+        { "title": "Sees what your rival does", "text": "From the score panel it notices when your rival clicks up to the next age and warns you." },
+        { "title": "Picks the build order for you", "text": "On the loading screen it reads the civs and suggests one for your civ and your rival. It also starts and stops on its own." },
+        { "title": "Gives you a report afterwards", "text": "What fell behind, how long the town center sat idle, how long you were out of houses and how that matchup tends to go." },
+        { "title": "A website to find, build and share", "text": "A library with a build order for every civ, an editor that simulates every change and real matchup stats." },
+        { "title": "It doesn't cheat", "text": "It only looks at the screen: it doesn't read the game's memory, inject code or send keys or clicks." }
+      ]
+    },
+    {
+      "id": "not-yet",
+      "title": "What it can't do yet",
+      "intro": "Better you know before downloading it.",
+      "items": [
+        { "title": "Only tested at 1920×1080", "text": "The HUD rescales, but the production queue and the loading screen still expect that resolution. On another one it may read less." },
+        { "title": "The app is in Spanish", "text": "The website is already in English and Spanish, and the app reads the game in both, but its own texts are Spanish only. This is the biggest thing missing for most players, and it's on the list below." },
+        { "title": "Works best with its HUD mod", "text": "To know how many villagers are on each resource, the app installs a mod that slightly changes the game's panel. Without the mod it estimates and gets more wrong." },
+        { "title": "It doesn't replan", "text": "If the game strays far from the build order, it helps with the basics (houses, town center, villagers), but it doesn't work out a new path." },
+        { "title": "Almost nobody else has tried it", "text": "Nobody but its author has tried the first-time setup. You'll very likely find something broken in the first five minutes." }
+      ]
+    },
+    {
+      "id": "coming",
+      "title": "What's coming",
+      "intro": "Roughly in this order. It may change depending on what shows up in games.",
+      "items": [
+        { "title": "A game log", "text": "The app will save what it read and what it advised in each game, and you'll be able to send it if you want, with no video or screenshots. That way any bug you hit can be reproduced and fixed without you playing again: it's what will speed everything up the most." },
+        { "title": "Any resolution", "text": "All the reading working on your screen, not just at 1920×1080." },
+        { "title": "A friendlier app", "text": "Today you can tell it was built by a programmer, for a programmer. A nicer, simpler version is coming for people who just want to play, in English too." },
+        { "title": "A build order that replans itself", "text": "Instead of following a fixed list, the coach would look at how your game is going and work out the best path from there to the next goal: if you lost villagers or fell behind, it tells you what to do now. It's the most ambitious item here and it needs games from other players to get right." },
+        { "title": "More languages", "text": "The ones the game ships with, little by little, starting with what people ask for." },
+        { "title": "A small beta", "text": "A few players with the game log on, before any big release. If you're interested, let us know." }
+      ]
+    },
+    {
+      "id": "help",
+      "title": "How to help",
+      "intro": "You don't need to know how to code.",
+      "items": [
+        { "title": "Play with the app", "text": "And when the game log is ready, leave it on. Every game with another civ, another map or another screen shows things you never see playing the same way." },
+        { "title": "Tell us what's broken", "text": "Open an issue on GitHub with what you saw and, if you can, a screenshot. A simple \"it asked me for a house I already had\" helps a lot." },
+        { "title": "Publish your build orders", "text": "Build them in the editor and upload them to the library, or vote for the ones that helped you so others can find them." },
+        { "title": "Join the beta", "text": "If you want to be among the first and don't mind things breaking, say so on GitHub." },
+        { "title": "Help with languages", "text": "If a translation bothers you or you'd like to add your language, you can: all the texts are in simple files." },
+        { "title": "Buy me a coffee", "text": "It's free and it'll stay free. What comes in pays for the domain and the website, and it's logged in plain sight on the home page." }
+      ]
+    }
+  ],
+  "closing": "If you made it this far, you're one of the people who can make this grow. Try it, break it and tell us what happened."
+}

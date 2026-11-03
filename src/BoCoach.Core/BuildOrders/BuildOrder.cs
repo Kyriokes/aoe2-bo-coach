@@ -135,6 +135,19 @@ public sealed record Branch
         ["villagers_lost"] = "Si perdés aldeanos",
     };
 
+    private static readonly IReadOnlyDictionary<string, string> SignalsEn = new Dictionary<string, string>
+    {
+        ["rival_feudal_click"] = "If the rival clicks up to Feudal",
+        ["rival_castle_click"] = "If the rival clicks up to Castle",
+        ["rival_imperial_click"] = "If the rival clicks up to Imperial",
+        ["under_attack"] = "If you are attacked",
+        ["villagers_lost"] = "If you lose villagers",
+    };
+
+    /// <summary>El texto de una señal en el idioma (ver <see cref="StepText"/>); una señal desconocida, su clave.</summary>
+    public static string SignalText(string signal, string language = StepText.Spanish) =>
+        (language == StepText.English ? SignalsEn : Signals).GetValueOrDefault(signal, signal);
+
     /// <summary>La señal (<see cref="Signals"/>).</summary>
     public string On { get; set; } = "";
 

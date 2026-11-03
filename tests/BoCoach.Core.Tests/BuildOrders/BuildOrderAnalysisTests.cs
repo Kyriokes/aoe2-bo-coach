@@ -8,8 +8,25 @@ namespace BoCoach.Core.Tests.BuildOrders;
 /// <summary>El JSON que la web recibe del Core en WebAssembly.</summary>
 public class BuildOrderAnalysisTests
 {
-    private static JsonElement Analyze(string json) =>
-        JsonDocument.Parse(BuildOrderAnalysis.Analyze(json, TestData.GameData, TestData.Events)).RootElement;
+    private static JsonElement Analyze(string json, string language = StepText.Spanish) =>
+        JsonDocument.Parse(BuildOrderAnalysis.Analyze(json, TestData.GameData, TestData.Events, language: language)).RootElement;
+
+    [Fact]
+    public void En_ingles_describe_los_pasos_la_postura_y_las_ramas()
+    {
+        var r = Analyze("""
+            { "schema_version": 2, "name": "x", "steps": [
+                { "id": "a", "do": "train", "what": "villager", "count": 6, "assign": "sheep" },
+                { "id": "b", "do": "build", "what": "stable", "count": 1 },
+                { "id": "c", "do": "train", "what": "scout_cavalry", "count": 3 } ],
+              "branches": [ { "on": "under_attack", "steps": [ { "id": "d", "do": "train", "what": "spearman", "count": 2 } ] } ] }
+            """, StepText.English);
+        Assert.Equal("6 villagers on sheep", r.GetProperty("steps")[0].GetProperty("text").GetString());
+        Assert.Equal("villagers and scouts always in the queue", r.GetProperty("posture").GetProperty("text").GetString());
+        Assert.Equal("Feudal Age", r.GetProperty("posture").GetProperty("next_age").GetString());
+        Assert.Equal("If you are attacked", r.GetProperty("branches")[0].GetProperty("on").GetString());
+        Assert.Equal("Train 2 spearmen", r.GetProperty("branches")[0].GetProperty("steps")[0].GetString());
+    }
 
     [Fact]
     public void Una_BO_valida_trae_pasos_descritos_y_la_simulacion()

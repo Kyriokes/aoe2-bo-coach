@@ -4,7 +4,8 @@ import { sessionClient } from "./supabase/server";
 
 export interface CurrentUser {
   id: string;
-  name: string;
+  /** null si el perfil no tiene nombre: lo completa quien lo muestra, en su idioma. */
+  name: string | null;
   avatarUrl: string | null;
 }
 
@@ -21,7 +22,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const { data: profile } = await supabase.from("profiles").select("display_name, avatar_url").eq("id", id).maybeSingle();
   return {
     id,
-    name: (profile?.display_name as string | undefined) ?? "Jugador",
+    name: (profile?.display_name as string | undefined) ?? null,
     avatarUrl: (profile?.avatar_url as string | null | undefined) ?? null,
   };
 }

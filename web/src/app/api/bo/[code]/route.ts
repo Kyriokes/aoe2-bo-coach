@@ -1,3 +1,4 @@
+import { getDictionary } from "@/i18n";
 import type { NextRequest } from "next/server";
 import { CODE_PATTERN, getBuildOrder } from "@/lib/data";
 import { appRpc, bearerToken, error, publishFromApp } from "../appApi";
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, context: RouteContext<"/api/bo/[
     civ: bo.civ,
     tags: bo.tags,
     // "author" es la cuenta que la subió: la app la muestra al pedir confirmación y el autor del JSON lo escribe cualquiera.
-    author: bo.uploader,
+    author: bo.uploader || getDictionary("es").user.anonymous, // la app está en castellano
     guide_author: bo.author,
     votes: bo.votes,
     feudal_click: bo.feudal_click,
