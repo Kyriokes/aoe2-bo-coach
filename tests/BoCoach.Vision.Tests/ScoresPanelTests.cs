@@ -58,6 +58,44 @@ public class ScoresPanelTests
         Assert.Equal(rival, Assert.Single(rows, r => r.Slot == 2).Score);
     }
 
+    // Los colores del texto en resources/_common/dat/UiColors.txt. Todas las grabaciones son del usuario en azul contra
+    // la IA en rojo: acá se pinta el renglón azul de cada color, con su cuadrado, para ver el resto de la lectura.
+    [Theory]
+    [InlineData(1, 110, 166, 235)]
+    [InlineData(3, 0, 255, 0)]
+    [InlineData(4, 255, 255, 0)]
+    [InlineData(5, 0, 255, 255)]
+    [InlineData(6, 241, 108, 232)]
+    [InlineData(7, 212, 212, 212)]
+    [InlineData(8, 255, 180, 21)]
+    public async Task Lee_el_renglon_de_cualquier_color_de_jugador(int slot, int r, int g, int b)
+    {
+        var ocr = OcrReader.TryCreate();
+        if (ocr is null)
+            return;
+        var rows = await new ScoresPanelReader(ocr).ReadAsync(WithBlueTextIn(Panel("000900"), (r, g, b)));
+
+        Assert.Equal(1064, Assert.Single(rows, row => row.Slot == slot).Score);
+        Assert.Equal(806, Assert.Single(rows, row => row.Slot == 2).Score);
+    }
+
+    /// <summary>Lo que tiene el tono del texto azul pasa a ese color, con el mismo brillo relativo y lo que le queda de gris.</summary>
+    private static CapturedImage WithBlueTextIn(CapturedImage panel, (int R, int G, int B) color)
+    {
+        var bgra = (byte[])panel.Bgra.Clone();
+        for (var i = 0; i < bgra.Length; i += 4)
+        {
+            var (b, g, r) = (bgra[i], bgra[i + 1], bgra[i + 2]);
+            if (b <= r || b <= g || b < 60)
+                continue;
+            var shade = b / 235.0;
+            bgra[i] = (byte)Math.Min(255, color.B * shade);
+            bgra[i + 1] = (byte)Math.Min(255, color.G * shade);
+            bgra[i + 2] = (byte)Math.Min(255, color.R * shade);
+        }
+        return new CapturedImage(panel.Width, panel.Height, bgra);
+    }
+
     [Fact]
     public void La_banda_del_panel_es_la_parte_oscura_de_abajo()
     {
