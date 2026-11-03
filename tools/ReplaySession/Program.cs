@@ -46,7 +46,11 @@
 //       Elige una guía por civ (la de su apertura típica, mejor votada y con menos avisos; sin guía propia, la del grupo
 //       o una genérica con la civ puesta), guarda la original en los fixtures y la convertida en build_orders/civs.
 //       --survey solo muestra la elección y los avisos.
-//   improve <carpeta> [--civ clave]
+//   improve <carpeta> [--civ clave] [--food]
+//       --food: el simulador con la comida finita del mapa de la BO (ovejas, jabalíes, bayas y granjas, como el modo
+//       asistido); sin la opción, comida infinita (lo de siempre).
+//   simulate <bo.json> [--food]
+//       Simula la BO y muestra los clics de edad, el fin y el centro urbano parado, con comida infinita o finita (--food).
 //       Mejora con el simulador cada BO de la carpeta sin cambiar su estrategia (BuildOrderOptimizer) y guarda
 //       <civ>-mejorada.json con lo que cambió y los tiempos antes y después.
 //   reimport <civ> [--out build_orders/civs] [--fixtures tests/fixtures/buildorderguide]
@@ -109,6 +113,7 @@ try
         "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
         "civs" => CivGuides.Civs(args[1], args),
         "improve" => CivGuides.Improve(args[1], args),
+        "simulate" => CivGuides.SimulateOne(args[1], args),
         "reimport" => CivGuides.Reimport(args[1], args),
         "autocalibrate" => AutoCalibrate(args[1], args),
         "hud-preview" => HudPreview.Render(args[1], Layout(args), Text(args, "--fonts", Path.Combine("data", "fonts")), double.Parse(Text(args, "--scale", "1"), CultureInfo.InvariantCulture)),

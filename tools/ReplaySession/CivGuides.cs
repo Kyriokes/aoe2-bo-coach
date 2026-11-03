@@ -228,6 +228,21 @@ internal static class CivGuides
     /// cambios chicos con el simulador sin cambiar la estrategia. Si no encuentra nada que valga, la mejorada es igual
     /// a la importada y lo dice.
     /// </summary>
+    /// <summary>Con --food, el simulador con la comida finita del mapa de la BO (sin mapa, la de Arabia); si no, infinita.</summary>
+    private static PlannerSettings? Settings(GameData data, BuildOrder bo, string[] args) => args.Contains("--food")
+        ? new PlannerSettings { Food = FoodSupply.For(data, Maps.Load(Path.Combine("data", "maps.json")).Get(bo.Map)) }
+        : null;
+
+    /// <summary>Simula una BO y muestra el resumen (clics de edad, fin, centro urbano parado), con comida infinita o finita.</summary>
+    public static int SimulateOne(string file, string[] args)
+    {
+        var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
+        var bo = BuildOrderSerializer.Load(file);
+        var summary = new BuildOrderOptimizer(data, Settings(data, bo, args)).Summarize(bo);
+        Console.WriteLine($"{bo.Name}: {summary.Describe()}{(args.Contains("--food") ? " (comida finita)" : " (comida infinita)")}");
+        return 0;
+    }
+
     public static int Improve(string folder, string[] args)
     {
         var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
@@ -240,7 +255,7 @@ internal static class CivGuides
         Parallel.ForEach(files, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount - 1) }, file =>
         {
             var original = BuildOrderSerializer.Load(file);
-            var result = new BuildOrderOptimizer(data).Improve(original);
+            var result = new BuildOrderOptimizer(data, Settings(data, original, args)).Improve(original);
             var civ = Path.GetFileNameWithoutExtension(file);
             var summary = result.Improved
                 ? $"Mejorada con el simulador del coach desde \"{original.Name}\", con la misma estrategia: {string.Join("; ", result.Changes)}. " +
