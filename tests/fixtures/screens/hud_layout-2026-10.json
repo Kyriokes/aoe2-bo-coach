@@ -12,7 +12,7 @@
 // cola quedan donde los pone el juego.
 {
   "name": "bocoach-2026-10",
-  "pixels_per_unit_at_1080p": 0.4286,
+  "pixels_per_unit_at_1080p": 0.4348,
   "bar": {
     "width": 4600,
     "height": 108,

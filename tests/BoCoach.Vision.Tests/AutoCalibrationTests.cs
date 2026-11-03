@@ -154,7 +154,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     [Fact]
     public void Con_el_diseno_minimo_encuentra_las_cinco_franjas_finas_y_arma_las_cajas()
     {
-        var screen = HudLayoutScreens.Render(MinimalLayout, 0.4286, originX: 6, originY: 4);
+        var screen = HudLayoutScreens.Render(MinimalLayout, MinimalLayout.PixelsPerUnitAt1080p, originX: 6, originY: 4);
 
         var found = AutoCalibration.Detect(screen, RegionLayout.Default, MinimalLayout);
 
@@ -174,7 +174,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     [Fact]
     public void Con_el_diseno_minimo_la_caja_del_log_vuelve_a_la_de_siempre()
     {
-        var screen = HudLayoutScreens.Render(MinimalLayout, 0.4286, originX: 6, originY: 4);
+        var screen = HudLayoutScreens.Render(MinimalLayout, MinimalLayout.PixelsPerUnitAt1080p, originX: 6, originY: 4);
         var reference = RegionLayout.Default.With(RegionNames.EventLog, new RegionRect(0, 0, 261 / 1920.0, 113 / 1080.0));
 
         var found = AutoCalibration.Detect(screen, reference, MinimalLayout);
@@ -298,7 +298,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.NotNull(found);
         Assert.Equal("bocoach-2026-10", found.Hud!.Name);
         Assert.Equal(5, found.Squares.Count);
-        Assert.Equal(1.0145, found.Scale, 0.01);
+        Assert.Equal(1.0, found.Scale, 0.005);
         AssertClose(new PixelRect(50, 5, 30, 37), found.Squares[0], 1, "casillero de madera");
         AssertClose(new PixelRect(763, 5, 35, 37), found.Squares[4], 1, "casillero de población");
         const double ppu = 0.4348;

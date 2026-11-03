@@ -18,7 +18,7 @@ public class HudLayoutTests
         var layout = Repo();
 
         Assert.Equal("bocoach-2026-10", layout.Name);
-        Assert.Equal(0.4286, layout.PixelsPerUnitAt1080p, 4);
+        Assert.Equal(0.4348, layout.PixelsPerUnitAt1080p, 4);
         Assert.Equal(HudLayout.CellOrder, layout.Cells.Select(c => c.Name));
         // La barra cubre la pantalla entera a cualquier escala del HUD (el juego la recorta en el borde): pedido del
         // usuario en la tercera prueba (2026-10-25), la de 2720 se veía cortada.

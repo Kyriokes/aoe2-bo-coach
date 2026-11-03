@@ -12,7 +12,7 @@
 // como diferencia: "=6" (justo), "+2" (faltan 2), "-5" (sobran 5). Los números van pegados al ícono (`align`).
 {
   "name": "bocoach-minimo-2026-11",
-  "pixels_per_unit_at_1080p": 0.4286,
+  "pixels_per_unit_at_1080p": 0.4348,
   "bar": {
     "x": 0,
     "width": 4600,

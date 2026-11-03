@@ -1,5 +1,6 @@
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Regions;
 
 namespace BoCoach.Vision.Tests;
 
@@ -84,5 +85,25 @@ public class QueueScaleTests
 
         Assert.NotEmpty(slots);
         Assert.Equal(Enumerable.Range(0, slots.Count).Select(k => k * ProductionQueue.IconSize), slots.Select(s => s.X));
+    }
+
+    // De punta a punta, con la captura real del usuario (HUD propio, 1:57 de partida, un aldeano en la cola): en otra
+    // resolución la calibración sola mide la escala de la pantalla, ubica la caja de la cola y el aldeano se lee.
+    [Theory]
+    [InlineData(1080)]
+    [InlineData(900)]
+    [InlineData(1440)]
+    [InlineData(2160)]
+    public void Con_la_pantalla_real_calibra_ubica_la_caja_y_lee(int height)
+    {
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "hud_layout-2026-10.json"));
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "hud-layout-20261024-1080p.png")).Resample(height / 1080.0);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, layout);
+
+        Assert.NotNull(found);
+        Assert.Equal(height / 1080.0, found.Scale, 0.005);
+        var box = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
+        Assert.Equal("villager", Assert.Single(Library.Read(screen.Crop(box).AtHudScale(found.Scale))).Key);
     }
 }
