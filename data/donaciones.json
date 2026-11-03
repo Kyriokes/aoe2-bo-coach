@@ -6,6 +6,7 @@
 //     Lo que quede vacío no se muestra.
 //   currency: la moneda de las metas y los aportes (ARS, USD...).
 //   goals: las metas en orden, con el monto objetivo. Los aportes sin "goal" van llenando las metas en ese orden.
+//     name_en y description_en son los textos en inglés de la web (si faltan, va el castellano).
 //   donations: cada aporte que entra, a mano: fecha (AAAA-MM-DD), monto, "via" (cafecito, paypal, kofi,
 //     mercado_pago, otro), "from" (quién, si quiere aparecer; vacío = anónimo), "goal" (el id de una meta, o nada)
 //     y "note" (opcional). La web suma todo y muestra el progreso de cada meta.
@@ -22,12 +23,16 @@
       "id": "dominio",
       "name": "Dominio propio",
       "description": "Una dirección propia para la web en vez de la de Vercel, por un año.",
+      "name_en": "Our own domain",
+      "description_en": "A proper address for the website instead of Vercel's, for one year.",
       "target": 30000
     },
     {
       "id": "hosting",
       "name": "Un año de web y base de datos",
       "description": "Para que la biblioteca no se pause por falta de uso en el plan gratis y aguante más gente.",
+      "name_en": "A year of website and database",
+      "description_en": "So the library doesn't pause from inactivity on the free plan and can handle more people.",
       "target": 120000
     }
   ],
