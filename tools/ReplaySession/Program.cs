@@ -830,10 +830,22 @@ static async Task<int> Bench(string recording, string[] args)
 
     // El lector real, captura por captura: solo pasa el OCR si el texto cambió.
     var reader = new EventLogReader(ocr, Catalog(args));
+    var shownLines = new List<IReadOnlyList<string>>();
     watch.Restart();
     foreach (var log in logs)
+    {
         await reader.ReadAsync(log);
+        shownLines.Add(reader.LastLines);
+    }
     var ocrTotal = watch.Elapsed.TotalMilliseconds;
+
+    // El registro de partida: tapar el chat (solo cuando cambian los renglones, y ya está contado en el log) y escribir
+    // las capturas comprimidas. Lo del coach (overlay, creencia, pronósticos) lo mide coach --record.
+    var matcher = new EventMatcher(Catalog(args));
+    watch.Restart();
+    foreach (var lines in shownLines.Where(l => l.Count > 0).Take(50))
+        matcher.Scrub(lines);
+    var scrubMs = shownLines.Any(l => l.Count > 0) ? watch.Elapsed.TotalMilliseconds / Math.Min(50, shownLines.Count(l => l.Count > 0)) : 0;
 
     var ages = images.Select(i => i[RegionNames.Age]).OfType<CapturedImage>().Take(20).ToList();
     watch.Restart();
@@ -849,6 +861,7 @@ static async Task<int> Bench(string recording, string[] args)
     Console.WriteLine($"  ¿hay texto en el log?:         {hasText,6:0.0} ms");
     Console.WriteLine($"  log (máscara + OCR si cambió): {ocrPerFrame,6:0.0} ms en promedio ({reader.OcrCalls} OCR en {logs.Count} capturas, {(reader.OcrCalls == 0 ? 0 : ocrTotal / reader.OcrCalls):0.0} ms cada uno)");
     Console.WriteLine($"  OCR de la edad:                {ageMs,6:0.0} ms (cada 2 s)");
+    Console.WriteLine($"  tapar el chat (registro):      {scrubMs,6:0.0} ms cada vez, solo cuando cambian los renglones ({reader.OcrCalls} de {logs.Count} capturas): {scrubMs * reader.OcrCalls / Math.Max(1, logs.Count):0.00} ms por captura");
     Console.WriteLine($"  total en vivo (sin captura):   {live,6:0.0} ms por captura → {live / 500 / Environment.ProcessorCount * 100:0.0} % de CPU con {Environment.ProcessorCount} núcleos");
     return 0;
 }
