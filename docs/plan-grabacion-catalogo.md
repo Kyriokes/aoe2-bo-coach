@@ -10,7 +10,7 @@ Esta partida ahora sirve para **comprobar** lo que no pude medir con lo grabado:
 
 | Qué | Por qué falta |
 |---|---|
-| **Otro color de jugador** | Todas las grabaciones que hay son en azul. Las celdas del color del jugador no se comparan, pero nunca se probó con otro. |
+| **Otro color de jugador** | Todas las grabaciones que hay son vos en azul y la IA en rojo. Simulé los 8 colores con la paleta del juego y la v0.9.88 los lee, pero una simulación no es el juego. Falta sobre todo el log: en azul es blanco, y no hay ninguna partida que muestre que en otro color sigue igual. |
 | **Los íconos en amarillo** | El tinte de espera borra casi todo el color: es donde más se confunde. |
 | **El OCR del log** | Las 594 frases salen de los archivos de texto del juego, pero muchas nunca se leyeron en pantalla. |
 | **Unidades de los edificios que nunca usaste** | Muelle, taller de asedio, monasterio y mercado no aparecen en ninguna grabación. |
@@ -22,7 +22,7 @@ Las unidades únicas de cada civ también están en los archivos y no hace falta
 1. Abrí la app y fijate que arriba diga la última versión.
 2. Dejá prendidos "Mod mínimo" y "Grabar cada partida sola", como los tenés ahora (Ajustes, pestañas Juego y HUD y Desarrollador).
 3. No cambies de mods entre esta partida y las otras. La biblioteca se armó con Villager Highlighter prendido.
-4. En el juego: un jugador contra una IA fácil, **persas** (tienen casi todo), **color rojo** (no azul), juego en inglés, resolución 1920×1080 en "Full screen", velocidad normal.
+4. En el juego: un jugador contra una IA fácil, **persas** (tienen casi todo), **color amarillo** (en la simulación es el más difícil, junto con el naranja), juego en inglés, resolución 1920×1080 en "Full screen", velocidad normal.
 5. Elegí un **mapa con agua**: hace falta el muelle.
 6. Trucos en el chat: `cheese steak jimmy's` (comida), `lumberjack` (madera), `robin hood` (oro), `rock on` (piedra), +1000 cada uno. Solo andan contra la IA. Probá uno al arrancar y mirá que suba el recurso.
 
@@ -83,7 +83,7 @@ Los persas no tienen explorador águila, elefante de combate ni lancero estepari
 
 ## Una prueba más, cortita: sin Villager Highlighter
 
-Ese mod cambia el ícono del aldeano, y la mayoría de los jugadores no lo tiene. Apagalo en Mods instalados, jugá 3 minutos sacando aldeanos con un telar en el medio, y volvé a prenderlo. Sin esto no sé si el coach ve bien el aldeano de un jugador sin el mod, y de ese ícono depende el aviso de centro urbano parado.
+Ese mod cambia el ícono del aldeano, y la mayoría de los jugadores no lo tiene. Apagalo en Mods instalados, jugá 3 minutos en **color rojo** sacando aldeanos con un telar en el medio, y volvé a prenderlo. Sin esto no sé si el coach ve bien el aldeano de un jugador sin el mod, y de ese ícono depende el aviso de centro urbano parado.
 
 ## Lo que hago yo con la grabación
 
