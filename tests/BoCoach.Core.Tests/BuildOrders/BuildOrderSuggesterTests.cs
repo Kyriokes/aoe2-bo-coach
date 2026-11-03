@@ -17,19 +17,31 @@ public class BuildOrderSuggesterTests
     private static readonly CivStyles Styles = CivStyles.Load(Path.Combine(AppContext.BaseDirectory, "civ_styles.json"));
 
     [Fact]
-    public void Entre_la_importada_y_la_mejorada_de_la_civ_sugiere_la_mejorada()
+    public void Entre_la_importada_y_la_mejorada_de_la_civ_sugiere_la_importada()
     {
-        // D7: build_orders/civs tiene las dos de cada civ.
+        // D7: build_orders/civs tiene las dos de cada civ. Desde el 2026-11-02 gana la importada (decisión del usuario).
         var civs = Path.Combine(AppContext.BaseDirectory, "civs");
         var library = new[] { "huns.json", "huns-mejorada.json" }.Select(f => BuildOrderSerializer.Load(Path.Combine(civs, f))).Concat(Library);
 
         var suggestion = BuildOrderSuggester.Suggest(library, new MatchSetup("huns"), Styles);
 
-        Assert.Equal("bog-huns-mejorada", suggestion?.BuildOrder.Id);
+        Assert.Equal("bog-huns", suggestion?.BuildOrder.Id);
         Assert.Contains("de tu civ", suggestion!.Reason);
     }
 
     // D8: el campo map de la BO manda; sin él, vale la etiqueta como antes.
+    // Decisión del usuario (2026-11-02): ante dos BO iguales, la guía original le gana a la "mejorada" del simulador.
+    [Fact]
+    public void La_guia_original_le_gana_a_la_mejorada_en_el_empate()
+    {
+        var original = Scouts with { Id = "orig", Tags = ["importada"] };
+        var improved = Scouts with { Id = "mej", Tags = ["mejorada"] };
+        var match = new MatchSetup("franks", Map: "Arabia");
+
+        Assert.Equal(BuildOrderSuggester.Score(original, match, Styles) - 0.5, BuildOrderSuggester.Score(improved, match, Styles));
+        Assert.Equal("orig", BuildOrderSuggester.Suggest([improved, original], match, Styles)!.BuildOrder.Id);
+    }
+
     [Fact]
     public void El_mapa_de_la_BO_suma_si_es_el_de_la_partida_y_resta_si_es_otro()
     {
