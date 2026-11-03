@@ -9,7 +9,8 @@ namespace BoCoach.Vision.Events;
 /// preparada (<see cref="LogImage"/>), reconocimiento aproximado contra data/events.json y detección de mensajes
 /// nuevos (<see cref="EventLogTracker"/>).
 /// </summary>
-public sealed class EventLogReader(OcrReader ocr, EventCatalog catalog)
+/// <param name="ocr">null para reproducir renglones ya leídos (<see cref="Process(IReadOnlyList{string})"/>): sin OCR no se leen imágenes.</param>
+public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog)
 {
     private readonly EventMatcher _matcher = new(catalog);
     private readonly EventLogTracker _tracker = new();
@@ -18,6 +19,9 @@ public sealed class EventLogReader(OcrReader ocr, EventCatalog catalog)
 
     /// <summary>Mensajes reconocidos que se ven ahora (estabilizados).</summary>
     public IReadOnlyList<string> Visible => _tracker.Visible;
+
+    /// <summary>Los renglones de la última captura, con lo que no es un mensaje del juego tapado (es lo que va al registro de partida).</summary>
+    public IReadOnlyList<string> LastLines { get; private set; } = [];
 
     /// <summary>Cuántas veces se pasó el OCR (para medir cuánto se ahorra).</summary>
     public int OcrCalls { get; private set; }
@@ -40,9 +44,14 @@ public sealed class EventLogReader(OcrReader ocr, EventCatalog catalog)
         }
         else
         {
+            if (ocr is null)
+                throw new InvalidOperationException("Sin OCR no se leen imágenes del log.");
             OcrCalls++;
             lines = (await ocr.ReadPreparedLinesAsync(LogImage.PrepareMask(mask), LogImage.Scale, LogImage.Margin)).Select(l => l.Text).ToList();
         }
+        // Solo si cambiaron: reconocer cuesta, y el texto suele quedarse quieto varios segundos.
+        if (!ReferenceEquals(lines, _lastLines))
+            LastLines = _matcher.Scrub(lines);
         (_lastMask, _lastLines) = (mask, lines);
         return Process(lines);
     }

@@ -36,6 +36,13 @@ public sealed class EventMatcher
     public (IReadOnlyList<string> EventIds, int Unrecognized) MatchAll(IReadOnlyList<string> lines)
     {
         var result = new List<string>();
+        var unrecognized = Walk(lines, (_, _) => { }, result);
+        return (result, unrecognized);
+    }
+
+    /// <summary>Recorre los renglones: avisa cuáles forman un mensaje (el primero y cuántos) y devuelve cuántos no se reconocieron.</summary>
+    private int Walk(IReadOnlyList<string> lines, Action<int, int> recognized, List<string>? ids = null)
+    {
         var unrecognized = 0;
         for (var i = 0; i < lines.Count; i++)
         {
@@ -45,18 +52,44 @@ public sealed class EventMatcher
             var joined = i + 1 < lines.Count && !Closes(lines[i]) && !Opens(lines[i + 1]) ? Best(lines[i] + " " + lines[i + 1]) : null;
             if (joined is { } pair && (single is null || pair.Score < single.Value.Score))
             {
-                result.Add(pair.EventId);
+                ids?.Add(pair.EventId);
+                recognized(i, 2);
                 i++;
                 continue;
             }
             if (single is { } one)
             {
-                result.Add(one.EventId);
+                ids?.Add(one.EventId);
+                recognized(i, 1);
                 continue;
             }
             unrecognized++;
         }
-        return (result, unrecognized);
+        return unrecognized;
+    }
+
+    /// <summary>
+    /// Lo que reemplaza a un renglón que no es un mensaje del juego en el registro de partida. Termina en guion para
+    /// no juntarse con el renglón siguiente (<see cref="Closes"/>), y no tiene letras: junto con el anterior da lo mismo
+    /// que el anterior solo.
+    /// </summary>
+    public const string Scrubbed = "?-";
+
+    /// <summary>
+    /// Los renglones con lo que no se reconoce tapado (<see cref="Scrubbed"/>): por la caja del log puede pasar el chat,
+    /// con el nombre de quien escribe. Lo tapado se sigue contando como no reconocido y lo demás se reconoce igual, así
+    /// que <see cref="MatchAll"/> da lo mismo con estos renglones.
+    /// </summary>
+    public IReadOnlyList<string> Scrub(IReadOnlyList<string> lines)
+    {
+        var result = new string[lines.Count];
+        Array.Fill(result, Scrubbed);
+        Walk(lines, (first, count) =>
+        {
+            for (var i = first; i < first + count; i++)
+                result[i] = lines[i];
+        });
+        return result;
     }
 
     /// <summary>Guiones con que el OCR lee los "--" que abren y cierran cada mensaje.</summary>

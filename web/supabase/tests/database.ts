@@ -9,7 +9,8 @@ import { PGlite } from "@electric-sql/pglite";
  */
 const migrations = join(__dirname, "..", "migrations");
 
-export async function database() {
+/** Con `storage`, además, lo mínimo de Supabase Storage (el bucket y los archivos con permisos por fila). */
+export async function database(options: { storage?: boolean } = {}) {
   const db = new PGlite();
   await db.exec(`
     create role anon nologin;
@@ -24,6 +25,18 @@ export async function database() {
     alter default privileges in schema public grant all on tables to anon, authenticated;
     alter default privileges in schema public grant all on functions to anon, authenticated;
   `);
+  if (options.storage) {
+    await db.exec(`
+      create schema storage;
+      create table storage.buckets (id text primary key, name text not null, public boolean not null default false,
+        file_size_limit bigint, allowed_mime_types text[]);
+      create table storage.objects (bucket_id text not null references storage.buckets (id), name text not null,
+        primary key (bucket_id, name));
+      alter table storage.objects enable row level security;
+      grant usage on schema storage to anon, authenticated;
+      grant select, insert, delete on storage.objects to anon, authenticated;
+    `);
+  }
   for (const file of readdirSync(migrations).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(readFileSync(join(migrations, file), "utf8"));
   }

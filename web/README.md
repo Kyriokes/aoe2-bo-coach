@@ -35,5 +35,7 @@ npm test
 | GET | `/api/bo/<código>` | Una BO con su JSON (`build_order`) |
 | POST | `/api/bo` | Publica. `Authorization: Bearer <token>`; cuerpo `{ build_order, feudal_click?, castle_click? }` |
 | PUT | `/api/bo/<código>` | Reemplaza una BO propia (mismo cuerpo) |
+| POST | `/api/app/registros` | El registro de una partida, en gzip. Sin cuenta: cabeceras `X-BoCoach-Install`, `-Secret`, `-Game` y `-Version`. 201, o 200 con `{ duplicate: true }` si ya estaba |
+| DELETE | `/api/app/registros` | El pedido de borrado de lo que subió esa instalación. `{ forgotten }` |
 
 El token se crea en "Mi cuenta" y la base guarda solo su hash; la función `app_publish` lo valida, así la web no necesita la clave de administrador de Supabase.

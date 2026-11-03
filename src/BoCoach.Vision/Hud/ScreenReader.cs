@@ -1,5 +1,6 @@
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
+using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Events;
 using BoCoach.Vision.Ocr;
@@ -41,20 +42,31 @@ public sealed class ScreenReader
     /// </summary>
     public double AgeEverySeconds { get; init; } = 2;
 
+    /// <summary>Lo que va al registro en vez de un texto de la edad que no se entendió: en un menú ahí puede haber cualquier cosa.</summary>
+    public const string UnknownAge = "?";
+
+    /// <summary>
+    /// Lo crudo de la última captura, antes de suavizar (el registro de partida): con esto, <see cref="ScreenReplay"/>
+    /// da el mismo estado sin las imágenes.
+    /// </summary>
+    public RawCapture? LastRaw { get; private set; }
+
     /// <param name="regions">Imagen de cada región, o null si no está calibrada (o grabada).</param>
     /// <param name="realTime">Segundos reales desde que se empezó a leer.</param>
     public async Task<HudState> ReadAsync(Func<string, CapturedImage?> regions, double realTime)
     {
         var reading = _hud.Read(regions, _layout);
 
-        IReadOnlyList<string> events = _log is not null && regions(RegionNames.EventLog) is { } log
-            ? await _log.ReadAsync(log)
-            : [];
+        var logRead = _log is not null && regions(RegionNames.EventLog) is not null;
+        IReadOnlyList<string> events = logRead ? await _log!.ReadAsync(regions(RegionNames.EventLog)!) : [];
 
         Age? age = null;
+        string? ageText = null;
         if (_ocr is not null && realTime - _lastAgeRead >= AgeEverySeconds && regions(RegionNames.Age) is { } ageImage)
         {
-            age = AgeText.Parse(await _ocr.ReadAsync(ageImage));
+            ageText = await _ocr.ReadAsync(ageImage);
+            age = AgeText.Parse(ageText);
+            ageText = age is null ? UnknownAge : ageText;
             _lastAgeRead = realTime;
         }
 
@@ -70,7 +82,29 @@ public sealed class ScreenReader
             _lastScoresRead = realTime;
         }
 
+        LastRaw = new RawCapture(reading.Clock, reading.Food, reading.Wood, reading.Gold, reading.Stone, reading.Villagers, reading.IdleVillagers,
+            reading.Population, reading.PopulationCap, reading.VillagersOn, reading.Confidence, reading.Clipped,
+            logRead ? _log!.LastLines : null, ageText, queue, scores);
+
         return _tracker.Update(realTime, reading, events, age) with { Queue = queue, Scores = scores };
+    }
+}
+
+/// <summary>
+/// Vuelve a leer las capturas de un registro de partida, sin imágenes: el mismo suavizado y el mismo log que
+/// <see cref="ScreenReader"/>, partiendo de lo crudo.
+/// </summary>
+public sealed class ScreenReplay(EventCatalog catalog)
+{
+    private readonly HudTracker _tracker = new();
+    private readonly EventLogReader _log = new(null, catalog);
+
+    public HudState Read(RawCapture raw, double realTime)
+    {
+        var reading = new HudReading(raw.Clock, raw.Food, raw.Wood, raw.Gold, raw.Stone, raw.Villagers, raw.Idle, raw.Clipped,
+            raw.VillagersOn, raw.Population, raw.PopulationCap);
+        var events = raw.LogLines is { } lines ? _log.Process(lines) : [];
+        return _tracker.Update(realTime, reading, events, raw.AgeText is { } age ? AgeText.Parse(age) : null) with { Queue = raw.Queue, Scores = raw.Scores };
     }
 }
 

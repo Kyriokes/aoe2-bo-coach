@@ -1,0 +1,54 @@
+import { gunzipSync } from "node:zlib";
+
+/** Lo que acepta la web de un registro de partida (lo mismo que la base y el bucket): hasta 1 MB comprimido. */
+export const MAX_RECORD_BYTES = 1024 * 1024;
+
+/** Descomprimido nunca pasa de esto (una partida larga da 2 MB): lo demás es una bomba de gzip. */
+const MAX_UNZIPPED_BYTES = 64 * 1024 * 1024;
+
+const INSTALL = /^[0-9a-f]{32}$/;
+const SECRET = /^[0-9a-f]{64}$/;
+
+export type RecordIdentity = { install: string; secret: string };
+
+/** La identidad de la instalación que manda la app en sus cabeceras, o null si falta o no tiene el formato. */
+export function recordIdentity(headers: Headers): RecordIdentity | null {
+  const install = headers.get("x-bocoach-install") ?? "";
+  const secret = headers.get("x-bocoach-secret") ?? "";
+  return INSTALL.test(install) && SECRET.test(secret) ? { install, secret } : null;
+}
+
+export function isGameId(value: string | null): value is string {
+  return value !== null && INSTALL.test(value);
+}
+
+export function isAppVersion(value: string | null): value is string {
+  return value !== null && value.length >= 1 && value.length <= 40 && /^[\x20-\x7e]+$/.test(value);
+}
+
+/**
+ * Valida un registro antes de guardarlo: gzip, tamaño razonable, formato conocido (`meta` con su `schema`) y el mismo
+ * identificador de partida que dice la cabecera. Devuelve el motivo si no sirve, o null. Lo recibido se trata con
+ * desconfianza igual antes de calibrar nada con esto: acá solo se frena lo que claramente no es un registro.
+ */
+export function recordProblem(bytes: Uint8Array, gameId: string): string | null {
+  if (bytes.length === 0 || bytes.length > MAX_RECORD_BYTES) return "El registro tiene que pesar hasta 1 MB.";
+  let text: string;
+  try {
+    text = gunzipSync(bytes, { maxOutputLength: MAX_UNZIPPED_BYTES }).toString("utf8");
+  } catch {
+    return "El registro no es un gzip válido, o descomprimido es demasiado grande.";
+  }
+  const end = text.indexOf("\n");
+  let meta: unknown;
+  try {
+    meta = JSON.parse(end < 0 ? text : text.slice(0, end));
+  } catch {
+    return "El registro no empieza con su línea meta.";
+  }
+  const { t, schema, game_id: game } = (meta ?? {}) as { t?: unknown; schema?: unknown; game_id?: unknown };
+  if (t !== "meta") return "El registro no empieza con su línea meta.";
+  if (typeof schema !== "number" || !Number.isInteger(schema) || schema < 1) return "El registro no dice su versión.";
+  if (game !== gameId) return "El registro es de otra partida.";
+  return null;
+}

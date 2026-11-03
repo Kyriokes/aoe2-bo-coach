@@ -43,6 +43,7 @@ public sealed class CoachSessionTests : IDisposable
         public (IReadOnlyList<string> Summary, string Path)? Report { get; private set; }
 
         public void ShowReport(IReadOnlyList<string> summary, string path) => Report = (summary, path);
+        public bool Confirm(string message) => true;
         public void SetOverlayVisible(bool visible) => Visible = visible;
         public void CloseOverlay() => Closed = true;
         public void RunOnUi(Action action) => action();

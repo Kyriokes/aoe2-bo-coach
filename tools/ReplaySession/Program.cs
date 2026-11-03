@@ -14,7 +14,7 @@
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
-//   coach <grabación | lecturas.csv> <bo.json> [--civ clave] [--slot N] [--fonts ...] [--events ...] [--game-data data/game_data]
+//   coach <grabación | lecturas.csv | registro.jsonl.gz> <bo.json, opcional con un registro: trae la suya> [--civ clave] [--slot N] [--record salida.jsonl.gz] [--fonts ...] [--events ...] [--game-data data/game_data]
 //         [--economy] [--guide] [--allocator exact|greedy] [--until m:ss]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
@@ -107,7 +107,7 @@ try
         "read" => Read(args[1], args[2], args[3], args),
         "ocr" => Ocr(args[1], args[2], args).GetAwaiter().GetResult(),
         "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
-        "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
+        "coach" => CoachReplay(args[1], args.Length > 2 && !args[2].StartsWith("--") ? args[2] : null, args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
         "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
@@ -694,12 +694,26 @@ static int AutoCalibrate(string screenshot, string[] args)
     return 0;
 }
 
-static async Task<int> CoachReplay(string recording, string boPath, string[] args)
+static async Task<int> CoachReplay(string recording, string? boPath, string[] args)
 {
+    BoCoach.Core.BuildOrders.BuildOrder? recordedBo = null;
+    // Un registro de partida trae la civ, el número del jugador y el idioma; lo que se pase a mano manda.
+    if (BoCoach.Core.Record.GameRecordReader.IsRecord(recording) && BoCoach.Core.Record.GameRecordReader.Load(recording) is { Meta: { } recordMeta } record)
+    {
+        recordedBo = record.BuildOrder;
+        void FromMeta(string option, string key)
+        {
+            if (!args.Contains(option) && recordMeta[key] is System.Text.Json.Nodes.JsonValue value)
+                args = [.. args, option, value.ToString()];
+        }
+        FromMeta("--civ", "civ");
+        FromMeta("--slot", "slot");
+        FromMeta("--idioma", "language");
+    }
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
     var catalog = Catalog(args, data);
     // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
-    var bo = BuildOrderSerializer.Load(boPath);
+    var bo = boPath is not null ? BuildOrderSerializer.Load(boPath) : recordedBo ?? BoCoach.Core.BuildOrders.BuildOrder.None;
     bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
     // --slot N: el número del jugador en el panel de puntajes (en vivo sale de la pantalla de carga; si no, se deduce).
     var builder = new SnapshotBuilder(data, data.Civ(bo.Civ)) { PlayerSlot = args.Contains("--slot") ? Option(args, "--slot", 0) : null };
@@ -711,8 +725,24 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     var suggestions = 0;
     double? until = args.Contains("--until") && BoCoach.Core.GameClock.TryParse(Text(args, "--until", ""), out var stop) ? stop : (double?)null;
     var startShown = false;
-    await foreach (var (index, reading) in Readings(recording, args))
+    // --record salida.jsonl.gz: escribe el registro de partida mientras corre, como la app en vivo.
+    using var recordWriter = args.Contains("--record")
+        ? BoCoach.Core.Record.GameRecordWriter.Create(Text(args, "--record", "registro.jsonl.gz"), BoCoach.Core.Record.GameRecorder.Meta(
+            Guid.NewGuid().ToString("N"), DateTimeOffset.Now, "ReplaySession", data.DatVersion, RecordingHud(recording), 1, bo.Civ, bo.Id, bo.Name, null, null,
+            args.Contains("--slot") ? Option(args, "--slot", 0) : null, Text(args, "--idioma", "en"), 500, bo))
+        : null;
+    var recorder = recordWriter is null ? null : new BoCoach.Core.Record.GameRecorder(recordWriter, data);
+    var recordWatch = new System.Diagnostics.Stopwatch();
+    var captures = 0;
+    await foreach (var (index, reading, ms, raw) in Readings(recording, args))
     {
+        captures++;
+        if (recorder is not null && raw is not null)
+        {
+            recordWatch.Start();
+            recorder.Capture(raw, ms);
+            recordWatch.Stop();
+        }
         if (builder.Build(reading) is not { } snapshot)
             continue;
         if (builder.StartOffset > 0 && !startShown)
@@ -723,6 +753,12 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
         if (snapshot.Time > until)
             break;
         var view = coach.Update(snapshot);
+        if (recorder is not null)
+        {
+            recordWatch.Start();
+            recorder.Update(snapshot, coach, builder, ms);
+            recordWatch.Stop();
+        }
         if (view.Suggestion is { } s && (shown is null || (shown.From, shown.To) != (s.From, s.To)))
             suggestions++;
         shown = view.Suggestion;
@@ -763,6 +799,14 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
         Console.WriteLine($"  {line}");
     if (args.Contains("--informe"))
         File.WriteAllText(Text(args, "--informe", "informe.html"), GameReportText.Html(report, DateTime.Now));
+    if (recordWriter is not null)
+    {
+        recordWriter.End("fin", report.Length);
+        recordWriter.Dispose();
+        var size = new FileInfo(recordWriter.Path).Length;
+        // A stderr: el resto de la salida tiene que dar igual con el registro y sin él.
+        Console.Error.WriteLine($"registro: {recordWriter.Path}, {recordWriter.Lines} líneas, {size / 1024.0:0} KB, {recordWatch.Elapsed.TotalMilliseconds / Math.Max(1, captures):0.00} ms por captura en {captures} capturas");
+    }
     return 0;
 }
 
@@ -791,10 +835,22 @@ static async Task<int> Bench(string recording, string[] args)
 
     // El lector real, captura por captura: solo pasa el OCR si el texto cambió.
     var reader = new EventLogReader(ocr, Catalog(args));
+    var shownLines = new List<IReadOnlyList<string>>();
     watch.Restart();
     foreach (var log in logs)
+    {
         await reader.ReadAsync(log);
+        shownLines.Add(reader.LastLines);
+    }
     var ocrTotal = watch.Elapsed.TotalMilliseconds;
+
+    // El registro de partida: tapar el chat (solo cuando cambian los renglones, y ya está contado en el log) y escribir
+    // las capturas comprimidas. Lo del coach (overlay, creencia, pronósticos) lo mide coach --record.
+    var matcher = new EventMatcher(Catalog(args));
+    watch.Restart();
+    foreach (var lines in shownLines.Where(l => l.Count > 0).Take(50))
+        matcher.Scrub(lines);
+    var scrubMs = shownLines.Any(l => l.Count > 0) ? watch.Elapsed.TotalMilliseconds / Math.Min(50, shownLines.Count(l => l.Count > 0)) : 0;
 
     var ages = images.Select(i => i[RegionNames.Age]).OfType<CapturedImage>().Take(20).ToList();
     watch.Restart();
@@ -810,25 +866,43 @@ static async Task<int> Bench(string recording, string[] args)
     Console.WriteLine($"  ¿hay texto en el log?:         {hasText,6:0.0} ms");
     Console.WriteLine($"  log (máscara + OCR si cambió): {ocrPerFrame,6:0.0} ms en promedio ({reader.OcrCalls} OCR en {logs.Count} capturas, {(reader.OcrCalls == 0 ? 0 : ocrTotal / reader.OcrCalls):0.0} ms cada uno)");
     Console.WriteLine($"  OCR de la edad:                {ageMs,6:0.0} ms (cada 2 s)");
+    Console.WriteLine($"  tapar el chat (registro):      {scrubMs,6:0.0} ms cada vez, solo cuando cambian los renglones ({reader.OcrCalls} de {logs.Count} capturas): {scrubMs * reader.OcrCalls / Math.Max(1, logs.Count):0.00} ms por captura");
     Console.WriteLine($"  total en vivo (sin captura):   {live,6:0.0} ms por captura → {live / 500 / Environment.ProcessorCount * 100:0.0} % de CPU con {Environment.ProcessorCount} núcleos");
     return 0;
 }
 
-/// <summary>Las lecturas de cada captura: de un lecturas.csv ya guardado, o pasando la visión por la grabación.</summary>
-static async IAsyncEnumerable<(int Frame, ScreenReading Reading)> Readings(string source, string[] args)
+/// <summary>
+/// Las lecturas de cada captura: de un registro de partida (el suavizado de siempre sobre lo crudo, sin imágenes), de un
+/// lecturas.csv ya guardado, o pasando la visión por la grabación.
+/// </summary>
+static async IAsyncEnumerable<(int Frame, ScreenReading Reading, double Ms, BoCoach.Core.Record.RawCapture? Raw)> Readings(string source, string[] args)
 {
+    if (BoCoach.Core.Record.GameRecordReader.IsRecord(source))
+    {
+        var replay = new ScreenReplay(Catalog(args));
+        var index = 0;
+        foreach (var capture in BoCoach.Core.Record.GameRecordReader.Load(source).Captures)
+            yield return (index++, replay.Read(capture.Capture, capture.Ms / 1000.0).ToReading(), capture.Ms, capture.Capture);
+        yield break;
+    }
     if (File.Exists(source))
     {
         foreach (var logged in ScreenReadingLog.Load(source))
-            yield return (logged.Frame, logged.Reading);
+            yield return (logged.Frame, logged.Reading, logged.TimeMs, null);
         yield break;
     }
 
     var session = RecordedSession.Load(source);
     var reader = Reader(session, args);
     foreach (var frame in session.Frames)
-        yield return (frame.Index, (await reader.ReadAsync(Regions(session, frame.Index), frame.TimeMs / 1000.0)).ToReading());
+    {
+        var state = await reader.ReadAsync(Regions(session, frame.Index), frame.TimeMs / 1000.0);
+        yield return (frame.Index, state.ToReading(), frame.TimeMs, reader.LastRaw);
+    }
 }
+
+/// <summary>El nombre del diseño del HUD con que se grabó, para el registro.</summary>
+static string? RecordingHud(string source) => Directory.Exists(source) ? RecordedSession.Load(source).Hud?.Name : null;
 
 // El diseño del panel del mod (--layout, por defecto data/hud_layout.json).
 static HudLayout Layout(string[] args) => HudLayout.Load(Text(args, "--layout", Path.Combine("data", HudLayout.FileName)));

@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
+using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
 using BoCoach.Vision.Hud;
@@ -110,6 +111,10 @@ public sealed record CoachFrame(
     bool InGame = false,
     RegionLayout? Regions = null);
 
+/// <summary>El registro de una partida que terminó (spec 2026-11-02).</summary>
+/// <param name="Reason">"fin" (30 s sin reloj), "nueva" (empezó otra) o "detenido".</param>
+public sealed record GameRecordInfo(string Path, string GameId, double Length, string Reason);
+
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
 /// y actualiza el <see cref="Coach"/>. Corre en segundo plano; los atajos (avanzar, retroceder, saltear) llegan
@@ -143,7 +148,18 @@ public sealed class LiveCoach : IDisposable
     /// <summary>Con reloj, cada cuánto se vuelve a probar la calibración sola mientras no encontró el HUD (sin el mod, nunca).</summary>
     public const double RecalibrateInGameSeconds = 30;
 
+    /// <summary>Cada cuántos segundos reales se vuelca el registro al disco: un cierre brusco pierde solo lo de después.</summary>
+    public const double RecordFlushSeconds = 10;
+
     private readonly object _gate = new();
+    private readonly string _language;
+    private GameRecordWriter? _recordWriter;
+    private GameRecorder? _recorder;
+    private string _recordGameId = "";
+    private double _recordStart;
+    private double _recordFlushedAt;
+    private bool _recordingStopped;
+    private string? _recordNotice;
     private readonly GameData _data;
     private readonly HudFonts _fonts;
     private readonly OcrReader? _ocr;
@@ -186,6 +202,7 @@ public sealed class LiveCoach : IDisposable
         _fonts = fonts;
         _ocr = ocr;
         _economy = economy;
+        _language = language;
         _loading = ocr is null ? null : new LoadingScreenReader(ocr, data, language);
         Civ = bo.Civ;
         (_coach, _builder, _reader) = NewGame(bo);
@@ -208,6 +225,15 @@ public sealed class LiveCoach : IDisposable
 
     /// <summary>Segundos de partida a partir de los que vale la pena el informe (D5); los tests lo bajan.</summary>
     public double MinReportSeconds { get; init; } = DefaultMinReportSeconds;
+
+    /// <summary>Dónde se escribe el registro de cada partida (spec 2026-11-02); null = no se escribe.</summary>
+    public string? RecordsFolder { get; init; }
+
+    /// <summary>La versión de la app, para el registro.</summary>
+    public string AppVersion { get; init; } = "";
+
+    /// <summary>Se cerró el registro de una partida de <see cref="MinReportSeconds"/> o más (las más cortas se borran).</summary>
+    public event Action<GameRecordInfo>? RecordFinished;
 
     /// <summary>D6: esperando una partida (ver <see cref="CoachFrame.Waiting"/>).</summary>
     public bool Waiting => _waiting;
@@ -243,12 +269,18 @@ public sealed class LiveCoach : IDisposable
     {
         if (Running)
             return;
+        _recordingStopped = false;
         _cancel = new CancellationTokenSource();
         var token = _cancel.Token;
         _ = Task.Run(() => RunAsync(token), token);
     }
 
-    public void Stop() => _cancel?.Cancel();
+    public void Stop()
+    {
+        _cancel?.Cancel();
+        _recordingStopped = true;
+        CloseRecord("detenido");
+    }
 
     public void Dispose() => Stop();
 
@@ -293,6 +325,7 @@ public sealed class LiveCoach : IDisposable
             if (await LoadingScreenAsync(frame) is { } reading)
                 StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
+            var raw = _reader.LastRaw;
             if (!hud.ClockRead)
             {
                 // Sin reloj: el coach arrancó en el menú (sin HUD que calibrar) o la calibración que había no es la del
@@ -327,12 +360,14 @@ public sealed class LiveCoach : IDisposable
                 if (_newGame.Check(hud.ClockReading, hud.Clock))
                     StartGame(null);
             }
+            RecordCapture(raw, hud, frame.RealTime);
             var snapshot = _builder.Build(hud.ToReading());
             lock (_gate)
             {
                 if (snapshot is not null)
                 {
                     _coach.Update(snapshot);
+                    Record(r => r.Update(snapshot, _coach, _builder, RecordMs(frame.RealTime)));
                     // Sin reloj el snapshot repite el último (no es una lectura nueva para el informe).
                     if (hud.ClockRead)
                         _reportPending = true;
@@ -399,6 +434,7 @@ public sealed class LiveCoach : IDisposable
     {
         var me = reading is null ? _me : reading.Find(PlayerName);
         var bo = BuildOrder with { Civ = reading is null ? Civ : me?.Civ ?? BuildOrder.Civ };
+        CloseRecord("nueva");
         if (TakePendingReport() is { } finished)
             GameFinished?.Invoke(finished);
         var (coach, builder, reader) = NewGame(bo);
@@ -427,8 +463,113 @@ public sealed class LiveCoach : IDisposable
     private void EndGame()
     {
         (_waiting, _clockSeenInGame) = (true, false);
+        CloseRecord("fin");
         if (TakePendingReport() is { } report)
             GameFinished?.Invoke(report);
+    }
+
+    private double RecordMs(double realTime) => (realTime - _recordStart) * 1000;
+
+    /// <summary>
+    /// Una captura al registro: se abre con el primer reloj de cada partida (sin pantalla de carga ni menú) con lo que se
+    /// sabe de ella, y lo crudo va antes del coach, que puede cambiar de partida en esta misma captura.
+    /// </summary>
+    private void RecordCapture(RawCapture? raw, HudState hud, double realTime)
+    {
+        if (raw is null || RecordsFolder is null || _recordingStopped)
+            return;
+        lock (_gate)
+        {
+            if (_recordWriter is null && hud.ClockRead)
+                OpenRecord(realTime);
+            Record(r => r.Capture(raw, RecordMs(realTime)));
+            if (realTime - _recordFlushedAt >= RecordFlushSeconds)
+            {
+                _recordFlushedAt = realTime;
+                Record(r => r.Flush());
+            }
+        }
+    }
+
+    private void OpenRecord(double realTime)
+    {
+        try
+        {
+            var started = DateTimeOffset.Now;
+            var path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}.jsonl.gz");
+            for (var i = 2; File.Exists(path); i++)
+                path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}-{i}.jsonl.gz");
+            _recordGameId = Guid.NewGuid().ToString("N");
+            var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
+            var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,
+                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.Interval.TotalMilliseconds, BuildOrder with { Civ = Civ });
+            _recordWriter = GameRecordWriter.Create(path, meta);
+            _recorder = new GameRecorder(_recordWriter, _data);
+            (_recordStart, _recordFlushedAt, _recordNotice) = (realTime, realTime, null);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            RecordFailed(e);
+        }
+    }
+
+    /// <summary>Un error del registro (disco lleno, carpeta sin permiso) lo apaga para esta sesión y lo dice, sin tocar al coach.</summary>
+    private void Record(Action<GameRecorder> write)
+    {
+        if (_recorder is not { } recorder)
+            return;
+        try
+        {
+            write(recorder);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            RecordFailed(e);
+        }
+    }
+
+    private void RecordFailed(Exception e)
+    {
+        _recordNotice = $"No se pudo escribir el registro de la partida: {e.Message}";
+        _recordingStopped = true;
+        _recorder = null;
+        try
+        {
+            _recordWriter?.Dispose();
+        }
+        catch (Exception closing) when (closing is IOException or UnauthorizedAccessException)
+        {
+            // Ya se avisó: el archivo queda como esté.
+        }
+        _recordWriter = null;
+    }
+
+    /// <summary>Cierra el registro de esta partida, si hay uno. Una partida muy corta (un reloj leído en un menú) no vale la pena: se borra.</summary>
+    private void CloseRecord(string reason)
+    {
+        GameRecordInfo? info = null;
+        lock (_gate)
+        {
+            if (_recordWriter is not { } writer)
+                return;
+            var length = _coach.Report().Length;
+            (_recordWriter, _recorder) = (null, null);
+            try
+            {
+                writer.End(reason, length);
+                writer.Dispose();
+                if (length >= MinReportSeconds)
+                    info = new GameRecordInfo(writer.Path, _recordGameId, length, reason);
+                else
+                    File.Delete(writer.Path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                RecordFailed(e);
+            }
+        }
+        if (info is not null)
+            RecordFinished?.Invoke(info);
     }
 
     private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (
@@ -472,7 +613,7 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice, _clockSeenInGame, Frames.Regions));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice ?? _recordNotice, _clockSeenInGame, Frames.Regions));
     }
 
     /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>

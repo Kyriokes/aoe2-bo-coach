@@ -20,14 +20,23 @@ public class WebLibraryClientAppTests
         public List<(HttpMethod Method, string Path, string? Auth)> Requests { get; } = [];
         public bool Offline { get; set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
+        /// <summary>Las cabeceras de cada pedido, también las del contenido.</summary>
+        public List<Dictionary<string, string>> RequestHeaders { get; } = [];
+
+        /// <summary>El cuerpo de cada pedido, vacío si no tiene.</summary>
+        public List<byte[]> Bodies { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
         {
             if (Offline)
                 throw new HttpRequestException("sin conexión");
             var path = request.RequestUri!.AbsolutePath;
             Requests.Add((request.Method, path, request.Headers.Authorization?.ToString()));
+            RequestHeaders.Add(request.Headers.Concat(request.Content?.Headers ?? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>())
+                .ToDictionary(h => h.Key, h => string.Join(",", h.Value)));
+            Bodies.Add(request.Content is null ? [] : await request.Content.ReadAsByteArrayAsync(cancel));
             var (status, body) = Routes.TryGetValue($"{request.Method} {path}", out var route) ? route : (HttpStatusCode.NotFound, """{"error":"No existe."}""");
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
         }
     }
 

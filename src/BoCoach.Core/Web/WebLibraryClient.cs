@@ -130,6 +130,46 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         return json["own"] is JsonValue own && own.TryGetValue<bool>(out var isOwn) && isOwn;
     }
 
+    /// <summary>
+    /// Sube el registro de una partida con la identidad de la instalación, sin cuenta. Reenviar la misma partida no la
+    /// duplica. True si la web ya lo tenía.
+    /// </summary>
+    public async Task<bool> UploadRecordAsync(byte[] gzip, Record.InstallIdentity identity, string gameId, string appVersion, CancellationToken cancel = default)
+    {
+        CheckTokenSafe();
+        var request = WithIdentity(new HttpRequestMessage(HttpMethod.Post, new Uri(BaseUrl, "api/app/registros")), identity);
+        request.Headers.TryAddWithoutValidation("X-BoCoach-Game", gameId);
+        request.Headers.TryAddWithoutValidation("X-BoCoach-Version", HeaderText(appVersion));
+        request.Content = new ByteArrayContent(gzip);
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/gzip");
+        using var response = await Send(request, cancel);
+        var json = await ReadJson(response, cancel);
+        return json["duplicate"] is JsonValue duplicate && duplicate.TryGetValue<bool>(out var repeated) && repeated;
+    }
+
+    /// <summary>El pedido de borrado de lo que subió esta instalación. Devuelve cuántos registros se borraron.</summary>
+    public async Task<int> ForgetRecordsAsync(Record.InstallIdentity identity, CancellationToken cancel = default)
+    {
+        CheckTokenSafe();
+        using var response = await Send(WithIdentity(new HttpRequestMessage(HttpMethod.Delete, new Uri(BaseUrl, "api/app/registros")), identity), cancel);
+        var json = await ReadJson(response, cancel);
+        return Number(json["forgotten"]) is { } forgotten ? (int)forgotten : 0;
+    }
+
+    private static HttpRequestMessage WithIdentity(HttpRequestMessage request, Record.InstallIdentity identity)
+    {
+        request.Headers.TryAddWithoutValidation("X-BoCoach-Install", identity.Id);
+        request.Headers.TryAddWithoutValidation("X-BoCoach-Secret", identity.Secret);
+        return request;
+    }
+
+    /// <summary>Una cabecera HTTP es ASCII: la versión de la app lleva "·". Hasta 40 caracteres, como pide la web.</summary>
+    private static string HeaderText(string text)
+    {
+        var ascii = new string(text.Select(c => c is >= ' ' and <= '~' ? c : '|').ToArray());
+        return ascii.Length > 40 ? ascii[..40] : ascii;
+    }
+
     private static void CheckCode(string code)
     {
         if (!WebCode.IsValid(code))

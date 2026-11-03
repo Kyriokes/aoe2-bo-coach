@@ -7,6 +7,9 @@ namespace BoCoach.App.Tests;
 internal static class TestFolders
 {
     [ModuleInitializer]
-    internal static void Init() =>
+    internal static void Init()
+    {
         CoachSessionViewModel.DefaultReportsFolder = Path.Combine(Path.GetTempPath(), "BoCoach.App.Tests", "informes");
+        CoachSessionViewModel.DefaultRecordsFolder = Path.Combine(Path.GetTempPath(), "BoCoach.App.Tests", "registros");
+    }
 }

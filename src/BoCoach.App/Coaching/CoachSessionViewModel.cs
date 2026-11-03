@@ -31,6 +31,9 @@ public interface ICoachHost
     /// <summary>D5: el resumen de la partida terminada, con el informe completo guardado en <paramref name="path"/>.</summary>
     void ShowReport(IReadOnlyList<string> summary, string path);
 
+    /// <summary>Una pregunta de sí o no (el pedido de borrado de lo compartido).</summary>
+    bool Confirm(string message);
+
     /// <summary>D10: elegir entre los jugadores con el mismo nombre que devolvió "Buscar"; null si cancela.</summary>
     EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates);
 }
@@ -78,6 +81,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         PlayerName = settings.PlayerName;
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
+        ShareGames = settings.ShareGames;
         LastBuildOrderId = settings.LastBuildOrder;
         BoMode = settings.BoMode;
         Hotkeys = settings.Hotkeys;
@@ -277,6 +281,73 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     partial void OnAutoStartChanged(bool value) => SaveSettings();
 
+    /// <summary>"Compartir mis partidas para mejorar el coach" (spec 2026-11-02).</summary>
+    [ObservableProperty] public partial bool ShareGames { get; set; } = true;
+
+    partial void OnShareGamesChanged(bool value) => SaveSettings();
+
+    /// <summary>La cola y el envío de los registros; null = no se comparte (las capturas de prueba).</summary>
+    public RecordSharing? Sharing { get; set; }
+
+    /// <summary>Cómo le fue al último envío, al lado del interruptor.</summary>
+    [ObservableProperty] public partial string ShareStatus { get; set; } = "";
+
+    /// <summary>
+    /// Terminó el registro de una partida: si se comparte, a la cola (queda aunque se cierre la app) y a intentar mandarlo.
+    /// Solo partidas reales que valgan la pena: una grabación reproducida con --replay no es una partida nueva.
+    /// </summary>
+    internal async Task RecordDoneAsync(GameRecordInfo info)
+    {
+        if (Sharing is null || !ShareGames || !IsLive || info.Length < LiveCoach.DefaultMinReportSeconds)
+            return;
+        try
+        {
+            Sharing.Enqueue(info, DateTimeOffset.Now);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ShareStatus = $"No se pudo anotar el registro para enviarlo: {e.Message}";
+            return;
+        }
+        await SendPendingRecordsAsync();
+    }
+
+    /// <summary>Manda lo que esté vencido en la cola (al terminar una partida y al abrir la app, nunca jugando). Nunca tira error.</summary>
+    public async Task SendPendingRecordsAsync()
+    {
+        if (Sharing is null || !ShareGames)
+            return;
+        try
+        {
+            var result = await Sharing.SendPendingAsync(DateTimeOffset.Now);
+            if (result.Sent + result.Failed > 0)
+                ShareStatus = result.Failed > 0
+                    ? $"Registro guardado para enviar después ({Sharing.Pending} en espera)."
+                    : "Registro de la partida enviado. ¡Gracias!";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or WebLibraryException)
+        {
+            ShareStatus = $"No se pudo enviar el registro: {e.Message}";
+        }
+    }
+
+    /// <summary>El pedido de borrado de lo que subió esta instalación.</summary>
+    [RelayCommand]
+    private async Task ForgetSharedAsync()
+    {
+        if (Sharing is null || !_host.Confirm("¿Borrar de la web los registros de partida que subió esta PC? Los que tenés guardados acá no se tocan."))
+            return;
+        try
+        {
+            var forgotten = await Sharing.ForgetAsync();
+            ShareStatus = forgotten == 1 ? "Se borró 1 registro de la web." : $"Se borraron {forgotten} registros de la web.";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or WebLibraryException)
+        {
+            ShareStatus = $"No se pudo borrar: {e.Message}";
+        }
+    }
+
     /// <summary>Parte 4: la BO se elige sola en cada partida (la sugerida) o a mano de la lista.</summary>
     [ObservableProperty] public partial BuildOrderMode BoMode { get; set; }
 
@@ -361,6 +432,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 DevMode = _devMode.IsOn,
                 AutoRecord = _devMode.AutoRecord,
                 HudMinimal = HudMinimal,
+                ShareGames = ShareGames,
             }.Save(_settingsPath);
         }
         catch (IOException)
@@ -464,10 +536,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
         var ocr = Language.CreateOcr();
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.EventsFor(Language), _data.Fonts, ocr, frames,
-            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code);
+            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code)
+        {
+            RecordsFolder = RecordsFolder,
+            AppVersion = BoCoach.App.AppVersion.Text,
+        };
         _loading = null;
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.GameFinished += report => _host.RunOnUi(() => Finished(report));
+        coach.RecordFinished += info => _host.RunOnUi(() => _ = RecordDoneAsync(info));
         coach.Updated += frame => _host.RunOnUi(() =>
         {
             if (_coach == coach)
@@ -497,6 +574,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// </summary>
     internal static string DefaultReportsFolder { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "informes");
+
+    /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
+    internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "registros");
+
+    /// <summary>Dónde se guardan los registros de las partidas (spec 2026-11-02).</summary>
+    public string RecordsFolder { get; init; } = DefaultRecordsFolder;
 
     /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
     public string ReportsFolder { get; init; } = DefaultReportsFolder;
