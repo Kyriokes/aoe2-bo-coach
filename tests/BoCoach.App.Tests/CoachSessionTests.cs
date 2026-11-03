@@ -341,14 +341,14 @@ public sealed class CoachSessionTests : IDisposable
         // (abajo tapaba el mapa en plena partida; pedido del usuario, 2026-10-29).
         Assert.Empty(host.Placed);
         // El jugador juega con japoneses: la lista de prueba tiene una BO de cada civ (importada y mejorada) y gana
-        // la mejorada de la suya.
-        Assert.StartsWith("Sugerida: Fast Men-at-Arms (mejorada) (de tu civ", session.Overlay!.BoSuggestion);
+        // la importada de la suya (desde el 2026-11-02 la mejorada resta: decisión del usuario).
+        Assert.StartsWith("Sugerida: Fast Men-at-Arms (de tu civ", session.Overlay!.BoSuggestion);
         Assert.Contains("Ctrl+Alt+B", session.Overlay.BoSuggestion);
         // Segunda parte de D4: enfrente tiene al primero del otro equipo (cumanos).
         Assert.StartsWith("Contra cumanos (enfrente): ", session.Overlay.MatchAdvice);
 
         session.AcceptSuggestionCommand.Execute(null);
-        Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
+        Assert.Equal("Fast Men-at-Arms", session.LiveCoach!.BuildOrder.Name);
     }
 
     // Parte 4: en Automática, en la pantalla de carga el coach usa la mejor de tu lista sin esperar el atajo, y el
@@ -369,8 +369,8 @@ public sealed class CoachSessionTests : IDisposable
         for (var i = 0; i < 12 && session.LiveCoach!.BuildOrder.Name == Scouts.Name; i++)
             await session.LiveCoach!.StepAsync();
 
-        Assert.Equal("Fast Men-at-Arms (mejorada)", session.LiveCoach!.BuildOrder.Name);
-        Assert.StartsWith("Cambié a Fast Men-at-Arms (mejorada)", session.Overlay!.BoSuggestion);
+        Assert.Equal("Fast Men-at-Arms", session.LiveCoach!.BuildOrder.Name);
+        Assert.StartsWith("Cambié a Fast Men-at-Arms (", session.Overlay!.BoSuggestion);
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
