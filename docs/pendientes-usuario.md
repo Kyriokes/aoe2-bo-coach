@@ -2,13 +2,17 @@
 
 Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que más destraba.
 
+## Lo de la v0.9.85, en este orden (3/11)
+
+Las cuatro partes del camino al público quedaron juntas en la v0.9.85 (rama `fase-9-refinamiento`, todavía no en `main`). Primero 0s (sin la migración, la subida no anda), después 0u jugando una partida, y antes de pedir el push a `main` leé el roadmap (0t): al llegar a `main`, la web, el roadmap y la versión pasan a ser públicos.
+
 ## Registro de partida y "Compartir mis partidas" (2/11)
 
 0s. **Correr la migración y probar el envío** (2/11). Hasta que corras la migración la app guarda cada partida en tu PC y las deja en cola sin perder nada: la web le responde error y reintenta más tarde. (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`, y abrí el **SQL Editor** (menú de la izquierda). (2) Tocá "New query", pegá entero `web/supabase/migrations/20261102000000_registros.sql` y tocá **Run**: tiene que decir "Success. No rows returned". (3) Menú de la izquierda, **Storage**: tiene que aparecer un bucket `registros`, sin el cartel "Public". Si no aparece: **New bucket**, nombre `registros`, "Public bucket" apagado, tope de archivo 1 MB, tipos permitidos `application/gzip`, y volvé al SQL Editor a correr solo las tres líneas `create policy` del final del archivo, cada una sin el `if`. Si Supabase te muestra otros nombres o un error, contame qué dice. (4) Pedime el push a `main`, así la ruta nueva llega a la web y la versión a la app. (5) Abrí la versión nueva y jugá una partida de más de un minuto. Arriba, al lado de "Compartir mis partidas para mejorar el coach", tiene que decir "Registro de la partida enviado. ¡Gracias!". (6) En Supabase, Storage → `registros`: tiene que haber una carpeta con un archivo. En `%LOCALAPPDATA%\BoCoach\registros` está el mismo archivo. (7) Tocá "Borrar lo compartido…", aceptá, y fijate que el archivo se va de Supabase y sigue en tu PC. (8) Leé la pantalla de "Primeros pasos" (paso 6) y `/privacidad`: son lo que le prometés a la gente. Antes de publicar en otros países, conviene que los revise alguien del rubro, como decía el spec. Contame si querés cambiar algo del texto.
 
 ## La web en inglés y el roadmap
 
-0t. **Leer el roadmap y la versión en inglés antes de publicarlas** (2/11, rama `claude/web-idiomas-roadmap-8c3f0d`). (1) Leé `web/src/content/roadmap.es.json`: es lo que van a leer los jugadores y habla en tu nombre ("lo hace una persona", "casi nadie más la probó"). Cambiá lo que no te cierre: al principio del archivo dice cómo. (2) Lo que cambies, cambialo también en `roadmap.en.json`. (3) Cuando la rama llegue a `main`, entrá a https://aoe2-bo-coach.vercel.app/en y a `/roadmap` y mirá que se vean bien; las URL de siempre siguen en castellano. (4) En Google Search Console (Sitemaps) volvé a mandar `sitemap.xml`: ahora trae las dos versiones de cada página.
+0t. **Leer el roadmap y la versión en inglés antes de publicarlas** (2/11). (1) Leé `web/src/content/roadmap.es.json`: es lo que van a leer los jugadores y habla en tu nombre ("lo hace una persona", "casi nadie más la probó"). Cambiá lo que no te cierre: al principio del archivo dice cómo. (2) Lo que cambies, cambialo también en `roadmap.en.json`. (3) Cuando la rama llegue a `main`, entrá a https://aoe2-bo-coach.vercel.app/en y a `/roadmap` y mirá que se vean bien; las URL de siempre siguen en castellano. (4) En Google Search Console (Sitemaps) volvé a mandar `sitemap.xml`: ahora trae las dos versiones de cada página.
 
 ## La app remodelada (el tablero)
 
