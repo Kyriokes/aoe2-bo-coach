@@ -2,7 +2,7 @@
   "_como_editar": "This file is the text of the /en/roadmap page. Change whatever you want and push: no component needs touching. Each section has a title, an optional intro and a list of items (title and text). To add an item, copy a whole one with its braces and put a comma between items. If you change something, do the same in roadmap.es.json (a test requires both to have the same sections) and set today's date in 'updated' (YYYY-MM-DD). This key isn't shown anywhere.",
   "title": "Roadmap",
   "description": "What BO Coach does today, what it can't do yet, what's coming and how you can help. This isn't the final version: it grows with your help.",
-  "updated": "2026-11-02",
+  "updated": "2026-11-03",
   "intro": [
     "BO Coach isn't the final version. It's made by one person, playing their own games to find what breaks, and that has a ceiling: every game shows one new bug, almost always a different one.",
     "What can improve it most is games from other players, with other civs, other screens and other ways of playing. With your help the potential is huge. This page tells you where it really stands, no makeup."
@@ -28,8 +28,7 @@
       "title": "What it can't do yet",
       "intro": "Better you know before downloading it.",
       "items": [
-        { "title": "Only tested at 1920×1080", "text": "The HUD rescales, but the production queue and the loading screen still expect that resolution. On another one it may read less." },
-        { "title": "The app is in Spanish", "text": "The website is already in English and Spanish, and the app reads the game in both, but its own texts are Spanish only. This is the biggest thing missing for most players, and it's on the list below." },
+        { "title": "Only tested at 1920×1080", "text": "The HUD, the production queue and the loading screen scale, but nobody has played at another resolution yet. It may read less." },
         { "title": "Works best with its HUD mod", "text": "To know how many villagers are on each resource, the app installs a mod that slightly changes the game's panel. Without the mod it estimates and gets more wrong." },
         { "title": "It doesn't replan", "text": "If the game strays far from the build order, it helps with the basics (houses, town center, villagers), but it doesn't work out a new path." },
         { "title": "Almost nobody else has tried it", "text": "Nobody but its author has tried the first-time setup. You'll very likely find something broken in the first five minutes." }

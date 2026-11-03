@@ -43,10 +43,10 @@ export const en: Dictionary = {
     downloadButton: "Download for Windows",
     libraryButton: "Browse the library",
     badges: "Free, open source beta · Windows 10 or 11 · tested at 1920×1080",
-    appLanguageNote: "Heads up: the website is in English, but the desktop app is still in Spanish. An English version of the app is on the roadmap. It already reads the game in English.",
+    appLanguageNote: "",
     overlayAlt:
       "The overlay during a game: the current step (move 3 villagers from sheep to wood), what's in progress (Loom and Feudal Age) and where villagers should be when the step ends.",
-    overlayCaption: "The overlay at 8:20 of a scouts game. The app's texts are in Spanish for now.",
+    overlayCaption: "The overlay at 8:20 of a scouts game, shown in Spanish. The app also comes in English.",
     howTitle: "How it works",
     steps: [
       {
@@ -81,7 +81,7 @@ export const en: Dictionary = {
     downloadSteps: [
       "Get the latest version from <github>GitHub</github> and unzip it anywhere. There's nothing to install: .NET comes inside.",
       "Open <code>BoCoach.exe</code>. Since it isn't signed, Windows may warn that it's an unrecognized app: click <em>More info</em> and <em>Run anyway</em>.",
-      "Follow <em>Primeros pasos</em> (first steps), which opens by itself the first time: you connect your website account and install the HUD mod, which lets the app calibrate itself.",
+      "Follow <em>First steps</em>, which opens by itself the first time: you connect your website account and install the HUD mod, which lets the app calibrate itself.",
       "Play. The coach starts by itself with the game and picks the build order for your civ on the loading screen, or you can pick one from your list. The overlay shows up at the top right of the game.",
     ],
     supportTitle: "Support the project",
@@ -251,7 +251,7 @@ export const en: Dictionary = {
       "BO Coach reads the game's screen on your PC. It never sends screenshots. Recordings and the record of each game are saved on your PC, in <code>%LOCALAPPDATA%\\BoCoach</code>. The app connects to this website to download your build orders and, unless you turn it off, to share your games.",
     shareTitle: "Sharing your games",
     shareText1:
-      "The \"Compartir mis partidas\" (share my games) option comes turned on, and you can turn it off in the app window or in First steps. While it is on, when each game of one minute or longer ends, the app uploads a record with:",
+      "The \"Share my games to improve the coach\" option comes turned on, and you can turn it off in the app window or in First steps. While it is on, when each game of one minute or longer ends, the app uploads a record with:",
     shareItems: [
       "the numbers the coach read from the HUD (clock, resources, villagers, population, production queue and scores);",
       "the game messages it recognized in the log, and what it believed, predicted and showed you;",
@@ -272,7 +272,7 @@ export const en: Dictionary = {
       "They aren't used for advertising, sold or shared with anyone. They're stored in Supabase (the database) and the site runs on Vercel. The cookies the site uses are the session ones, to keep you signed in, and the language one, if you pick a language.",
     deleteTitle: "Deleting your data",
     deleteText:
-      "Records your PC uploaded are deleted with \"Borrar lo compartido…\" (delete what I shared) in the app window. You can delete each of your build orders from its page, and tokens from <em>My account</em>. To delete your whole account, ask on <github>GitHub</github> and it gets deleted along with everything of yours.",
+      "Records your PC uploaded are deleted with \"Delete what I shared…\" in the app window. You can delete each of your build orders from its page, and tokens from <em>My account</em>. To delete your whole account, ask on <github>GitHub</github> and it gets deleted along with everything of yours.",
   },
   sim: {
     loading: "Simulating the BO with the app's engine…",
@@ -291,7 +291,7 @@ export const en: Dictionary = {
     derived: " (deduced from the steps)",
     branchBefore: " (before {time})",
     target: "target {time}",
-    coreLanguageNote: "The simulator's warnings are in Spanish for now.",
+    coreLanguageNote: "The assisted mode's explanations are in Spanish for now.",
     examplesLoading: "Loading the examples…",
     examplesLabel: "Pick an example build order",
     loadingShort: "Loading…",

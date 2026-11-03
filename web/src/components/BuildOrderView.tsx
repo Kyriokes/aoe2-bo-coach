@@ -153,7 +153,6 @@ export function IssuesList({ issues }: { issues: Issue[] }) {
           {issue.message}
         </li>
       ))}
-      {t.sim.coreLanguageNote ? <li className="text-xs text-faint">{t.sim.coreLanguageNote}</li> : null}
     </ul>
   );
 }

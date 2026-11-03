@@ -2,7 +2,7 @@
   "_como_editar": "Este archivo es el texto de la página /roadmap en castellano. Cambiá lo que quieras y hacé push: no hay que tocar ningún componente. Cada sección tiene un título, una intro opcional y una lista de items (title y text). Para sumar un item, copiá uno entero con sus llaves y poné una coma entre items. Si cambiás algo, hacé lo mismo en roadmap.en.json (un test exige que los dos tengan las mismas secciones) y poné la fecha de hoy en 'updated' (AAAA-MM-DD). Esta clave no se muestra en ningún lado.",
   "title": "Qué viene",
   "description": "Qué hace hoy BO Coach, qué no hace todavía, qué viene y cómo podés ayudar. No es la versión definitiva: con tu ayuda crece.",
-  "updated": "2026-11-02",
+  "updated": "2026-11-03",
   "intro": [
     "BO Coach no es la versión definitiva. Lo hace una persona, jugando sus propias partidas para encontrar lo que falla, y eso tiene un techo: cada partida muestra un error nuevo, casi siempre uno distinto.",
     "Lo que más lo puede mejorar son las partidas de otros jugadores, con otras civs, otras pantallas y otras formas de jugar. Con tu ayuda el potencial es enorme. Esta página cuenta en qué estado está de verdad, sin maquillaje."
@@ -28,8 +28,7 @@
       "title": "Qué no hace todavía",
       "intro": "Mejor que lo sepas antes de bajarla.",
       "items": [
-        { "title": "Solo está probado en 1920×1080", "text": "El HUD se reescala, pero la cola de producción y la pantalla de carga todavía esperan esa resolución. En otra puede leer menos." },
-        { "title": "La app está en castellano", "text": "La web ya está en inglés y en castellano, y la app lee el juego en esos dos idiomas, pero sus propios textos están solo en castellano." },
+        { "title": "Solo está probado en 1920×1080", "text": "El HUD, la cola de producción y la pantalla de carga se reescalan, pero todavía nadie jugó en otra resolución. Puede leer menos." },
         { "title": "Rinde mejor con su mod del HUD", "text": "Para saber cuántos aldeanos hay en cada recurso, la app instala un mod que cambia un poco el panel del juego. Sin el mod estima y se equivoca más." },
         { "title": "No replanifica", "text": "Si la partida se aparta mucho de la build order, te ayuda con lo básico (casas, centro urbano, aldeanos), pero no recalcula un camino nuevo." },
         { "title": "Casi nadie más la probó", "text": "El primer uso no lo probó nadie más que su autor. Es muy probable que encuentres algo roto en los primeros cinco minutos." }
