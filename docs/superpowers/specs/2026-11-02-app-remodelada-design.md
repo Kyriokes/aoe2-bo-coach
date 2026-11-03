@@ -72,5 +72,5 @@ overlay, informe), que comparte la web, y la calibración a mano, que es de desa
 ## Pruebas
 
 Tests de `HomeScreen.Build` por estado y de `HomeViewModel` con los view models reales. Capturas sin el juego:
-`--screenshot salida.png [--state sin-cuenta|esperando|en-partida|terminada] [--settings pestaña] [--report]`, y
-`--preview` abre la ventana de verdad con ajustes temporales, para probar menús y pestañas.
+`--screenshot salida.png [--state sin-cuenta|esperando|en-partida|terminada|elegir] [--settings pestaña] [--report]`, y
+`--preview [--no-activate]` abre la ventana de verdad con ajustes temporales, para probar menús y pestañas.

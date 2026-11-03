@@ -2,6 +2,10 @@
 
 Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que más destraba.
 
+## La app remodelada (el tablero)
+
+0s. **Probar la ventana nueva** (2/11). (1) Abrila: arriba tiene que estar el cuadro grande de estado y los cuatro pasos (Cuenta, Build order, Jugar, Informe). (2) Tocá "Ajustes ⚙" y mirá las pestañas: tu nombre, Elo, civ y máximo de aldeanos en "Partida"; idioma y mod en "Juego y HUD"; la cuenta en "Avanzado". (3) Con 5 clics sobre la versión tiene que aparecer "Desarrollador". (4) Jugá una partida: el cuadro tiene que pasar de "Esperando la partida" a "En partida · reloj · civ" y al final a "Partida terminada", con "Ver el informe". (5) Decime si falta algo a mano o si alguna palabra no te cierra: los textos están todos en `src/BoCoach.App/Texts.cs`.
+
 ## La creencia del estado (v0.9.83, escalón 2 de la BO por objetivos)
 
 0r. **Probar la v0.9.84: la BO republicada se baja sola** (2/11). En tu partida de las 21:28 la app siguió con la "mejorada" vieja de los aztecas aunque la nueva ya estaba en la web: la guardada no se volvía a bajar. (1) Abrí la v0.9.84 (arriba tiene que decir 0.9.84). (2) Tocá "Actualizar lista": la de aztecas elegida tiene que decir "Bajando..." y quedar "Lista: Aztec 5 Militia Rush (mejorada)" sin que la vuelvas a elegir. (3) Si en vez de eso vas directo al juego, en la pantalla de carga la barra de estado tiene que decir "Coach con ..., la versión nueva de la web" y el coach arranca con la nueva. La nueva se nota en los pasos: "10 aldeanos en madera" y "15 aldeanos en madera" en vez de "7" y "12", y deja 4 más en comida hasta las granjas. (4) Contame también si la casa en rojo durante toda la investigación de la Feudal (el centro urbano no produce y quedan 3 lugares 4 minutos seguidos) te molesta: la saco en ese caso.

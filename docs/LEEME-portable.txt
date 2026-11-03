@@ -16,23 +16,25 @@ de la app terminada en \* (por ejemplo C:\Juegos\BoCoach\*).
 Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
 así que se conserva aunque reemplaces la carpeta por una versión nueva.
 
-La primera vez se abre "Primeros pasos", que te lleva por lo mismo que sigue (idioma, mod y una
-partida rápida contra 7 IA para leer tu nombre y calibrar). Se vuelve a abrir con su botón.
+La primera vez se abre "Primeros pasos", que te lleva por lo mismo que sigue (cuenta, idioma, mod y
+una partida rápida contra 7 IA para leer tu nombre y calibrar). Se vuelve a abrir desde Ajustes, en
+la pestaña "Juego y HUD".
 
 Para usar el coach:
-  1. Tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en "Full screen" o "Windowed".
-     En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo. Si venís de una versión
-     anterior, volvé a tocarlo: el diseño del HUD cambia entre versiones y la app lee el nuevo.
-  2. En la segunda fila de arriba escribí "Tu nombre" como sale en el juego y elegí el "Idioma del
-     juego" (inglés, castellano de España o de Latinoamérica: en el juego está en Opciones). Con el
-     coach andando antes de la partida, en la pantalla de carga toma tu civ solo; si no, elegí la
-     "Civ" con la que jugás.
-  3. Elegí la build order en la biblioteca y tocá "Empezar coach" (o Ctrl+Alt+S desde el juego).
-     Con el mod la pantalla se calibra sola, a cualquier resolución. Sin el mod, Ctrl+Alt+C para
-     ubicar las cajas a mano sobre el HUD.
+  1. Conectá tu cuenta de la web con "Conectar cuenta": ahí se arman y se eligen las build orders.
+  2. En Ajustes, pestaña "Juego y HUD", tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en
+     "Full screen" o "Windowed". En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo. Si
+     venís de una versión anterior, volvé a tocarlo: el diseño del HUD cambia entre versiones y la
+     app lee el nuevo. Ahí mismo elegí el idioma del juego.
+  3. En Ajustes, pestaña "Partida", escribí tu nombre como sale en el juego. Con el coach andando
+     antes de la partida, en la pantalla de carga toma tu civ solo.
+  4. Jugá. El cuadro grande de la ventana dice en qué momento estás: con "Automática" el coach
+     arranca solo con el juego y elige la build order en la pantalla de carga; si querés una en
+     particular, tocala en la lista. Con el mod la pantalla se calibra sola, a cualquier resolución.
+     Al terminar la partida te queda el informe.
 
-Si algo no se lee bien (no ve el reloj, los números no coinciden): en plena partida tocá
-Ctrl+Alt+X (o "Captura de diagnóstico") y a los 2 segundos guarda la pantalla y lo que encontró
-la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
+Si algo no se lee bien (no ve el reloj, los números no coinciden): hacé 5 clics sobre la versión
+(arriba) para prender el modo desarrollador y, en plena partida, tocá Ctrl+Alt+X (o "Captura de
+diagnóstico" en Ajustes): a los 2 segundos guarda la pantalla y lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
 
 Más información: https://github.com/Kyriokes/aoe2-bo-coach
