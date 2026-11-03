@@ -1,0 +1,135 @@
+<Window x:Class="BoCoach.App.Coaching.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:hotkeys="clr-namespace:BoCoach.App.Hotkeys"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:coaching="clr-namespace:BoCoach.App.Coaching"
+        xmlns:app="clr-namespace:BoCoach.App"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance coaching:HomeViewModel}"
+        Title="{x:Static app:Texts.SettingsTitle}" Width="640" Height="500" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Style="{StaticResource AppWindow}">
+    <DockPanel Margin="18">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+            <Button DockPanel.Dock="Right" Content="{x:Static app:Texts.Close}" IsCancel="True" Margin="0" Click="Close_Click" />
+            <TextBlock Text="{x:Static app:Texts.SettingsApplyHint}" Style="{StaticResource Hint}" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <TabControl x:Name="Tabs">
+            <!-- Lo de cada partida -->
+            <TabItem Header="{x:Static app:Texts.TabGame}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="{x:Static app:Texts.PlayerNameLabel}" Style="{StaticResource FieldLabel}" />
+                        <TextBox x:Name="NameBox" Grid.Column="1" Text="{Binding Coach.PlayerName, UpdateSourceTrigger=LostFocus}" Width="220" HorizontalAlignment="Left"
+                                 ToolTip="{x:Static app:Texts.PlayerNameTip}" AutomationProperties.Name="{x:Static app:Texts.PlayerNameLabel}" />
+
+                        <TextBlock Grid.Row="1" Text="{x:Static app:Texts.Elo1v1Label}" Style="{StaticResource FieldLabel}" Margin="0,10,8,0" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0" ToolTip="{x:Static app:Texts.EloTip}">
+                            <TextBox x:Name="EloSoloBox" Text="{Binding Coach.Elo1v1Text, UpdateSourceTrigger=LostFocus}" Width="64"
+                                     AutomationProperties.Name="{x:Static app:Texts.Elo1v1Label}" />
+                            <TextBlock Text="{x:Static app:Texts.EloTeamLabel}" Style="{StaticResource FieldLabel}" Margin="16,0,8,0" />
+                            <TextBox x:Name="EloTeamBox" Text="{Binding Coach.EloTeamText, UpdateSourceTrigger=LostFocus}" Width="64"
+                                     AutomationProperties.Name="{x:Static app:Texts.EloTeamLabel}" />
+                            <Button Content="{x:Static app:Texts.EloSearch}" Command="{Binding Coach.SearchEloCommand}" Margin="10,0,0,0"
+                                    AutomationProperties.Name="{x:Static app:Texts.EloSearchName}" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Coach.EloStatus}" Style="{StaticResource Hint}" Margin="0,4,0,0"
+                                   Visibility="{Binding Coach.EloStatus, Converter={StaticResource NotEmptyToVisibility}}" />
+
+                        <TextBlock Grid.Row="3" Text="{x:Static app:Texts.CivLabel}" Style="{StaticResource FieldLabel}" Margin="0,10,8,0" />
+                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding Coach.CivOptions}" SelectedItem="{Binding Coach.GameCiv}" Width="220" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                  ToolTip="{x:Static app:Texts.CivTip}" AutomationProperties.Name="{x:Static app:Texts.CivLabel}" />
+
+                        <TextBlock Grid.Row="4" Text="{x:Static app:Texts.MaxVillagersLabel}" Style="{StaticResource FieldLabel}" Margin="0,10,8,0" />
+                        <TextBox x:Name="MaxVillagersBox" Grid.Row="4" Grid.Column="1" Text="{Binding Coach.MaxVillagers, UpdateSourceTrigger=LostFocus}" Width="64" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                 ToolTip="{x:Static app:Texts.MaxVillagersTip}" AutomationProperties.Name="{x:Static app:Texts.MaxVillagersName}" />
+                    </Grid>
+
+                    <CheckBox IsChecked="{Binding Coach.CursorReminders}" Content="{x:Static app:Texts.CursorRemindersLabel}" Margin="0,18,0,0"
+                              ToolTip="{Binding CursorReminders, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                    <CheckBox IsChecked="{Binding Coach.AutoStart}" Content="{x:Static app:Texts.AutoStartLabel}" Margin="0,10,0,0"
+                              ToolTip="{Binding AutoStart, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                    <!-- Lugar previsto para "Compartir mis partidas para mejorar el coach" (registro de partida, hoja de ruta ítem 15): una casilla más, acá -->
+                </StackPanel>
+            </TabItem>
+
+            <!-- El juego y el mod del HUD -->
+            <TabItem Header="{x:Static app:Texts.TabGameHud}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" ToolTip="{x:Static app:Texts.GameLanguageTip}">
+                        <TextBlock Text="{x:Static app:Texts.GameLanguageLabel}" Style="{StaticResource FieldLabel}" Width="152" />
+                        <ComboBox ItemsSource="{Binding Coach.LanguageOptions}" SelectedItem="{Binding Coach.Language}" Width="220"
+                                  AutomationProperties.Name="{x:Static app:Texts.GameLanguageLabel}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{x:Static app:Texts.ModTitle}" FontWeight="SemiBold" Margin="0,20,0,4" />
+                    <TextBlock Text="{x:Static app:Texts.ModHint}" Style="{StaticResource Hint}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="{x:Static app:Texts.InstallMod}" Command="{Binding Tools.InstallModCommand}" ToolTip="{x:Static app:Texts.InstallModTip}" Margin="0,0,14,0" />
+                        <CheckBox IsChecked="{Binding Coach.HudMinimal}" Content="{x:Static app:Texts.ModMinimal}" VerticalAlignment="Center" ToolTip="{x:Static app:Texts.ModMinimalTip}" />
+                    </StackPanel>
+
+                    <TextBlock Text="{x:Static app:Texts.ScreenStatusLabel}" FontWeight="SemiBold" Margin="0,20,0,4" />
+                    <TextBlock Text="{Binding Tools.CalibrationStatus}" Style="{StaticResource Hint}" />
+                    <TextBlock Text="{Binding Tools.GameStatus}" Style="{StaticResource Hint}" Margin="0,2,0,0" />
+
+                    <Button Content="{x:Static app:Texts.FirstRunButton}" Command="{Binding RunCommand}" CommandParameter="{x:Static coaching:HomeAction.FirstRun}"
+                            ToolTip="{x:Static app:Texts.FirstRunTip}" HorizontalAlignment="Left" Margin="0,20,0,0" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- Lo que casi nadie toca -->
+            <TabItem Header="{x:Static app:Texts.TabAdvanced}">
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.WebAccountLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                    <TextBlock Text="{x:Static app:Texts.WebAccountHint}" Style="{StaticResource Hint}" />
+                    <Button Content="{x:Static app:Texts.WebAccountButton}" Command="{Binding BuildOrders.AccountSettingsCommand}" ToolTip="{x:Static app:Texts.AccountSettingsTip}"
+                            HorizontalAlignment="Left" Margin="0,8,0,0" />
+
+                    <TextBlock Text="{x:Static app:Texts.ReportsLabel}" FontWeight="SemiBold" Margin="0,24,0,4" />
+                    <TextBlock Text="{x:Static app:Texts.ReportsHint}" Style="{StaticResource Hint}" />
+                    <Button Content="{x:Static app:Texts.ReportsButton}" Command="{Binding OpenReportsCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- Solo con el modo desarrollador (5 clics sobre la versión) -->
+            <TabItem Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
+                <TabItem.Header>
+                    <TextBlock Text="{x:Static app:Texts.TabDeveloper}" Foreground="{StaticResource Warning}" />
+                </TabItem.Header>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.DeveloperHint}" Style="{StaticResource Hint}" Margin="0,0,0,12" />
+                    <WrapPanel>
+                        <Button Content="{x:Static app:Texts.CalibrateButton}" Command="{Binding Tools.CalibrateCommand}" Margin="0,0,6,6"
+                                ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        <Button Content="{Binding Tools.RecordButtonText}" Command="{Binding Tools.ToggleRecordingCommand}" Margin="0,0,6,6"
+                                ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        <Button Content="{x:Static app:Texts.RecordingsButton}" Command="{Binding Tools.OpenRecordingsCommand}" Margin="0,0,6,6" />
+                        <Button Content="{x:Static app:Texts.DiagnosticButton}" Command="{Binding Tools.DiagnosticCommand}" Margin="0,0,6,6"
+                                ToolTip="{Binding Diagnostic, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                    </WrapPanel>
+                    <CheckBox IsChecked="{Binding AutoRecord, Source={x:Static app:DevMode.Instance}}" Content="{x:Static app:Texts.AutoRecordLabel}" Margin="0,8,0,0"
+                              ToolTip="{x:Static app:Texts.AutoRecordTip}" />
+                    <TextBlock Text="{Binding Tools.RecordingStatus}" Style="{StaticResource Hint}" Margin="0,12,0,0"
+                               Visibility="{Binding Tools.RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}" />
+                    <TextBlock Text="{Binding Tools.DiagnosticStatus}" Style="{StaticResource Hint}" Margin="0,6,0,0"
+                               Visibility="{Binding Tools.DiagnosticStatus, Converter={StaticResource NotEmptyToVisibility}}" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

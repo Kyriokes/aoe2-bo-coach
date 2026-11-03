@@ -7,237 +7,301 @@
         xmlns:coaching="clr-namespace:BoCoach.App.Coaching"
         xmlns:app="clr-namespace:BoCoach.App"
         mc:Ignorable="d"
-        d:DataContext="{d:DesignInstance coaching:BuildOrdersViewModel}"
+        d:DataContext="{d:DesignInstance coaching:HomeViewModel}"
         Title="{x:Static app:AppVersion.WindowTitle}"
-        Width="1280" Height="820" MinWidth="1000" MinHeight="560"
-        FontFamily="Segoe UI" FontSize="13"
-        Background="{StaticResource Background}" Foreground="{StaticResource Text}">
+        Width="1100" Height="760" MinWidth="900" MinHeight="600"
+        Style="{StaticResource AppWindow}">
+
+    <Window.Resources>
+        <!-- Una de las cuatro tarjetas: un círculo con el estado, el título, lo que sabe y sus enlaces -->
+        <DataTemplate x:Key="StepCard" DataType="{x:Type coaching:HomeStep}">
+            <Border x:Name="Card" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Grid Width="22" Height="22" Margin="0,0,8,0">
+                            <Ellipse x:Name="Dot" Fill="{StaticResource BorderSoft}" />
+                            <TextBlock x:Name="Glyph" Text="·" Foreground="{StaticResource AccentInk}" FontWeight="Bold" FontSize="12"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{Binding Detail}" ToolTip="{Binding Detail}" Style="{StaticResource Hint}" Foreground="{StaticResource TextSoft}"
+                               Margin="0,8,0,0" MaxHeight="36" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,6,0,0"
+                                Visibility="{Binding Link, Converter={StaticResource NotEmptyToVisibility}}">
+                        <Button Content="{Binding Link.Label}" Style="{StaticResource LinkButton}"
+                                Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Link.Action}" />
+                        <Button Content="{Binding SecondLink.Label}" Style="{StaticResource LinkButton}" Margin="14,0,0,0"
+                                Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding SecondLink.Action}"
+                                Visibility="{Binding SecondLink, Converter={StaticResource NotEmptyToVisibility}}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="Done">
+                    <Setter TargetName="Dot" Property="Fill" Value="{StaticResource Good}" />
+                    <Setter TargetName="Glyph" Property="Text" Value="✓" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Current">
+                    <Setter TargetName="Dot" Property="Fill" Value="{StaticResource Accent}" />
+                    <Setter TargetName="Glyph" Property="Text" Value="▶" />
+                    <Setter TargetName="Glyph" Property="FontSize" Value="10" />
+                    <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Accent}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Warning">
+                    <Setter TargetName="Dot" Property="Fill" Value="{StaticResource Danger}" />
+                    <Setter TargetName="Glyph" Property="Text" Value="!" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Info">
+                    <Setter TargetName="Dot" Property="Fill" Value="{StaticResource TextSoft}" />
+                    <Setter TargetName="Glyph" Property="Text" Value="↗" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Todo">
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource Muted}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
 
     <DockPanel>
-        <!-- Barra de estado -->
-        <Border DockPanel.Dock="Bottom" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0" Padding="12,5">
+        <!-- Barra de estado: el último mensaje y, si se está grabando, la grabación -->
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource Field}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,1,0,0" Padding="16,5">
             <DockPanel>
-                <TextBlock Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Tools.RecordingStatus}" FontSize="12" Margin="16,0,0,0" MaxWidth="460" TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Tools.RecordingStatus}" Visibility="{Binding Tools.RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource Good}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Tools.IsRecording}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding BuildOrders.Status}" ToolTip="{Binding BuildOrders.Status}" Foreground="{StaticResource TextSoft}" FontSize="12" TextTrimming="CharacterEllipsis" />
             </DockPanel>
         </Border>
 
-        <!-- Herramientas de captura: calibrar la pantalla y grabar partidas -->
-        <Border x:Name="ToolsBar" DockPanel.Dock="Top" Background="#2B2622" Padding="12,7">
-            <StackPanel>
-                <DockPanel>
-                    <TextBlock Text="AoE2 BO Coach" Foreground="#F4F2EE" FontWeight="SemiBold" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="#A39A8F" FontSize="11" VerticalAlignment="Center" Margin="0,0,18,0"
-                               MouseLeftButtonUp="Version_Click"
-                               ToolTip="Versión · commit · cuándo se compiló" />
-
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button x:Name="CoachButton" Content="{Binding ButtonText}" Command="{Binding StartStopCommand}" FontWeight="SemiBold"
-                                ToolTip="{Binding StartStop, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                        <Button Content="Atajos" Click="Hotkeys_Click" ToolTip="Ver y cambiar los atajos de teclado que andan desde el juego" />
-                        <Button Content="Primeros pasos" Click="FirstRun_Click"
-                                ToolTip="Idioma del juego, mod del HUD, una partida rápida contra 7 IA para calibrar y leer tu nombre en la pantalla de carga" />
-                        <Button Content="Calibrar pantalla…" Command="{Binding CalibrateCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Calibrate, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                        <Button Content="Instalar mod del HUD" Command="{Binding InstallModCommand}"
-                                ToolTip="Agrega al juego el mod local &quot;BoCoach HUD&quot;: el panel de recursos con los números blancos grandes que el coach lee mucho mejor. Se puede volver a tocar sin problema" />
-                        <CheckBox x:Name="HudMinimalBox" IsChecked="{Binding HudMinimal}" VerticalAlignment="Center" Margin="0,0,10,0"
-                                  ToolTip="Mínimo: la barra del juego donde está, opaca, con los números blancos y una franja fina de color bajo cada ícono; el log, la cola y el menú quedan como los trae el juego. Sin marcar: el diseño completo (log en el rincón, cola debajo de la barra, casilleros de color). Después de cambiarlo, volvé a instalar el mod">
-                            <TextBlock Text="Mod mínimo" Foreground="#C9C1B6" />
-                        </CheckBox>
-                        <Button Content="{Binding RecordButtonText}" Command="{Binding ToggleRecordingCommand}" Visibility="{Binding RecordButtonVisible, Converter={StaticResource BoolToVisibility}}" ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                        <Button Content="Grabaciones" Command="{Binding OpenRecordingsCommand}" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
-                        <Button Content="Apoyar ☕" Click="Support_Click" Margin="0"
-                                ToolTip="Invitame un café (Cafecito, PayPal, Ko-fi o Mercado Pago) y mirá las metas del proyecto en la web" />
+        <!-- En la partida: corregir lo que el coach no vio; con el modo desarrollador, todo lo leído en la última captura -->
+        <Border x:Name="LivePanel" DockPanel.Dock="Bottom" Background="{StaticResource Panel}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,1,0,0" Padding="16,10"
+                Visibility="{Binding ShowLive, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel DataContext="{Binding Coach.Live}">
+                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="{x:Static app:Texts.LogTip}"
+                              Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="{StaticResource TextSoft}" FontSize="11" FontFamily="Consolas" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel>
+                    <DockPanel>
+                        <!-- Lo mismo que los atajos de Atrás y Saltear desde el juego; "Ya está" va en el cuadro de estado -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
+                            <TextBlock Text="{x:Static app:Texts.LaneLabel}" Style="{StaticResource FieldLabel}" />
+                            <ComboBox ItemsSource="{Binding DataContext.Coach.LaneChoices, ElementName=LivePanel}" SelectedItem="{Binding DataContext.Coach.SelectedLane, ElementName=LivePanel}"
+                                      DisplayMemberPath="Name" Margin="0,0,6,0" MinWidth="150"
+                                      ToolTip="{x:Static app:Texts.LaneTip}" />
+                            <Button Content="{x:Static app:Texts.Back}" Command="{Binding DataContext.Coach.BackCommand, ElementName=LivePanel}"
+                                    ToolTip="{Binding Back, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                            <Button Content="{x:Static app:Texts.Skip}" Command="{Binding DataContext.Coach.SkipCommand, ElementName=LivePanel}" Margin="0"
+                                    ToolTip="{Binding Skip, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding Header, Source={x:Static app:DevMode.Instance}}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0,0,14,0" />
+                        <TextBlock Text="{Binding Step}" ToolTip="{Binding Step}" Foreground="{StaticResource TextSoft}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <!-- Lo leído: solo con el modo desarrollador -->
+                    <StackPanel Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Margin="0,8,0,0"><Run Text="{x:Static app:Texts.LiveClock}" Foreground="{StaticResource Muted}" /><Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="{x:Static app:Texts.LiveAge}" Foreground="{StaticResource Muted}" /><Run Text="{Binding Age, Mode=OneWay}" /><Run Text="{x:Static app:Texts.LiveVillagers}" Foreground="{StaticResource Muted}" /><Run Text="{Binding Villagers, Mode=OneWay}" /><Run Text="{x:Static app:Texts.LiveIdle}" Foreground="{StaticResource Muted}" /><Run Text="{Binding Idle, Mode=OneWay}" /><Run Text="{x:Static app:Texts.LivePopulation}" Foreground="{StaticResource Muted}" /><Run Text="{Binding Population, Mode=OneWay}" /></TextBlock>
+                        <ItemsControl Margin="0,6,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" HorizontalAlignment="Left" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ContentControl Content="{Binding Food}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                            <ContentControl Content="{Binding Wood}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                            <ContentControl Content="{Binding Gold}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                            <ContentControl Content="{Binding Stone}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
+                        </ItemsControl>
+                        <TextBlock Text="{Binding FoodFloor}" Foreground="{StaticResource Accent}" FontSize="12" Margin="0,4,0,0"
+                                   Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
+                        <TextBlock Text="{Binding Queue}" Foreground="{StaticResource TextSoft}" FontSize="12" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Game}" Foreground="{StaticResource TextSoft}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Visibility="{Binding Game, Converter={StaticResource NotEmptyToVisibility}}" />
+                        <ItemsControl ItemsSource="{Binding Lanes}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Foreground="{StaticResource TextSoft}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Problems}" Foreground="{StaticResource Danger}" FontSize="12"
+                                   Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
+                        <TextBlock Text="{Binding Usage}" Foreground="{StaticResource Muted}" FontSize="11" />
                     </StackPanel>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis"><Run Text="{Binding CalibrationStatus, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding GameStatus, Mode=OneWay}" /></TextBlock>
-                        <TextBlock Text="{Binding RecordingStatus}" FontSize="12" TextTrimming="CharacterEllipsis"
-                                   Visibility="{Binding RecordingStatus, Converter={StaticResource NotEmptyToVisibility}}">
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Margin="20,14,20,14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" MinHeight="150" />
+            </Grid.RowDefinitions>
+
+            <!-- Cabecera -->
+            <DockPanel Margin="0,0,0,12">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="{Binding Tools.RecordButtonText}" Command="{Binding Tools.ToggleRecordingCommand}"
+                            Visibility="{Binding Tools.RecordButtonVisible, Converter={StaticResource BoolToVisibility}}"
+                            ToolTip="{Binding Record, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
+                    <Button Content="{x:Static app:Texts.SupportButton}" Click="Support_Click" ToolTip="{x:Static app:Texts.SupportTip}" />
+                    <Button Content="{x:Static app:Texts.HotkeysButton}" Click="Hotkeys_Click" ToolTip="{x:Static app:Texts.HotkeysTip}" />
+                    <Button Content="{x:Static app:Texts.SettingsButton}" Click="Settings_Click" ToolTip="{x:Static app:Texts.SettingsTip}" Margin="0" />
+                </StackPanel>
+                <TextBlock Text="{x:Static app:Texts.AppName}" Style="{StaticResource AppTitle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <!-- 5 clics prenden el modo desarrollador -->
+                <TextBlock Text="{x:Static app:AppVersion.Text}" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" Background="Transparent"
+                           MouseLeftButtonUp="Version_Click" ToolTip="{x:Static app:Texts.VersionTip}" />
+            </DockPanel>
+
+            <!-- El cuadro de estado: qué está pasando y qué hacer -->
+            <Border Grid.Row="1" Background="{StaticResource PanelRaised}" BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8" Margin="0,0,0,12" MinHeight="96">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border x:Name="StateBar" CornerRadius="7,0,0,7">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{StaticResource Accent}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Screen.State}" Value="NoAccount">
+                                        <Setter Property="Background" Value="{StaticResource Danger}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Screen.State}" Value="InGame">
+                                        <Setter Property="Background" Value="{StaticResource Good}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Screen.State}" Value="Finished">
+                                        <Setter Property="Background" Value="{StaticResource Info}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="18,12">
+                        <TextBlock Text="{Binding Screen.Title}" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#8CD17D" />
+                                    <Setter Property="Foreground" Value="{StaticResource Accent}" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                                            <Setter Property="Foreground" Value="#F08070" />
+                                        <DataTrigger Binding="{Binding Screen.State}" Value="NoAccount">
+                                            <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Screen.State}" Value="InGame">
+                                            <Setter Property="Foreground" Value="{StaticResource Good}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Screen.State}" Value="Finished">
+                                            <Setter Property="Foreground" Value="{StaticResource Info}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
+                        <TextBlock Text="{Binding Screen.Detail}" ToolTip="{Binding Screen.Detail}" Style="{StaticResource Body}" Margin="0,4,0,0" MaxHeight="38" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                </DockPanel>
-                <!-- Ajustes de la partida: se aplican al empezar el coach (pasan al renglón de abajo si no entran) -->
-                <WrapPanel Margin="0,6,0,0">
-                    <StackPanel x:Name="PlayerNameBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="Tu nombre en el juego, como sale en la lista de jugadores de la pantalla de carga. Ahí el coach lee con qué civ jugás (manda sobre la de acá al lado en esa partida), y contra quién, y empieza la partida de cero">
-                        <TextBlock Text="Tu nombre" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=LostFocus}" Width="120" VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Tu nombre en el juego" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                        <Button x:Name="PrimaryAction" Style="{StaticResource PrimaryButton}" Padding="18,9" FontSize="14"
+                                Content="{Binding Screen.Primary.Label}" Command="{Binding RunCommand}" CommandParameter="{Binding Screen.Primary.Action}"
+                                ToolTip="{Binding PrimaryTip}" Visibility="{Binding Screen.Primary, Converter={StaticResource NotEmptyToVisibility}}" />
+                        <Button x:Name="SecondaryAction" Padding="14,9" Margin="0"
+                                Content="{Binding Screen.Secondary.Label}" Command="{Binding RunCommand}" CommandParameter="{Binding Screen.Secondary.Action}"
+                                ToolTip="{Binding SecondaryTip}" Visibility="{Binding Screen.Secondary, Converter={StaticResource NotEmptyToVisibility}}" />
                     </StackPanel>
-                    <StackPanel x:Name="EloBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="Tu Elo de mapa aleatorio, para las estadísticas reales de cruces de la pantalla de carga y la BO sugerida. Buscar trae el de &quot;Tu nombre&quot; de la API del juego: el nombre se manda solo al tocar el botón">
-                        <TextBlock Text="Elo 1v1" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox Text="{Binding Elo1v1Text, UpdateSourceTrigger=LostFocus}" Width="50" VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Elo 1v1" />
-                        <TextBlock Text="Elo equipos" Foreground="#A39A8F" VerticalAlignment="Center" Margin="8,0,6,0" />
-                        <TextBox Text="{Binding EloTeamText, UpdateSourceTrigger=LostFocus}" Width="50" VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Elo de equipos" />
-                        <Button Content="Buscar" Command="{Binding SearchEloCommand}" Padding="8,1" Margin="6,0,0,0"
-                                AutomationProperties.Name="Buscar mi Elo en la API del juego" />
-                        <TextBlock Text="{Binding EloStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"
-                                   Width="240" TextTrimming="CharacterEllipsis" ToolTip="{Binding EloStatus}" />
-                    </StackPanel>
-                    <StackPanel x:Name="GameCivBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="Con qué civ jugás esta partida: el coach usa sus bonificaciones (costos, población de las casas, recursos iniciales). Por defecto, la civ que dice la BO. Se aplica al empezar el coach">
-                        <TextBlock Text="Civ" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox ItemsSource="{Binding CivOptions}" SelectedItem="{Binding GameCiv}" Width="104" VerticalContentAlignment="Center"
-                                  AutomationProperties.Name="Civ de esta partida" />
-                    </StackPanel>
-                    <StackPanel x:Name="GameLanguageBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="En qué idioma está el juego: el log de eventos y la edad se leen con sus frases. Castellano de España y de Latinoamérica difieren en muchos nombres (en el juego: Opciones → Idioma). Se aplica al empezar el coach">
-                        <TextBlock Text="Idioma del juego" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding Language}" Width="170" VerticalContentAlignment="Center"
-                                  AutomationProperties.Name="Idioma del juego" />
-                    </StackPanel>
-                    <StackPanel x:Name="MaxVillagersBox" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="Hasta cuántos aldeanos producen sin parar los centros urbanos (100 a 130 según la estrategia). La comida nunca baja de lo que necesitan. Se aplica al empezar el coach">
-                        <TextBlock Text="Máx. aldeanos" Foreground="#A39A8F" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox Text="{Binding MaxVillagers, UpdateSourceTrigger=LostFocus}" Width="44" VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Máximo de aldeanos" />
-                    </StackPanel>
-                    <CheckBox x:Name="CursorRemindersBox" IsChecked="{Binding CursorReminders}" VerticalAlignment="Center" Margin="0,0,10,0"
-                              ToolTip="{Binding CursorReminders, Source={x:Static hotkeys:HotkeyTips.Instance}}">
-                        <TextBlock Text="Recordatorios en el mouse" Foreground="#C9C1B6" />
-                    </CheckBox>
-                    <CheckBox x:Name="AutoStartBox" IsChecked="{Binding AutoStart}" VerticalAlignment="Center" Margin="0,0,10,0"
-                              ToolTip="{Binding AutoStart, Source={x:Static hotkeys:HotkeyTips.Instance}}">
-                        <TextBlock Text="Coach automático" Foreground="#C9C1B6" />
-                    </CheckBox>
-                    <CheckBox IsChecked="{Binding AutoRecord, Source={x:Static app:DevMode.Instance}}" VerticalAlignment="Center" Margin="0,0,10,0" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"
-                              ToolTip="Modo desarrollador: arranca a grabar cuando empieza una partida y corta cuando termina (o al detener el coach). No toca una grabación hecha a mano">
-                        <TextBlock Text="Grabar cada partida sola" Foreground="#F0A050" />
-                    </CheckBox>
-                    <Button Content="Captura de diagnóstico" Command="{Binding DiagnosticCommand}" Margin="6,0,10,0" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"
-                            ToolTip="{Binding Diagnostic, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                    <TextBlock Text="{Binding DiagnosticStatus}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}" />
-                </WrapPanel>
-            </StackPanel>
-        </Border>
+                </Grid>
+            </Border>
 
-        <!-- Lo que ve el coach: todo lo leído en la última captura, mientras el coach corre -->
-        <Border x:Name="LivePanel" DockPanel.Dock="Bottom" Background="#1E1A16" BorderBrush="#5C5046" BorderThickness="0,1,0,0" Padding="12,8"
-                Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}">
-            <DockPanel DataContext="{Binding Live}">
-                <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Events}" Width="260" Margin="16,0,0,0" ToolTip="Últimos eventos leídos del log"
-                              Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="#C9C1B6" FontSize="11" FontFamily="Consolas" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="{Binding Header, Source={x:Static app:DevMode.Instance}}" Foreground="#E8C26A" FontWeight="SemiBold" Margin="0,0,16,0" />
-                        <TextBlock Foreground="#F4F2EE" Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}"><Run Text="Reloj " Foreground="#A39A8F" /><Run Text="{Binding Clock, Mode=OneWay}" /><Run Text="   Edad " Foreground="#A39A8F" /><Run Text="{Binding Age, Mode=OneWay}" /><Run Text="   Aldeanos " Foreground="#A39A8F" /><Run Text="{Binding Villagers, Mode=OneWay}" /><Run Text="   Inactivos " Foreground="#A39A8F" /><Run Text="{Binding Idle, Mode=OneWay}" /><Run Text="   Población " Foreground="#A39A8F" /><Run Text="{Binding Population, Mode=OneWay}" /></TextBlock>
-                    </StackPanel>
-                    <!-- Lo leído: solo con el modo desarrollador -->
-                    <StackPanel Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl Margin="0,6,0,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Rows="1" HorizontalAlignment="Left" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ContentControl Content="{Binding Food}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
-                        <ContentControl Content="{Binding Wood}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
-                        <ContentControl Content="{Binding Gold}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
-                        <ContentControl Content="{Binding Stone}" ContentTemplate="{StaticResource LiveResourceTemplate}" />
-                    </ItemsControl>
-                    <TextBlock Text="{Binding FoodFloor}" Foreground="#E8C26A" FontSize="12" Margin="0,4,0,0"
-                               Visibility="{Binding FoodFloor, Converter={StaticResource NotEmptyToVisibility}}" />
-                    <TextBlock Text="{Binding Queue}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" />
-                    <TextBlock Text="{Binding Game}" Foreground="#C9C1B6" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
-                               Visibility="{Binding Game, Converter={StaticResource NotEmptyToVisibility}}" />
-                    </StackPanel>
-                    <DockPanel Margin="0,6,0,0">
-                        <!-- Lo mismo que los atajos de Atrás, Ya está y Saltear desde el juego, para cuando el coach no ve algo (o los atajos no llegan) -->
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
-                            <ComboBox ItemsSource="{Binding DataContext.LaneChoices, ElementName=LivePanel}" SelectedItem="{Binding DataContext.SelectedLane, ElementName=LivePanel}"
-                                      DisplayMemberPath="Name" Margin="0,0,4,0" Padding="4,1"
-                                      ToolTip="Sobre qué línea actúan Ya está y Saltear (también los atajos)" />
-                            <Button Content="◀ Atrás" Command="{Binding DataContext.BackCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
-                                    ToolTip="{Binding Back, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                            <Button Content="Ya está ▶" Command="{Binding DataContext.AdvanceCommand, ElementName=LivePanel}" Padding="8,1" Margin="0,0,4,0"
-                                    ToolTip="{Binding Advance, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                            <Button Content="Saltear" Command="{Binding DataContext.SkipCommand, ElementName=LivePanel}" Padding="8,1"
-                                    ToolTip="{Binding Skip, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding Step}" Foreground="#C9C1B6" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                    </DockPanel>
-                    <StackPanel Visibility="{Binding IsOn, Source={x:Static app:DevMode.Instance}, Converter={StaticResource BoolToVisibility}}">
-                    <ItemsControl ItemsSource="{Binding Lanes}" Margin="0,2,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" Foreground="#C9C1B6" FontSize="12" TextTrimming="CharacterEllipsis" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="{Binding Problems}" Foreground="#F08070" FontSize="12"
-                               Visibility="{Binding Problems, Converter={StaticResource NotEmptyToVisibility}}" />
-                    <TextBlock Text="{Binding Usage}" Foreground="#A39A8F" FontSize="11" />
-                    </StackPanel>
-                </StackPanel>
-            </DockPanel>
-        </Border>
+            <!-- Los cuatro pasos -->
+            <Grid Grid.Row="2" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ContentControl Grid.Column="0" Content="{Binding Screen.Account}" ContentTemplate="{StaticResource StepCard}" Focusable="False" />
+                <ContentControl Grid.Column="2" Content="{Binding Screen.BuildOrder}" ContentTemplate="{StaticResource StepCard}" Focusable="False" />
+                <ContentControl Grid.Column="4" Content="{Binding Screen.Play}" ContentTemplate="{StaticResource StepCard}" Focusable="False" />
+                <ContentControl Grid.Column="6" Content="{Binding Screen.Report}" ContentTemplate="{StaticResource StepCard}" Focusable="False" />
+            </Grid>
 
-        <!-- ===== Build order: tu cuenta de la web, cómo se elige y tu lista (parte 4) ===== -->
-        <Border x:Name="BuildOrdersPanel" Background="{StaticResource Panel}" Padding="16,12">
-            <DockPanel LastChildFill="False">
+            <!-- Build order: cómo se elige y tu lista -->
+            <DockPanel Grid.Row="3">
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Button Content="Conectar cuenta" Command="{Binding ConnectCommand}" Margin="0,0,6,0"
-                                Visibility="{Binding Connected, Converter={StaticResource InverseBoolToVisibility}}"
-                                ToolTip="Abre Mi cuenta en la web: ahí &quot;Conectar la app&quot; trae tu cuenta acá" />
-                        <Button Content="Cuenta…" Command="{Binding AccountSettingsCommand}" Margin="0"
-                                ToolTip="Dirección de la web y el token pegado a mano" />
+                    <StackPanel x:Name="BuildOrderButtons" DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="{x:Static app:Texts.SearchMore}" Command="{Binding BuildOrders.SearchMoreCommand}" ToolTip="{x:Static app:Texts.SearchMoreTip}" />
+                        <Button Content="{x:Static app:Texts.PasteCode}" Command="{Binding BuildOrders.PasteCodeCommand}" ToolTip="{x:Static app:Texts.PasteCodeTip}" />
+                        <Button Content="{x:Static app:Texts.RefreshList}" Command="{Binding BuildOrders.RefreshCommand}" Margin="0" />
                     </StackPanel>
-                    <TextBlock Text="BUILD ORDER" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{x:Static app:Texts.BuildOrderSection}" Style="{StaticResource SectionTitle}" VerticalAlignment="Center" />
                 </DockPanel>
-                <StackPanel x:Name="ModeBox" DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <RadioButton IsChecked="{Binding IsAutoMode}" Margin="0,0,0,4" GroupName="BoMode">
-                        <TextBlock Text="Automática: la sugerida para tu civ, mapa y rival en cada partida" Foreground="{StaticResource Text}" />
-                    </RadioButton>
-                    <RadioButton IsChecked="{Binding IsManualMode}" GroupName="BoMode">
-                        <TextBlock Text="Elegir de tu lista:" Foreground="{StaticResource Text}" />
-                    </RadioButton>
+                <StackPanel x:Name="ModeBox" DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <RadioButton IsChecked="{Binding Coach.IsAutoMode}" GroupName="BoMode" Content="{x:Static app:Texts.ModeAuto}" Margin="0,0,28,0" />
+                    <RadioButton IsChecked="{Binding Coach.IsManualMode}" GroupName="BoMode" Content="{x:Static app:Texts.ModeManual}" />
                 </StackPanel>
-                <ListBox DockPanel.Dock="Top" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}" BorderThickness="0" MaxHeight="420"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch"
-                         ToolTip="Con &quot;Elegir de tu lista&quot;, la que usa el coach (se baja al elegirla)">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type coaching:BuildOrderEntryViewModel}">
-                            <Grid Margin="2,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="2*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Column="1" Text="{Binding Detail}" Foreground="{StaticResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="8,0" />
-                                <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="{StaticResource Muted}" FontSize="12" TextTrimming="CharacterEllipsis" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <WrapPanel x:Name="BuildOrderButtons" DockPanel.Dock="Top" Margin="0,8,0,0">
-                    <Button Content="Buscar más BO en la web" Command="{Binding SearchMoreCommand}" Margin="0,0,6,6"
-                            ToolTip="La biblioteca de la web: &quot;Usar en el coach&quot; suma una BO a tu lista" />
-                    <Button Content="Pegar código" Command="{Binding PasteCodeCommand}" Margin="0,0,6,6"
-                            ToolTip="El código de 6 letras de una BO de la web (o el enlace de su página): se suma a tu lista" />
-                    <Button Content="Actualizar lista" Command="{Binding RefreshCommand}" Margin="0,0,6,6" />
-                </WrapPanel>
+                <Grid>
+                    <TextBlock Text="{Binding BuildOrders.EmptyListText}" Style="{StaticResource Hint}" Margin="2,8,0,0"
+                               Visibility="{Binding BuildOrders.HasEntries, Converter={StaticResource InverseBoolToVisibility}}" />
+                    <ListBox x:Name="BuildOrderList" ItemsSource="{Binding BuildOrders.Entries}" SelectedItem="{Binding BuildOrders.SelectedEntry}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ToolTip="{x:Static app:Texts.ListTip}" AutomationProperties.Name="{x:Static app:Texts.BuildOrderSection}">
+                        <ListBox.Style>
+                            <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
+                                <Style.Triggers>
+                                    <!-- En automática la lista no manda: se ve más apagada, y tocar una pasa a "Elegir" -->
+                                    <DataTrigger Binding="{Binding Coach.IsAutoMode}" Value="True">
+                                        <Setter Property="Opacity" Value="0.8" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.Style>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="Entry_Click" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type coaching:BuildOrderEntryViewModel}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="5*" />
+                                        <ColumnDefinition Width="4*" />
+                                        <ColumnDefinition Width="Auto" MinWidth="110" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Detail}" Foreground="{StaticResource TextSoft}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="10,0" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding State}" Foreground="{StaticResource Muted}" FontSize="12" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
             </DockPanel>
-        </Border>
+        </Grid>
     </DockPanel>
 </Window>

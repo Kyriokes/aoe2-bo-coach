@@ -19,7 +19,7 @@ using BoCoach.Vision.Regions;
 
 namespace BoCoach.App;
 
-public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoachHost
+public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoachHost, IHomeHost
 {
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly ScreenCapture _screen = new();
@@ -44,13 +44,11 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         var web = new WebAccount(SharedHttp, userDir is null ? null : Path.Combine(userDir, "web.json"));
         var cache = new BuildOrderCache(Path.Combine(userDir ?? CoachData.UserDir, "cache"), () => web.Client, () => web.Settings.Token);
         BuildOrders = new BuildOrdersViewModel(cache, web, this, data.GameData);
-        DataContext = BuildOrders;
         // Coach se arma después, pero el idioma se pide recién al tocar la captura de diagnóstico.
         // El diseño del mod (completo o mínimo) según la casilla "Mod mínimo", que vive en los ajustes del coach.
         Tools = new CaptureToolsViewModel(_screen, this, fonts: () => data.Fonts, language: () => Coach?.Language ?? GameLanguage.English,
             gameData: () => data.GameData, playerName: () => Coach?.PlayerName,
             layout: () => HudLayout.Load(Path.Combine(CoachData.DataDir, Coach?.HudMinimal == true ? HudLayout.MinimalFileName : HudLayout.FileName)));
-        ToolsBar.DataContext = Tools;
         // Al empezar el coach, la calibración se hace sola si el HUD del mod está en pantalla; si no, queda la manual
         // y el coach la vuelve a intentar cada tanto hasta encontrar el HUD (arrancó en el menú del juego).
         Coach = new CoachSessionViewModel(data, this, () => BuildOrders.SelectedBuildOrder, () =>
@@ -63,17 +61,9 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         // Solo con la pantalla en vivo: con --replay grabaría el escritorio.
         Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame && Coach.IsLive);
         Coach.Stopped += autoRecorder.OnCoachStopped;
-        CoachButton.DataContext = Coach;
-        PlayerNameBox.DataContext = Coach;
-        GameCivBox.DataContext = Coach;
-        GameLanguageBox.DataContext = Coach;
-        MaxVillagersBox.DataContext = Coach;
-        CursorRemindersBox.DataContext = Coach;
-        HudMinimalBox.DataContext = Coach;
-        AutoStartBox.DataContext = Coach;
-        LivePanel.DataContext = Coach;
-        ModeBox.DataContext = Coach;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
+        Home = new HomeViewModel(Coach, BuildOrders, Tools, this);
+        DataContext = Home;
         Coach.PropertyChanged += async (_, e) =>
         {
             if (e.PropertyName == nameof(CoachSessionViewModel.Status))
@@ -93,8 +83,10 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         _tick.Tick += (_, _) =>
         {
             Tools.Tick();
+            var gameRunning = GameWindow.IsRunning();
+            Home.GameOpen = gameRunning;
             // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
-            Coach.Tick(GameWindow.IsRunning() && _firstRun is null);
+            Coach.Tick(gameRunning && _firstRun is null);
             if (Tools.IsRecording)
                 _indicator.SetText($"● {Tools.RecordingStatus}");
         };
@@ -104,7 +96,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             if (e.PropertyName != nameof(CaptureToolsViewModel.IsRecording))
                 return;
             if (Tools.IsRecording)
-                _indicator.ShowOver(_screen.CaptureArea, "● Grabando");
+                _indicator.ShowOver(_screen.CaptureArea, Texts.RecordingIndicator);
             else
                 _indicator.Hide();
         };
@@ -122,6 +114,9 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     public BuildOrdersViewModel BuildOrders { get; }
     public CaptureToolsViewModel Tools { get; }
     public CoachSessionViewModel Coach { get; }
+
+    /// <summary>El tablero de la ventana: junta los tres de arriba.</summary>
+    public HomeViewModel Home { get; }
 
     // ---- Tutorial de primer uso (C4) ----
 
@@ -153,7 +148,27 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         _firstRun.Show();
     }
 
-    private void FirstRun_Click(object sender, RoutedEventArgs e) => ShowFirstRun();
+    // ---- Ajustes ----
+
+    private SettingsWindow? _settings;
+
+    private void Settings_Click(object sender, RoutedEventArgs e) => ShowSettings();
+
+    /// <summary>La ventana "Ajustes" (una sola a la vez, no modal).</summary>
+    private void ShowSettings()
+    {
+        if (_settings is not null)
+        {
+            _settings.Activate();
+            return;
+        }
+        _settings = new SettingsWindow(Home) { Owner = this };
+        _settings.Closed += (_, _) => _settings = null;
+        _settings.Show();
+    }
+
+    /// <summary>Tocar una BO de la lista es querer usarla: pasa a "Elegir de mi lista".</summary>
+    private void Entry_Click(object sender, MouseButtonEventArgs e) => Coach.IsManualMode = true;
 
     private HotkeysWindow? _hotkeysWindow;
 
@@ -165,7 +180,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         if (!_versionClicks.Click(DateTime.Now))
             return;
         DevMode.Instance.IsOn = !DevMode.Instance.IsOn;
-        BuildOrders.Status = DevMode.Instance.IsOn ? "Modo desarrollador prendido." : "Modo desarrollador apagado.";
+        BuildOrders.Status = DevMode.Instance.IsOn ? Texts.DevModeOn : Texts.DevModeOff;
     }
 
     private void Hotkeys_Click(object sender, RoutedEventArgs e) => ShowHotkeys();
@@ -221,10 +236,10 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             if (_hotkeyBinder is { } binder)
                 binder.IncludeDeveloper = DevMode.Instance.IsOn;
         };
-        var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? $"{HotkeyActions.Find(id)?.Name} (sin atajo)").ToList();
+        var missing = _hotkeyBinder.RegisterAll().Select(id => map.Get(id)?.Display ?? Texts.HotkeyMissing(HotkeyActions.Find(id)?.Name ?? id)).ToList();
         BuildOrders.Status = missing.Count > 0
-            ? $"Otro programa ya usa {string.Join(", ", missing)}; usá los botones o cambialos en Atajos."
-            : $"Atajos listos, también desde el juego: {map.Text("start_stop")} empieza el coach y {map.Text("advance")} da por hecho el paso (todos en Atajos).";
+            ? Texts.HotkeysInUse(string.Join(", ", missing))
+            : Texts.HotkeysReady(map.Text("start_stop"), map.Text("advance"));
     }
 
     // ---- Overlay del coach ----
@@ -284,7 +299,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     public void RunOnUi(Action action) => Dispatcher.BeginInvoke(action);
 
     public void ShowReport(IReadOnlyList<string> summary, string path) =>
-        new Coaching.ReportWindow(summary, () => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true })) { Owner = this }.Show();
+        new Coaching.ReportWindow(summary, () => OpenFile(path)) { Owner = this }.Show();
 
     public Core.Web.EloCandidate? ChooseElo(IReadOnlyList<Core.Web.EloCandidate> candidates)
     {
@@ -296,11 +311,11 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
 
     public RegionLayout? Calibrate(RegionLayout current)
     {
-        // Si se abrió desde el editor, se minimiza para que debajo de la capa transparente quede el juego.
-        // Si se abrió con el atajo desde el juego, el editor ya está atrás y no se toca.
-        var fromEditor = IsActive;
+        // Si se abrió desde la app (esta ventana o Ajustes), se minimiza para que debajo de la capa transparente quede
+        // el juego. Si se abrió con el atajo desde el juego, la app ya está atrás y no se toca.
+        var fromApp = IsActive || OwnedWindows.Cast<Window>().Any(w => w.IsActive);
         var previous = WindowState;
-        if (fromEditor)
+        if (fromApp)
             WindowState = WindowState.Minimized;
         _calibrating = true;
         try
@@ -311,7 +326,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         finally
         {
             _calibrating = false;
-            if (fromEditor)
+            if (fromApp)
             {
                 WindowState = previous;
                 Activate();
@@ -322,13 +337,13 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     public void OpenFolder(string path) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
 
-    public void ShowMessage(string title, string text, bool warning) =>
-        MessageBox.Show(this, text, title, MessageBoxButton.OK, warning ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    public void ShowMessage(string title, string text, bool warning) => AppDialog.Show(this, title, text);
+
+    public void OpenFile(string path) => Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
     // ---- Diálogos ----
 
-    public bool Confirm(string message) =>
-        MessageBox.Show(this, message, "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+    public bool Confirm(string message) => AppDialog.Confirm(this, message);
 
     public string? AskText(string title, string message, string initial = "") => TextPrompt.Ask(this, title, message, initial);
 
