@@ -464,7 +464,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
         var ocr = Language.CreateOcr();
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.EventsFor(Language), _data.Fonts, ocr, frames,
-            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code);
+            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code)
+        {
+            RecordsFolder = RecordsFolder,
+            AppVersion = BoCoach.App.AppVersion.Text,
+        };
         _loading = null;
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.GameFinished += report => _host.RunOnUi(() => Finished(report));
@@ -497,6 +501,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// </summary>
     internal static string DefaultReportsFolder { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "informes");
+
+    /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
+    internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "registros");
+
+    /// <summary>Dónde se guardan los registros de las partidas (spec 2026-11-02).</summary>
+    public string RecordsFolder { get; init; } = DefaultRecordsFolder;
 
     /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
     public string ReportsFolder { get; init; } = DefaultReportsFolder;

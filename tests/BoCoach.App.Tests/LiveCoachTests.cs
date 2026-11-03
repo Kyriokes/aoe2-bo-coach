@@ -1,5 +1,6 @@
 using BoCoach.App.Coaching;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
@@ -181,6 +182,99 @@ public sealed class LiveCoachTests : IDisposable
 
     private LiveCoach Live(IFrameSource frames) =>
         new(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1 };
+
+    private LiveCoach Recording(IFrameSource frames, string folder) =>
+        new(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1, RecordsFolder = folder, AppVersion = "v9.9" };
+
+    // Spec 2026-11-02: cada partida con reloj deja su registro, y al terminar se avisa con la ruta.
+    [Fact]
+    public async Task Una_partida_deja_su_registro_y_avisa_al_terminar()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new GapFrames(session, before: 13, gap: 70, gapInFront: true), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+
+        for (var i = 0; i < 83; i++)
+            await live.StepAsync();
+
+        var info = Assert.Single(finished);
+        Assert.Equal("fin", info.Reason);
+        Assert.True(info.Length > 60, $"{info.Length} s");
+        var record = GameRecordReader.Load(info.Path);
+        Assert.False(record.Truncated);
+        Assert.Equal(info.GameId, record.Meta!["game_id"]!.GetValue<string>());
+        Assert.Equal("v9.9", record.Meta["app"]!.GetValue<string>());
+        Assert.Equal(_data.GameData.DatVersion, record.Meta["game_data"]!.GetValue<string>());
+        Assert.Equal(Scouts.Civ, record.Meta["civ"]!.GetValue<string>());
+        Assert.True(record.Captures.Count() >= 13);
+        Assert.Contains(record.Lines, l => l["t"]!.GetValue<string>() == GameRecordKeys.Show);
+        Assert.Equal("fin", record.Lines[^1]["reason"]!.GetValue<string>());
+
+        live.Stop();
+        Assert.Single(finished); // detener después no vuelve a cerrar nada
+    }
+
+    [Fact]
+    public async Task Una_partida_nueva_cierra_el_registro_anterior()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new GapFrames(session, before: 13, gap: 0, gapInFront: true, restart: true), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+
+        for (var i = 0; i < 17; i++)
+            await live.StepAsync();
+
+        Assert.Equal("nueva", Assert.Single(finished).Reason);
+        Assert.Equal(2, Directory.GetFiles(folder, "*.jsonl.gz").Length); // la nueva ya tiene el suyo
+    }
+
+    [Fact]
+    public async Task Detener_cierra_el_registro_y_una_partida_muy_corta_no_deja_nada()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using (var longer = Recording(new RecordedFrames(session), folder))
+        {
+            var finished = new List<GameRecordInfo>();
+            longer.RecordFinished += finished.Add;
+            for (var i = 0; i < 13; i++)
+                await longer.StepAsync();
+            longer.Stop();
+            Assert.Equal("detenido", Assert.Single(finished).Reason);
+            File.Delete(finished[0].Path);
+        }
+
+        using var shorter = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, null, new RecordedFrames(session)) { RecordsFolder = folder };
+        var none = new List<GameRecordInfo>();
+        shorter.RecordFinished += none.Add;
+        await shorter.StepAsync();
+        shorter.Stop();
+        Assert.Empty(none);
+        Assert.Empty(Directory.GetFiles(folder, "*.jsonl.gz"));
+    }
+
+    // Disco lleno, carpeta sin permiso: el coach sigue y lo dice; el registro no le puede cortar la partida a nadie.
+    [Fact]
+    public async Task Si_no_se_puede_escribir_el_registro_el_coach_sigue_y_lo_dice()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var blocked = Path.Combine(_library.FullName, "un-archivo");
+        File.WriteAllText(blocked, "no es una carpeta");
+        using var live = Recording(new RecordedFrames(session), blocked);
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 5; i++)
+            await live.StepAsync();
+
+        Assert.Contains("registro", last!.Notice);
+        Assert.Null(last.Error);
+        Assert.True(last.InGame);
+    }
 
     // D6 (2026-10-21): alt-tab. Con el juego atrás no se lee nada y el tiempo sin reloj no corre: la partida no
     // termina y el overlay se esconde; al volver, sigue donde estaba.
