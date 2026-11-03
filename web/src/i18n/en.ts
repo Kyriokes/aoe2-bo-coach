@@ -81,8 +81,8 @@ export const en: Dictionary = {
     downloadSteps: [
       "Get the latest version from <github>GitHub</github> and unzip it anywhere. There's nothing to install: .NET comes inside.",
       "Open <code>BoCoach.exe</code>. Since it isn't signed, Windows may warn that it's an unrecognized app: click <em>More info</em> and <em>Run anyway</em>.",
-      "With the game open, click <em>Calibrar pantalla…</em> (calibrate screen, or Ctrl+Alt+C) and place the boxes over the HUD.",
-      "Pick a build order from the library and click <em>▶ Empezar coach</em> (start coach). The overlay shows up at the top right of the game.",
+      "Follow <em>Primeros pasos</em> (first steps), which opens by itself the first time: you connect your website account and install the HUD mod, which lets the app calibrate itself.",
+      "Play. The coach starts by itself with the game and picks the build order for your civ on the loading screen, or you can pick one from your list. The overlay shows up at the top right of the game.",
     ],
     supportTitle: "Support the project",
     supportText:

@@ -83,8 +83,8 @@ export const es = {
     downloadSteps: [
       "Bajá la última versión desde <github>GitHub</github> y descomprimila donde quieras. No hace falta instalar nada: trae .NET adentro.",
       "Abrí <code>BoCoach.exe</code>. Como no está firmado, Windows puede avisar que es una aplicación no reconocida: tocá <em>Más información</em> y <em>Ejecutar de todas formas</em>.",
-      "Con el juego abierto, tocá <em>Calibrar pantalla…</em> (o Ctrl+Alt+C) y ubicá los recuadros sobre el HUD.",
-      "Elegí una build order de la biblioteca y tocá <em>▶ Empezar coach</em>. El overlay aparece arriba a la derecha del juego.",
+      "Seguí <em>Primeros pasos</em>, que se abre solo la primera vez: conectás tu cuenta de la web e instalás el mod del HUD, con el que la app se calibra sola.",
+      "Jugá. El coach arranca solo con el juego y en la pantalla de carga elige la build order para tu civ, o elegí vos una de tu lista. El overlay aparece arriba a la derecha del juego.",
     ],
     supportTitle: "Apoyar el proyecto",
     supportText:
