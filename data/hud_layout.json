@@ -19,7 +19,7 @@
 // lisos del color de la barra con esquinas en escalones (`corner_radius`).
 {
   "name": "bocoach-2026-10",
-  "pixels_per_unit_at_1080p": 0.4286,
+  "pixels_per_unit_at_1080p": 0.4348,
   "bar": {
     "x": 600,
     "width": 4600,

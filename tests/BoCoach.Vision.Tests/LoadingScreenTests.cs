@@ -196,18 +196,26 @@ public class LoadingScreenTests
         Assert.Equal([5, 6, 7, 8], reading.Opponents(me!).Select(p => p.Slot));
     }
 
-    [Fact]
-    public async Task Lee_la_misma_pantalla_a_1440p()
+    // La pantalla de carga sigue el alto de la pantalla (1080 = 1), no la escala del HUD: el panel se lleva a 1080p antes
+    // del OCR. A 1440p, 2160p y 1600×900 lee los mismos 8 jugadores, civs y números.
+    [Theory]
+    [InlineData(1440)]
+    [InlineData(2160)]
+    [InlineData(900)]
+    public async Task Lee_la_misma_pantalla_a_otra_resolucion(int height)
     {
         var ocr = OcrReader.TryCreate();
         if (ocr is null)
             return;
-        var screen = Screen("carga-ia-en-1080p.png").Resample(1440 / 1080.0);
+        var screen = Screen("carga-ia-en-1080p.png").Resample(height / 1080.0);
+        Assert.Equal(height, screen.Height);
         var reading = await new LoadingScreenReader(ocr, Data, "en").ReadAsync(screen);
 
         Assert.NotNull(reading);
         Assert.Equal(AiCivs, reading.Players.Select(p => p.Civ));
         Assert.Equal([1, 2, 3, 4, 5, 6, 7, 8], reading.Players.Select(p => p.Slot));
+        Assert.Equal([1, 1, 1, 1, 2, 2, 2, 2], reading.Players.Select(p => p.Team));
+        Assert.Equal(1, reading.Find("Kyriokes")?.Slot);
     }
 
     [Fact]

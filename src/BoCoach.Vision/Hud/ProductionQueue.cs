@@ -25,6 +25,22 @@ public static class ProductionQueue
     /// <summary>Corrimiento vertical que se prueba para encontrar la fila de íconos dentro de la caja calibrada.</summary>
     public const int MaxOffset = 12;
 
+    /// <summary>
+    /// Corrimiento horizontal que se prueba para el primer ícono en una imagen reescalada (0 a esto, a la derecha): el
+    /// redondeo de la caja lo corre 1 o 2 px (en la captura del amigo, a 1,09, cae en x 1).
+    /// </summary>
+    public const int MaxStartDrift = 2;
+
+    /// <summary>
+    /// Cuánto se busca cada ícono alrededor de donde se lo espera (el anterior + <see cref="IconSize"/>) en una imagen
+    /// reescalada. La escala medida no es exacta (con las franjas del mod viejo, ±1,4 %): con 1,5 % de error los íconos
+    /// quedan de 32,5 o 33,5 px, y con 1 px de corrimiento la distancia sube unos 0,05 (el umbral es 0,09).
+    /// </summary>
+    public const int MaxDrift = 2;
+
+    /// <summary>Lo que cuesta cada píxel de corrimiento al elegir dónde cae un ícono: a igual parecido, el lugar esperado.</summary>
+    public const float DriftCost = 0.005f;
+
     /// <summary>El resumen del ícono que empieza en (x, y): Grid×Grid colores (R, G, B entre 0 y 1).</summary>
     public static float[] Features(CapturedImage image, int x, int y)
     {
@@ -82,13 +98,15 @@ public static class ProductionQueue
     /// 20261018-132830 los que esperan dan rojo 148 a 171 y azul 3 a 27; los que avanzan, rojo hasta 109 (el telar) o
     /// azul de más de un tercio del rojo (la pluma naranja del emplumado: 83, 60, 27).
     /// </summary>
-    public static bool IsWaiting(CapturedImage image, int x, int y)
+    /// <param name="inset">Píxeles de más que se dejan contra los bordes. En una imagen reescalada el ícono puede medir
+    /// 32,5 px y la ventana de siempre cae sobre su borde blanco: el telar en espera daba azul 0,21 del rojo.</param>
+    public static bool IsWaiting(CapturedImage image, int x, int y, int inset = 0)
     {
         long red = 0, blue = 0;
         var total = 0;
-        for (var py = y + 4; py < y + IconSize - 1; py++)
+        for (var py = y + 4 + inset; py < y + IconSize - 1 - inset; py++)
         {
-            for (var px = x + 12; px < x + IconSize - 2; px++)
+            for (var px = x + 12 + inset; px < x + IconSize - 2 - inset; px++)
             {
                 var (r, _, b) = image.Pixel(px, py);
                 (red, blue) = (red + r, blue + b);
@@ -109,6 +127,12 @@ public static class ProductionQueue
             yield return (x, offsetY);
         }
     }
+}
+
+/// <summary>Un lugar de la cola leído: dónde empieza el ícono en la caja (a 1080p), qué es y si espera.</summary>
+public sealed record QueueSlot(int X, int Y, string Key, bool Waiting)
+{
+    public QueueItem Item => new(Key, Waiting);
 }
 
 /// <summary>Un ícono conocido de la cola: la clave de game_data ("villager", "loom") y su resumen.</summary>
@@ -155,23 +179,82 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
     /// corrimientos verticales con el primer lugar, y corta en el primer lugar que no se parece a ningún ícono.
     /// Vacía si no hay nada en producción.
     /// </summary>
-    public IReadOnlyList<QueueItem> Read(CapturedImage image)
-    {
-        if (Row(image) is not { } row)
-            return [];
+    public IReadOnlyList<QueueItem> Read(CapturedImage image) => [.. Locate(image).Select(s => s.Item)];
 
-        var items = new List<QueueItem>();
+    /// <summary>
+    /// Lo mismo que <see cref="Read"/>, con dónde cae cada ícono. Sin reescalar, cada <see cref="ProductionQueue.IconSize"/>
+    /// px justos. Reescalada (<see cref="CapturedImage.Rescaled"/>), la escala medida puede estar corrida, así que cada
+    /// ícono se busca alrededor de donde cayó el anterior.
+    /// </summary>
+    public IReadOnlyList<QueueSlot> Locate(CapturedImage image) => image.Rescaled ? Following(image) : Exact(image);
+
+    private List<QueueSlot> Exact(CapturedImage image)
+    {
+        var slots = new List<QueueSlot>();
+        if (RowAtStart(image) is not { } row)
+            return slots;
         foreach (var (x, y) in ProductionQueue.Slots(image, 0, row))
         {
             if (Match(ProductionQueue.Features(image, x, y)) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
                 break;
-            items.Add(new QueueItem(m.Key, ProductionQueue.IsWaiting(image, x, y)));
+            slots.Add(new QueueSlot(x, y, m.Key, ProductionQueue.IsWaiting(image, x, y)));
         }
-        return items;
+        return slots;
     }
 
-    /// <summary>Altura de la fila de íconos dentro de la caja (la que mejor parece un ícono en el primer lugar), o null si no hay ninguno.</summary>
-    public int? Row(CapturedImage image)
+    private List<QueueSlot> Following(CapturedImage image)
+    {
+        var slots = new List<QueueSlot>();
+        if (FollowingStart(image) is not { } start)
+            return slots;
+        var expected = start.X;
+        while (slots.Count < ProductionQueue.MaxSlots)
+        {
+            if (Nearest(image, expected, start.Y, -ProductionQueue.MaxDrift, ProductionQueue.MaxDrift) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
+                break;
+            slots.Add(new QueueSlot(m.X, start.Y, m.Key, ProductionQueue.IsWaiting(image, m.X, start.Y, inset: 1)));
+            expected = m.X + ProductionQueue.IconSize;
+        }
+        return slots;
+    }
+
+    /// <summary>
+    /// El ícono más parecido entre x + fromDx y x + toDx (dentro de la imagen), con <see cref="ProductionQueue.DriftCost"/>
+    /// por píxel de distancia a x. La distancia devuelta es la del ícono, sin el costo.
+    /// </summary>
+    private (int X, string Key, float Distance)? Nearest(CapturedImage image, int x, int y, int fromDx, int toDx, bool iconsOnly = false)
+    {
+        (int X, string Key, float Distance, float Cost)? best = null;
+        for (var dx = fromDx; dx <= toDx; dx++)
+        {
+            var sx = x + dx;
+            if (sx < 0 || sx + ProductionQueue.IconSize > image.Width)
+                continue;
+            if (Match(ProductionQueue.Features(image, sx, y), iconsOnly) is not { } m)
+                continue;
+            var cost = m.Distance + Math.Abs(dx) * ProductionQueue.DriftCost;
+            if (best is null || cost < best.Value.Cost)
+                best = (sx, m.Key, m.Distance, cost);
+        }
+        return best is { } b ? (b.X, b.Key, b.Distance) : null;
+    }
+
+    /// <summary>En una imagen reescalada, dónde empieza el primer ícono: la altura y el corrimiento que mejor parecen uno.</summary>
+    private (int X, int Y)? FollowingStart(CapturedImage image)
+    {
+        (int X, int Y, float Cost)? best = null;
+        for (var dy = 0; dy <= ProductionQueue.MaxOffset && dy + ProductionQueue.IconSize <= image.Height; dy++)
+        {
+            if (Nearest(image, 0, dy, 0, ProductionQueue.MaxStartDrift, iconsOnly: true) is not { Distance: <= MatchThreshold } m)
+                continue;
+            var cost = m.Distance + m.X * ProductionQueue.DriftCost;
+            if (best is null || cost < best.Value.Cost)
+                best = (m.X, dy, cost);
+        }
+        return best is { } b ? (b.X, b.Y) : null;
+    }
+
+    private int? RowAtStart(CapturedImage image)
     {
         var bestOffset = -1;
         var bestDistance = float.MaxValue;
@@ -182,6 +265,9 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
         }
         return bestOffset < 0 || bestDistance > MatchThreshold ? null : bestOffset;
     }
+
+    /// <summary>Altura de la fila de íconos dentro de la caja (la que mejor parece un ícono en el primer lugar), o null si no hay ninguno.</summary>
+    public int? Row(CapturedImage image) => image.Rescaled ? FollowingStart(image)?.Y : RowAtStart(image);
 
     /// <summary>
     /// Corrige la biblioteca con un lugar visto: si se parece a un ícono sin identificar ("?"), le pone la clave; si
