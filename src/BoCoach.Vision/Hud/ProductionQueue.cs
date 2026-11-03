@@ -93,6 +93,58 @@ public static class ProductionQueue
     }
 
     /// <summary>
+    /// Sin población, el juego tiñe la unidad de rojo oscuro: casi nada de verde ni de azul, sea cual sea la unidad y el
+    /// color del jugador (por eso no se reconoce con los tintes de <see cref="QueueIconCatalog"/>).
+    /// </summary>
+    public static bool LooksHoused(float[] features)
+    {
+        float red = 0, others = 0;
+        for (var gy = 0; gy < Grid; gy++)
+        {
+            for (var gx = 0; gx < Grid; gx++)
+            {
+                if (Ignored(gx, gy))
+                    continue;
+                var i = (gy * Grid + gx) * 3;
+                red += features[i];
+                others += features[i + 1] + features[i + 2];
+            }
+        }
+        return red >= 69 * HousedMinRed && others <= red * HousedMaxOthers;
+    }
+
+    /// <summary>
+    /// Si en (x, y) hay el marco de un ícono: el juego lo dibuja con líneas negras o grises, sin nada de color, abajo (filas
+    /// 31 y 32) y a los costados (columnas 0 y 31); en el mapa esas líneas tienen color (pasto: saturación 0,15). Sin
+    /// esto, con los 543 íconos de <see cref="QueueIconCatalog"/> el pasto oscuro salía "galleon" (20261018-132830, captura
+    /// 690). Las muestras reales no lo necesitan: la biblioteca tiene pedazos de mapa para compararlos.
+    /// </summary>
+    public static bool HasIconFrame(CapturedImage image, int x, int y)
+    {
+        if (x < 0 || y < 0 || x + IconSize > image.Width || y + IconSize > image.Height)
+            return false;
+        var bottom = Math.Min(LineSaturation(image, x + 6, y + 31, 1, 0, 21), LineSaturation(image, x + 6, y + 32, 1, 0, 21));
+        var side = Math.Min(LineSaturation(image, x, y + 6, 0, 1, 21), LineSaturation(image, x + 31, y + 6, 0, 1, 21));
+        return bottom <= FrameMaxSaturation && side <= FrameMaxSaturation;
+    }
+
+    private static float LineSaturation(CapturedImage image, int x, int y, int dx, int dy, int length)
+    {
+        var sum = 0;
+        for (var i = 0; i < length; i++)
+        {
+            var (r, g, b) = image.Pixel(x + i * dx, y + i * dy);
+            sum += Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b));
+        }
+        return sum / (length * 255f);
+    }
+
+    private const float FrameMaxSaturation = 0.08f;
+
+    private const float HousedMinRed = 0.12f;
+    private const float HousedMaxOthers = 0.3f;
+
+    /// <summary>
     /// El ícono que empieza en (x, y) espera detrás de otra cosa del mismo edificio: el juego lo tiñe de amarillo o
     /// naranja, así que en promedio (sin la esquina del número) tiene mucho rojo y casi nada de azul. En la
     /// 20261018-132830 los que esperan dan rojo 148 a 171 y azul 3 a 27; los que avanzan, rojo hasta 109 (el telar) o
@@ -141,7 +193,7 @@ public sealed record QueueIcon(
     [property: JsonPropertyName("features")] float[] Features);
 
 /// <summary>Los íconos conocidos de la cola (data/icons/production_queue.json), armados con ReplaySession.</summary>
-public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
+public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog? catalog = null)
 {
     /// <summary>Diferencia a partir de la cual un lugar no es ningún ícono conocido.</summary>
     public const float MatchThreshold = 0.09f;
@@ -160,7 +212,11 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
 
     public IReadOnlyList<QueueIcon> Icons { get; } = icons;
 
-    public (string Key, float Distance)? Match(float[] features, bool iconsOnly = false)
+    /// <summary>Los íconos de los archivos del juego (data/icons/queue_game.json), si están.</summary>
+    public QueueIconCatalog? Catalog { get; } = catalog;
+
+    /// <param name="framed">El lugar tiene el marco de un ícono (<see cref="ProductionQueue.HasIconFrame"/>): recién ahí se mira lo que nunca se vio en una partida.</param>
+    public (string Key, float Distance)? Match(float[] features, bool iconsOnly = false, bool framed = false)
     {
         (string Key, float Distance)? best = null;
         foreach (var icon in Icons)
@@ -171,7 +227,11 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
             if (best is null || d < best.Value.Distance)
                 best = (icon.Key, d);
         }
-        return best;
+        // Lo que nunca se vio en una partida, por los archivos del juego. Nada de eso le gana a una muestra real igual de parecida.
+        if (framed && Catalog?.Best(features, best?.Distance ?? float.MaxValue) is { } game)
+            best = game;
+        // En rojo el juego no deja ver de qué unidad se trata, pero el color alcanza.
+        return best is { Distance: <= MatchThreshold } || !ProductionQueue.LooksHoused(features) ? best : (Housed, 0f);
     }
 
     /// <summary>
@@ -195,9 +255,14 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
             return slots;
         foreach (var (x, y) in ProductionQueue.Slots(image, 0, row))
         {
-            if (Match(ProductionQueue.Features(image, x, y)) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
+            var framed = ProductionQueue.HasIconFrame(image, x, y);
+            if (Match(ProductionQueue.Features(image, x, y), framed: framed) is not { } m || m.Key == Nothing && m.Distance <= MatchThreshold)
                 break;
-            slots.Add(new QueueSlot(x, y, m.Key, ProductionQueue.IsWaiting(image, x, y)));
+            if (m.Distance > MatchThreshold && !(framed && Catalog is not null))
+                break;
+            // Con el marco hay un ícono aunque no se sepa cuál: lo que viene después se sigue leyendo (20261101-165020,
+            // captura 1528: un Pozo de oro a medio teñir escondía los arqueros a caballo que venían atrás).
+            slots.Add(new QueueSlot(x, y, m.Distance <= MatchThreshold ? m.Key : Unknown, ProductionQueue.IsWaiting(image, x, y)));
         }
         return slots;
     }
@@ -230,7 +295,7 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
             var sx = x + dx;
             if (sx < 0 || sx + ProductionQueue.IconSize > image.Width)
                 continue;
-            if (Match(ProductionQueue.Features(image, sx, y), iconsOnly) is not { } m)
+            if (Match(ProductionQueue.Features(image, sx, y), iconsOnly, ProductionQueue.HasIconFrame(image, sx, y)) is not { } m)
                 continue;
             var cost = m.Distance + Math.Abs(dx) * ProductionQueue.DriftCost;
             if (best is null || cost < best.Value.Cost)
@@ -260,7 +325,7 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
         var bestDistance = float.MaxValue;
         for (var dy = 0; dy <= ProductionQueue.MaxOffset && dy + ProductionQueue.IconSize <= image.Height; dy++)
         {
-            if (image.Width >= ProductionQueue.IconSize && Match(ProductionQueue.Features(image, 0, dy), iconsOnly: true) is { } m && m.Distance < bestDistance)
+            if (image.Width >= ProductionQueue.IconSize && Match(ProductionQueue.Features(image, 0, dy), iconsOnly: true, framed: ProductionQueue.HasIconFrame(image, 0, dy)) is { } m && m.Distance < bestDistance)
                 (bestOffset, bestDistance) = (dy, m.Distance);
         }
         return bestOffset < 0 || bestDistance > MatchThreshold ? null : bestOffset;
@@ -280,15 +345,17 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons)
         if (icons.Count > 0 && nearest.d <= MatchThreshold && icons[nearest.i].Key == Unknown)
         {
             icons[nearest.i] = icons[nearest.i] with { Key = key };
-            return (new IconLibrary(icons), $"el ícono {nearest.i} (\"?\", a {nearest.d:0.000}) pasa a \"{key}\"");
+            return (new IconLibrary(icons, Catalog), $"el ícono {nearest.i} (\"?\", a {nearest.d:0.000}) pasa a \"{key}\"");
         }
         icons.Add(new QueueIcon(key, features));
         var was = icons.Count > 1 ? $" (el más parecido era \"{icons[nearest.i].Key}\", a {nearest.d:0.000})" : "";
-        return (new IconLibrary(icons), $"ícono nuevo \"{key}\"{was}");
+        return (new IconLibrary(icons, Catalog), $"ícono nuevo \"{key}\"{was}");
     }
 
-    public static IconLibrary Load(string path) =>
-        new(JsonSerializer.Deserialize<List<QueueIcon>>(File.ReadAllText(path)) ?? []);
+    /// <param name="withGame">Sumar los íconos de los archivos del juego, que van en el mismo lugar (queue_game.json).</param>
+    public static IconLibrary Load(string path, bool withGame = true) =>
+        new(JsonSerializer.Deserialize<List<QueueIcon>>(File.ReadAllText(path)) ?? [],
+            withGame ? QueueIconCatalog.TryLoad(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "queue_game.json")) : null);
 
     public static IconLibrary? TryLoad(string path) => File.Exists(path) ? Load(path) : null;
 

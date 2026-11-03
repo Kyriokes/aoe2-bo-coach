@@ -120,7 +120,7 @@ try
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
-        "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2)),
+        "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2), !args.Contains("--no-game")),
         "scores" => Scores(args[1], args).GetAwaiter().GetResult(),
         "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
@@ -227,9 +227,9 @@ static int IconLib(string clustersDir, string labels, string output)
     return 0;
 }
 
-static int ReadQueue(string recording, string libraryPath, int every)
+static int ReadQueue(string recording, string libraryPath, int every, bool withGame)
 {
-    var library = IconLibrary.Load(libraryPath);
+    var library = IconLibrary.Load(libraryPath, withGame);
     var session = RecordedSession.Load(recording);
     var last = "";
     foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
