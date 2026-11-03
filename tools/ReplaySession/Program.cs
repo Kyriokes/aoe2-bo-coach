@@ -120,7 +120,7 @@ try
         "loading" => Loading(args[1], args).GetAwaiter().GetResult(),
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
-        "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2), !args.Contains("--no-game")),
+        "queue" => args.Contains("--detail") ? QueueDetail(args[1], args[2], Option(args, "--every", 1), args.Contains("--features")) : ReadQueue(args[1], args[2], Option(args, "--every", 2), !args.Contains("--no-game")),
         "queue-sheet" => QueueSheet(args[1], args[2], !args.Contains("--no-game")),
         "scores" => Scores(args[1], args).GetAwaiter().GetResult(),
         "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
@@ -242,6 +242,30 @@ static int ReadQueue(string recording, string libraryPath, int every, bool withG
             continue;
         last = text;
         Console.WriteLine($"{frame.Index,6}  {(text.Length == 0 ? "(vacía)" : text)}");
+    }
+    return 0;
+}
+
+// Cada lugar de cada captura, para medir: "<captura> <lugar> <clave más parecida> <distancia> <espera>".
+static int QueueDetail(string recording, string libraryPath, int every, bool withFeatures)
+{
+    var library = IconLibrary.Load(libraryPath);
+    var session = RecordedSession.Load(recording);
+    foreach (var frame in session.Frames.Where(f => f.Index % every == 0))
+    {
+        if (!session.Has(frame.Index, RegionNames.ProductionQueue))
+            continue;
+        var image = session.Image(frame.Index, RegionNames.ProductionQueue);
+        var located = library.Locate(image);
+        for (var slot = 0; slot < located.Count; slot++)
+        {
+            var place = located[slot];
+            var features = ProductionQueue.Features(image, place.X, place.Y);
+            var match = library.Match(features, framed: true);
+            var all = withFeatures ? " " + string.Join(",", features.Select(v => v.ToString("0.###", CultureInfo.InvariantCulture))) : "";
+            var (red, green, blue) = ProductionQueue.MeanColor(image, place.X, place.Y);
+            Console.WriteLine($"{frame.Index} {slot} {place.Key} {match?.Distance ?? 9:0.000} {(place.Waiting ? 1 : 0)} {match?.Key} {red:0} {green:0} {blue:0}{all}");
+        }
     }
     return 0;
 }
