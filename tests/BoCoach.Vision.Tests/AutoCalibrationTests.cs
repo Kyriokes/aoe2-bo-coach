@@ -154,7 +154,7 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
     [Fact]
     public void Con_el_diseno_minimo_encuentra_las_cinco_franjas_finas_y_arma_las_cajas()
     {
-        var screen = HudLayoutScreens.Render(MinimalLayout, MinimalLayout.PixelsPerUnitAt1080p, originX: 6, originY: 4);
+        var screen = HudLayoutScreens.Render(MinimalLayout, 0.4286, originX: 6, originY: 4);
 
         var found = AutoCalibration.Detect(screen, RegionLayout.Default, MinimalLayout);
 

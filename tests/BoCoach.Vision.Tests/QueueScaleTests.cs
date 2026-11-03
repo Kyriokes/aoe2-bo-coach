@@ -1,5 +1,6 @@
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Regions;
 
 namespace BoCoach.Vision.Tests;
@@ -105,5 +106,47 @@ public class QueueScaleTests
         Assert.Equal(height / 1080.0, found.Scale, 0.005);
         var box = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
         Assert.Equal("villager", Assert.Single(Library.Read(screen.Crop(box).AtHudScale(found.Scale))).Key);
+
+        // El panel de puntajes queda anclado abajo a la derecha y crece con la escala, a cualquier resolución.
+        var scores = RegionLayout.Default.PixelsOf(RegionNames.Scores, 1920, 1080);
+        var k = height / 1080.0;
+        var expected = new PixelRect(screen.Width - (int)Math.Round((1920 - scores.X) * k), screen.Height - (int)Math.Round((1080 - scores.Y) * k), (int)Math.Round(scores.Width * k), (int)Math.Round(scores.Height * k));
+        var actual = found.Layout.PixelsOf(RegionNames.Scores, screen.Width, screen.Height);
+        Assert.InRange(actual.X, expected.X - 3, expected.X + 3);
+        Assert.InRange(actual.Y, expected.Y - 3, expected.Y + 3);
+        Assert.InRange(actual.Width, expected.Width - 3, expected.Width + 3);
+        Assert.InRange(actual.Height, expected.Height - 3, expected.Height + 3);
+    }
+
+    // Captura real de un amigo (escala 1,09, comprimida por WhatsApp): un aldeano casi listo con "10" en cola. El número
+    // de dos cifras tapa más que la esquina que no se compara y, sin este ícono en la biblioteca, salía carretilla.
+    [Fact]
+    public void La_captura_del_amigo_lee_el_aldeano_con_diez_en_cola()
+    {
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "amigo-20261020-1080p-panel-negro.png"));
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default);
+
+        Assert.NotNull(found);
+        var box = found.Layout.PixelsOf(RegionNames.ProductionQueue, screen.Width, screen.Height);
+        Assert.Equal("villager", Assert.Single(Library.Read(screen.Crop(box).AtHudScale(found.Scale))).Key);
+    }
+
+    // La misma captura: el panel de puntajes ("Humayun: 693/693" en rojo y "wololo: 571/571" en azul) cae en su caja
+    // escalada y se lee reescalado a 1080p, como en vivo.
+    [Fact]
+    public async Task La_captura_del_amigo_lee_el_panel_de_puntajes()
+    {
+        var ocr = OcrReader.TryCreate();
+        if (ocr is null)
+            return; // esta máquina no tiene el OCR en inglés instalado (puede pasar en CI)
+        var screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "amigo-20261020-1080p-panel-negro.png"));
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default);
+
+        Assert.NotNull(found);
+        var box = found.Layout.PixelsOf(RegionNames.Scores, screen.Width, screen.Height);
+        var rows = await new ScoresPanelReader(ocr).ReadAsync(screen.Crop(box).AtHudScale(found.Scale));
+
+        Assert.Equal([(2, 693), (1, 571)], rows.Select(r => (r.Slot ?? 0, r.Score)));
     }
 }
