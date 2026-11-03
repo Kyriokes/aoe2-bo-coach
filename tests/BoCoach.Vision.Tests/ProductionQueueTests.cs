@@ -87,7 +87,7 @@ public class QueueIconCatalogTests
     [Theory]
     [InlineData("20261102-212823", 1016, "villager double_bit_axe horse_collar gold_mining", "villager double_bit_axe horse_collar")]
     [InlineData("20261101-165020", 1498, "villager padded_archer_armor thumb_ring", "villager")]
-    [InlineData("20261101-165020", 1528, "villager padded_archer_armor thumb_ring bow_saw heavy_plow ? cavalry_archer", "villager")]
+    [InlineData("20261101-165020", 1528, "villager padded_archer_armor thumb_ring bow_saw heavy_plow ? cavalry_archer ? bodkin_arrow", "villager")]
     public void Lee_lo_que_nunca_se_vio_en_una_partida(string recording, int frame, string expected, string before)
     {
         Assert.Equal(expected, string.Join(" ", Full.Read(Frame(recording, frame)).Select(i => i.Key)));
@@ -114,6 +114,41 @@ public class QueueIconCatalogTests
         }).OfType<string>().ToList();
 
         Assert.Empty(wrong);
+    }
+
+    // La partida de catálogo: persas en violeta (jugador 6), con todo el árbol encolado.
+    [Theory]
+    [InlineData(4074, 8)] // el primero a medio teñir no se reconoce: la cola entera salía vacía
+    [InlineData(3423, 8)] // los dos íconos parejos en espera se parecían a la arena y cortaban la lectura
+    [InlineData(1908, 11)]
+    [InlineData(2014, 5)]
+    public void Lee_toda_la_cola_aunque_no_reconozca_algun_icono(int frame, int expected) =>
+        Assert.Equal(expected, Full.Read(Frame("20261103-193834", frame)).Count);
+
+    [Fact]
+    public void Un_icono_oscuro_en_espera_se_ve_en_espera()
+    {
+        var read = Full.Read(Frame("20261103-193834", 1908));
+
+        Assert.All(new[] { read[6], read[7], read[10] }, item => Assert.True(item.Waiting, item.Key));
+        Assert.DoesNotContain(read.Skip(6), item => item.Key == "loom"); // el telar ya estaba hecho desde las 3:20
+    }
+
+    [Fact]
+    public void Los_iconos_en_espera_no_se_toman_por_lo_que_mas_se_les_parece_en_color()
+    {
+        // Eran "feudal_age…" y "crossbowman…": la Feudal se había terminado hacía 24 minutos.
+        var read = Full.Read(Frame("20261103-193834", 2490));
+
+        Assert.DoesNotContain(read.Where(item => item.Waiting), item => item.Key is "feudal_age" or "crossbowman");
+    }
+
+    [Fact]
+    public void Lee_el_aldeano_en_violeta()
+    {
+        var read = Full.Read(Frame("20261103-193834", 2014));
+
+        Assert.Equal(["villager", "villager", "villager"], read.Take(3).Select(i => i.Key));
     }
 
     [Fact]

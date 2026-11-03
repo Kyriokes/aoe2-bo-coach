@@ -115,19 +115,57 @@ public static class ProductionQueue
     }
 
     /// <summary>
-    /// Si en (x, y) hay el marco de un ícono: el juego lo dibuja con líneas negras o grises, sin nada de color, abajo (filas
-    /// 31 y 32) y a los costados (columnas 0 y 31); en el mapa esas líneas tienen color (pasto: saturación 0,15). Sin
-    /// esto, con los 543 íconos de <see cref="QueueIconCatalog"/> el pasto oscuro salía "galleon" (20261018-132830, captura
-    /// 690). Las muestras reales no lo necesitan: la biblioteca tiene pedazos de mapa para compararlos.
+    /// Si en (x, y) hay el marco de un ícono: líneas sin color abajo y a los costados, porque en el mapa tienen color (pasto:
+    /// saturación 0,15). Sin esto, con los 543 íconos de <see cref="QueueIconCatalog"/> el pasto oscuro salía "galleon"
+    /// (20261018-132830, captura 690). El mapa sin explorar también pasa. Las muestras reales no lo necesitan: la biblioteca
+    /// tiene pedazos de mapa para compararlos.
     /// </summary>
     public static bool HasIconFrame(CapturedImage image, int x, int y)
     {
         if (x < 0 || y < 0 || x + IconSize > image.Width || y + IconSize > image.Height)
             return false;
+        if (HasFrameLines(image, x, y))
+            return true;
         var bottom = Math.Min(LineSaturation(image, x + 6, y + 31, 1, 0, 21), LineSaturation(image, x + 6, y + 32, 1, 0, 21));
         var side = Math.Min(LineSaturation(image, x, y + 6, 0, 1, 21), LineSaturation(image, x + 31, y + 6, 0, 1, 21));
         return bottom <= FrameMaxSaturation && side <= FrameMaxSaturation;
     }
+
+    /// <summary>
+    /// Si hay un ícono seguro, aunque se parezca a un pedazo de mapa (uno parejo en espera se parece a la arena). Abajo de
+    /// cada ícono el juego dibuja dos líneas que ni los tintes ni la unidad cambian, (48, 44, 37) y (29, 29, 29), mientras
+    /// que los costados los tiñe el amarillo (20261103-193834). Si no están (con el mouse encima, sobre el fondo de la cola
+    /// del mod completo), un marco sin color y con algo de luz: el mapa sin explorar es negro.
+    /// </summary>
+    public static bool HasIcon(CapturedImage image, int x, int y)
+    {
+        if (x < 0 || y < 0 || x + IconSize > image.Width || y + IconSize > image.Height)
+            return false;
+        return HasFrameLines(image, x, y) || (HasIconFrame(image, x, y) && HasLight(Features(image, x, y)));
+    }
+
+    private static bool HasFrameLines(CapturedImage image, int x, int y) =>
+        LineNear(image, x + 6, y + 31, 48, 44, 37) && LineNear(image, x + 6, y + 32, 29, 29, 29);
+
+    private static bool HasLight(float[] features)
+    {
+        float light = 0;
+        var count = 0;
+        for (var gy = 0; gy < Grid; gy++)
+        {
+            for (var gx = 0; gx < Grid; gx++)
+            {
+                if (Ignored(gx, gy))
+                    continue;
+                var i = (gy * Grid + gx) * 3;
+                light += 0.3f * features[i] + 0.59f * features[i + 1] + 0.11f * features[i + 2];
+                count++;
+            }
+        }
+        return light / count >= MinIconLight;
+    }
+
+    private const float MinIconLight = 0.2f;
 
     private static float LineSaturation(CapturedImage image, int x, int y, int dx, int dy, int length)
     {
@@ -142,6 +180,21 @@ public static class ProductionQueue
 
     private const float FrameMaxSaturation = 0.08f;
 
+    private static bool LineNear(CapturedImage image, int x, int y, int red, int green, int blue)
+    {
+        const int length = 21;
+        int r = 0, g = 0, b = 0;
+        for (var i = 0; i < length; i++)
+        {
+            var (pr, pg, pb) = image.Pixel(x + i, y);
+            (r, g, b) = (r + pr, g + pg, b + pb);
+        }
+        return Math.Abs(r / length - red) <= FrameTolerance && Math.Abs(g / length - green) <= FrameTolerance && Math.Abs(b / length - blue) <= FrameTolerance;
+    }
+
+    /// <summary>Lo que se puede alejar cada canal: el mapa oscuro anda cerca.</summary>
+    private const int FrameTolerance = 6;
+
     private const float HousedMinRed = 0.12f;
     private const float HousedMaxOthers = 0.3f;
 
@@ -151,22 +204,33 @@ public static class ProductionQueue
     /// 20261018-132830 los que esperan dan rojo 148 a 171 y azul 3 a 27; los que avanzan, rojo hasta 109 (el telar) o
     /// azul de más de un tercio del rojo (la pluma naranja del emplumado: 83, 60, 27).
     /// </summary>
+    /// <remarks>
+    /// El tinte nunca baja de rojo 127, así que con 130 se escapaban los íconos oscuros (20261103-193834, captura 1908: una
+    /// tecnología en espera se leía "telar" avanzando). Con 120 hay que mirar el verde: los que avanzan tienen tanto como rojo.
+    /// </remarks>
     /// <param name="inset">Píxeles de más que se dejan contra los bordes. En una imagen reescalada el ícono puede medir
     /// 32,5 px y la ventana de siempre cae sobre su borde blanco: el telar en espera daba azul 0,21 del rojo.</param>
     public static bool IsWaiting(CapturedImage image, int x, int y, int inset = 0)
     {
-        long red = 0, blue = 0;
+        var (red, green, blue) = MeanColor(image, x, y, inset);
+        return red > 120 && blue < red * 0.26 && red > green * 1.15;
+    }
+
+    /// <summary>El color promedio del ícono que empieza en (x, y), sin la esquina del número.</summary>
+    public static (double R, double G, double B) MeanColor(CapturedImage image, int x, int y, int inset = 0)
+    {
+        long red = 0, green = 0, blue = 0;
         var total = 0;
         for (var py = y + 4 + inset; py < y + IconSize - 1 - inset; py++)
         {
             for (var px = x + 12 + inset; px < x + IconSize - 2 - inset; px++)
             {
-                var (r, _, b) = image.Pixel(px, py);
-                (red, blue) = (red + r, blue + b);
+                var (r, g, b) = image.Pixel(px, py);
+                (red, green, blue) = (red + r, green + g, blue + b);
                 total++;
             }
         }
-        return red > 130L * total && blue < red * 0.2;
+        return (red / (double)total, green / (double)total, blue / (double)total);
     }
 
     /// <summary>Lugares de la cola que entran en la caja, empezando en (offsetX, offsetY).</summary>
@@ -215,6 +279,8 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog
 
     /// <summary>Los íconos de los archivos del juego (data/icons/queue_game.json), si están.</summary>
     public QueueIconCatalog? Catalog { get; } = catalog;
+
+    private readonly WaitingShapes? _waiting = catalog is null ? null : new WaitingShapes(catalog, icons);
 
     /// <summary>
     /// Las muestras son de partidas en azul: en otro color, sus celdas del color del jugador harían más distinta a la
@@ -267,14 +333,18 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog
             return slots;
         foreach (var (x, y) in ProductionQueue.Slots(image, 0, row))
         {
+            var waiting = ProductionQueue.IsWaiting(image, x, y);
             var framed = ProductionQueue.HasIconFrame(image, x, y);
-            if (Match(ProductionQueue.Features(image, x, y), framed: framed) is not { } m || m.Key == Nothing && m.Distance <= MatchThreshold)
+            var features = ProductionQueue.Features(image, x, y);
+            if (Match(features, framed: framed) is not { } m)
+                break;
+            if (m.Key == Nothing && m.Distance <= MatchThreshold && !(Catalog is not null && ProductionQueue.HasIcon(image, x, y)))
                 break;
             if (m.Distance > MatchThreshold && !(framed && Catalog is not null))
                 break;
             // Con el marco hay un ícono aunque no se sepa cuál: lo que viene después se sigue leyendo (20261101-165020,
             // captura 1528: un Pozo de oro a medio teñir escondía los arqueros a caballo que venían atrás).
-            slots.Add(new QueueSlot(x, y, m.Distance <= MatchThreshold ? m.Key : Unknown, ProductionQueue.IsWaiting(image, x, y)));
+            slots.Add(new QueueSlot(x, y, KeyOf(features, m, waiting), waiting));
         }
         return slots;
     }
@@ -289,10 +359,25 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog
         {
             if (Nearest(image, expected, start.Y, -ProductionQueue.MaxDrift, ProductionQueue.MaxDrift) is not { Distance: <= MatchThreshold } m || m.Key == Nothing)
                 break;
-            slots.Add(new QueueSlot(m.X, start.Y, m.Key, ProductionQueue.IsWaiting(image, m.X, start.Y, inset: 1)));
+            var waiting = ProductionQueue.IsWaiting(image, m.X, start.Y, inset: 1);
+            var features = ProductionQueue.Features(image, m.X, start.Y);
+            slots.Add(new QueueSlot(m.X, start.Y, KeyOf(features, (m.Key, m.Distance), waiting), waiting));
             expected = m.X + ProductionQueue.IconSize;
         }
         return slots;
+    }
+
+    /// <summary>
+    /// Qué es un lugar que ya se sabe que está en la cola. En espera, por la forma (<see cref="WaitingShapes"/>): el
+    /// amarillo les borra el color y por colores casi cualquiera se parecía a las muestras de Castillos o del ballestero.
+    /// </summary>
+    private string KeyOf(float[] features, (string Key, float Distance) match, bool waiting)
+    {
+        if (_waiting is not null && waiting && match.Key != Housed)
+            return _waiting.Identify(features, match.Distance <= MatchThreshold ? match.Key : null) ?? Unknown;
+        if (match.Key == Nothing)
+            match = Match(features, iconsOnly: true, framed: true) is { } icon ? icon : match;
+        return match.Distance <= MatchThreshold ? match.Key : Unknown;
     }
 
     /// <summary>
@@ -340,7 +425,23 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog
             if (image.Width >= ProductionQueue.IconSize && Match(ProductionQueue.Features(image, 0, dy), iconsOnly: true, framed: ProductionQueue.HasIconFrame(image, 0, dy)) is { } m && m.Distance < bestDistance)
                 (bestOffset, bestDistance) = (dy, m.Distance);
         }
-        return bestOffset < 0 || bestDistance > MatchThreshold ? null : bestOffset;
+        return bestOffset >= 0 && bestDistance <= MatchThreshold ? bestOffset : FramedRow(image);
+    }
+
+    /// <summary>
+    /// La fila de un primer ícono que no se reconoce, por su marco: sin esto la cola entera salía vacía (20261103-193834,
+    /// captura 4074: ocho íconos, el primero a medio teñir).
+    /// </summary>
+    private int? FramedRow(CapturedImage image)
+    {
+        if (Catalog is null)
+            return null;
+        for (var dy = 0; dy <= ProductionQueue.MaxOffset && dy + ProductionQueue.IconSize <= image.Height; dy++)
+        {
+            if (image.Width >= ProductionQueue.IconSize && ProductionQueue.HasIcon(image, 0, dy))
+                return dy;
+        }
+        return null;
     }
 
     /// <summary>Altura de la fila de íconos dentro de la caja (la que mejor parece un ícono en el primer lugar), o null si no hay ninguno.</summary>
