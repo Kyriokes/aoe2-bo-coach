@@ -121,6 +121,7 @@ try
         "icons" => QueueIcons(args[1], args[2], Option(args, "--every", 4), Option(args, "--offset-y", 0)),
         "iconlib" => IconLib(args[1], args[2], args[3]),
         "queue" => ReadQueue(args[1], args[2], Option(args, "--every", 2), !args.Contains("--no-game")),
+        "queue-sheet" => QueueSheet(args[1], args[2], !args.Contains("--no-game")),
         "scores" => Scores(args[1], args).GetAwaiter().GetResult(),
         "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
@@ -241,6 +242,26 @@ static int ReadQueue(string recording, string libraryPath, int every, bool withG
             continue;
         last = text;
         Console.WriteLine($"{frame.Index,6}  {(text.Length == 0 ? "(vacía)" : text)}");
+    }
+    return 0;
+}
+
+// Lee una hoja de íconos de 33 px, uno por celda, como leería cada uno en la cola: "<celda> <clave> <distancia> <espera>".
+static int QueueSheet(string sheet, string libraryPath, bool withGame)
+{
+    var library = IconLibrary.Load(libraryPath, withGame);
+    var image = Png.Read(sheet);
+    var size = ProductionQueue.IconSize;
+    var cell = 0;
+    for (var y = 0; y + size <= image.Height; y += size)
+    {
+        for (var x = 0; x + size <= image.Width; x += size, cell++)
+        {
+            var framed = ProductionQueue.HasIconFrame(image, x, y);
+            var match = library.Match(ProductionQueue.Features(image, x, y), framed: framed);
+            var key = match is { Distance: <= IconLibrary.MatchThreshold } m ? m.Key : framed ? IconLibrary.Unknown : IconLibrary.Nothing;
+            Console.WriteLine($"{cell} {key} {match?.Distance ?? 9:0.000} {(ProductionQueue.IsWaiting(image, x, y) ? 1 : 0)}");
+        }
     }
     return 0;
 }
