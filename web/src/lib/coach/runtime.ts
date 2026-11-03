@@ -5,7 +5,7 @@ import type { AnalysisResult, ImportResult } from "./types";
 export interface CoachRuntime {
   /** Versión del .dat de los datos del juego cargados (por ejemplo "VER 8.9"). */
   datVersion: string;
-  /** Valida, describe y simula una BO (el JSON de la app). Los pasos salen en `locale`; los avisos, en castellano. */
+  /** Valida, describe y simula una BO (el JSON de la app). Los pasos y los avisos salen en `locale`. */
   analyze(buildOrderJson: string, locale?: Locale): AnalysisResult;
   /** Reconoce el formato (BO de la app, guía de RTS Overlay o de buildorderguide.com) y la convierte. */
   importBuildOrder(json: string): ImportResult;
