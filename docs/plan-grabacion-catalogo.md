@@ -4,7 +4,7 @@ Una partida contra la IA, sin apuro, para que el coach vea en pantalla todo lo q
 
 ## Qué cambió el 3/11
 
-La biblioteca ya no necesita esta partida para conocer los íconos: desde la v0.9.87 los saca de los archivos del juego (543 unidades y tecnologías, teñidos como los tiñe el juego). En 4 partidas grabadas la cola vio todas las tecnologías que avisó el log, incluidas 14 que nunca se habían visto en una muestra real. Ver `CLAUDE.md`.
+La biblioteca ya no necesita esta partida para conocer los íconos: desde la v0.9.87 los saca de los archivos del juego (543 unidades y tecnologías, teñidos como los tiñe el juego). En 4 partidas grabadas la cola vio todas las tecnologías que avisó el log, incluidas 8 que no tenían ninguna muestra real (minería de oro, sierra de arco, arado pesado, anillo del pulgar, las dos armaduras de arqueros, balística y hombre de armas). Ver `CLAUDE.md`.
 
 Esta partida ahora sirve para **comprobar** lo que no pude medir con lo grabado:
 
