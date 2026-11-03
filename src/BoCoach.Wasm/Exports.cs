@@ -34,10 +34,13 @@ public static partial class Exports
         return _data.DatVersion;
     }
 
-    /// <summary>Valida, describe y simula una BO (ver <see cref="BuildOrderAnalysis"/>).</summary>
+    /// <summary>
+    /// Valida, describe y simula una BO (ver <see cref="BuildOrderAnalysis"/>). <paramref name="language"/> es el
+    /// idioma de los pasos ("es" o "en"; otro, castellano).
+    /// </summary>
     [JSExport]
-    public static string Analyze(string buildOrderJson) =>
-        BuildOrderAnalysis.Analyze(buildOrderJson, _data ?? throw new InvalidOperationException("Falta llamar a Init."), _events, _maps);
+    public static string Analyze(string buildOrderJson, string language) =>
+        BuildOrderAnalysis.Analyze(buildOrderJson, _data ?? throw new InvalidOperationException("Falta llamar a Init."), _events, _maps, language);
 
     /// <summary>Reconoce y convierte una BO o una guía (ver <see cref="BuildOrderImport.ReadJson"/>).</summary>
     [JSExport]

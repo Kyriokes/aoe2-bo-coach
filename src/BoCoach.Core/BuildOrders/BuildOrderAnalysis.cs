@@ -8,14 +8,15 @@ namespace BoCoach.Core.BuildOrders;
 
 /// <summary>
 /// Todo lo que la web muestra de una BO, en una sola pasada y como JSON (para pasarlo a JavaScript sin depender de
-/// tipos): la BO leída, los problemas de validación, cada paso descrito en español, la simulación del Planner
-/// (inicio y fin de cada paso, bloqueos y muestras del stock) y los clics de edad estimados. Es lo mismo que ve el
-/// editor de la app.
+/// tipos): la BO leída, los problemas de validación, cada paso descrito en el idioma pedido (<see cref="StepText"/>;
+/// los avisos del validador y del asistido siguen en castellano), la simulación del Planner (inicio y fin de cada
+/// paso, bloqueos y muestras del stock) y los clics de edad estimados. Es lo mismo que ve el editor de la app.
 /// </summary>
 public static class BuildOrderAnalysis
 {
     /// <param name="maps">Los mapas (data/maps.json), para los avisos del mapa de la BO (D8).</param>
-    public static string Analyze(string json, GameData data, EventCatalog? events = null, Maps? maps = null)
+    /// <param name="language">El idioma de los pasos, la postura y las ramas (<see cref="StepText.Spanish"/> o <see cref="StepText.English"/>).</param>
+    public static string Analyze(string json, GameData data, EventCatalog? events = null, Maps? maps = null, string language = StepText.Spanish)
     {
         using var stream = new MemoryStream();
         using (var w = new Utf8JsonWriter(stream))
@@ -63,13 +64,13 @@ public static class BuildOrderAnalysis
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             w.WriteString("style", BuildOrderStyle.Of(bo));
-            WriteBuildOrder(w, bo, data);
+            WriteBuildOrder(w, bo, data, language);
             WriteStart(w, bo, data);
             WriteIssues(w, validation);
 
             // Una BO con errores puede no simularse (por ejemplo, una entidad que no existe).
             var plan = validation.IsValid ? new Planner(data, settings).Simulate(bo) : null;
-            WriteSteps(w, bo, plan);
+            WriteSteps(w, bo, plan, language);
             if (plan is not null)
                 WritePlan(w, plan);
             if (assisted is not null)
@@ -113,7 +114,7 @@ public static class BuildOrderAnalysis
         w.WriteEndObject();
     }
 
-    private static void WriteBuildOrder(Utf8JsonWriter w, BuildOrder bo, GameData data)
+    private static void WriteBuildOrder(Utf8JsonWriter w, BuildOrder bo, GameData data, string language)
     {
         w.WriteString("id", bo.Id);
         w.WriteString("name", bo.Name);
@@ -135,9 +136,12 @@ public static class BuildOrderAnalysis
         // La postura de cierre (D2), escrita o deducida de los pasos.
         var (posture, derived) = Posture.Effective(bo, data);
         w.WriteStartObject("posture");
+        var english = language == StepText.English;
         w.WriteString("text", posture.Queue.Count == 0 ? null
-            : $"{string.Join(" y ", posture.Queue.Select(u => StepText.Name(u, 2)))} siempre en cola");
-        w.WriteString("next_age", posture.NextAge is { } next ? StepText.Name(next) : null);
+            : english
+                ? $"{string.Join(" and ", posture.Queue.Select(u => StepText.Name(u, 2, language)))} always in the queue"
+                : $"{string.Join(" y ", posture.Queue.Select(u => StepText.Name(u, 2, language)))} siempre en cola");
+        w.WriteString("next_age", posture.NextAge is { } next ? StepText.Name(next, 1, language) : null);
         w.WriteBoolean("derived", derived);
         w.WriteEndObject();
         // Las ramas (D3): la señal, el límite, la nota y sus pasos descritos.
@@ -145,13 +149,13 @@ public static class BuildOrderAnalysis
         foreach (var branch in bo.Branches ?? [])
         {
             w.WriteStartObject();
-            w.WriteString("on", Branch.Signals.GetValueOrDefault(branch.On, branch.On));
+            w.WriteString("on", Branch.SignalText(branch.On, language));
             if (branch.Before is { } before)
                 w.WriteString("before", GameClock.Format(before));
             w.WriteString("note", branch.Note);
             w.WriteStartArray("steps");
             foreach (var step in branch.Steps)
-                w.WriteStringValue(StepText.Describe(step));
+                w.WriteStringValue(StepText.Describe(step, language));
             w.WriteEndArray();
             w.WriteEndObject();
         }
@@ -200,7 +204,7 @@ public static class BuildOrderAnalysis
         w.WriteEndArray();
     }
 
-    private static void WriteSteps(Utf8JsonWriter w, BuildOrder bo, PlanResult? plan)
+    private static void WriteSteps(Utf8JsonWriter w, BuildOrder bo, PlanResult? plan, string language)
     {
         // D8: las unidades de cada paso (aldeanos nuevos en los de aldeanos, donde count es el total en la fuente), para
         // que el editor de la web cargue cualquier BO a su modelo en unidades.
@@ -212,7 +216,7 @@ public static class BuildOrderAnalysis
             var estimate = plan?.For(step.Id);
             w.WriteStartObject();
             w.WriteString("id", step.Id);
-            w.WriteString("text", StepText.Describe(step));
+            w.WriteString("text", StepText.Describe(step, language));
             w.WriteString("do", step.Do.ToString().ToLowerInvariant());
             w.WriteString("what", step.What);
             w.WriteNumber("count", step.Count);
