@@ -63,6 +63,9 @@ public sealed record HudReading(
     IReadOnlyDictionary<string, PixelRect>? ModBands = null,
     string? LayoutName = null)
 {
+    /// <summary>La confianza (0 a 1) de cada número leído, por campo: "clock", "food", "food_vil", "vil", "pop", "idle"...</summary>
+    public IReadOnlyDictionary<string, float> Confidence { get; init; } = new Dictionary<string, float>();
+
     public int? Stock(Resource resource) => resource switch
     {
         Resource.Food => Food,
@@ -123,12 +126,14 @@ public sealed class HudReader(HudFonts fonts)
         var clipped = new List<string>();
         var villagersOn = new Dictionary<Resource, int>();
         var bands = new Dictionary<string, PixelRect>();
+        var confidence = new Dictionary<string, float>();
         string? layoutName = null;
 
-        int? Parse(GlyphReading reading, string region)
+        int? Parse(GlyphReading reading, string region, string field)
         {
             if (reading.Clipped)
                 clipped.Add(region);
+            confidence[field] = reading.Confidence;
             return reading.IsUsable && int.TryParse(reading.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : null;
         }
 
@@ -143,8 +148,8 @@ public sealed class HudReader(HudFonts fonts)
             return LayoutPanel.Chip(layout, cell, box) is { } chip ? (box, cell, chip) : null;
         }
 
-        int? Field(HudLayout design, (CapturedImage Box, HudCell Cell, PixelRect Chip) cell, string field, string region) =>
-            Parse(_hudNumbers!.Read(LayoutPanel.Crop(design, cell.Cell, field, cell.Box)), region);
+        int? Field(HudLayout design, (CapturedImage Box, HudCell Cell, PixelRect Chip) cell, string field, string region, string name) =>
+            Parse(_hudNumbers!.Read(LayoutPanel.Crop(design, cell.Cell, field, cell.Box)), region, name);
 
         // Con el mod viejo, las dos partes de la caja (el cuadrado de los aldeanos y el fondo negro de la derecha), ya
         // estiradas de brillo por si el juego está en pausa; sin el mod, null.
@@ -155,23 +160,25 @@ public sealed class HudReader(HudFonts fonts)
 
         int? Stock(Resource resource, string region)
         {
-            if (LayoutCell(resource.ToString().ToLowerInvariant(), region) is { } cell)
+            var name = resource.ToString().ToLowerInvariant();
+            var onName = name + "_vil";
+            if (LayoutCell(name, region) is { } cell)
             {
                 layoutName = layout!.Name;
                 bands[region] = cell.Chip;
-                if (Field(layout, cell, "villagers", region) is { } villagers)
+                if (Field(layout, cell, "villagers", region, onName) is { } villagers)
                     villagersOn[resource] = villagers;
-                return Field(layout, cell, "stock", region);
+                return Field(layout, cell, "stock", region, name);
             }
             if (image(region) is not { } img)
                 return null;
             if (ModParts(img) is not { } parts)
-                return Parse(_stock.ReadRightmostGroup(img), region);
-            if (Parse(_modNumbers!.Read(parts.Square), region) is { } onResource)
+                return Parse(_stock.ReadRightmostGroup(img), region, name);
+            if (Parse(_modNumbers!.Read(parts.Square), region, onName) is { } onResource)
                 villagersOn[resource] = onResource;
             if (ModPanel.Band(img) is { } band)
                 bands[region] = band;
-            return parts.Right is { } right ? Parse(_modNumbers.Read(right), region) : null;
+            return parts.Right is { } right ? Parse(_modNumbers.Read(right), region, name) : null;
         }
 
         // Inactivos: con el diseño, el campo de la celda (y la celda entera para el marco del aviso); con el mod viejo,
@@ -182,7 +189,7 @@ public sealed class HudReader(HudFonts fonts)
             {
                 layoutName = layout!.Name;
                 bands[RegionNames.IdleVillagers] = cell.Chip;
-                return Field(layout, cell, "count", RegionNames.IdleVillagers);
+                return Field(layout, cell, "count", RegionNames.IdleVillagers, "idle");
             }
             if (image(RegionNames.IdleVillagers) is not { } img)
                 return null;
@@ -190,12 +197,13 @@ public sealed class HudReader(HudFonts fonts)
             if (_modNumbers is not null && ModPanel.Band(img) is { } band)
                 bands[RegionNames.IdleVillagers] = band;
             return ModParts(img) is { } parts
-                ? Parse(_modNumbers!.Read(parts.Square), RegionNames.IdleVillagers)
-                : Parse(_stock.ReadRightmostGroup(img), RegionNames.IdleVillagers);
+                ? Parse(_modNumbers!.Read(parts.Square), RegionNames.IdleVillagers, "idle")
+                : Parse(_stock.ReadRightmostGroup(img), RegionNames.IdleVillagers, "idle");
         }
 
         (int? Villagers, int? Population, int? Cap) PopulationFrom(GlyphReading reading, int? villagers)
         {
+            confidence["pop"] = reading.Confidence;
             var match = PopulationText.Match(reading.Text);
             return match.Success && !reading.Clipped
                 ? (villagers, int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture))
@@ -209,14 +217,14 @@ public sealed class HudReader(HudFonts fonts)
             if (LayoutCell("population", RegionNames.Population) is { } cell)
             {
                 layoutName = layout!.Name;
-                var total = Field(layout, cell, "total", RegionNames.Population);
+                var total = Field(layout, cell, "total", RegionNames.Population, "vil");
                 return PopulationFrom(_hudNumbers!.Read(LayoutPanel.Crop(layout, cell.Cell, "cap", cell.Box)), total);
             }
             if (image(RegionNames.Population) is not { } img)
                 return (null, null, null);
             if (ModParts(img) is not { } parts)
-                return (Parse(_villagers.ReadRightmostGroup(img), RegionNames.Population), null, null);
-            var villagers = Parse(_modNumbers!.Read(parts.Square), RegionNames.Population);
+                return (Parse(_villagers.ReadRightmostGroup(img), RegionNames.Population, "vil"), null, null);
+            var villagers = Parse(_modNumbers!.Read(parts.Square), RegionNames.Population, "vil");
             if (_modPopulation is null || parts.Right is not { } right)
                 return (villagers, null, null);
             return PopulationFrom(_modPopulation.Read(right), villagers);
@@ -236,6 +244,7 @@ public sealed class HudReader(HudFonts fonts)
                 var reading = _modClock.Read(clockImage.Stretched(PauseGain));
                 clockSeconds = TimeAtStart(reading);
                 clockClipped = reading.Clipped;
+                confidence["clock"] = reading.Confidence;
             }
             // Desde el parche del 2026-10-27 el mod ubica el reloj pero no dibuja el negro de atrás (partida
             // 20261028-232628): con la textura y la sombra de las letras la caja igual parece negra, la letra del mod
@@ -246,6 +255,7 @@ public sealed class HudReader(HudFonts fonts)
                 clockSeconds = TimeAtStart(reading)
                     ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
                 clockClipped |= reading.Clipped;
+                confidence["clock"] = reading.Confidence;
             }
             if (clockSeconds is null && clockClipped)
                 clipped.Add(RegionNames.Clock);
@@ -269,7 +279,10 @@ public sealed class HudReader(HudFonts fonts)
             population,
             cap,
             bands.Count > 0 ? bands : null,
-            layoutName);
+            layoutName)
+        {
+            Confidence = confidence,
+        };
     }
 
     /// <summary>Lee una captura grabada, con el diseño con que se grabó si lo tiene.</summary>
