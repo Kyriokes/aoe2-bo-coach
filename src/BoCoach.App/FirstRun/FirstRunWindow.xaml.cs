@@ -30,5 +30,9 @@ public partial class FirstRunWindow : Window
                 Close();
         };
         Closed += (_, _) => _timer.Stop();
+        // En una pantalla chica no se sale: se desplaza adentro.
+        MaxHeight = SystemParameters.WorkArea.Height - 20;
     }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

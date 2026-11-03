@@ -4,73 +4,114 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:firstRun="clr-namespace:BoCoach.App.FirstRun"
+        xmlns:app="clr-namespace:BoCoach.App"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance firstRun:FirstRunViewModel}"
-        Title="Primeros pasos" Width="600" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" Background="{StaticResource Background}"
-        FontFamily="Segoe UI" FontSize="13">
-    <StackPanel Margin="18">
-        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,14">
-            Cinco pasos para que el coach te lea bien y tenga tus BO. Se hacen una sola vez; si cambiás algo (otra PC, otra resolución, otro nombre), volvé a abrir esto con «Primeros pasos».
-        </TextBlock>
+        Title="{x:Static app:Texts.FirstRunTitle}" Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Style="{StaticResource AppWindow}">
+    <Window.Resources>
+        <!-- El número de cada paso -->
+        <Style x:Key="Badge" TargetType="Border">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style x:Key="BadgeNumber" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AccentInk}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="StepBox" TargetType="DockPanel">
+            <Setter Property="Margin" Value="0,0,0,18" />
+        </Style>
+    </Window.Resources>
 
-        <!-- 1. Idioma -->
-        <TextBlock Text="1. Idioma del juego" Style="{StaticResource SectionTitle}" />
-        <StackPanel x:Name="LanguageBox" Orientation="Horizontal" Margin="0,4,0,14">
-            <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding Language}" Width="220"
-                      AutomationProperties.Name="Idioma del juego" />
-            <TextBlock Text="En el juego: Opciones → Idioma." Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="{x:Static app:Texts.FirstRunTitle}" Style="{StaticResource AppTitle}" Margin="0,0,0,4" />
+            <TextBlock Text="{x:Static app:Texts.FirstRunIntro}" Style="{StaticResource Body}" Margin="0,0,0,18" />
+
+            <!-- 1. Cuenta de la web -->
+            <DockPanel Style="{StaticResource StepBox}">
+                <Border Style="{StaticResource Badge}"><TextBlock Text="1" Style="{StaticResource BadgeNumber}" /></Border>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.FirstRunAccountTitle}" Style="{StaticResource StepTitle}" />
+                    <TextBlock Text="{x:Static app:Texts.FirstRunAccountBody}" Style="{StaticResource Body}" Margin="0,3,0,8" />
+                    <StackPanel x:Name="AccountBox" Orientation="Horizontal">
+                        <Button Content="{x:Static app:Texts.ConnectAccount}" Command="{Binding ConnectCommand}" />
+                        <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+
+            <!-- 2. Idioma -->
+            <DockPanel Style="{StaticResource StepBox}">
+                <Border Style="{StaticResource Badge}"><TextBlock Text="2" Style="{StaticResource BadgeNumber}" /></Border>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.FirstRunLanguageTitle}" Style="{StaticResource StepTitle}" />
+                    <StackPanel x:Name="LanguageBox" Orientation="Horizontal" Margin="0,6,0,0">
+                        <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding Language}" Width="220"
+                                  AutomationProperties.Name="{x:Static app:Texts.GameLanguageLabel}" />
+                        <TextBlock Text="{x:Static app:Texts.FirstRunLanguageBody}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+
+            <!-- 3. Mod -->
+            <DockPanel Style="{StaticResource StepBox}">
+                <Border Style="{StaticResource Badge}"><TextBlock Text="3" Style="{StaticResource BadgeNumber}" /></Border>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.FirstRunModTitle}" Style="{StaticResource StepTitle}" />
+                    <TextBlock Text="{x:Static app:Texts.FirstRunModBody}" Style="{StaticResource Body}" Margin="0,3,0,8" />
+                    <Button x:Name="InstallModButton" Content="{x:Static app:Texts.InstallMod}" HorizontalAlignment="Left" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- 4. Partida contra la IA -->
+            <DockPanel Style="{StaticResource StepBox}">
+                <Border Style="{StaticResource Badge}"><TextBlock Text="4" Style="{StaticResource BadgeNumber}" /></Border>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.FirstRunMatchTitle}" Style="{StaticResource StepTitle}" />
+                    <TextBlock Text="{x:Static app:Texts.FirstRunMatchBody}" Style="{StaticResource Body}" Margin="0,3,0,8" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="{Binding WatchButtonText}" Command="{Binding ToggleWatchingCommand}" />
+                        <TextBlock Text="{Binding CalibrationStatus}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding WatchStatus}" Style="{StaticResource Body}" Margin="0,6,0,0"
+                               Visibility="{Binding WatchStatus, Converter={StaticResource NotEmptyToVisibility}}" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- 5. Nombre -->
+            <DockPanel Style="{StaticResource StepBox}">
+                <Border Style="{StaticResource Badge}"><TextBlock Text="5" Style="{StaticResource BadgeNumber}" /></Border>
+                <StackPanel>
+                    <TextBlock Text="{x:Static app:Texts.FirstRunNameTitle}" Style="{StaticResource StepTitle}" />
+                    <TextBlock Text="{x:Static app:Texts.FirstRunNameBody}" Style="{StaticResource Body}" Margin="0,3,0,8" />
+                    <ListBox ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" MaxHeight="190" Margin="0,0,0,8"
+                             Visibility="{Binding HasPlayers, Converter={StaticResource BoolToVisibility}}"
+                             AutomationProperties.Name="{x:Static app:Texts.FirstRunPlayersName}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock><Run Text="{Binding Slot, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="   " /><Run Text="{Binding Name, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding CivText, Mode=OneWay}" Foreground="{StaticResource Muted}" /></TextBlock>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left"
+                             AutomationProperties.Name="{x:Static app:Texts.PlayerNameLabel}" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- Lugar previsto para "Compartir mis partidas para mejorar el coach" (registro de partida, hoja de ruta ítem 15): un paso más, acá -->
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="{x:Static app:Texts.FirstRunFinish}" IsDefault="True" Style="{StaticResource PrimaryButton}" Command="{Binding FinishCommand}" />
+                <Button Content="{x:Static app:Texts.Close}" IsCancel="True" Margin="0" Click="Close_Click" />
+            </StackPanel>
         </StackPanel>
-
-        <!-- 2. Mod -->
-        <TextBlock Text="2. Mod del HUD" Style="{StaticResource SectionTitle}" />
-        <TextBlock TextWrapping="Wrap" Margin="0,4,0,6">
-            Pone los aldeanos de cada recurso en cuadrados negros y agranda el reloj, que es lo que mejor lee el coach. Con el mod, la app también se calibra sola. Después de instalarlo, cerrá el juego y volvé a abrirlo.
-        </TextBlock>
-        <Button x:Name="InstallModButton" Content="Instalar mod del HUD" HorizontalAlignment="Left" Margin="0,0,0,14" />
-
-        <!-- 3. Partida contra la IA -->
-        <TextBlock Text="3. Una partida rápida contra 7 IA" Style="{StaticResource SectionTitle}" />
-        <TextBlock TextWrapping="Wrap" Margin="0,4,0,6">
-            Tocá «Mirar la pantalla» y armá en el juego una partida rápida contra 7 IA. En la pantalla de carga leo la lista de jugadores (para saber cómo te llamás), y cuando arranca la partida me calibro con el HUD: quedate unos segundos en ella sin tapar la parte de arriba. Después podés salir.
-        </TextBlock>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-            <Button Content="{Binding WatchButtonText}" Command="{Binding ToggleWatchingCommand}" />
-            <TextBlock Text="{Binding CalibrationStatus}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
-        </StackPanel>
-        <TextBlock Text="{Binding WatchStatus}" TextWrapping="Wrap" Margin="0,0,0,14"
-                   Visibility="{Binding WatchStatus, Converter={StaticResource NotEmptyToVisibility}}" />
-
-        <!-- 4. Nombre -->
-        <TextBlock Text="4. Tu nombre en el juego" Style="{StaticResource SectionTitle}" />
-        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,6">
-            Elegilo de la lista (sale de la pantalla de carga) y corregilo si el OCR erró una letra. Con tu nombre, en cada pantalla de carga el coach sabe tu civ y contra quién jugás.
-        </TextBlock>
-        <ListBox ItemsSource="{Binding Players}" SelectedItem="{Binding SelectedPlayer}" MaxHeight="190" Margin="0,0,0,6"
-                 Visibility="{Binding HasPlayers, Converter={StaticResource BoolToVisibility}}"
-                 AutomationProperties.Name="Jugadores de la pantalla de carga">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock><Run Text="{Binding Slot, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="   " /><Run Text="{Binding Name, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding CivText, Mode=OneWay}" Foreground="{StaticResource Muted}" /></TextBlock>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-        <TextBox Text="{Binding PlayerName, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left" Margin="0,0,0,16"
-                 AutomationProperties.Name="Tu nombre en el juego" />
-
-        <!-- 5. Cuenta de la web (parte 4) -->
-        <TextBlock Text="5. Tu cuenta de la web" Style="{StaticResource SectionTitle}" />
-        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,4,0,6">
-            Las build orders se arman y se eligen en la web. Conectá tu cuenta: se abre Mi cuenta en el navegador y ahí «Conectar la app» la trae acá.
-        </TextBlock>
-        <StackPanel x:Name="AccountBox" Orientation="Horizontal" Margin="0,0,0,16">
-            <Button Content="Conectar cuenta" Command="{Binding ConnectCommand}" />
-            <TextBlock Text="{Binding AccountText}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
-        </StackPanel>
-
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Guardar mi nombre" IsDefault="True" Style="{StaticResource PrimaryButton}" Command="{Binding FinishCommand}" />
-            <Button Content="Cerrar" IsCancel="True" Margin="0" />
-        </StackPanel>
-    </StackPanel>
+    </ScrollViewer>
 </Window>
