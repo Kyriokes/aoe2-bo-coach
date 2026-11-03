@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using BoCoach.App.Overlay;
+using BoCoach.Core;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
@@ -144,7 +145,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private void ToggleCursorReminders() => CursorReminders = !CursorReminders;
 
     /// <summary>Opción del desplegable para jugar con la civ que dice la BO.</summary>
-    public const string BoCiv = "(la de la BO)";
+    public static string BoCiv => Texts.GameCivFromBuildOrder;
 
     /// <summary>
     /// Civ con la que se juega esta partida (clave de game_data) o <see cref="BoCiv"/>. El coach usa sus
@@ -194,14 +195,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         SaveSettings();
     }
 
-    private const string InvalidElo = "Elo no válido: un número de 1 a 4000.";
-
     /// <summary>Un Elo que no se entiende se avisa (si no, se descartaba sin decir nada y el coach quedaba "sin tu Elo").</summary>
     private void CheckElo(string text)
     {
         if (text.Trim().Length > 0 && ParseElo(text) is null)
-            EloStatus = InvalidElo;
-        else if (EloStatus == InvalidElo)
+            EloStatus = Texts.InvalidElo;
+        else if (EloStatus == Texts.InvalidElo)
             EloStatus = "";
     }
 
@@ -240,10 +239,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var name = PlayerName.Trim();
         if (name.Length == 0)
         {
-            EloStatus = "Poné tu nombre primero.";
+            EloStatus = Texts.EloNeedsName;
             return;
         }
-        EloStatus = "Buscando...";
+        EloStatus = Texts.EloSearching;
         var search = await SearchElo(name, CancellationToken.None);
         if (search.Error is { } error)
         {
@@ -258,7 +257,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         };
         if (chosen is null)
         {
-            EloStatus = search.Candidates.Count == 0 ? $"No encontré a {name} en el juego." : "";
+            EloStatus = search.Candidates.Count == 0 ? Texts.EloNotFound(name) : "";
             return;
         }
         ProfileId = chosen.ProfileId;
@@ -267,8 +266,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (chosen.EloTeam is { } eloTeam)
             EloTeamText = eloTeam.ToString(CultureInfo.InvariantCulture);
         SaveSettings();
-        EloStatus = $"Elo de {chosen.Alias}: 1v1 {chosen.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "-"}, "
-                    + $"equipos {chosen.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "-"}.";
+        EloStatus = Texts.EloFound(chosen.Alias, chosen.Elo1v1?.ToString(CultureInfo.InvariantCulture) ?? "-",
+            chosen.EloTeam?.ToString(CultureInfo.InvariantCulture) ?? "-");
     }
 
     /// <summary>Si ya se pasó (o se cerró) el tutorial de primer uso (hoja de ruta C4).</summary>
@@ -390,6 +389,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>La civ que va a usar el coach con esta BO.</summary>
     private string CivFor(BuildOrder bo) => GameCiv is { Length: > 0 } civ && civ != BoCiv ? civ : bo.Civ;
 
+    /// <summary>
+    /// Sin el loop de fondo: el test da los pasos con <see cref="LiveCoach.StepAsync"/>. Con el loop, dos hilos aplicaban
+    /// lecturas a la vez (en la app van todas por el hilo de la interfaz) y la suite daba mal una vez cada tanto.
+    /// </summary>
+    internal bool ManualSteps { get; init; }
+
     /// <summary>El coach en vivo mientras corre (para los tests).</summary>
     public LiveCoach? LiveCoach => _coach;
 
@@ -441,7 +446,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
     }
 
-    public string ButtonText => IsRunning ? "■ Detener coach" : "▶ Empezar coach";
+    public string ButtonText => IsRunning ? Texts.StopCoach : Texts.StartCoach;
 
     public OverlayViewModel? Overlay { get; private set; }
 
@@ -463,7 +468,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if ((BoMode == BuildOrderMode.Auto ? AutoBuildOrder() : _selected()) is not { } bo)
         {
-            Status = "Elegí una BO de tu lista (o pasá a Automática) para empezar el coach.";
+            Status = Texts.ChooseToStart;
             return;
         }
         _previousBuildOrder = null;
@@ -483,7 +488,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (IsRunning && _startedAutomatically)
             {
                 Stop();
-                Status = "El juego se cerró: coach detenido.";
+                Status = Texts.GameClosedStopped;
             }
             return;
         }
@@ -494,7 +499,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (!_autoNoBoWarned)
             {
                 _autoNoBoWarned = true;
-                Status = "Coach automático: elegí una BO de tu lista (o pasá a Automática) para que arranque solo con el juego.";
+                Status = Texts.AutoNeedsBuildOrder;
             }
             return;
         }
@@ -527,7 +532,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         // Sin BO no hay pasos que validar (el validador exige pasos): el coach sigue con los recordatorios.
         if (!bo.IsNone && _data.Validator.Validate(bo).Issues.FirstOrDefault(i => i.Severity == Severity.Error) is { } error)
         {
-            Status = $"\"{bo.Name}\" tiene errores ({error.Message}): corregila en el editor antes de empezar el coach.";
+            Status = Texts.HasErrors(bo.Name, error.Message);
             return;
         }
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
@@ -562,9 +567,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             LastBuildOrderId = bo.Id;
             SaveSettings();
         }
-        _coach.Start();
+        if (!ManualSteps)
+            _coach.Start();
         IsRunning = true;
-        Status = $"Coach con \"{bo.Name}\"{(GameCiv != BoCiv ? $" como {bo.Civ}" : "")}{LanguageNote(ocr)}, esperando la partida. Desde el juego: {Key("advance")} avanza, {Key("back")} retrocede, {Key("skip")} saltea, {Key("overlay")} oculta, {Key("cursor_reminders")} recordatorios en el mouse.";
+        Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
     }
 
     /// <summary>
@@ -585,8 +591,75 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Dónde se guardan los informes de las partidas (D5).</summary>
     public string ReportsFolder { get; init; } = DefaultReportsFolder;
 
+    /// <summary>Hay una partida en curso (el coach ve el reloj): el tablero de la ventana lo muestra.</summary>
+    [ObservableProperty] public partial bool InGame { get; private set; }
+
+    /// <summary>El minuto de la partida en curso, en segundos.</summary>
+    [ObservableProperty] public partial double GameTime { get; private set; }
+
+    /// <summary>La civ de la partida en castellano, si se sabe (con "any" no hay ninguna).</summary>
+    [ObservableProperty] public partial string? GameCivName { get; private set; }
+
+    /// <summary>Terminó una partida y todavía no empezó otra, ni el jugador dijo "Listo".</summary>
+    [ObservableProperty] public partial bool ReportPending { get; private set; }
+
+    /// <summary>El jugador ya vio el informe: el tablero vuelve a lo de siempre.</summary>
+    public void MarkReportSeen() => ReportPending = false;
+
+    /// <summary>El último informe: el de esta sesión o, al abrir la app, el último de la carpeta.</summary>
+    public ReportInfo? LastReport
+    {
+        get
+        {
+            if (!_reportLooked)
+            {
+                _reportLooked = true;
+                _lastReport = LatestReportIn(ReportsFolder);
+            }
+            return _lastReport;
+        }
+        private set
+        {
+            (_reportLooked, _lastReport) = (true, value);
+            OnPropertyChanged();
+        }
+    }
+
+    private ReportInfo? _lastReport;
+    private bool _reportLooked;
+
+    /// <summary>El más nuevo por el nombre (yyyyMMdd-HHmmss.html); solo esa carpeta, sin las de adentro.</summary>
+    internal static ReportInfo? LatestReportIn(string folder)
+    {
+        if (!Directory.Exists(folder))
+            return null;
+        try
+        {
+            return Directory.EnumerateFiles(folder, "*.html", SearchOption.TopDirectoryOnly)
+                .Select(path => DateTime.TryParseExact(Path.GetFileNameWithoutExtension(path), "yyyyMMdd-HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
+                    ? new ReportInfo(path, date) : null)
+                .OfType<ReportInfo>()
+                .MaxBy(r => r.Date);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Lo principal de un informe en un renglón: los clics de edad, los pasos y el centro urbano parado.</summary>
+    internal static string ReportLine(GameReport report)
+    {
+        var parts = report.AgeClicks.Where(c => c.Click is not null).Select(c => $"{c.Age} {GameClock.Format(c.Click!.Value)}").ToList();
+        if (report.Steps.Count > 0)
+            parts.Add(Texts.ReportStepsDone(report.Steps.Count(s => s.Done is not null), report.Steps.Count));
+        if (report.TownCenterIdle >= 1)
+            parts.Add(Texts.ReportIdle(GameClock.Format(report.TownCenterIdle)));
+        return string.Join(" · ", parts);
+    }
+
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
-    private void Finished(GameReport report)
+    internal void Finished(GameReport report)
     {
         // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
         if (_matchupQuery is { } query)
@@ -603,11 +676,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             var now = DateTime.Now;
             var path = Path.Combine(ReportsFolder, $"{now:yyyyMMdd-HHmmss}.html");
             File.WriteAllText(path, GameReportText.Html(report, now));
+            LastReport = new ReportInfo(path, now, ReportLine(report), report.Length);
+            ReportPending = true;
             _host.ShowReport(GameReportText.Summary(report), path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            Status = $"No se pudo guardar el informe de la partida: {e.Message}";
+            Status = Texts.ReportNotSaved(e.Message);
         }
     }
 
@@ -630,7 +705,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var match = new MatchSetup(me.Civ, facing?.Civ, loading.Opponents(me).Where(p => p != facing).Select(p => p.Civ).ToList(),
             loading.PositionOf(me), loading.Map, Elo1v1);
         Overlay.MatchAdvice = BuildOrderSuggester.Advice(match, _data.CivStyles) is { } advice && facing?.Civ is { } rival
-            ? $"Contra {CivName(rival)} (enfrente): {advice}"
+            ? Texts.AgainstFacing(CivName(rival), advice)
             : null;
         // D10: el cruce con las estadísticas reales (1v1 con el rival; por equipos, tu civ) y para el informe.
         _matchupQuery = loading.Matchup(me, Elo1v1, EloTeam);
@@ -665,7 +740,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (suggestion is null)
             return;
         _suggestion = suggestion;
-        Overlay.BoSuggestion = $"Sugerida: {suggestion.Summary.Name} ({suggestion.Reason}). {Key("accept_suggestion")} para usarla";
+        Overlay.BoSuggestion = Texts.Suggested(suggestion.Summary.Name, suggestion.Reason, Key("accept_suggestion"));
     }
 
     /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
@@ -684,7 +759,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
         Start(bo, _liveFrames(), _startedAutomatically);
-        Status = $"Coach con \"{bo.Name}\", la versión nueva de la web.";
+        Status = Texts.NewVersionRunning(bo.Name);
     }
 
     /// <summary>
@@ -697,7 +772,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         var pick = _pick = new CancellationTokenSource();
         var session = _coach;
         if (best is not null && Overlay is not null)
-            Overlay.BoSuggestion = $"Bajando {best.Summary.Name}…";
+            Overlay.BoSuggestion = Texts.DownloadingSuggested(best.Summary.Name);
         BuildOrder bo;
         try
         {
@@ -720,18 +795,18 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (best is not null && !bo.IsNone && Overlay is not null)
             {
                 _suggestion = best;
-                Overlay.BoSuggestion = $"Sugerida: {best.Summary.Name} ({best.Reason}). {Key("accept_suggestion")} para usarla";
+                Overlay.BoSuggestion = Texts.Suggested(best.Summary.Name, best.Reason, Key("accept_suggestion"));
             }
             return;
         }
         _previousBuildOrder = running.IsNone ? null : running;
         _lastSwitchBest = best?.Summary.Key;
         Start(bo, _liveFrames(), automatic: true);
-        var why = best is not null && best.Summary.Key == bo.Id ? $" ({best.Reason})" : "";
-        var back = running.IsNone ? "" : $" {Key("accept_suggestion")} vuelve a {running.Name}";
+        var why = best is not null && best.Summary.Key == bo.Id ? Texts.SwitchReason(best.Reason) : "";
+        var back = running.IsNone ? "" : Texts.SwitchBack(Key("accept_suggestion"), running.Name);
         if (Overlay is not null)
-            Overlay.BoSuggestion = $"Cambié a {bo.Name}{why}.{back}";
-        Status = $"Coach con \"{bo.Name}\", la sugerida para esta partida.";
+            Overlay.BoSuggestion = Texts.Switched(bo.Name, why, back);
+        Status = Texts.SuggestedRunning(bo.Name);
     }
 
     /// <summary>D10: el nombre de un mapa en castellano (data/maps.json), o null si no está.</summary>
@@ -769,7 +844,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
         Start(previous, _liveFrames(), automatic: true);
-        Status = $"Volví a \"{previous.Name}\".";
+        Status = Texts.BackToBuildOrder(previous.Name);
     }
 
     /// <summary>Baja la sugerida (si no está guardada) y empieza el coach con ella.</summary>
@@ -783,13 +858,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         catch (WebLibraryException e)
         {
-            Status = $"No se pudo bajar \"{suggestion.Summary.Name}\": {e.Message}";
+            Status = Texts.DownloadFailed(suggestion.Summary.Name, e.Message);
             return;
         }
         if (_coach != session)
             return;
         Start(bo, _liveFrames(), _startedAutomatically);
-        Status = $"Coach con \"{bo.Name}\", la sugerida para esta partida.";
+        Status = Texts.SuggestedRunning(bo.Name);
     }
 
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
@@ -800,12 +875,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (frame.Me is not { } me)
         {
             return PlayerName.Trim().Length == 0
-                ? $"Pantalla de carga: partida nueva. Poné \"Tu nombre\" para que el coach tome tu civ sola (sigue con {frame.Civ})."
-                : $"Pantalla de carga: no encontré a \"{PlayerName.Trim()}\" entre {string.Join(", ", loading.Players.Select(p => p.Name))}. Sigue con {frame.Civ}.";
+                ? Texts.LoadingNoPlayerName(frame.Civ)
+                : Texts.LoadingPlayerNotFound(PlayerName.Trim(), string.Join(", ", loading.Players.Select(p => p.Name)), frame.Civ);
         }
         var rivals = loading.Opponents(me).Select(p => p.Civ ?? "?").ToList();
-        var civ = me.Civ is null ? $"no entendí tu civ (\"{me.CivText}\"), sigue con {frame.Civ}" : $"jugás con {me.Civ}";
-        return $"Pantalla de carga: {civ}{(rivals.Count > 0 ? $" contra {string.Join(", ", rivals)}" : "")}{(loading.Map is { } map ? $" en {map}" : "")}.";
+        var civ = me.Civ is null ? Texts.LoadingCivUnknown(me.CivText, frame.Civ) : Texts.LoadingPlayingWith(me.Civ);
+        return Texts.LoadingNote(civ, rivals.Count > 0 ? Texts.LoadingVs(string.Join(", ", rivals)) : "", loading.Map is { } map ? Texts.LoadingOnMap(map) : "");
     }
 
     /// <summary>Qué idioma lee, si no es el inglés, y si falta el OCR de ese idioma en este Windows.</summary>
@@ -815,8 +890,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return "";
         var reads = ocr?.Language ?? "";
         return reads.StartsWith("es", StringComparison.OrdinalIgnoreCase)
-            ? $", juego en {Language.Label.ToLowerInvariant()}"
-            : $", juego en {Language.Label.ToLowerInvariant()} (Windows no tiene el OCR en castellano: lee con el inglés)";
+            ? Texts.GameInLanguage(Language.Label.ToLowerInvariant())
+            : Texts.GameInLanguageNoOcr(Language.Label.ToLowerInvariant());
     }
 
     public void Stop() => StopCoach(notify: true);
@@ -831,7 +906,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _coach = null;
         _host.CloseOverlay();
         IsRunning = false;
-        Status = "Coach detenido.";
+        InGame = false;
+        Status = Texts.CoachStopped;
         if (notify)
             Stopped?.Invoke();
     }
@@ -840,7 +916,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public sealed record LaneChoice(string Name, Lane? Lane);
 
     public IReadOnlyList<LaneChoice> LaneChoices { get; } =
-        [new("Lo primero que falta", null), new("Aldeanos", Lane.Villagers), new("Construir", Lane.Build), new("Investigar", Lane.Research), new("Producir", Lane.Produce)];
+        [new(Texts.LaneFirstMissing, null), new(Texts.LaneVillagers, Lane.Villagers), new(Texts.LaneBuild, Lane.Build), new(Texts.LaneResearch, Lane.Research), new(Texts.LaneProduce, Lane.Produce)];
 
     /// <summary>Sobre qué línea actúan "Ya está" y "Saltear" (botones del panel y atajos).</summary>
     [ObservableProperty] public partial LaneChoice SelectedLane { get; set; }
@@ -903,11 +979,18 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Live.Apply(frame);
         _lastGameTime = frame.View.Time;
         _lastInGame = frame.InGame;
+        GameTime = frame.View.Time;
+        InGame = frame.InGame;
+        GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;
+        // Empezó otra partida: lo de la anterior deja de ser la noticia.
+        if (frame.InGame)
+            ReportPending = false;
         _frameAllowsOverlay = frame is { InFront: true, Waiting: false };
         UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)
         {
             _loading = loading;
+            ReportPending = false;
             Status = LoadingNote(frame);
             Suggest(frame);
         }

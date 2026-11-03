@@ -62,9 +62,14 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
 
     public bool Connected => _web.Settings.HasToken;
 
-    public string AccountText => !Connected ? "Conectá tu cuenta para elegir BO"
-        : _cache.List.Account.Length > 0 ? $"Conectada como {_cache.List.Account}"
-        : "Cuenta conectada";
+    public string AccountText => !Connected ? Texts.AccountNotConnected
+        : _cache.List.Account.Length > 0 ? Texts.AccountConnectedAs(_cache.List.Account)
+        : Texts.AccountConnected;
+
+    /// <summary>Lo que dice la lista mientras está vacía.</summary>
+    public string EmptyListText => Connected ? Texts.ListEmpty : Texts.ListEmptyNoAccount;
+
+    public bool HasEntries => Entries.Count > 0;
 
     [ObservableProperty] public partial string Status { get; set; } = "";
 
@@ -104,18 +109,18 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     private async Task DownloadSelectedAsync(BuildOrderEntryViewModel entry)
     {
         if (!_cache.IsSaved(entry.Code))
-            Status = $"Bajando \"{entry.Name}\"…";
+            Status = Texts.Downloading(entry.Name);
         try
         {
             var bo = await _cache.GetAsync(entry.Code);
             if (SelectedEntry != entry)
                 return;
             SelectedBuildOrder = bo;
-            Status = $"Lista: \"{bo.Name}\".";
+            Status = Texts.Ready(bo.Name);
         }
         catch (WebLibraryException e)
         {
-            Status = $"No se pudo bajar \"{entry.Name}\": {e.Message}";
+            Status = Texts.DownloadFailed(entry.Name, e.Message);
         }
         UpdateStates();
     }
@@ -132,7 +137,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         }
         var error = await _cache.RefreshAsync();
         RebuildEntries();
-        Status = error ?? (Entries.Count == 0 ? "Tu lista está vacía: armá una BO en la web o sumá una con Pegar código." : $"{Entries.Count} BO en tu lista.");
+        Status = error ?? (Entries.Count == 0 ? Texts.ListEmpty : Texts.ListCount(Entries.Count));
         await RedownloadStaleAsync();
     }
 
@@ -171,11 +176,11 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     [RelayCommand]
     public async Task PasteCodeAsync()
     {
-        if (_dialogs.AskText("Sumar una BO", "El código de la BO (6 letras y números) o el enlace de su página en la web:") is not { } text)
+        if (_dialogs.AskText(Texts.AddBuildOrderTitle, Texts.AddBuildOrderPrompt) is not { } text)
             return;
         if (WebCode.Parse(text) is not { } code)
         {
-            Status = $"\"{text.Trim()}\" no es un código de la web (son 6 letras y números).";
+            Status = Texts.NotACode(text.Trim());
             return;
         }
         await ImportAsync(code, confirm: false);
@@ -191,7 +196,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
             case AppLink.Import import:
                 return ImportAsync(import.Code, confirm: true);
             default:
-                Status = "Ese enlace no es de BO Coach.";
+                Status = Texts.ForeignLink;
                 return Task.CompletedTask;
         }
     }
@@ -212,11 +217,11 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
             }
             catch (WebLibraryException e)
             {
-                Status = $"No se pudo conectar la cuenta: {e.Message}";
+                Status = Texts.ConnectFailed(e.Message);
                 return;
             }
-            var account = list.Account.Length > 0 ? list.Account : "(sin nombre)";
-            if (!_dialogs.Confirm($"¿Conectar BO Coach con la cuenta {account} de la web?"))
+            var account = list.Account.Length > 0 ? list.Account : Texts.NoAccountName;
+            if (!_dialogs.Confirm(Texts.ConfirmConnect(account)))
                 return;
             _web.Save(_web.Settings with { Token = token });
         }
@@ -238,7 +243,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     {
         if (!Connected)
         {
-            Status = "Conectá tu cuenta para sumar BO.";
+            Status = Texts.ConnectToAdd;
             return;
         }
         await _imports.WaitAsync();
@@ -247,16 +252,16 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
             if (confirm)
             {
                 var found = await _web.Client.DownloadAsync(code, _web.Settings.Token);
-                if (!_dialogs.Confirm($"¿Sumar \"{found.BuildOrder.Name}\" (subida por {found.Author}) a tus BO?"))
+                if (!_dialogs.Confirm(Texts.ConfirmAdd(found.BuildOrder.Name, found.Author)))
                     return;
             }
             var entry = await _cache.AddAsync(code);
             RebuildEntries();
-            Status = $"Sumada \"{entry?.Name ?? code}\" a tus BO.";
+            Status = Texts.Added(entry?.Name ?? code);
         }
         catch (WebLibraryException e)
         {
-            Status = $"No se pudo sumar {code}: {e.Message}";
+            Status = Texts.AddFailed(code, e.Message);
         }
         finally
         {
@@ -274,7 +279,7 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         if (Environment.ProcessPath is { } exe)
             new LinkProtocol().Register(exe);
         _dialogs.OpenUrl(new Uri(_web.Settings.BaseUri, "cuenta").ToString());
-        Status = "En la web, tocá \"Conectar la app\" en Mi cuenta.";
+        Status = Texts.ConnectInWeb;
     }
 
     /// <summary>La ventana de hoy: dirección de la web y el token pegado a mano.</summary>
@@ -315,20 +320,22 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     private void UpdateStates()
     {
         foreach (var entry in Entries)
-            entry.State = _cache.IsSaved(entry.Code) ? "guardada" : "se baja al usarla";
+            entry.State = _cache.IsSaved(entry.Code) ? Texts.EntrySaved : Texts.EntryNotSaved;
     }
 
     private void Changed()
     {
         OnPropertyChanged(nameof(Connected));
         OnPropertyChanged(nameof(AccountText));
+        OnPropertyChanged(nameof(EmptyListText));
+        OnPropertyChanged(nameof(HasEntries));
     }
 
     private string Detail(WebBuildOrderEntry item)
     {
-        var civ = item.Civ == "any" ? "cualquier civ"
+        var civ = item.Civ == "any" ? Texts.CivAny
             : _data.Civ(item.Civ).Names.TryGetValue("mx", out var name) ? name.ToLowerInvariant() : item.Civ;
-        var who = item.Own ? (item.Visibility == "private" ? "tuya, privada" : "tuya") : item.GuideAuthor;
+        var who = item.Own ? (item.Visibility == "private" ? Texts.OwnPrivate : Texts.Own) : item.GuideAuthor;
         return $"{civ} · {who}";
     }
 }

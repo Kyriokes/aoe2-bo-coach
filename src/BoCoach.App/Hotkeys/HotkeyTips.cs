@@ -26,13 +26,13 @@ public sealed class HotkeyTips : ObservableObject
 
     private static string Key(string id) => HotkeyMap.Current.Text(id);
 
-    public string StartStop => $"Sigue la BO (la sugerida en Automática, o la elegida de tu lista) con el overlay sobre el juego. También con {Key("start_stop")} desde el juego";
-    public string Calibrate => $"También con {Key("calibrate")} desde el juego";
-    public string Record => $"También con {Key("record")} desde el juego";
-    public string CursorReminders => $"Junto al mouse: una casa cuando quedan 3 lugares de población y un centro urbano cuando está parado (debajo de Máx. aldeanos). También con {Key("cursor_reminders")} desde el juego";
-    public string AutoStart => $"El coach arranca solo cuando se abre el juego, con la última BO usada (en la pantalla de carga cambia a la sugerida si encaja mejor; {Key("accept_suggestion")} vuelve), y se detiene con el informe cuando el juego se cierra. Si lo detenés a mano, no vuelve a arrancar hasta que abras el juego de nuevo";
-    public string Diagnostic => $"Si algo no se lee bien: a los 2 s guarda la pantalla entera sin pérdida y un .txt con lo que encontró la app en %LOCALAPPDATA%\\BoCoach\\diagnostico, para mandar esa carpeta. También con {Key("diagnostic")} desde el juego";
-    public string Back => $"Deshace lo último que se completó o salteó ({Key("back")} desde el juego)";
-    public string Advance => $"Da por hecho el paso actual, por ejemplo si el coach no vio que lo terminaste ({Key("advance")} desde el juego)";
-    public string Skip => $"Saltea el paso actual: no lo vas a hacer ({Key("skip")} desde el juego)";
+    public string StartStop => Texts.TipStartStop(Key("start_stop"));
+    public string Calibrate => Texts.TipFromGame(Key("calibrate"));
+    public string Record => Texts.TipFromGame(Key("record"));
+    public string CursorReminders => Texts.TipCursorReminders(Key("cursor_reminders"));
+    public string AutoStart => Texts.TipAutoStart(Key("accept_suggestion"));
+    public string Diagnostic => Texts.TipDiagnostic(Key("diagnostic"));
+    public string Back => Texts.TipBack(Key("back"));
+    public string Advance => Texts.TipAdvance(Key("advance"));
+    public string Skip => Texts.TipSkip(Key("skip"));
 }

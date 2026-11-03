@@ -19,5 +19,5 @@ public sealed partial class DevMode : ObservableObject
     [ObservableProperty] public partial bool AutoRecord { get; set; }
 
     /// <summary>El encabezado del panel en vivo.</summary>
-    public string Header => IsOn ? "Lo que ve el coach" : "En la partida";
+    public string Header => IsOn ? Texts.LiveDevHeader : Texts.LivePlayerHeader;
 }

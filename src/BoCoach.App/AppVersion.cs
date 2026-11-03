@@ -11,7 +11,7 @@ public static class AppVersion
 {
     public static string Text { get; } = Describe(typeof(AppVersion).Assembly);
 
-    public static string WindowTitle => $"AoE2 BO Coach {Text} · Editor de build orders";
+    public static string WindowTitle => $"{Texts.AppName} {Text}";
 
     private static string Describe(Assembly assembly)
     {

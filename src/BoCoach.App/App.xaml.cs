@@ -23,9 +23,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
+        Themes.DarkTitleBar.ApplyToAllWindows();
 
         var args = Web.LinkProtocol.StartupArguments(e.Args);
         var screenshot = Argument(args, "--screenshot") ?? Argument(args, "--overlay-screenshot");
+        // --preview: la ventana de verdad con ajustes, cuenta y caché temporales, para probar menús y pestañas sin el juego.
+        var preview = args.Contains("--preview");
         var importLink = Argument(args, "--import");
 
         // Publicar una carpeta de BO no abre ventanas: puede correr con la app abierta (ver BulkPublish).
@@ -36,7 +39,7 @@ public partial class App : Application
         }
 
         // Una sola app por usuario: si ya hay una abierta, se le pasa el enlace bocoach:// (o que se muestre) y esta cierra.
-        if (screenshot is null)
+        if (screenshot is null && !preview)
         {
             _instance = SingleInstance.Claim(importLink ?? ActivateMessage);
             if (_instance is null)
@@ -51,7 +54,7 @@ public partial class App : Application
         try
         {
             // Para la captura se usan ajustes, cuenta y caché temporales, así no se tocan los del usuario.
-            shotDir = screenshot is null ? null : Directory.CreateTempSubdirectory("bocoach-shot-").FullName;
+            shotDir = screenshot is null && !preview ? null : Directory.CreateTempSubdirectory("bocoach-shot-").FullName;
             data = CoachData.Load();
         }
         catch (Exception ex)
@@ -74,9 +77,21 @@ public partial class App : Application
         if (shotDir is not null && Argument(args, "--cache") is { } cacheSource && Directory.Exists(cacheSource))
             CopyFolder(cacheSource, Path.Combine(shotDir, "cache"));
         var window = new MainWindow(data, shotDir is null ? null : Path.Combine(shotDir, "settings.json"), shotDir);
-        if (screenshot is not null && args.Contains("--dev"))
+        if (shotDir is not null && args.Contains("--dev"))
             DevMode.Instance.IsOn = true;
+        if (shotDir is not null && Argument(args, "--state") is { } state)
+            window.Home.Preview(PreviewState(state));
         MainWindow = window;
+        if (preview)
+        {
+            // Sin arrancar con el juego abierto: acá se mira la ventana, no se juega.
+            window.Coach.AutoStart = false;
+            // Sin robarle el foco a lo que esté usando el jugador.
+            if (args.Contains("--no-activate"))
+                (window.ShowActivated, window.ShowInTaskbar) = (false, false);
+            window.Show();
+            return;
+        }
         if (screenshot is null)
         {
             window.Show();
@@ -112,7 +127,18 @@ public partial class App : Application
             CaptureCalibrationAndExit(screenshot, Argument(args, "--background"));
             return;
         }
-        CaptureAndExit(window, screenshot);
+        if (Argument(args, "--settings") is { } tab)
+        {
+            CaptureOwnedAndExit(window, new Coaching.SettingsWindow(window.Home, int.TryParse(tab, out var index) ? index : 0) { ShowActivated = false, Left = -30000 }, screenshot);
+            return;
+        }
+        if (args.Contains("--report"))
+        {
+            CaptureOwnedAndExit(window, new Coaching.ReportWindow(SampleReport, () => { }) { ShowActivated = false, Left = -30000 }, screenshot);
+            return;
+        }
+        // Con un momento armado a mano, el mensaje de abajo es el de una cuenta conectada.
+        CaptureAndExit(window, screenshot, Argument(args, "--state") is null or "sin-cuenta" ? null : Texts.HotkeysReady("Ctrl+Alt+S", "Ctrl+Alt+→"));
     }
 
     /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>
@@ -175,7 +201,7 @@ public partial class App : Application
     {
         IScreenSource screen = loading is null ? new ScreenCapture() : new StillScreen(Png.Read(Path.GetFullPath(loading)));
         var tutorial = new FirstRun.FirstRunViewModel(screen, data.GameData, () => owner.Coach.Language, () => false, _ => { });
-        var window = new FirstRun.FirstRunWindow(tutorial, owner.Coach, owner.Tools.InstallModCommand) { ShowActivated = false, Left = -30000 };
+        var window = new FirstRun.FirstRunWindow(tutorial, owner.Coach, owner.Tools.InstallModCommand, owner.BuildOrders) { ShowActivated = false, Left = -30000 };
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, async () =>
         {
             if (loading is not null)
@@ -210,6 +236,55 @@ public partial class App : Application
             window.Close();
             Shutdown(0);
         });
+    }
+
+    /// <summary>Dibuja una ventana secundaria (Ajustes, el informe) y cierra.</summary>
+    private void CaptureOwnedAndExit(MainWindow owner, Window window, string path)
+    {
+        _ = owner;
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, async () =>
+        {
+            window.Show();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Render(window, path);
+            window.Close();
+            Shutdown(0);
+        });
+    }
+
+    /// <summary>Un informe de ejemplo para la captura.</summary>
+    private static readonly string[] SampleReport =
+    [
+        "Aztec 5 Militia Rush: 25:30 de partida.",
+        "Clic de Edad Feudal a las 10:31, objetivo 11:41 (la BO bien jugada: 11:48).",
+        "Lo que más se atrasó: Construir galería de tiro (1:12 tarde); Campamento minero (1:05 tarde).",
+        "Centro urbano parado: 1:07 en total; el hueco más largo, 0:31 desde las 11:23.",
+        "Aldeanos inactivos: 0:12. Sin lugar por población: 0:24 (2 veces).",
+        "Acumulaste madera: 1:10 con más de 500 desde las 18:02 (hasta 640).",
+    ];
+
+    /// <summary>Un momento del tablero armado a mano, para las capturas sin el juego.</summary>
+    private static Coaching.HomeInputs PreviewState(string state)
+    {
+        var report = new Coaching.ReportInfo("informe.html", new DateTime(2026, 11, 2, 21, 19, 0));
+        var finished = report with { Summary = "Edad Feudal 10:31 · 31 de 31 pasos · centro urbano parado 1:07", Length = 1530 };
+        var connected = new Coaching.HomeInputs { Connected = true, AccountText = Texts.AccountConnectedAs("Kyriokes"), HasPlayerName = true, Report = report };
+        return state switch
+        {
+            "sin-cuenta" => new Coaching.HomeInputs { AccountText = Texts.AccountNotConnected, HasPlayerName = false },
+            "en-partida" => connected with
+            {
+                CoachRunning = true,
+                GameOpen = true,
+                InGame = true,
+                GameTime = 492,
+                Civ = "francos",
+                Playing = "Aldeanos: 7 a 9 → madera   ·   Construir: casa a 13 de población",
+            },
+            "terminada" => connected with { Report = finished, ReportPending = true },
+            "elegir" => connected with { AutoMode = false },
+            _ => connected,
+        };
     }
 
     private sealed class NoHotkeys : Hotkeys.IHotkeyRegistrar
@@ -350,8 +425,14 @@ public partial class App : Application
     {
         var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(window);
+        // Solo lo de adentro: el marco de Windows no se dibuja y quedaba blanco en la imagen.
+        BitmapSource image = bitmap;
+        if (window.Content is FrameworkElement { ActualWidth: > 0, ActualHeight: > 0 } content)
+            image = new CroppedBitmap(bitmap, new Int32Rect(0, 0,
+                Math.Min(bitmap.PixelWidth, (int)(content.ActualWidth + content.Margin.Left + content.Margin.Right)),
+                Math.Min(bitmap.PixelHeight, (int)(content.ActualHeight + content.Margin.Top + content.Margin.Bottom))));
         var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Frames.Add(BitmapFrame.Create(image));
         using var file = File.Create(path);
         encoder.Save(file);
     }
@@ -360,7 +441,7 @@ public partial class App : Application
     /// Modo de verificación: abre la ventana fuera de la pantalla, la guarda como PNG y cierra.
     /// Uso: BoCoach.exe --screenshot salida.png [--cache carpeta] [--dev].
     /// </summary>
-    private void CaptureAndExit(MainWindow window, string path)
+    private void CaptureAndExit(MainWindow window, string path, string? status)
     {
         window.WindowStartupLocation = WindowStartupLocation.Manual;
         window.Left = -30000;
@@ -370,6 +451,8 @@ public partial class App : Application
 
         Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
         {
+            if (status is not null)
+                window.BuildOrders.Status = status;
             Render(window, path);
             Shutdown(0);
         });
