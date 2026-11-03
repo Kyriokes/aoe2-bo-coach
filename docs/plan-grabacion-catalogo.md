@@ -2,33 +2,27 @@
 
 Una partida contra la IA, sin apuro, para que el coach vea en pantalla todo lo que puede pedir una BO. Se juega cuando vuelvas a casa, antes de la beta.
 
-## Qué hace falta de verdad
+## Qué cambió el 3/11
 
-Medido el 3/11 contra el repo:
+La biblioteca ya no necesita esta partida para conocer los íconos: desde la v0.9.87 los saca de los archivos del juego (543 unidades y tecnologías, teñidos como los tiñe el juego). En 4 partidas grabadas la cola vio todas las tecnologías que avisó el log, incluidas 14 que nunca se habían visto en una muestra real. Ver `CLAUDE.md`.
 
-| | Hay | Qué aporta la grabación |
-|---|---|---|
-| **Frases del log** | 594 (273 unidades, 270 tecnologías, 41 edificios, 10 avisos), sacadas de los archivos de texto del juego | No hace falta para tenerlas. Sirve para comprobar que el OCR las lee bien en pantalla. |
-| **Íconos de la cola** | 20 cosas reconocidas de las 57 unidades y tecnologías de `game_data` | Es lo que realmente falta: 37 sin una sola muestra. |
+Esta partida ahora sirve para **comprobar** lo que no pude medir con lo grabado:
 
-Las unidades únicas de cada civ no entran: ninguna BO las pide todavía, y un ícono desconocido en la cola sale como "?" sin romper nada.
+| Qué | Por qué falta |
+|---|---|
+| **Otro color de jugador** | Todas las grabaciones que hay son en azul. Las celdas del color del jugador no se comparan, pero nunca se probó con otro. |
+| **Los íconos en amarillo** | El tinte de espera borra casi todo el color: es donde más se confunde. |
+| **El OCR del log** | Las 594 frases salen de los archivos de texto del juego, pero muchas nunca se leyeron en pantalla. |
+| **Unidades de los edificios que nunca usaste** | Muelle, taller de asedio, monasterio y mercado no aparecen en ninguna grabación. |
 
-**Lo que más urge**, porque ya lo piden las 62 guías y hoy la cola no lo ve (entre paréntesis, cuántas veces aparece): minería de oro (17), sierra de arco (17), armadura acolchada para arqueros (12), hombre de armas (9), armadura de escamas (4), caballero (4), forja (2), arado pesado (2), monje (2) y hostigador (1).
-
-## Una prueba que puede achicar la partida
-
-Comparé los íconos de los archivos del juego con las muestras reales de la cola, usando la misma medida que usa el coach. **18 de 20 dan como más parecida su propia unidad o tecnología.** Las dos que fallan son el aldeano, que cambia por el mod Villager Highlighter, y la caballería ligera, que todavía no sé por qué falla.
-
-Eso solo dice qué tan bien se reconoce cada ícono, no si ya alcanza. Muchas distancias quedan arriba del límite que usa el coach (0,09), porque en la cola los íconos se tiñen según su estado: verde al avanzar, amarillo al esperar, rojo sin población. Si esos tintes se pueden imitar, la biblioteca se arma entera desde los archivos, y esta partida pasa de enseñar a comprobar.
-
-La partida se juega igual, pero rinde mucho más si el coach ya conoce los íconos: alcanza con mirar dónde se equivoca.
+Las unidades únicas de cada civ también están en los archivos y no hace falta producirlas.
 
 ## Antes de empezar
 
 1. Abrí la app y fijate que arriba diga la última versión.
 2. Dejá prendidos "Mod mínimo" y "Grabar cada partida sola", como los tenés ahora (Ajustes, pestañas Juego y HUD y Desarrollador).
 3. No cambies de mods entre esta partida y las otras. La biblioteca se armó con Villager Highlighter prendido.
-4. En el juego: un jugador contra una IA fácil, **persas** (tienen 34 de las 37), juego en inglés, resolución 1920×1080 en "Full screen", velocidad normal.
+4. En el juego: un jugador contra una IA fácil, **persas** (tienen casi todo), **color rojo** (no azul), juego en inglés, resolución 1920×1080 en "Full screen", velocidad normal.
 5. Elegí un **mapa con agua**: hace falta el muelle.
 6. Trucos en el chat: `cheese steak jimmy's` (comida), `lumberjack` (madera), `robin hood` (oro), `rock on` (piedra), +1000 cada uno. Solo andan contra la IA. Probá uno al arrancar y mirá que suba el recurso.
 
@@ -87,11 +81,15 @@ Después salí de la partida. La grabación queda sola en `%LOCALAPPDATA%\BoCoac
 
 Los persas no tienen explorador águila, elefante de combate ni lancero estepario. Se hacen en partidas cortas aparte, si alguna vez hace falta: aztecas para el águila, una civ del sudeste asiático para el elefante, cumanos o tártaros para el lancero. Ninguna de las 62 guías los pide hoy, así que pueden esperar.
 
+## Una prueba más, cortita: sin Villager Highlighter
+
+Ese mod cambia el ícono del aldeano, y la mayoría de los jugadores no lo tiene. Apagalo en Mods instalados, jugá 3 minutos sacando aldeanos con un telar en el medio, y volvé a prenderlo. Sin esto no sé si el coach ve bien el aldeano de un jugador sin el mod, y de ese ícono depende el aviso de centro urbano parado.
+
 ## Lo que hago yo con la grabación
 
 Me avisás y no tenés que mirar nada:
 
-1. **Cola:** agrupo los íconos con `ReplaySession icons` y etiqueto cada grupo, con la ayuda de los archivos del juego y de los renglones del log, que dicen qué era cada uno.
+1. **Cola:** comparo lo que leyó con el orden de esta lista y con los renglones del log. Lo que confunda se corrige con una muestra real (`ReplaySession teach`) o afinando los tintes.
 2. **Log:** comparo lo que leyó el OCR contra esta lista, que dice en qué orden tenía que aparecer cada mensaje. Lo que no se reconozca va a los tests.
 3. **Fixture:** dejo capturas de cada ícono en cada estado en `tests/fixtures`, para que un cambio futuro no rompa nada sin que se note.
 4. **Contra las partidas viejas:** vuelvo a correr las grabaciones que ya tenemos, para comprobar que los íconos nuevos no confundan a los conocidos.
