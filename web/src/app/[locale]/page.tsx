@@ -1,36 +1,39 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import { ExampleDemo } from "@/components/ExampleDemo";
 import { JsonLd } from "@/components/JsonLd";
 import { SupportSection } from "@/components/SupportSection";
+import { getDictionary, rich } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, localeAlternates, localePath, type Locale } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
 import { GAME } from "@/lib/jsonLd";
 import { SITE_NAME } from "@/lib/share";
 import { DOWNLOAD_URL, REPO_URL, siteUrl } from "@/lib/site";
 
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]">): Promise<Metadata> {
+  return { alternates: localeAlternates(asLocale((await params).locale), "/") };
+}
 
 /** La app y la web para los buscadores: una aplicación gratis para Windows y un sitio con buscador de BO. */
-function structuredData() {
+function structuredData(locale: Locale) {
   const base = siteUrl();
+  const home = locale === "es" ? base : `${base}${localePath(locale, "/")}`;
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        "@id": `${base}/#app`,
+        "@id": `${home}/#app`,
         name: SITE_NAME,
-        description:
-          "Overlay para Age of Empires II: Definitive Edition que lee la pantalla, sigue tu build order paso a paso y te dice dónde poner cada aldeano.",
+        description: getDictionary(locale).home.jsonLdDescription,
         applicationCategory: "GameApplication",
         operatingSystem: "Windows 10, Windows 11",
-        url: base,
+        url: home,
         downloadUrl: DOWNLOAD_URL,
-        image: `${base}/opengraph-image`,
+        image: `${home}/opengraph-image`,
         screenshot: `${base}/capturas/overlay.png`,
-        inLanguage: "es",
+        inLanguage: locale,
         isAccessibleForFree: true,
         license: "https://opensource.org/licenses/MIT",
         codeRepository: REPO_URL,
@@ -39,13 +42,13 @@ function structuredData() {
       },
       {
         "@type": "WebSite",
-        "@id": `${base}/#web`,
+        "@id": `${home}/#web`,
         name: SITE_NAME,
-        url: base,
-        inLanguage: "es",
+        url: home,
+        inLanguage: locale,
         potentialAction: {
           "@type": "SearchAction",
-          target: { "@type": "EntryPoint", urlTemplate: `${base}/biblioteca?q={search_term_string}` },
+          target: { "@type": "EntryPoint", urlTemplate: `${base}${localePath(locale, "/biblioteca")}?q={search_term_string}` },
           "query-input": "required name=search_term_string",
         },
       },
@@ -53,77 +56,53 @@ function structuredData() {
   };
 }
 
-const steps = [
-  {
-    title: "Lee la pantalla",
-    text: "Dos veces por segundo mira el HUD del juego: reloj, recursos, aldeanos en cada recurso, población, la cola de producción y los avisos del juego (\"House Built\", \"Villager Created\").",
-  },
-  {
-    title: "Sigue tu build order",
-    text: "Sabe qué paso hiciste, cuál toca ahora y qué quedó atrasado. Si hacés algo antes de tiempo o te demorás, se acomoda en vez de trabarse.",
-  },
-  {
-    title: "Te dice qué hacer",
-    text: "Cuántos aldeanos poner en cada recurso ahora y al terminar el paso, cuánto falta para el próximo clic de edad y avisos junto al mouse: sin casas, centro urbano parado, aldeanos inactivos.",
-  },
-];
+const github = (text: string) => (
+  <a href={REPO_URL} className="text-amber hover:underline">
+    {text}
+  </a>
+);
 
-const features = [
-  "Overlay liviano arriba del juego que no toma los clics: unos 60 MB de RAM y menos del 2 % de CPU, medidos en un i5 de 2014 de 4 núcleos (en una PC actual es bastante menos).",
-  "Editor de build orders con vista previa simulada: ves a qué minuto llegás a Feudal antes de jugar.",
-  "Importa las guías de buildorderguide.com y las pasa al formato de la app.",
-  "Biblioteca en la web para buscar, votar y compartir build orders, que se abren directo en la app.",
-  "Grabar una partida y repetirla para revisar qué vio el coach en cada momento.",
-];
-
-const stack = [
-  ["App de escritorio", "C# .NET 10 y WPF, con el OCR de Windows y plantillas propias para los números del HUD."],
-  ["Motor", "Lógica pura en C#, sin dependencias de Windows: planificador, seguimiento de la BO y economía, con más de 300 tests."],
-  ["Web", "Next.js en Vercel y Supabase (Postgres con permisos por fila, cuentas con Discord y Google)."],
-  ["Un solo motor", "La web simula las build orders con el mismo motor de la app, compilado a WebAssembly."],
-];
-
-export default function HomePage() {
+export default async function HomePage() {
+  const { locale, t: dict } = await i18n();
+  const t = dict.home;
   return (
     <div className="flex flex-col gap-16 py-4">
-      <JsonLd data={structuredData()} />
+      <JsonLd data={structuredData(locale)} />
       <section className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col gap-4">
-          <p className="text-sm font-medium uppercase tracking-wide text-amber">Age of Empires II: Definitive Edition</p>
-          <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">Tu build order, paso a paso, arriba del juego.</h1>
-          <p className="max-w-xl text-muted">
-            BO Coach es un overlay que lee la pantalla, sigue la build order que elegiste, se adapta cuando te desviás y te
-            dice dónde poner a cada aldeano. Para practicar aperturas sin tener una guía abierta en otra pantalla.
-          </p>
+          <p className="text-sm font-medium uppercase tracking-wide text-amber">{t.kicker}</p>
+          <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{t.title}</h1>
+          <p className="max-w-xl text-muted">{t.intro}</p>
           <div className="flex flex-wrap gap-3">
             <a href={DOWNLOAD_URL} className="button-primary px-4 py-2 text-base no-underline">
-              Descargar para Windows
+              {t.downloadButton}
             </a>
             <Link href="/biblioteca" className="button px-4 py-2 text-base no-underline">
-              Ver la biblioteca
+              {t.libraryButton}
             </Link>
           </div>
-          <p className="text-xs text-faint">Beta gratis y de código abierto · Windows 10 u 11 · probado en 1920×1080</p>
+          <p className="text-xs text-faint">{t.badges}</p>
+          {t.appLanguageNote ? <p className="max-w-xl rounded-md border border-line bg-panel-2 p-2 text-xs text-muted">{t.appLanguageNote}</p> : null}
         </div>
         <figure className="flex flex-col items-center gap-2">
           <Image
             src="/capturas/overlay.png"
-            alt="El overlay durante una partida: el paso actual (mover 3 aldeanos de ovejas a madera), lo que está en curso (telar y Edad Feudal) y cómo quedan los aldeanos al terminar el paso."
+            alt={t.overlayAlt}
             width={380}
             height={184}
             preload
             className="w-full max-w-md rounded-lg border border-line shadow-lg"
           />
-          <figcaption className="text-xs text-faint">El overlay a los 8:20 de una partida de scouts.</figcaption>
+          <figcaption className="text-xs text-faint">{t.overlayCaption}</figcaption>
         </figure>
       </section>
 
       <section aria-labelledby="como-funciona" className="flex flex-col gap-4">
         <h2 id="como-funciona" className="text-xl font-semibold">
-          Cómo funciona
+          {t.howTitle}
         </h2>
         <ol className="grid gap-3 md:grid-cols-3">
-          {steps.map((step, i) => (
+          {t.steps.map((step, i) => (
             <li key={step.title} className="rounded-lg border border-line bg-panel p-4">
               <p className="text-sm font-semibold text-amber">
                 {i + 1}. {step.title}
@@ -133,30 +112,26 @@ export default function HomePage() {
           ))}
         </ol>
         <p className="rounded-lg border border-line bg-panel-2 p-4 text-sm text-muted">
-          <strong className="text-foreground">Sin trampas:</strong> solo mira la pantalla, como un amigo sentado al lado.
-          No lee la memoria del juego, no le inyecta código y no manda teclas ni clics.
+          {rich(t.noCheat, { strong: (text) => <strong className="text-foreground">{text}</strong> })}
         </p>
       </section>
 
       <section aria-labelledby="probalo" className="flex flex-col gap-4">
         <div>
           <h2 id="probalo" className="text-xl font-semibold">
-            Probalo acá mismo
+            {t.tryTitle}
           </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Las build orders que trae la app, simuladas en tu navegador con el mismo motor que corre en la app: cada paso,
-            a qué minuto llega y dónde se traba.
-          </p>
+          <p className="mt-1 max-w-2xl text-sm text-muted">{t.tryText}</p>
         </div>
         <ExampleDemo />
       </section>
 
       <section aria-labelledby="funciones" className="flex flex-col gap-4">
         <h2 id="funciones" className="text-xl font-semibold">
-          Qué más trae
+          {t.featuresTitle}
         </h2>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {features.map((feature) => (
+          {t.features.map((feature) => (
             <li key={feature} className="rounded-lg border border-line bg-panel p-3 text-sm text-muted">
               {feature}
             </li>
@@ -164,67 +139,63 @@ export default function HomePage() {
         </ul>
       </section>
 
+      <section aria-labelledby="que-viene" className="flex flex-col items-start gap-3 rounded-lg border border-amber bg-panel p-4">
+        <h2 id="que-viene" className="text-xl font-semibold">
+          {t.roadmapTitle}
+        </h2>
+        <p className="max-w-2xl text-sm text-muted">{t.roadmapText}</p>
+        <Link href="/roadmap" className="button no-underline">
+          {t.roadmapButton}
+        </Link>
+      </section>
+
       <section id="descargar" aria-labelledby="descargar-titulo" className="flex scroll-mt-6 flex-col gap-4">
         <h2 id="descargar-titulo" className="text-xl font-semibold">
-          Descargar y empezar
+          {t.downloadTitle}
         </h2>
         <ol className="flex max-w-2xl list-decimal flex-col gap-2 pl-5 text-sm text-muted">
-          <li>
-            Bajá la última versión desde{" "}
-            <a href={DOWNLOAD_URL} className="text-amber hover:underline">
-              GitHub
-            </a>{" "}
-            y descomprimila donde quieras. No hace falta instalar nada: trae .NET adentro.
-          </li>
-          <li>
-            Abrí <code className="font-mono text-foreground">BoCoach.exe</code>. Como no está firmado, Windows puede avisar
-            que es una aplicación no reconocida: tocá <em>Más información</em> y <em>Ejecutar de todas formas</em>.
-          </li>
-          <li>
-            Con el juego abierto, tocá <em>Calibrar pantalla…</em> (o Ctrl+Alt+C) y ubicá los recuadros sobre el HUD.
-          </li>
-          <li>
-            Elegí una build order de la biblioteca y tocá <em>▶ Empezar coach</em>. El overlay aparece arriba a la derecha
-            del juego.
-          </li>
+          {t.downloadSteps.map((step) => (
+            <li key={step}>
+              {rich(step, {
+                github: (text) => (
+                  <a href={DOWNLOAD_URL} className="text-amber hover:underline">
+                    {text}
+                  </a>
+                ),
+                code: (text) => <code className="font-mono text-foreground">{text}</code>,
+                em: (text) => <em>{text}</em>,
+              })}
+            </li>
+          ))}
         </ol>
         <div>
           <a href={DOWNLOAD_URL} className="button-primary px-4 py-2 text-base no-underline">
-            Descargar para Windows
+            {t.downloadButton}
           </a>
         </div>
       </section>
 
       <section id="apoyar" aria-labelledby="apoyar-titulo" className="flex scroll-mt-6 flex-col gap-4">
         <h2 id="apoyar-titulo" className="text-xl font-semibold">
-          Apoyar el proyecto
+          {t.supportTitle}
         </h2>
-        <p className="max-w-2xl text-sm text-muted">
-          BO Coach es gratis y de código abierto. Si te sirve, podés invitarme un café: con eso se pagan el dominio y
-          la web, y cada aporte se anota acá, a la vista, contra las metas de abajo.
-        </p>
+        <p className="max-w-2xl text-sm text-muted">{t.supportText}</p>
         <SupportSection />
       </section>
 
       <section aria-labelledby="como-esta-hecho" className="flex flex-col gap-4">
         <h2 id="como-esta-hecho" className="text-xl font-semibold">
-          Cómo está hecho
+          {t.stackTitle}
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2">
-          {stack.map(([title, text]) => (
+          {t.stack.map(({ title, text }) => (
             <div key={title} className="rounded-lg border border-line bg-panel p-4">
               <dt className="text-sm font-semibold text-foreground">{title}</dt>
               <dd className="mt-1 text-sm text-muted">{text}</dd>
             </div>
           ))}
         </dl>
-        <p className="text-sm text-muted">
-          El código está en{" "}
-          <a href={REPO_URL} className="text-amber hover:underline">
-            GitHub
-          </a>{" "}
-          con licencia MIT.
-        </p>
+        <p className="text-sm text-muted">{rich(t.codeAt, { github })}</p>
       </section>
     </div>
   );

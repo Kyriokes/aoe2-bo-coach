@@ -1,32 +1,34 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteBuildOrder } from "@/app/actions";
+import { useI18n } from "@/i18n/client";
 
 /** Editar o borrar una BO propia (la base igual rechaza tocar las ajenas). */
 export function OwnerActions({ code }: { code: string }) {
+  const { locale, t, href } = useI18n();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   function remove() {
-    if (!confirm("¿Borrar esta build order de la biblioteca? No se puede deshacer.")) return;
+    if (!confirm(t.actions.ownerDeleteConfirm)) return;
     startTransition(async () => {
-      const result = await deleteBuildOrder(code);
-      if (result.ok) router.push("/cuenta");
+      const result = await deleteBuildOrder(code, locale);
+      if (result.ok) router.push(href("/cuenta"));
       else alert(result.error);
     });
   }
 
   return (
     <section className="flex flex-wrap items-center gap-3 text-sm">
-      <span className="text-faint">Es tuya:</span>
+      <span className="text-faint">{t.actions.ownerYours}</span>
       <Link href={`/subir?editar=${code}`} className="button">
-        Editar en la web
+        {t.actions.ownerEdit}
       </Link>
       <button type="button" onClick={remove} disabled={pending} className="button">
-        Borrar
+        {t.actions.ownerDelete}
       </button>
     </section>
   );

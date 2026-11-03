@@ -68,7 +68,7 @@ export interface Row extends Omit<BuildOrderSummary, "author" | "uploader"> {
 export const MAX_AUTHOR = 60;
 
 export function toSummary({ profiles, guide_author, ...row }: Row): BuildOrderSummary {
-  const uploader = profiles?.display_name ?? "Anónimo";
+  const uploader = profiles?.display_name ?? ""; // sin perfil: byline() dice "Anónimo" en el idioma de la página
   return { ...row, author: (guide_author?.trim() || uploader).slice(0, MAX_AUTHOR), uploader };
 }
 

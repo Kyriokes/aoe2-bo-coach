@@ -1,79 +1,82 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { fill, getDictionary } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, LANG_TAG, localeAlternates, localePath, OG_LOCALE } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
 import { getMatchups } from "@/lib/matchupsServer";
 import { civsWithData } from "@/lib/matchupView";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
-const TITLE = "Cruces de civs en Age of Empires II";
-const DESCRIPTION =
-  "Cuánto gana cada civ de Age of Empires II contra cada rival, por mapa, Elo y duración de la partida, con partidas clasificatorias reales.";
-
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  alternates: { canonical: "/cruces" },
-  openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title: TITLE, description: DESCRIPTION, url: "/cruces" },
-};
+export async function generateMetadata({ params }: PageProps<"/[locale]/cruces">): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = getDictionary(locale).matchups;
+  return {
+    title: t.title,
+    description: t.description,
+    alternates: localeAlternates(locale, "/cruces"),
+    openGraph: { siteName: SITE_NAME, locale: OG_LOCALE[locale], type: "website", title: t.title, description: t.description, url: localePath(locale, "/cruces") },
+  };
+}
 
 /** Elegir dos civs (el formulario va a /cruces/ir, que redirige al cruce) o abrir una civ. */
-export default function MatchupsPage() {
+export default async function MatchupsPage() {
+  const { locale, t: dict } = await i18n();
+  const t = dict.matchups;
   const data = getMatchups();
   if (!data) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">{TITLE}</h1>
-        <p className="text-muted">Todavía no hay estadísticas de cruces.</p>
+        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <p className="text-muted">{t.noData}</p>
       </div>
     );
   }
-  const civs = civsWithData(data).sort((x, y) => civLabel(x).localeCompare(civLabel(y), "es"));
+  const number = (n: number) => n.toLocaleString(LANG_TAG[locale]);
+  const civs = civsWithData(data).sort((x, y) => civLabel(x, locale).localeCompare(civLabel(y, locale), locale));
   const options = civs.map((civ) => (
     <option key={civ} value={civ}>
-      {civLabel(civ)}
+      {civLabel(civ, locale)}
     </option>
   ));
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{TITLE}</h1>
-        <p className="max-w-3xl text-muted">
-          Cuánto gana cada civ contra cada rival en partidas clasificatorias reales, por mapa, franja de Elo y duración de la
-          partida, con un rango probable y cuántas partidas hay detrás de cada número.
-        </p>
+        <h1 className="text-2xl font-semibold">{t.title}</h1>
+        <p className="max-w-3xl text-muted">{t.intro}</p>
         <p className="text-sm text-faint">
-          {data.matches.oneVsOne.toLocaleString("es-AR")} partidas 1v1 y {data.matches.team.toLocaleString("es-AR")} por equipos
-          {data.source.from && data.source.to ? ` del ${data.source.from} al ${data.source.to}` : ""}
-          {data.patch.label ? `, parche ${data.patch.label}` : ""}.
+          {fill(t.matches, { oneVsOne: number(data.matches.oneVsOne), team: number(data.matches.team) })}
+          {data.source.from && data.source.to ? fill(t.dates, { from: data.source.from, to: data.source.to }) : ""}
+          {data.patch.label ? fill(t.patch, { label: data.patch.label }) : ""}.
         </p>
       </header>
 
-      <form action="/cruces/ir" method="get" className="flex flex-wrap items-end gap-3 rounded-md border border-line bg-panel p-4">
+      <form action={localePath(locale, "/cruces/ir")} method="get" className="flex flex-wrap items-end gap-3 rounded-md border border-line bg-panel p-4">
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-faint">Tu civ</span>
+          <span className="text-faint">{t.yourCiv}</span>
           <select name="a" className="field" defaultValue="franks" required>
             {options}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-faint">Contra</span>
+          <span className="text-faint">{t.against}</span>
           <select name="b" className="field" defaultValue="britons" required>
             {options}
           </select>
         </label>
         <button type="submit" className="button">
-          Ver el cruce
+          {t.seePair}
         </button>
       </form>
 
       <section aria-labelledby="civs" className="flex flex-col gap-3">
         <h2 id="civs" className="text-lg font-semibold">
-          Cada civ contra todas
+          {t.eachCiv}
         </h2>
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {civs.map((civ) => (
             <li key={civ}>
               <Link href={`/cruces/${civ}`} className="block rounded border border-line bg-panel px-3 py-2 text-sm hover:text-amber">
-                {civLabel(civ)}
+                {civLabel(civ, locale)}
               </Link>
             </li>
           ))}

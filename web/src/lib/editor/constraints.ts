@@ -1,6 +1,8 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import { entityName } from "../stepText";
 import { isBoundary, type EditorStep } from "./model";
-import { AGE_LABEL } from "./text";
+import { AGE_LABEL, ageLabel } from "./text";
 
 /**
  * Dónde puede caer una caja al arrastrarla (D8): las reglas del juego que el validador del Core conoce, para frenar
@@ -96,14 +98,20 @@ export function snapDownTo(steps: EditorStep[], index: number) {
   return p;
 }
 
-const defaultLabel = (step: EditorStep) => (step.what ? entityName(step.what, step.count) : step.do === "move" ? "mover aldeanos" : "ese paso");
+const defaultLabel = (step: EditorStep, locale: Locale) => {
+  const t = getDictionary(locale).editor.rules;
+  return step.what ? entityName(step.what, step.count, locale) : step.do === "move" ? t.moveVillagers : t.thatStep;
+};
 
 /**
  * El rango de índices de inserción (entre `others`, los pasos sin la caja) donde puede caer la caja `block` (un paso
  * o una cadena de "junto con el anterior"), con el motivo del límite de cada lado. `label` es el texto de un paso
  * para los motivos ("Antes de Entrenar 5 exploradores").
  */
-export function allowedRange(others: EditorStep[], block: EditorStep[], data: GameDataLite, label: (step: EditorStep) => string = defaultLabel): Range {
+export function allowedRange(others: EditorStep[], block: EditorStep[], data: GameDataLite, labelOf?: (step: EditorStep) => string, locale: Locale = "es"): Range {
+  const t = getDictionary(locale).editor.rules;
+  const label = labelOf ?? ((step: EditorStep) => defaultLabel(step, locale));
+  const name = (key: string) => entityName(key, 1, locale);
   const n = others.length;
   let lo = 0;
   let hi = n;
@@ -146,30 +154,30 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
     // (a) Una entidad va después del clic de su edad.
     if (entity && member.do !== "move" && ageIndex(entity.age) > 0 && ageIndex(blockAge) < ageIndex(entity.age)) {
       const p = firstAgeIndexAtLeast(entity.age);
-      raise(p < 0 ? n + 1 : p, `Recién después del clic en ${AGE_LABEL[entity.age]}`);
+      raise(p < 0 ? n + 1 : p, fill(t.afterClick, { age: ageLabel(entity.age, locale) }));
     }
 
     // (b) Un clic de edad va antes del primer paso que necesita esa edad.
     if (member.do === "research" && member.what && AGE_OF_TECH[member.what]) {
       const reached = AGE_OF_TECH[member.what];
       const j = others.findIndex((s) => s.do !== "move" && s.what && ageIndex(data.entities[s.what]?.age) >= ageIndex(reached));
-      if (j >= 0) lower(j, `Antes de "${label(others[j])}": lo necesita en ${AGE_LABEL[reached]}`);
+      if (j >= 0) lower(j, fill(t.beforeNeeds, { step: label(others[j]), age: ageLabel(reached, locale) }));
     }
 
     // (c) Después de los pasos de los que depende, y antes de los que dependen de él.
     for (const dep of member.after) {
       if (blockIds.has(dep)) continue;
       const j = others.findIndex((s) => s.id === dep);
-      if (j >= 0) raise(j + 1, `Recién después del paso del que depende: "${label(others[j])}"`);
+      if (j >= 0) raise(j + 1, fill(t.afterDependency, { step: label(others[j]) }));
     }
     const dependent = others.findIndex((s) => s.after.includes(member.id));
-    if (dependent >= 0) lower(dependent, `Antes del paso que depende de este: "${label(others[dependent])}"`);
+    if (dependent >= 0) lower(dependent, fill(t.beforeDependent, { step: label(others[dependent]) }));
 
     // (d) Lo que se entrena o investiga va después del edificio que lo produce.
     const producer = entity?.made_in;
     if ((member.do === "train" || member.do === "research") && producer && producer !== STARTING_BUILDING && !blockBuilt.has(producer)) {
       const f = others.findIndex((s) => provides(s, data).includes(producer));
-      if (f >= 0) raise(f + 1, `Recién después de construir ${entityName(producer, 1)}: ahí se hace`);
+      if (f >= 0) raise(f + 1, fill(t.afterBuilding, { building: name(producer) }));
     }
 
     // (d) Un edificio no pasa después de lo que lo necesita si es el único que hay antes (el centro urbano inicial siempre está).
@@ -177,7 +185,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
       if (key === STARTING_BUILDING) continue;
       const f = others.findIndex((s) => provides(s, data).includes(key));
       const j = others.findIndex((s) => (s.do === "train" || s.do === "research") && s.what && data.entities[s.what]?.made_in === key);
-      if (j >= 0 && (f < 0 || f > j)) lower(j, `Antes de "${label(others[j])}": es el único ${entityName(key, 1)} que hay antes`);
+      if (j >= 0 && (f < 0 || f > j)) lower(j, fill(t.beforeOnly, { step: label(others[j]), building: name(key) }));
     }
 
     // (e) El clic de edad va después del segundo edificio que califica.
@@ -187,10 +195,10 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
       const p = built.findIndex((set) => ageUpCount(req, new Set([...req.buildings.filter((b) => set.has(b)), ...fromBlock])) >= 2);
       if (p >= 0) {
         const have = req.buildings.filter((b) => built[Math.min(p, n)].has(b) || fromBlock.includes(b));
-        raise(p, `Recién con 2 edificios de ${AGE_LABEL[req.requires]} antes (${have.map((b) => entityName(b, 1)).join(", ")})`);
+        raise(p, fill(t.afterTwo, { age: ageLabel(req.requires, locale), buildings: have.map(name).join(", ") }));
       } else {
         // Sin 2 en ninguna parte de la BO no hay lugar: el juego no deja hacer clic (y el simulador lo espera para siempre).
-        raise(n + 1, `Faltan 2 edificios de ${AGE_LABEL[req.requires]} en la BO (${req.buildings.filter((b) => b !== "dock").map((b) => entityName(b, 1)).join(", ")})`);
+        raise(n + 1, fill(t.missingTwo, { age: ageLabel(req.requires, locale), buildings: req.buildings.filter((b) => b !== "dock").map(name).join(", ") }));
       }
     }
 
@@ -202,7 +210,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
           if (s.do !== "research" || s.what !== tech) return;
           const before = r.buildings.filter((b) => built[j].has(b));
           if (ageUpCount(r, new Set(before)) < 2 && ageUpCount(r, new Set([...before, key])) >= 2) {
-            lower(j, `Antes del clic en ${AGE_LABEL[AGE_OF_TECH[tech]]}: es uno de sus 2 edificios de ${AGE_LABEL[r.requires]}`);
+            lower(j, fill(t.beforeAgeClick, { age: ageLabel(AGE_OF_TECH[tech], locale), required: ageLabel(r.requires, locale) }));
           }
         });
       }

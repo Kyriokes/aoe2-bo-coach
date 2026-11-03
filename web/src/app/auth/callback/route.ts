@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { localePath, stripLocale } from "@/i18n/locales";
 import { sessionClient } from "@/lib/supabase/server";
 
 /** Vuelta del login con Discord o Google: cambia el código por la sesión (cookies) y sigue a donde estaba. */
@@ -13,5 +14,5 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
-  return NextResponse.redirect(`${origin}/login?error=1`);
+  return NextResponse.redirect(`${origin}${localePath(stripLocale(next).locale, "/login")}?error=1`);
 }

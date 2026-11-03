@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/locales";
 import type { Analysis, PlanBlock } from "../coach/types";
 import type { GameDataLite } from "./constraints";
 import type { EditorStep } from "./model";
@@ -7,16 +8,17 @@ import { blockReason } from "./text";
  * Por qué espera una caja en el lugar donde cayó: el último bloqueo de sus pasos antes de arrancar. Con un bloqueo
  * por recursos se estima cuánto falta (el costo de la entidad menos el stock de la muestra más cercana).
  */
-export function waitReason(analysis: Analysis, block: EditorStep[], data: GameDataLite | null): string | null {
+export function waitReason(analysis: Analysis, block: EditorStep[], data: GameDataLite | null, locale: Locale = "es"): string | null {
   const ids = new Set(block.map((s) => s.id));
   const waits = (analysis.blocks ?? []).filter((b) => ids.has(b.step_id));
   if (waits.length === 0) {
-    // Las esperas por "a N de población" o por "after" no dejan bloqueo: lo que hay es el aviso del validador.
+    // Las esperas por "a N de población" o por "after" no dejan bloqueo: lo que hay es el aviso del validador (del Core,
+    // en castellano en todos los idiomas: por eso se puede buscar por el texto).
     const issue = analysis.issues.find((i) => i.severity === "warning" && i.step_id !== null && ids.has(i.step_id) && /población|'after'/.test(i.message));
     return issue ? issue.message : null;
   }
   const last = waits.reduce((best, b) => (b.to > best.to ? b : best));
-  return blockReason(last, missingAmount(analysis, last, block, data));
+  return blockReason(last, missingAmount(analysis, last, block, data), locale);
 }
 
 /** El último bloqueo de la caja, o null si espera por otra cosa (población, "after", el paso anterior). */

@@ -1,37 +1,48 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { ConnectAppButton } from "@/components/ConnectAppButton";
 import { TokenManager, type TokenRow } from "@/components/TokenManager";
 import { UnsubscribeButton } from "@/components/UnsubscribeButton";
 import { VisibilityToggle } from "@/components/VisibilityToggle";
+import { fill, getDictionary, rich } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, localePath } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
 import { formatClock, type Visibility } from "@/lib/buildOrder";
 import { byline } from "@/lib/share";
 import { mySubscriptions } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
 import { sessionClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = { title: "Mi cuenta", robots: { index: false, follow: false } };
+export async function generateMetadata({ params }: PageProps<"/[locale]/cuenta">): Promise<Metadata> {
+  return { title: getDictionary(asLocale((await params).locale)).account.title, robots: { index: false, follow: false } };
+}
 
-export default function AccountPage() {
+export default async function AccountPage() {
+  const { t } = await i18n();
   return (
-    <Suspense fallback={<p className="text-sm text-faint">Cargando tu cuenta…</p>}>
+    <Suspense fallback={<p className="text-sm text-faint">{t.account.loading}</p>}>
       <Account />
     </Suspense>
   );
 }
 
 async function Account() {
+  const { locale, t: dict } = await i18n();
+  const t = dict.account;
+  const amber = (href: string) => {
+    function AmberLink(text: string) {
+      return (
+        <Link href={href} className="text-amber hover:underline">
+          {text}
+        </Link>
+      );
+    }
+    return AmberLink;
+  };
   const user = await getCurrentUser();
   if (!user) {
-    return (
-      <p className="text-sm text-muted">
-        <Link href="/login?volver=/cuenta" className="text-amber hover:underline">
-          Iniciá sesión
-        </Link>{" "}
-        para ver tus build orders y conectar la app.
-      </p>
-    );
+    return <p className="text-sm text-muted">{rich(t.needLogin, { link: amber(`/login?volver=${localePath(locale, "/cuenta")}`) })}</p>;
   }
 
   const supabase = await sessionClient();
@@ -55,18 +66,12 @@ async function Account() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Hola, {user.name}</h1>
+      <h1 className="text-2xl font-semibold">{fill(t.hello, { name: user.name ?? dict.user.fallbackName })}</h1>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Tus build orders</h2>
+        <h2 className="text-lg font-semibold">{t.yours}</h2>
         {own.length === 0 ? (
-          <p className="text-sm text-muted">
-            Todavía no publicaste ninguna.{" "}
-            <Link href="/subir" className="text-amber hover:underline">
-              Armá una
-            </Link>{" "}
-            o publicala desde la app.
-          </p>
+          <p className="text-sm text-muted">{rich(t.noneYet, { link: amber("/subir") })}</p>
         ) : (
           <ul className="divide-y divide-line rounded-md border border-line bg-panel">
             {own.map((bo) => (
@@ -74,7 +79,7 @@ async function Account() {
                 <Link href={`/bo/${bo.code}`} className="flex-1 hover:text-amber">
                   {bo.name}
                 </Link>
-                <span className="text-xs text-faint">{bo.feudal_click !== null ? `Feudal ${formatClock(bo.feudal_click)}` : ""}</span>
+                <span className="text-xs text-faint">{bo.feudal_click !== null ? fill(dict.bo.feudal, { time: formatClock(bo.feudal_click) }) : ""}</span>
                 <span className="font-mono text-xs text-amber">{bo.code}</span>
                 <span className="text-xs text-faint">▲ {bo.votes}</span>
                 <VisibilityToggle code={bo.code} visibility={bo.visibility} />
@@ -85,18 +90,10 @@ async function Account() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">En tu coach</h2>
-        <p className="max-w-2xl text-sm text-muted">
-          La app usa tus build orders y las de otros que sumes con &quot;Usar en el coach&quot;.
-        </p>
+        <h2 className="text-lg font-semibold">{t.inCoach}</h2>
+        <p className="max-w-2xl text-sm text-muted">{t.inCoachText}</p>
         {subscriptions.length === 0 ? (
-          <p className="text-sm text-muted">
-            Todavía no sumaste BO de otros:{" "}
-            <Link href="/biblioteca" className="text-amber hover:underline">
-              buscalas en la biblioteca
-            </Link>
-            .
-          </p>
+          <p className="text-sm text-muted">{rich(t.noSubscriptions, { link: amber("/biblioteca") })}</p>
         ) : (
           <ul className="divide-y divide-line rounded-md border border-line bg-panel">
             {subscriptions.map((bo) => (
@@ -104,7 +101,7 @@ async function Account() {
                 <Link href={`/bo/${bo.code}`} className="flex-1 hover:text-amber">
                   {bo.name}
                 </Link>
-                <span className="text-xs text-faint">por {byline(bo)}</span>
+                <span className="text-xs text-faint">{fill(dict.bo.by, { author: byline(bo, locale) })}</span>
                 <UnsubscribeButton buildOrderId={bo.id} />
               </li>
             ))}
@@ -113,11 +110,8 @@ async function Account() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Conectar la app de escritorio</h2>
-        <p className="max-w-2xl text-sm text-muted">
-          &quot;Conectar la app&quot; abre BO Coach con tu cuenta. También podés crear un token y pegarlo en la app (Cuenta de
-          la web). El token se muestra una sola vez; si lo perdés, borralo y creá otro.
-        </p>
+        <h2 className="text-lg font-semibold">{t.connectTitle}</h2>
+        <p className="max-w-2xl text-sm text-muted">{t.connectText}</p>
         <ConnectAppButton />
         <TokenManager tokens={(tokens ?? []) as TokenRow[]} />
       </section>

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
+import { LANG_TAG } from "@/i18n/locales";
 import { chanceText, isEven, percent, type Cell } from "@/lib/matchups";
 import { durationText, selectionPlace } from "@/lib/matchupView";
 import type { Choice } from "./MatchupRivals";
@@ -35,6 +38,9 @@ export function MatchupDuration({
   /** Las etiquetas de las franjas 1 a 5 ("menos de 20 min", ...). */
   durations: string[];
 }) {
+  const { locale, t: dict } = useI18n();
+  const t = dict.matchups;
+  const number = (n: number) => n.toLocaleString(LANG_TAG[locale]);
   const [map, setMap] = useState(0);
   const [elo, setElo] = useState(0);
   const at = (duration: number): Cell => {
@@ -43,7 +49,7 @@ export function MatchupDuration({
   };
   const bands = [1, 2, 3, 4, 5].map((band) => ({ band, cell: at(band), label: durations[band - 1] }));
   // La frase va con lo elegido: con todos los mapas puede haber tendencia y en Nómada ni una partida.
-  const sentence = durationText(at, civName, (band) => durations[band - 1], selectionPlace(map > 0 ? maps[map].label : null, elo));
+  const sentence = durationText(at, civName, (band) => durations[band - 1], selectionPlace(map > 0 ? maps[map].label : null, elo, locale), locale);
   const height = TOP + PLOT + BOTTOM;
   const column = (WIDTH - LEFT - RIGHT) / bands.length;
   const x = (i: number) => LEFT + column * (i + 0.5);
@@ -54,7 +60,7 @@ export function MatchupDuration({
     <figure className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3 text-sm">
         <label className="flex items-center gap-2">
-          <span className="text-faint">Mapa</span>
+          <span className="text-faint">{t.map}</span>
           <select className="field" value={map} onChange={(e) => setMap(Number(e.target.value))}>
             {maps.map((m) => (
               <option key={m.index} value={m.index}>
@@ -64,7 +70,7 @@ export function MatchupDuration({
           </select>
         </label>
         <label className="flex items-center gap-2">
-          <span className="text-faint">Elo</span>
+          <span className="text-faint">{t.elo}</span>
           <select className="field" value={elo} onChange={(e) => setElo(Number(e.target.value))}>
             {elos.map((m) => (
               <option key={m.index} value={m.index}>
@@ -80,7 +86,7 @@ export function MatchupDuration({
           viewBox={`0 0 ${WIDTH} ${height}`}
           className="w-full min-w-[34rem]"
           role="img"
-          aria-label={`Chance de ${civName} contra ${rivalName} según la duración de la partida`}
+          aria-label={fill(t.durationAria, { civ: civName, rival: rivalName })}
         >
           {[0.3, 0.4, 0.5, 0.6, 0.7].map((v) => (
             <g key={v}>
@@ -106,7 +112,7 @@ export function MatchupDuration({
                 {label}
               </text>
               <text x={x(i)} y={TOP + PLOT + 34} fontSize={11} fill="var(--faint)" textAnchor="middle">
-                {cell.n > 0 ? `${cell.n.toLocaleString("es-AR")} partidas` : "sin partidas"}
+                {cell.n > 0 ? fill(t.gamesCount, { n: number(cell.n) }) : t.noGames}
               </text>
             </g>
           ))}
@@ -115,9 +121,9 @@ export function MatchupDuration({
       <figcaption className="flex flex-col gap-1 text-sm text-muted">
         {bands.map(({ band, cell, label }) => (
           <span key={band}>
-            {label}: {civName} ganan {chanceText(cell)}
-            {isEven(cell) ? " (parejo)" : ""}
-            {cell.n > 0 ? `, ${cell.n.toLocaleString("es-AR")} partidas` : ", estimado (sin partidas)"}
+            {fill(t.durationLine, { label, civ: civName, chance: chanceText(cell, locale) })}
+            {isEven(cell) ? t.evenParens : ""}
+            {cell.n > 0 ? fill(t.gamesSuffix, { n: number(cell.n) }) : t.estimatedNoGames}
           </span>
         ))}
       </figcaption>

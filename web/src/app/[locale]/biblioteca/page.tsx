@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { BoCard } from "@/components/BoCard";
+import { fill, getDictionary, rich } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, localeAlternates, localePath, OG_LOCALE, type Locale } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
 import { filterValue, libraryHref, pageNumber } from "@/lib/filters";
 import { mySubscriptionIds } from "@/lib/ownData";
@@ -9,38 +12,37 @@ import { getCurrentUser } from "@/lib/session";
 import { civLabel, SITE_NAME } from "@/lib/share";
 import { supabaseConfigured } from "@/lib/supabase/env";
 
-const DESCRIPTION = "Buscá build orders de Age of Empires II, mirá su línea de tiempo simulada y abrilas en BO Coach.";
-
 /** "de Britanos", "para cualquier civ" o null sin filtro de civ. */
-function civSubject(civ: string | undefined) {
+function civSubject(civ: string | undefined, locale: Locale) {
   if (!civ) return null;
-  return civ === "any" ? "para cualquier civ" : `de ${civLabel(civ)}`;
+  const t = getDictionary(locale).library;
+  return civ === "any" ? t.subjectAny : fill(t.subjectCiv, { civ: civLabel(civ, locale) });
 }
 
 /**
  * Cada civ y cada etiqueta es una página para los buscadores ("Build orders de Britanos"); las búsquedas por texto
  * y el orden no: se pueden seguir, pero no se indexan, y la canónica es la de la civ o la etiqueta.
  */
-export async function generateMetadata({ searchParams }: PageProps<"/biblioteca">): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps<"/[locale]/biblioteca">): Promise<Metadata> {
+  const locale = asLocale((await params).locale);
+  const t = getDictionary(locale).library;
   const query = await readQuery(searchParams);
   const civ = filterValue(query.civ);
   const tag = civ ? undefined : filterValue(query.tag);
-  const subject = civSubject(civ);
-  const title = subject ? `Build orders ${subject}` : tag ? `Build orders: ${tag}` : "Biblioteca de build orders";
-  const description = subject
-    ? `Build orders de Age of Empires II ${subject}: cada paso, a qué minuto llegás a Feudal y Castillos, y para abrir en BO Coach.`
-    : DESCRIPTION;
-  const canonical = libraryHref(civ ? { civ } : tag ? { tag } : {}, query.page);
+  const subject = civSubject(civ, locale);
+  const title = subject ? fill(t.titleSubject, { subject }) : tag ? fill(t.titleTag, { tag }) : t.title;
+  const description = subject ? fill(t.descriptionSubject, { subject }) : t.description;
+  const path = libraryHref(civ ? { civ } : tag ? { tag } : {}, query.page);
   return {
     title,
     description,
-    alternates: { canonical },
-    openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "website", title, description, url: canonical },
+    alternates: localeAlternates(locale, path),
+    openGraph: { siteName: SITE_NAME, locale: OG_LOCALE[locale], type: "website", title, description, url: localePath(locale, path) },
     robots: query.q || (civ && query.tag) ? { index: false, follow: true } : undefined,
   };
 }
 
-type SearchParams = PageProps<"/biblioteca">["searchParams"];
+type SearchParams = PageProps<"/[locale]/biblioteca">["searchParams"];
 
 function first(value: string | string[] | undefined) {
   return (Array.isArray(value) ? value[0] : value)?.trim() || undefined;
@@ -57,34 +59,43 @@ async function readQuery(searchParams: SearchParams): Promise<LibraryQuery> {
   };
 }
 
-export default function LibraryPage({ searchParams }: PageProps<"/biblioteca">) {
+export default async function LibraryPage({ searchParams }: PageProps<"/[locale]/biblioteca">) {
+  const { locale, t: dict } = await i18n();
+  const t = dict.library;
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <Suspense fallback={<h1 className="text-2xl font-semibold">Biblioteca de build orders</h1>}>
-          <Title searchParams={searchParams} />
+        <Suspense fallback={<h1 className="text-2xl font-semibold">{t.title}</h1>}>
+          <Title searchParams={searchParams} locale={locale} />
         </Suspense>
         <p className="mt-1 max-w-2xl text-sm text-muted">
-          Buscá una BO, mirá su línea de tiempo y abrila en BO Coach para que el overlay te la vaya marcando durante la
-          partida. ¿Tenés una propia? <Link href="/subir" className="text-amber hover:underline">Armala o subila</Link>.
+          {rich(t.intro, {
+            link: (text) => (
+              <Link href="/subir" className="text-amber hover:underline">
+                {text}
+              </Link>
+            ),
+          })}
         </p>
       </section>
       <Suspense fallback={<div className="h-10" />}>
-        <Filters searchParams={searchParams} />
+        <Filters searchParams={searchParams} locale={locale} />
       </Suspense>
-      <Suspense fallback={<p className="text-sm text-faint">Cargando la biblioteca…</p>}>
-        <Results searchParams={searchParams} />
+      <Suspense fallback={<p className="text-sm text-faint">{t.loading}</p>}>
+        <Results searchParams={searchParams} locale={locale} />
       </Suspense>
     </div>
   );
 }
 
-async function Title({ searchParams }: { searchParams: SearchParams }) {
-  const subject = civSubject(filterValue((await readQuery(searchParams)).civ));
-  return <h1 className="text-2xl font-semibold">{subject ? `Build orders ${subject}` : "Biblioteca de build orders"}</h1>;
+async function Title({ searchParams, locale }: { searchParams: SearchParams; locale: Locale }) {
+  const t = getDictionary(locale).library;
+  const subject = civSubject(filterValue((await readQuery(searchParams)).civ), locale);
+  return <h1 className="text-2xl font-semibold">{subject ? fill(t.titleSubject, { subject }) : t.title}</h1>;
 }
 
-async function Filters({ searchParams }: { searchParams: SearchParams }) {
+async function Filters({ searchParams, locale }: { searchParams: SearchParams; locale: Locale }) {
+  const t = getDictionary(locale).library;
   const [query, facets] = await Promise.all([readQuery(searchParams), listFacets()]);
   return (
     <form className="flex flex-wrap items-center gap-2" role="search">
@@ -92,41 +103,42 @@ async function Filters({ searchParams }: { searchParams: SearchParams }) {
         name="q"
         type="search"
         defaultValue={query.q}
-        placeholder="Buscar por nombre o descripción"
-        aria-label="Buscar build orders"
+        placeholder={t.searchPlaceholder}
+        aria-label={t.searchLabel}
         className="field min-w-56 flex-1"
       />
-      <select name="civ" defaultValue={query.civ ?? ""} className="field" aria-label="Civilización">
-        <option value="">Todas las civs</option>
-        {[...facets.civs].sort((a, b) => civLabel(a).localeCompare(civLabel(b), "es")).map((civ) => (
+      <select name="civ" defaultValue={query.civ ?? ""} className="field" aria-label={t.civLabel}>
+        <option value="">{t.allCivs}</option>
+        {[...facets.civs].sort((a, b) => civLabel(a, locale).localeCompare(civLabel(b, locale), locale)).map((civ) => (
           <option key={civ} value={civ}>
-            {civLabel(civ)}
+            {civLabel(civ, locale)}
           </option>
         ))}
       </select>
-      <select name="tag" defaultValue={query.tag ?? ""} className="field" aria-label="Etiqueta">
-        <option value="">Todas las etiquetas</option>
+      <select name="tag" defaultValue={query.tag ?? ""} className="field" aria-label={t.tagLabel}>
+        <option value="">{t.allTags}</option>
         {facets.tags.map((tag) => (
           <option key={tag} value={tag}>
             {tag}
           </option>
         ))}
       </select>
-      <select name="orden" defaultValue={query.sort} className="field" aria-label="Orden">
-        <option value="votos">Más votadas</option>
-        <option value="recientes">Más nuevas</option>
+      <select name="orden" defaultValue={query.sort} className="field" aria-label={t.sortLabel}>
+        <option value="votos">{t.sortVotes}</option>
+        <option value="recientes">{t.sortRecent}</option>
       </select>
       <button type="submit" className="button-primary">
-        Buscar
+        {t.search}
       </button>
     </form>
   );
 }
 
-async function Results({ searchParams }: { searchParams: SearchParams }) {
+async function Results({ searchParams, locale }: { searchParams: SearchParams; locale: Locale }) {
+  const t = getDictionary(locale).library;
   const query = await readQuery(searchParams);
   if (!supabaseConfigured) {
-    return <p className="text-sm text-faint">La web todavía no está conectada a la base de datos (falta configurar Supabase).</p>;
+    return <p className="text-sm text-faint">{t.notConnected}</p>;
   }
   // La página sale del caché; la sesión y las suscripciones, no (solo para el botón "Usar en el coach").
   const [{ items, hasMore }, user, subscriptions] = await Promise.all([listBuildOrders(query), getCurrentUser(), mySubscriptionIds()]);
@@ -134,15 +146,15 @@ async function Results({ searchParams }: { searchParams: SearchParams }) {
   if (items.length === 0) {
     return (
       <p className="text-sm text-faint">
-        No hay build orders con esos filtros
-        {page > 1 ? (
-          <>
-            {" "}
-            en la página {page}. <Link href={libraryHref(query)} className="text-amber hover:underline">Ir a la primera</Link>.
-          </>
-        ) : (
-          "."
-        )}
+        {page > 1
+          ? rich(fill(t.emptyPage, { page }), {
+              link: (text) => (
+                <Link href={libraryHref(query)} className="text-amber hover:underline">
+                  {text}
+                </Link>
+              ),
+            })
+          : t.empty}
       </p>
     );
   }
@@ -153,23 +165,24 @@ async function Results({ searchParams }: { searchParams: SearchParams }) {
           <BoCard
             key={bo.code}
             bo={bo}
+            locale={locale}
             subscription={user ? { subscribed: subscriptions?.has(bo.id) ?? false, own: bo.owner_id === user.id } : undefined}
           />
         ))}
       </div>
       {page > 1 || hasMore ? (
-        <nav aria-label="Páginas de la biblioteca" className="flex items-center justify-between gap-3 text-sm">
+        <nav aria-label={t.pagesLabel} className="flex items-center justify-between gap-3 text-sm">
           {page > 1 ? (
             <Link href={libraryHref(query, page - 1)} className="button" rel="prev">
-              ← Anteriores
+              {t.previous}
             </Link>
           ) : (
             <span />
           )}
-          <span className="text-faint">Página {page}</span>
+          <span className="text-faint">{fill(t.page, { page })}</span>
           {hasMore ? (
             <Link href={libraryHref(query, page + 1)} className="button" rel="next">
-              Siguientes →
+              {t.next}
             </Link>
           ) : (
             <span />

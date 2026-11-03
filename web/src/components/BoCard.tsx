@@ -1,12 +1,15 @@
-import Link from "next/link";
+import Link from "@/i18n/Link";
 import { formatClock } from "@/lib/buildOrder";
 import type { BuildOrderSummary } from "@/lib/data";
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import { byline, civLabel } from "@/lib/share";
 import { SubscribeButton } from "./SubscribeButton";
 import { Votes } from "./VoteButton";
 
 /** Una BO de la biblioteca. Con sesión (`subscription`), también "Usar en el coach". */
-export function BoCard({ bo, subscription }: { bo: BuildOrderSummary; subscription?: { subscribed: boolean; own: boolean } }) {
+export function BoCard({ bo, subscription, locale }: { bo: BuildOrderSummary; subscription?: { subscribed: boolean; own: boolean }; locale: Locale }) {
+  const t = getDictionary(locale).bo;
   return (
     <article className="rounded-lg border border-line bg-panel p-4">
       <div className="flex items-start justify-between gap-3">
@@ -15,14 +18,14 @@ export function BoCard({ bo, subscription }: { bo: BuildOrderSummary; subscripti
             {bo.name}
           </Link>
         </h2>
-        <span className="shrink-0 text-sm text-amber" title="Votos">
+        <span className="shrink-0 text-sm text-amber" title={t.votes}>
           <Votes votes={bo.votes} />
         </span>
       </div>
       <p className="mt-1 text-xs text-faint">
-        {civLabel(bo.civ)} · por {byline(bo)}
-        {bo.feudal_click !== null ? ` · Feudal ${formatClock(bo.feudal_click)}` : ""}
-        {bo.castle_click !== null ? ` · Castillos ${formatClock(bo.castle_click)}` : ""}
+        {civLabel(bo.civ, locale)} · {fill(t.by, { author: byline(bo, locale) })}
+        {bo.feudal_click !== null ? ` · ${fill(t.feudal, { time: formatClock(bo.feudal_click) })}` : ""}
+        {bo.castle_click !== null ? ` · ${fill(t.castle, { time: formatClock(bo.castle_click) })}` : ""}
       </p>
       {bo.description ? <p className="mt-2 line-clamp-2 text-sm text-muted">{bo.description}</p> : null}
       {bo.tags.length > 0 ? (

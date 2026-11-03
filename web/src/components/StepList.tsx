@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/locales";
 import { describeStep, type StepLike } from "@/lib/stepText";
 
 /** Lo que hace falta de un paso para listarlo. */
@@ -13,7 +14,7 @@ export function stepsOf(body: Record<string, unknown>): ListedStep[] {
  * los ven los buscadores y quien abre la página mientras carga el Core en WebAssembly, que después los reemplaza
  * por la versión con tiempos.
  */
-export function StepList({ steps }: { steps: ListedStep[] }) {
+export function StepList({ steps, locale }: { steps: ListedStep[]; locale: Locale }) {
   if (steps.length === 0) return null;
   return (
     <ol className="flex flex-col divide-y divide-line rounded-md border border-line bg-panel">
@@ -21,7 +22,7 @@ export function StepList({ steps }: { steps: ListedStep[] }) {
         <li key={i} className="flex gap-3 px-3 py-2 text-sm">
           <span className="w-6 shrink-0 text-right text-faint">{i + 1}</span>
           <div className="flex-1">
-            <p>{describeStep(step)}</p>
+            <p>{describeStep(step, locale)}</p>
             {typeof step.note === "string" && step.note ? <p className="text-xs text-muted">{step.note}</p> : null}
           </div>
         </li>

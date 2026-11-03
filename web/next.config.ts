@@ -26,10 +26,10 @@ const nextConfig: NextConfig = {
   // D10: las páginas de cruces leen public/coach/matchup_stats.json; se arman al compilar, pero si alguna se arma en
   // el servidor (una dirección que no estaba), el archivo tiene que viajar con la función.
   outputFileTracingIncludes: {
-    "/cruces/[slug]": ["./public/coach/matchup_stats.json"],
-    "/cruces": ["./public/coach/matchup_stats.json"],
+    "/[locale]/cruces/[slug]": ["./public/coach/matchup_stats.json"],
+    "/[locale]/cruces": ["./public/coach/matchup_stats.json"],
     "/sitemap.xml": ["./public/coach/matchup_stats.json"],
-    "/bo/[code]": ["./public/coach/matchup_stats.json"],
+    "/[locale]/bo/[code]": ["./public/coach/matchup_stats.json"],
   },
   partialPrefetching: true,
   turbopack: {

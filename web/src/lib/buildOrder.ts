@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { fill, getDictionary } from "@/i18n";
+import { LOCALES, type Locale } from "@/i18n/locales";
 
 /** Versión más nueva del formato de BO que entiende esta web (la misma que la app: BuildOrder.CurrentSchemaVersion). */
 export const CURRENT_SCHEMA_VERSION = 2;
@@ -25,42 +27,50 @@ const step = z.looseObject({
  * Lo mínimo que se revisa en el servidor antes de guardar una BO. La validación completa (entidades, edades,
  * dependencias) la hace el Core en el navegador, el mismo validador que la app.
  */
-export const buildOrderSchema = z.looseObject({
-  schema_version: z
-    .number()
-    .int()
-    .min(1)
-    .max(CURRENT_SCHEMA_VERSION, `Esta web entiende hasta schema_version ${CURRENT_SCHEMA_VERSION}.`),
-  name: z.string().trim().min(1, "Falta el nombre.").max(100),
-  civ: z.string().trim().min(1).max(40).default("any"),
-  author: z.string().max(60).nullish(),
-  description: z.string().max(4000).nullish(),
-  tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
-  steps: z.array(step).min(1, "La BO no tiene pasos.").max(300),
-  // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
-  branches: z
-    .array(z.looseObject({ steps: z.array(step).min(1).max(300) }))
-    .max(20)
-    .nullish(),
-});
+function schemaFor(locale: Locale) {
+  const t = getDictionary(locale).serverErrors;
+  return z.looseObject({
+    schema_version: z
+      .number()
+      .int()
+      .min(1)
+      .max(CURRENT_SCHEMA_VERSION, fill(t.schemaVersion, { n: CURRENT_SCHEMA_VERSION })),
+    name: z.string().trim().min(1, t.noName).max(100),
+    civ: z.string().trim().min(1).max(40).default("any"),
+    author: z.string().max(60).nullish(),
+    description: z.string().max(4000).nullish(),
+    tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
+    steps: z.array(step).min(1, t.noSteps).max(300),
+    // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
+    branches: z
+      .array(z.looseObject({ steps: z.array(step).min(1).max(300) }))
+      .max(20)
+      .nullish(),
+  });
+}
+
+const SCHEMAS = Object.fromEntries(LOCALES.map((locale) => [locale, schemaFor(locale)])) as Record<Locale, ReturnType<typeof schemaFor>>;
+
+export const buildOrderSchema = SCHEMAS.es;
 
 export type BuildOrderBody = z.infer<typeof buildOrderSchema>;
 
-/** Lee y revisa el JSON de una BO. Devuelve el error en español si no sirve. */
-export function parseBuildOrder(json: unknown): { ok: true; body: BuildOrderBody } | { ok: false; error: string } {
-  const tooBig = { ok: false as const, error: `La BO pesa más de ${MAX_BODY_CHARS / 1000} KB: sacale notas o pasos.` };
+/** Lee y revisa el JSON de una BO. Devuelve el error en el idioma pedido si no sirve. */
+export function parseBuildOrder(json: unknown, locale: Locale = "es"): { ok: true; body: BuildOrderBody } | { ok: false; error: string } {
+  const t = getDictionary(locale).serverErrors;
+  const tooBig = { ok: false as const, error: fill(t.tooBig, { n: MAX_BODY_CHARS / 1000 }) };
   let value = json;
   if (typeof json === "string") {
     if (json.length > MAX_BODY_CHARS) return tooBig;
     try {
       value = JSON.parse(json);
     } catch {
-      return { ok: false, error: "No es un JSON válido." };
+      return { ok: false, error: t.notJson };
     }
   } else if ((JSON.stringify(json) ?? "").length > MAX_BODY_CHARS) {
     return tooBig;
   }
-  const result = buildOrderSchema.safeParse(value);
+  const result = SCHEMAS[locale].safeParse(value);
   if (!result.success) {
     const issue = result.error.issues[0];
     const where = issue.path.length > 0 ? ` (${issue.path.join(".")})` : "";

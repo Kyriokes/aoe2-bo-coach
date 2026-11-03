@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
 
 /**
  * Llevar la BO a la app: el enlace bocoach://import/<código> la abre directo (si la app registró el enlace), y si
  * no, se puede pegar el código en "Importar desde la web" o descargar el .json.
  */
 export function OpenInApp({ code, fileName }: { code: string; fileName: string }) {
+  const { t: dict } = useI18n();
+  const t = dict.actions;
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +19,7 @@ export function OpenInApp({ code, fileName }: { code: string; fileName: string }
     setError(null);
     try {
       const response = await fetch(`/api/bo/${code}`);
-      if (!response.ok) throw new Error(`la web respondió ${response.status}`);
+      if (!response.ok) throw new Error(fill(t.serverSaid, { status: response.status }));
       const { build_order } = (await response.json()) as { build_order: unknown };
       const url = URL.createObjectURL(new Blob([JSON.stringify(build_order, null, 2) + "\n"], { type: "application/json" }));
       const link = document.createElement("a");
@@ -24,7 +28,7 @@ export function OpenInApp({ code, fileName }: { code: string; fileName: string }
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setError(`No se pudo descargar: ${e instanceof Error ? e.message : String(e)}`);
+      setError(fill(t.downloadFailed, { error: e instanceof Error ? e.message : String(e) }));
     }
   }
 
@@ -37,16 +41,16 @@ export function OpenInApp({ code, fileName }: { code: string; fileName: string }
   return (
     <section className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel p-4">
       <a href={`bocoach://import/${code}`} className="button-primary no-underline">
-        Abrir en BO Coach
+        {t.openInApp}
       </a>
       <button type="button" onClick={copy} className="button">
-        Código <span className="font-mono text-amber">{code}</span> <span aria-live="polite">{copied ? "· copiado" : "· copiar"}</span>
+        {t.code} <span className="font-mono text-amber">{code}</span> <span aria-live="polite">{copied ? t.copied : t.copyAction}</span>
       </button>
       <button type="button" onClick={download} className="button">
-        Descargar .json
+        {t.downloadJson}
       </button>
       <p className="w-full text-xs text-faint">
-        Si el botón no abre la app: en BO Coach usá «Importar desde la web» y pegá el código.
+        {t.openInAppHelp}
       </p>
       {error ? (
         <p role="alert" className="w-full text-xs text-red">

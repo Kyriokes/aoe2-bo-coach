@@ -1,9 +1,11 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import type { Analysis } from "../coach/types";
 import { AGE_UP_REQ, type GameDataLite } from "./constraints";
 import { lastWait, waitReason } from "./explain";
 import type { EditorAction, EditorStep } from "./model";
 import { entityName } from "../stepText";
-import { AGE_LABEL } from "./text";
+import { ageLabel } from "./text";
 
 /**
  * "No lo deja y explica" (D8): ninguna edición deja la BO rota. Se compara el análisis de antes con el de después:
@@ -29,7 +31,7 @@ export function isGuarded(action: EditorAction): boolean {
 }
 
 /** El motivo para rechazar el cambio de `before` a `after`, o null si se puede. */
-export function brokenBy(before: Analysis | null, after: Analysis | null, steps: EditorStep[], data: GameDataLite | null): string | null {
+export function brokenBy(before: Analysis | null, after: Analysis | null, steps: EditorStep[], data: GameDataLite | null, locale: Locale = "es"): string | null {
   if (!before || !after) return null;
   const known = new Set(before.issues.filter((i) => i.severity === "error").map((i) => i.message));
   const fresh = after.issues.find((i) => i.severity === "error" && !known.has(i.message));
@@ -40,29 +42,33 @@ export function brokenBy(before: Analysis | null, after: Analysis | null, steps:
     const stuckBefore = new Set(before.steps.filter((s) => s.start === null).map((s) => s.id));
     const stuck = after.steps.find((s) => s.start === null && !stuckBefore.has(s.id));
     const step = steps.find((s) => s.id === stuck?.id);
-    if (stuck && step) return `Así "${stuck.text}" no arranca nunca: ${neverStartsReason(after, [step], data)}`;
+    if (stuck && step) return fill(getDictionary(locale).editor.guard.neverStarts, { step: stuck.text, reason: neverStartsReason(after, [step], data, locale) });
   }
   return null;
 }
 
 /** Por qué un paso nunca arranca, dicho para que se pueda arreglar ("falta un establo en la BO: agregalo antes"). */
-export function neverStartsReason(analysis: Analysis, block: EditorStep[], data: GameDataLite | null): string {
+export function neverStartsReason(analysis: Analysis, block: EditorStep[], data: GameDataLite | null, locale: Locale = "es"): string {
+  const t = getDictionary(locale).editor.guard;
   const wait = lastWait(analysis, block);
   const step = block.find((s) => s.id === wait?.step_id) ?? block[0];
   const ageUp = step?.do === "research" && step.what ? AGE_UP_REQ[step.what] : undefined;
   if (wait?.reason === "producer" && ageUp) {
-    return `faltan 2 edificios de ${AGE_LABEL[ageUp.requires]} terminados antes (${ageUp.buildings.filter((b) => b !== "dock").map((b) => entityName(b, 1)).join(", ")})`;
+    return fill(t.missingTwo, { age: ageLabel(ageUp.requires, locale), buildings: ageUp.buildings.filter((b) => b !== "dock").map((b) => entityName(b, 1, locale)).join(", ") });
   }
   if (wait?.reason === "producer" && step?.what) {
     const producer = data?.entities[step.what]?.made_in ?? data?.entities[step.what]?.requires;
-    if (producer) return `falta ${withArticle(producer)} en la BO: agregalo antes`;
+    if (producer) return fill(t.missingBuilding, { building: withArticle(producer, locale) });
   }
-  return waitReason(analysis, block, data) ?? "el paso anterior tampoco termina";
+  return waitReason(analysis, block, data, locale) ?? t.previousNotEnding;
 }
 
 const FEMININE = new Set(["archery_range", "blacksmith", "university", "farm", "house", "palisade_wall", "stone_wall", "watch_tower"]);
 
-/** "un establo", "una galería de tiro". */
-export function withArticle(key: string) {
-  return `${FEMININE.has(key) ? "una" : "un"} ${entityName(key, 1)}`;
+/** "un establo", "una galería de tiro", "an archery range". */
+export function withArticle(key: string, locale: Locale = "es") {
+  const t = getDictionary(locale).editor.guard;
+  const name = entityName(key, 1, locale);
+  if (locale === "en") return fill(/^[aeiou]/.test(name) && !name.startsWith("uni") ? t.articleVowel : t.articleMasc, { name });
+  return fill(FEMININE.has(key) ? t.articleFem : t.articleMasc, { name });
 }

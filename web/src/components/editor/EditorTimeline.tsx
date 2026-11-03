@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useI18n } from "@/i18n/client";
 import type { Analysis, GameStart } from "@/lib/coach/types";
 import type { GameDataLite } from "@/lib/editor/constraints";
 import { BOX_H, LANE_H, LANES_TOP, lanesFor, NARROW_LABEL_W, ORDINAL_W, PAD_R, placeLanes, type PlacedItem, type Scale } from "@/lib/editor/layout";
@@ -58,14 +59,16 @@ export function EditorTimeline({
   /** Líneas verticales de más (D12: la hora de cada objetivo cumplido en el modo asistido). */
   extraMarkers?: Marker[];
 }) {
+  const { locale, t: dict } = useI18n();
+  const t = dict.editor.timeline;
   const scale = drag ? drag.scale : committedScale;
   const mode = drag ? drag.mode : committedMode;
   const shownSteps = drag?.previewSteps ?? steps;
   const shownAnalysis = drag ? (drag.preview ?? analysis) : analysis;
   const lanesTop = mode === "time" ? LANES_TOP : 24;
   const placed = useMemo(
-    () => placeLanes(lanesFor(shownSteps, shownAnalysis, data, guideLabels(shownSteps, start)), scale, mode, lanesTop),
-    [shownSteps, shownAnalysis, data, start, scale, mode, lanesTop],
+    () => placeLanes(lanesFor(shownSteps, shownAnalysis, data, guideLabels(shownSteps, start, locale), locale), scale, mode, lanesTop),
+    [shownSteps, shownAnalysis, data, start, scale, mode, lanesTop, locale],
   );
   const height = lanesTop + placed.height + 24;
   const innerWidth = mode === "ordinal" ? Math.max(scale.width, scale.padL + shownSteps.length * ORDINAL_W + PAD_R) : scale.width;
@@ -74,9 +77,9 @@ export function EditorTimeline({
   const scrolls = innerWidth > viewportWidth;
   const moving = drag?.kind === "move";
   const markers: Marker[] = [
-    shownAnalysis?.feudal_click != null ? { t: shownAnalysis.feudal_click, label: "Feudal", dashed: false } : null,
-    shownAnalysis?.castle_click != null ? { t: shownAnalysis.castle_click, label: "Castillos", dashed: false } : null,
-    shownAnalysis?.targets.feudal_click_time != null ? { t: shownAnalysis.targets.feudal_click_time, label: "objetivo", dashed: true } : null,
+    shownAnalysis?.feudal_click != null ? { t: shownAnalysis.feudal_click, label: dict.sim.markerFeudal, dashed: false } : null,
+    shownAnalysis?.castle_click != null ? { t: shownAnalysis.castle_click, label: dict.sim.markerCastle, dashed: false } : null,
+    shownAnalysis?.targets.feudal_click_time != null ? { t: shownAnalysis.targets.feudal_click_time, label: dict.sim.markerTarget, dashed: true } : null,
     ...extraMarkers,
   ].filter((m): m is Marker => m !== null);
   const selectedChain = placed.items.find((i) => i.stepId === selected)?.chainId ?? null;
@@ -89,7 +92,7 @@ export function EditorTimeline({
         ref={timelineRef}
         className="relative overflow-x-auto overflow-y-hidden rounded-md border border-line bg-panel"
         style={{ height: height + (scrolls ? 14 : 0) }}
-        aria-label="Línea de tiempo de la build order"
+        aria-label={t.label}
       >
         <div className="relative" style={{ width: innerWidth, height }}>
           {mode === "time" ? <ResourceChart timeline={shownAnalysis?.timeline ?? []} scale={scale} height={height} markers={markers} /> : null}
@@ -127,12 +130,12 @@ export function EditorTimeline({
           {/* La columna con el nombre de cada línea, encima de la grilla (queda fija al hacer scroll en modo ordinal). */}
           <div className="sticky left-0 top-0 h-full bg-panel" style={{ width: labelWidth }}>
             {mode === "time" ? (
-              <p className="absolute left-2 text-xs text-faint" style={{ top: 8 }} title="Recursos y población">
-                {narrow ? "Stock" : "Recursos y población"}
+              <p className="absolute left-2 text-xs text-faint" style={{ top: 8 }} title={t.resources}>
+                {narrow ? t.stock : t.resources}
               </p>
             ) : (
-              <p className="absolute left-2 top-1 text-xs text-red" title="Sin tiempos: la BO tiene errores">
-                {narrow ? "Errores" : "Sin tiempos: la BO tiene errores"}
+              <p className="absolute left-2 top-1 text-xs text-red" title={t.noTimes}>
+                {narrow ? t.errors : t.noTimes}
               </p>
             )}
             {placed.lanes.map((lane) => (

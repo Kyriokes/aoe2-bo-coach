@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BuildOrderView } from "@/components/BuildOrderView";
@@ -9,6 +8,10 @@ import { OwnerActions } from "@/components/OwnerActions";
 import { SubscribeButton } from "@/components/SubscribeButton";
 import { VoteButton, Votes } from "@/components/VoteButton";
 import { StepList, stepsOf, type ListedStep } from "@/components/StepList";
+import { fill, getDictionary } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, LANG_TAG, localeAlternates, localePath, OG_LOCALE, type Locale } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
 import { getBuildOrder } from "@/lib/data";
 import { getMatchups } from "@/lib/matchupsServer";
 import { civsWithData } from "@/lib/matchupView";
@@ -27,37 +30,41 @@ function hasMatchups(civ: string) {
 }
 
 /** "Scouts Feudal · build order de Britanos": el título para los buscadores (la página muestra solo el nombre). */
-function pageTitle(bo: { name: string; civ: string }) {
-  return bo.civ === "any" ? `${bo.name} · build order para cualquier civ` : `${bo.name} · build order de ${civLabel(bo.civ)}`;
+function pageTitle(bo: { name: string; civ: string }, locale: Locale) {
+  const t = getDictionary(locale).bo;
+  return bo.civ === "any" ? fill(t.titleAnyCiv, { name: bo.name }) : fill(t.titleOfCiv, { name: bo.name, civ: civLabel(bo.civ, locale) });
 }
 
-export async function generateMetadata({ params }: PageProps<"/bo/[code]">): Promise<Metadata> {
-  const { code } = await params;
+export async function generateMetadata({ params }: PageProps<"/[locale]/bo/[code]">): Promise<Metadata> {
+  const { code, locale: raw } = await params;
+  const locale = asLocale(raw);
+  const t = getDictionary(locale);
   const bo = await getBuildOrder(code);
   if (!bo) {
     // Una privada propia lleva su nombre, pero nunca se indexa.
     const own = await getOwnBuildOrder(code);
-    return { title: own ? own.name : "No encontrada", robots: { index: false } };
+    return { title: own ? own.name : t.bo.notFoundTitle, robots: { index: false } };
   }
   // Lo que muestran Discord, WhatsApp o los buscadores al compartir el enlace (la imagen sale de opengraph-image).
-  const description = shareDescription(bo);
-  const url = `/bo/${bo.code}`;
-  const title = pageTitle(bo);
+  const description = shareDescription(bo, 200, locale);
+  const path = `/bo/${bo.code}`;
+  const title = pageTitle(bo, locale);
+  const author = bo.author || t.user.anonymous;
   return {
     title,
     description,
-    alternates: { canonical: url },
-    authors: [{ name: bo.author }],
+    alternates: localeAlternates(locale, path),
+    authors: [{ name: author }],
     openGraph: {
       type: "article",
       siteName: SITE_NAME,
-      locale: "es_AR",
+      locale: OG_LOCALE[locale],
       title,
       description,
-      url,
+      url: localePath(locale, path),
       publishedTime: bo.created_at,
       modifiedTime: bo.updated_at,
-      authors: [bo.author],
+      authors: [author],
       tags: bo.tags,
     },
     twitter: { card: "summary_large_image", title, description },
@@ -65,9 +72,10 @@ export async function generateMetadata({ params }: PageProps<"/bo/[code]">): Pro
 }
 
 /** La BO para los buscadores: una guía paso a paso (HowTo) y el camino Inicio › Biblioteca › BO. */
-function structuredData(bo: NonNullable<Awaited<ReturnType<typeof getBuildOrder>>>, steps: ListedStep[]) {
+function structuredData(bo: NonNullable<Awaited<ReturnType<typeof getBuildOrder>>>, steps: ListedStep[], locale: Locale) {
+  const t = getDictionary(locale);
   const base = siteUrl();
-  const url = `${base}/bo/${bo.code}`;
+  const url = `${base}${localePath(locale, `/bo/${bo.code}`)}`;
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -75,26 +83,26 @@ function structuredData(bo: NonNullable<Awaited<ReturnType<typeof getBuildOrder>
         "@type": "HowTo",
         "@id": `${url}#bo`,
         name: bo.name,
-        description: shareDescription(bo, 500),
+        description: shareDescription(bo, 500, locale),
         url,
         image: `${url}/opengraph-image`,
-        inLanguage: "es",
+        inLanguage: locale,
         datePublished: bo.created_at,
         dateModified: bo.updated_at,
-        author: { "@type": "Person", name: bo.author },
+        author: { "@type": "Person", name: bo.author || t.user.anonymous },
         about: GAME,
-        keywords: [civLabel(bo.civ), ...bo.tags].join(", "),
+        keywords: [civLabel(bo.civ, locale), ...bo.tags].join(", "),
         step: steps.slice(0, 100).map((step, i) => ({
           "@type": "HowToStep",
           position: i + 1,
-          text: typeof step.note === "string" && step.note ? `${describeStep(step)}. ${step.note}` : describeStep(step),
+          text: typeof step.note === "string" && step.note ? `${describeStep(step, locale)}. ${step.note}` : describeStep(step, locale),
         })),
       },
       {
         "@type": "BreadcrumbList",
         itemListElement: [
-          { "@type": "ListItem", position: 1, name: SITE_NAME, item: base },
-          { "@type": "ListItem", position: 2, name: "Biblioteca", item: `${base}/biblioteca` },
+          { "@type": "ListItem", position: 1, name: SITE_NAME, item: `${base}${locale === "es" ? "" : localePath(locale, "/")}` },
+          { "@type": "ListItem", position: 2, name: t.bo.jsonLdLibrary, item: `${base}${localePath(locale, "/biblioteca")}` },
           { "@type": "ListItem", position: 3, name: bo.name, item: url },
         ],
       },
@@ -102,16 +110,19 @@ function structuredData(bo: NonNullable<Awaited<ReturnType<typeof getBuildOrder>
   };
 }
 
-export default function BuildOrderPage({ params }: PageProps<"/bo/[code]">) {
+export default async function BuildOrderPage({ params }: PageProps<"/[locale]/bo/[code]">) {
+  const { t } = await i18n();
   return (
-    <Suspense fallback={<p className="text-sm text-faint">Cargando la build order…</p>}>
+    <Suspense fallback={<p className="text-sm text-faint">{t.bo.loading}</p>}>
       <Detail params={params} />
     </Suspense>
   );
 }
 
-async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] }) {
+async function Detail({ params }: { params: PageProps<"/[locale]/bo/[code]">["params"] }) {
   const { code } = await params;
+  const { locale, t: dict } = await i18n();
+  const t = dict.bo;
   // Las públicas salen del caché; una privada solo la ve su dueño, leída con la sesión.
   const bo = (await getBuildOrder(code)) ?? (await getOwnBuildOrder(code));
   if (!bo) notFound();
@@ -121,17 +132,17 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
 
   return (
     <article className="flex flex-col gap-6">
-      {isPrivate ? null : <JsonLd data={structuredData(bo, steps)} />}
+      {isPrivate ? null : <JsonLd data={structuredData(bo, steps, locale)} />}
       <header className="flex flex-col gap-2">
-        <nav aria-label="Ruta" className="text-sm">
+        <nav aria-label={t.breadcrumb} className="text-sm">
           <Link href="/biblioteca" className="text-faint hover:text-amber">
-            ← Biblioteca
+            {t.backToLibrary}
           </Link>
           {bo.civ !== "any" ? (
             <>
               <span className="text-faint"> · </span>
               <Link href={`/biblioteca?civ=${encodeURIComponent(bo.civ)}`} className="text-faint hover:text-amber">
-                Más de {civLabel(bo.civ)}
+                {fill(t.moreOf, { civ: civLabel(bo.civ, locale) })}
               </Link>
             </>
           ) : null}
@@ -139,7 +150,7 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
             <>
               <span className="text-faint"> · </span>
               <Link href={`/cruces/${bo.civ.toLowerCase()}`} className="text-faint hover:text-amber">
-                Cómo le va a esta civ
+                {t.matchupsLink}
               </Link>
             </>
           ) : null}
@@ -149,14 +160,13 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
             <h1 className="text-2xl font-semibold">
               {bo.name}
               {isPrivate ? (
-                <span className="ml-2 rounded bg-panel-2 px-2 py-0.5 align-middle text-xs font-normal text-muted" title="Solo la ven vos y tu app">
-                  Privada
+                <span className="ml-2 rounded bg-panel-2 px-2 py-0.5 align-middle text-xs font-normal text-muted" title={t.privateTitle}>
+                  {t.private}
                 </span>
               ) : null}
             </h1>
             <p className="text-sm text-faint">
-              {civLabel(bo.civ)} · por {byline(bo)} · actualizada el{" "}
-              {new Date(bo.updated_at).toLocaleDateString("es-AR")}
+              {civLabel(bo.civ, locale)} · {fill(t.by, { author: byline(bo, locale) })} · {fill(t.updated, { date: new Date(bo.updated_at).toLocaleDateString(LANG_TAG[locale]) })}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -192,9 +202,10 @@ async function Detail({ params }: { params: PageProps<"/bo/[code]">["params"] })
       </Suspense>
       <section aria-labelledby="pasos" className="flex flex-col gap-3">
         <h2 id="pasos" className="text-lg font-semibold">
-          Pasos{steps.length > 0 ? ` (${steps.length})` : ""}
+          {t.steps}
+          {steps.length > 0 ? ` (${steps.length})` : ""}
         </h2>
-        <BuildOrderView json={json} fallback={<StepList steps={steps} />} />
+        <BuildOrderView json={json} fallback={<StepList steps={steps} locale={locale} />} />
       </section>
     </article>
   );

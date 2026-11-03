@@ -1,16 +1,16 @@
-import Link from "next/link";
+import { rich } from "@/i18n";
+import Link from "@/i18n/Link";
+import { i18n } from "@/i18n/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await i18n();
   return (
     <div className="flex max-w-2xl flex-col gap-3">
-      <h1 className="text-2xl font-semibold">No encontramos esa página</h1>
-      <p className="text-sm text-muted">
-        Puede que la build order se haya borrado o que el enlace esté mal copiado. Los códigos de las BO tienen 6 letras
-        y números, como <span className="font-mono text-amber">k7m2qa</span>.
-      </p>
+      <h1 className="text-2xl font-semibold">{t.notFound.title}</h1>
+      <p className="text-sm text-muted">{rich(t.notFound.text, { code: (text) => <span className="font-mono text-amber">{text}</span> })}</p>
       <p>
         <Link href="/biblioteca" className="button no-underline">
-          Volver a la biblioteca
+          {t.notFound.back}
         </Link>
       </p>
     </div>

@@ -1,3 +1,5 @@
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
 import { formatClock } from "@/lib/buildOrder";
 import type { PlanSample } from "@/lib/coach/types";
 import { CHART_H, type Scale } from "@/lib/editor/layout";
@@ -16,6 +18,7 @@ export interface Marker {
  * cajas (HTML) se ubiquen con la misma escala.
  */
 export function ResourceChart({ timeline, scale, height, markers }: { timeline: PlanSample[]; scale: Scale; height: number; markers: Marker[] }) {
+  const { t: dict } = useI18n();
   const samples = timeline.filter((t) => t.time <= scale.span);
   const maxStock = Math.max(100, ...samples.flatMap((t) => RESOURCES.map((r) => t[r.key])));
   const y = (v: number) => 4 + CHART_H - (v / maxStock) * CHART_H;
@@ -45,7 +48,7 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
       <polyline fill="none" stroke={POPULATION.color} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} points={samples.map((t) => `${scale.x(t.time)},${yPop(t.population_cap)}`).join(" ")} />
       <polyline fill="none" stroke={POPULATION.color} strokeWidth={2} points={samples.map((t) => `${scale.x(t.time)},${yPop(t.population)}`).join(" ")} />
       <text x={scale.x(scale.span) - 4} y={12} fontSize={11} fill={POPULATION.color} textAnchor="end">
-        {`${maxPop} de población`}
+        {fill(dict.sim.popMax, { n: maxPop })}
       </text>
       {markers.map((m) => (
         <g key={m.label}>
@@ -60,17 +63,18 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
 }
 
 export function ChartLegend() {
+  const { t } = useI18n();
   return (
     <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-faint">
       {RESOURCES.map((r) => (
         <span key={r.key} className="flex items-center gap-1">
-          <span className="inline-block h-0.5 w-4" style={{ background: r.color }} /> {r.label}
+          <span className="inline-block h-0.5 w-4" style={{ background: r.color }} /> {t.sim[r.key]}
         </span>
       ))}
       <span className="flex items-center gap-1">
-        <span className="inline-block h-0.5 w-4" style={{ background: POPULATION.color }} /> {POPULATION.label} (punteado: el tope)
+        <span className="inline-block h-0.5 w-4" style={{ background: POPULATION.color }} /> {t.sim.population} {t.sim.dottedCap}
       </span>
-      <span>Cajas: aldeanos y unidades (celeste), edificios (verde), investigaciones (ámbar), mover (gris). Rayado: espera.</span>
+      <span>{t.editor.timeline.legendBoxes}</span>
     </p>
   );
 }

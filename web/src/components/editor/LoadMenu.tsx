@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 import { COACH_BASE } from "@/lib/coach/browser";
 
 interface Example {
@@ -14,6 +15,8 @@ interface Example {
  * el Core. Todo termina en `onLoad(json)`.
  */
 export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoad: (json: string) => void; onNew: () => void }) {
+  const { t: dict } = useI18n();
+  const t = dict.editor.load;
   const [examples, setExamples] = useState<Example[]>([]);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasted, setPasted] = useState("");
@@ -39,12 +42,12 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="button" onClick={onNew}>
-          Nueva
+          {t.new}
         </button>
         {examples.length > 0 && !editCode ? (
-          <select className="field" value="" onChange={(e) => loadExample(e.target.value)} aria-label="Cargar un ejemplo">
+          <select className="field" value="" onChange={(e) => loadExample(e.target.value)} aria-label={t.exampleLabel}>
             <option value="" disabled>
-              Cargar un ejemplo…
+              {t.examplePlaceholder}
             </option>
             {examples.map((ex) => (
               <option key={ex.file} value={ex.file}>
@@ -54,11 +57,11 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
           </select>
         ) : null}
         <label className="button cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-amber">
-          Abrir .json
+          {t.openJson}
           <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => readFile(e.target.files?.[0])} />
         </label>
         <button type="button" className="button" aria-expanded={pasteOpen} onClick={() => setPasteOpen((open) => !open)}>
-          Pegar JSON o guía
+          {t.paste}
         </button>
       </div>
       {pasteOpen ? (
@@ -68,8 +71,8 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
             onChange={(e) => setPasted(e.target.value)}
             rows={6}
             spellCheck={false}
-            placeholder="El JSON de una BO, o una guía copiada de buildorderguide.com (Copy to clipboard for RTS Overlay)"
-            aria-label="JSON de la build order o guía"
+            placeholder={t.pastePlaceholder}
+            aria-label={t.pasteLabel}
             className="field font-mono text-xs"
           />
           <div>
@@ -82,7 +85,7 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
                 setPasteOpen(false);
               }}
             >
-              Cargar lo pegado
+              {t.pasteLoad}
             </button>
           </div>
         </div>

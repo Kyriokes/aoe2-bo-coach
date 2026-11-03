@@ -1,9 +1,11 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import { entityName } from "../stepText";
 import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, requiresOf, STARTING_BUILDING, type GameDataLite } from "./constraints";
 import { paletteItems, type MapInfo, type PaletteItem } from "./gameData";
 import { withArticle } from "./guard";
 import type { EditorStep } from "./model";
-import { AGE_LABEL, capitalize } from "./text";
+import { ageLabel, capitalize } from "./text";
 
 /**
  * La paleta del editor como en el juego (D8, segunda vuelta, pedido del usuario del 2026-10-23): el aldeano junta y
@@ -80,8 +82,8 @@ const rank = (key: string) => {
 };
 
 /** Las filas de la paleta para una civ y un mapa (con el mismo filtro que `paletteItems`). */
-export function paletteBar(data: GameDataLite, civ: string, map: MapInfo | null = null): PaletteBar {
-  const items = paletteItems(data, civ, map).flatMap((g) => g.items);
+export function paletteBar(data: GameDataLite, civ: string, map: MapInfo | null = null, locale: Locale = "es"): PaletteBar {
+  const items = paletteItems(data, civ, map, locale).flatMap((g) => g.items);
   const villagers = items.filter((i) => i.key.startsWith("villagers:") || i.key === "move");
   const ages = items.filter((i) => i.kind === "research" && AGE_OF_TECH[i.key]);
   const build = items
@@ -93,7 +95,7 @@ export function paletteBar(data: GameDataLite, civ: string, map: MapInfo | null 
   for (const key of PRODUCER_ORDER) {
     if (key !== STARTING_BUILDING && !built.has(key)) continue;
     const made = items.filter((i) => (i.kind === "train" || i.kind === "research") && !villagers.includes(i) && !ages.includes(i) && data.entities[i.key]?.made_in === key);
-    if (made.length > 0) producers.push({ key, label: capitalize(entityName(key, 1)), items: made });
+    if (made.length > 0) producers.push({ key, label: capitalize(entityName(key, 1, locale)), items: made });
   }
   return { villagers, ages, build, producers };
 }
@@ -109,11 +111,12 @@ export function allItems(bar: PaletteBar): PaletteItem[] {
  * juego no deja aunque el validador solo avise: investigar dos veces lo mismo, entrenar o investigar sin el edificio
  * antes, construir sin el que pide antes (la galería sin cuartel) y subir de edad sin sus 2 edificios.
  */
-export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: number, data: GameDataLite, civ = "any"): string | null {
+export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: number, data: GameDataLite, civ = "any", locale: Locale = "es"): string | null {
+  const { palette: t, noPlace } = getDictionary(locale).editor;
   const step: EditorStep = { ...item.step, id: "\u0000paleta", after: [], withPrevious: false };
-  if (step.do === "research" && steps.some((s) => s.do === "research" && s.what === step.what)) return "ya está en la BO";
-  const range = allowedRange(steps, [step], data);
-  if (range.lo > range.hi) return range.loReason ?? range.hiReason ?? "no hay lugar para ese paso";
+  if (step.do === "research" && steps.some((s) => s.do === "research" && s.what === step.what)) return t.already;
+  const range = allowedRange(steps, [step], data, undefined, locale);
+  if (range.lo > range.hi) return range.loReason ?? range.hiReason ?? noPlace;
   if (index < range.lo) return range.loReason;
   if (index > range.hi) return range.hiReason;
 
@@ -121,12 +124,12 @@ export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: n
   const has = (key: string) => key === STARTING_BUILDING || before.some((s) => provides(s, data).includes(key));
   const producer = step.what ? data.entities[step.what]?.made_in : undefined;
   // Si el edificio está más adelante, ya lo frenó el rango ("Recién después de construir..."): acá falta en toda la BO.
-  if (step.do !== "build" && producer && !has(producer)) return `falta ${withArticle(producer)} en la BO`;
+  if (step.do !== "build" && producer && !has(producer)) return fill(t.missingBuilding, { building: withArticle(producer, locale) });
   const required = step.do === "build" && step.what ? requiresOf(data, civ, step.what) : undefined;
-  if (required && !has(required)) return `falta ${withArticle(required)} en la BO`;
+  if (required && !has(required)) return fill(t.missingBuilding, { building: withArticle(required, locale) });
   const req = step.do === "research" && step.what ? AGE_UP_REQ[step.what] : undefined;
   if (req && ageUpCount(req, new Set(req.buildings.filter(has))) < 2) {
-    return `faltan 2 edificios de ${AGE_LABEL[req.requires]} antes (${req.buildings.map((b) => entityName(b, 1)).join(", ")})`;
+    return fill(t.missingTwo, { age: ageLabel(req.requires, locale), buildings: req.buildings.map((b) => entityName(b, 1, locale)).join(", ") });
   }
   return null;
 }
@@ -139,11 +142,11 @@ export interface PaletteHere {
 }
 
 /** La paleta en un lugar de la BO: esconde lo que no se puede agregar ahí y guarda el motivo. */
-export function paletteHere(bar: PaletteBar, steps: EditorStep[], index: number, data: GameDataLite, civ = "any"): PaletteHere {
+export function paletteHere(bar: PaletteBar, steps: EditorStep[], index: number, data: GameDataLite, civ = "any", locale: Locale = "es"): PaletteHere {
   const hidden = new Map<string, string>();
   const keep = (list: PaletteItem[]) =>
     list.filter((item) => {
-      const reason = unavailableHere(item, steps, index, data, civ);
+      const reason = unavailableHere(item, steps, index, data, civ, locale);
       if (reason) hidden.set(item.key, reason);
       return reason === null;
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/i18n/client";
 import { COACH_BASE } from "@/lib/coach/browser";
 import { BuildOrderView } from "./BuildOrderView";
 
@@ -11,6 +12,7 @@ interface Example {
 
 /** Las BO de ejemplo de la app, simuladas en el navegador con el mismo Core (no necesita la base de datos). */
 export function ExampleDemo() {
+  const { t } = useI18n();
   const [examples, setExamples] = useState<Example[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [json, setJson] = useState<string | null>(null);
@@ -43,11 +45,11 @@ export function ExampleDemo() {
     };
   }, [selected]);
 
-  if (examples.length === 0) return <p className="text-sm text-faint">Cargando los ejemplos…</p>;
+  if (examples.length === 0) return <p className="text-sm text-faint">{t.sim.examplesLoading}</p>;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Elegí una build order de ejemplo">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t.sim.examplesLabel}>
         {examples.map((ex) => (
           <button
             key={ex.file}
@@ -60,7 +62,7 @@ export function ExampleDemo() {
           </button>
         ))}
       </div>
-      {json ? <BuildOrderView key={selected} json={json} /> : <p className="text-sm text-faint">Cargando…</p>}
+      {json ? <BuildOrderView key={selected} json={json} /> : <p className="text-sm text-faint">{t.sim.loadingShort}</p>}
     </div>
   );
 }

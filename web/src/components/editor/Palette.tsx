@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
 import type { PaletteItem } from "@/lib/editor/gameData";
+import { ageLabel } from "@/lib/editor/text";
 import { searchPalette, type PaletteBar } from "@/lib/editor/palette";
 
 /** Los colores del árbol del juego: unidades azules, edificios naranjas, tecnologías verdes. */
@@ -13,7 +16,6 @@ const FRAME: Record<PaletteItem["kind"], string> = {
 };
 
 const AGE_BADGE: Record<string, string> = { feudal: "II", castle: "III", imperial: "IV" };
-const AGE_NAME: Record<string, string> = { dark: "Edad Oscura", feudal: "Feudal", castle: "Castillos", imperial: "Imperial" };
 
 type Handlers = {
   onPointerDown: (e: ReactPointerEvent<HTMLElement>, item: PaletteItem) => void;
@@ -23,11 +25,13 @@ type Handlers = {
 };
 
 function Item({ item, onPointerDown, onPick, tapOnly }: { item: PaletteItem } & Handlers) {
+  const { locale, t } = useI18n();
+  const age = ["dark", "feudal", "castle", "imperial"].includes(item.age) ? ageLabel(item.age as "dark", locale) : item.age;
   const badge = item.key.startsWith("villagers:") ? "+1" : item.key === "move" ? "⇄" : null;
   return (
     <button
       type="button"
-      title={`${item.label} (${AGE_NAME[item.age] ?? item.age})${tapOnly ? "" : ": arrastrá a la línea de tiempo, o tocá para agregar"}`}
+      title={fill(tapOnly ? t.editor.palette.itemTitle : t.editor.palette.itemTitleDrag, { label: item.label, age })}
       aria-label={item.label}
       onPointerDown={tapOnly ? undefined : (e) => onPointerDown(e, item)}
       onClick={tapOnly ? () => onPick(item) : undefined}
@@ -86,17 +90,19 @@ export function Palette({
   where: string | null;
   onAtEnd: () => void;
 } & Handlers) {
+  const { t: dict } = useI18n();
+  const t = dict.editor.palette;
   const [tab, setTab] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const current = bar.producers.find((t) => t.key === tab) ?? bar.producers[0] ?? null;
+  const current = bar.producers.find((p) => p.key === tab) ?? bar.producers[0] ?? null;
   const found = query.trim() ? searchPalette(all, query) : null;
   const foundShown = found?.filter((i) => !hidden.has(i.key)) ?? [];
   const foundHidden = found?.filter((i) => hidden.has(i.key)) ?? [];
   const handlers = { onPointerDown, onPick, tapOnly };
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-line bg-panel p-2" aria-label="Paleta de pasos">
-      <Row label="Aldeanos">
+    <div className="flex flex-col gap-1.5 rounded-md border border-line bg-panel p-2" aria-label={t.label}>
+      <Row label={t.villagers}>
         {bar.villagers.map((item) => (
           <Item key={item.key} item={item} {...handlers} />
         ))}
@@ -115,13 +121,13 @@ export function Palette({
               setQuery("");
             } else if (e.key === "Escape") setQuery("");
           }}
-          placeholder="Buscar: arquero, telar…"
-          aria-label="Buscar en la paleta"
+          placeholder={t.searchPlaceholder}
+          aria-label={t.searchLabel}
           className="field h-8 w-full py-1 sm:ml-auto sm:w-44"
         />
       </Row>
       {found ? (
-        <Row label="Encontrado">
+        <Row label={t.found}>
           {foundShown.map((item) => (
             <Item key={item.key} item={item} {...handlers} />
           ))}
@@ -129,34 +135,34 @@ export function Palette({
             <ul className="ml-2 flex flex-col text-xs text-muted">
               {foundHidden.slice(0, 4).map((item) => (
                 <li key={item.key}>
-                  No se puede acá: {item.label} ({hidden.get(item.key)})
+                  {fill(t.notHere, { item: item.label, reason: hidden.get(item.key) ?? "" })}
                 </li>
               ))}
             </ul>
           ) : null}
-          {found.length === 0 ? <span className="text-xs text-muted">No hay nada con ese nombre</span> : null}
+          {found.length === 0 ? <span className="text-xs text-muted">{t.nothingFound}</span> : null}
         </Row>
       ) : null}
-      <Row label="Construir">
+      <Row label={t.build}>
         {bar.build.map((item) => (
           <Item key={item.key} item={item} {...handlers} />
         ))}
       </Row>
       {current ? (
         <>
-          <Row label="Producir en">
-            {bar.producers.map((t) => (
+          <Row label={t.produceIn}>
+            {bar.producers.map((tab_) => (
               <button
-                key={t.key}
+                key={tab_.key}
                 type="button"
-                title={t.label}
-                aria-label={`Producir en ${t.label}`}
-                aria-pressed={t.key === current.key}
-                onClick={() => setTab(t.key)}
-                className={`shrink-0 rounded-sm border p-0.5 focus-visible:outline-2 focus-visible:outline-amber ${t.key === current.key ? "border-amber bg-panel-2" : "border-transparent opacity-70 hover:opacity-100"}`}
+                title={tab_.label}
+                aria-label={fill(dict.editor.palette.produceInName, { name: tab_.label })}
+                aria-pressed={tab_.key === current.key}
+                onClick={() => setTab(tab_.key)}
+                className={`shrink-0 rounded-sm border p-0.5 focus-visible:outline-2 focus-visible:outline-amber ${tab_.key === current.key ? "border-amber bg-panel-2" : "border-transparent opacity-70 hover:opacity-100"}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element -- íconos del juego, ya chicos (64×64) */}
-                <img src={`/icons/${t.key}.png`} alt="" width={26} height={26} draggable={false} />
+                <img src={`/icons/${tab_.key}.png`} alt="" width={26} height={26} draggable={false} />
               </button>
             ))}
           </Row>
@@ -167,17 +173,17 @@ export function Palette({
           </Row>
         </>
       ) : (
-        <Row label="Producir en">
-          <span className="text-xs text-muted">Nada todavía en este lugar: hace falta construir el edificio antes (o subir de edad).</span>
+        <Row label={t.produceIn}>
+          <span className="text-xs text-muted">{t.nothingYet}</span>
         </Row>
       )}
       <p className="text-xs text-faint">
-        Se agrega {where ? <>después de &quot;{where}&quot;</> : "al final"} (solo se ve lo que se puede hacer ahí).
+        {where ? fill(t.addedAfter, { where }) : t.addedAtEnd}
         {where ? (
           <>
             {" "}
             <button type="button" className="text-amber hover:underline" onClick={onAtEnd}>
-              Agregar al final
+              {t.addAtEnd}
             </button>
           </>
         ) : null}

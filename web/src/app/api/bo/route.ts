@@ -1,3 +1,4 @@
+import { getDictionary } from "@/i18n";
 import type { NextRequest } from "next/server";
 import { listBuildOrders, type BuildOrderSummary } from "@/lib/data";
 import { filterValue, pageNumber } from "@/lib/filters";
@@ -27,7 +28,8 @@ export async function GET(request: NextRequest) {
 /** Lo que se publica de cada BO: sin los UUID de la fila ni de la cuenta (la app no los usa y permiten enumerar cuentas). */
 export function publicSummary(bo: BuildOrderSummary) {
   const { code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, author, uploader } = bo;
-  return { code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, author, uploader };
+  const anonymous = getDictionary("es").user.anonymous; // la app está en castellano
+  return { code, name, civ, tags, description, feudal_click, castle_click, votes, created_at, author: author || anonymous, uploader: uploader || anonymous };
 }
 
 /** POST /api/bo: la app publica una BO nueva. Cuerpo: { build_order, feudal_click?, castle_click? }. */

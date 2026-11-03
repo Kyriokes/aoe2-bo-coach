@@ -1,6 +1,8 @@
 "use client";
 
 import type { PointerEvent as ReactPointerEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { fill } from "@/i18n";
+import { useI18n } from "@/i18n/client";
 import { formatClock } from "@/lib/buildOrder";
 import { BOX_H, type PlacedItem, type Scale } from "@/lib/editor/layout";
 import { blockReason } from "@/lib/editor/text";
@@ -42,10 +44,12 @@ export function StepBox({
   onSelect: () => void;
   onCount: (delta: 1 | -1) => void;
 }) {
+  const { locale, t: dict } = useI18n();
+  const t = dict.editor.timeline;
   const width = Math.max(1, box.x1 - box.x0);
   const leadInWidth = box.leadIn && box.start !== null ? Math.max(0, Math.min(width, scale.x(box.leadIn.to) - box.x0)) : 0;
-  const times = box.start !== null ? `de ${formatClock(box.start)} a ${formatClock(box.end ?? box.start)}` : box.neverStarts ? "no arranca" : "sin simular";
-  const title = [box.label, times, ...box.blocks.map((b) => `espera de ${formatClock(b.from)} a ${formatClock(b.to)}: ${blockReason(b)}`), countEditable ? "Deslizá para arriba o para abajo para cambiar la cantidad" : null]
+  const times = box.start !== null ? fill(t.times, { from: formatClock(box.start), to: formatClock(box.end ?? box.start) }) : box.neverStarts ? t.neverStarts : t.notSimulated;
+  const title = [box.label, times, ...box.blocks.map((b) => fill(t.waitLine, { from: formatClock(b.from), to: formatClock(b.to), reason: blockReason(b, undefined, locale) })), countEditable ? t.slideHint : null]
     .filter(Boolean)
     .join("\n");
 
@@ -97,10 +101,10 @@ export function StepBox({
       </span>
       {countEditable && selected ? (
         <span className="relative ml-auto flex shrink-0 pr-1">
-          <button type="button" aria-label="Uno menos" className="px-1 font-bold hover:bg-black/20" onPointerDown={(e) => e.stopPropagation()} onClick={() => onCount(-1)}>
+          <button type="button" aria-label={t.oneLess} className="px-1 font-bold hover:bg-black/20" onPointerDown={(e) => e.stopPropagation()} onClick={() => onCount(-1)}>
             −
           </button>
-          <button type="button" aria-label="Uno más" className="px-1 font-bold hover:bg-black/20" onPointerDown={(e) => e.stopPropagation()} onClick={() => onCount(1)}>
+          <button type="button" aria-label={t.oneMore} className="px-1 font-bold hover:bg-black/20" onPointerDown={(e) => e.stopPropagation()} onClick={() => onCount(1)}>
             +
           </button>
         </span>

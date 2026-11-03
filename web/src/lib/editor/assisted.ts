@@ -1,3 +1,5 @@
+import { fill, getDictionary } from "@/i18n";
+import type { Locale } from "@/i18n/locales";
 import { formatClock } from "../buildOrder";
 import type { Analysis } from "../coach/types";
 import { entityName } from "../stepText";
@@ -110,17 +112,19 @@ export function updateGoal(plan: AssistedPlan, index: number, patch: Partial<Ass
 }
 
 /** El nombre de un objetivo para la lista y la franja: "Edad de los Castillos", "20 exploradores en 2 establos". */
-export function goalLabel(goal: AssistedGoal, buildingOf: (unit: string) => string | undefined = () => undefined): string {
-  if (goal.age) return entityName(goal.age);
+export function goalLabel(goal: AssistedGoal, buildingOf: (unit: string) => string | undefined = () => undefined, locale: Locale = "es"): string {
+  const t = getDictionary(locale).editor.assistedPanel;
+  if (goal.age) return entityName(goal.age, 1, locale);
   if (goal.unit) {
     const count = goal.count ?? 1;
     const building = buildingOf(goal.unit);
-    const where = building ? ` en ${goal.buildings ?? 1} ${entityName(building, goal.buildings ?? 1)}` : "";
-    return `${count} ${entityName(goal.unit, count)}${where}`;
+    const n = goal.buildings ?? 1;
+    const where = building ? fill(t.goalUnitWhere, { n, building: entityName(building, n, locale) }) : "";
+    return `${count} ${entityName(goal.unit, count, locale)}${where}`;
   }
-  if (goal.town_centers) return `${goal.town_centers} centros urbanos`;
-  if (goal.tech) return entityName(goal.tech);
-  return "Objetivo";
+  if (goal.town_centers) return fill(t.goalTownCenters, { n: goal.town_centers });
+  if (goal.tech) return entityName(goal.tech, 1, locale);
+  return t.goalFallback;
 }
 
 export interface GoalShift {
@@ -151,7 +155,9 @@ export function diffGoals(
   plan: AssistedPlan,
   previousPlan: AssistedPlan | null,
   buildingOf?: (unit: string) => string | undefined,
+  locale: Locale = "es",
 ): ChangeStrip | null {
+  const t = getDictionary(locale).editor.assistedPanel;
   if (!before?.assisted || !after.assisted || !previousPlan) return null;
   const shifts: GoalShift[] = [];
   const used = new Set<number>();
@@ -163,13 +169,13 @@ export function diffGoals(
     const b = before.assisted!.goals.find((g) => g.index === old)?.end ?? null;
     const a = after.assisted!.goals.find((g) => g.index === i)?.end ?? null;
     if (b === a) return;
-    shifts.push({ index: i, label: goalLabel(goal, buildingOf), before: b, after: a, delta: a !== null && b !== null ? Math.round(a - b) : null });
+    shifts.push({ index: i, label: goalLabel(goal, buildingOf, locale), before: b, after: a, delta: a !== null && b !== null ? Math.round(a - b) : null });
   });
   const lines = shifts.map((s) => {
-    const from = s.before === null ? "no llegaba" : formatClock(s.before);
-    const to = s.after === null ? "no llega" : formatClock(s.after);
+    const from = s.before === null ? t.wasNotReaching : formatClock(s.before);
+    const to = s.after === null ? t.notReaching : formatClock(s.after);
     const delta = s.delta === null ? "" : ` (${s.delta > 0 ? "+" : "−"}${formatClock(Math.abs(s.delta))})`;
-    return `${s.label} ${from} a ${to}${delta}`;
+    return fill(t.shift, { goal: s.label, from, to, delta });
   });
   return { change, shifts, lines };
 }

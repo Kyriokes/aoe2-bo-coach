@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { chanceColor, chanceText, durationLabel, eloLabel, isEven, MAP_NAMES, oneVsOne, pairSlug, parseSlug, type MatchupData } from "@/lib/matchups";
-import { getMatchups } from "@/lib/matchupsServer";
-import { mapLine, matchupPageMeta, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { MatchupDuration } from "@/components/MatchupDuration";
 import { MatchupRivals, type Choice } from "@/components/MatchupRivals";
+import { fill, getDictionary } from "@/i18n";
+import Link from "@/i18n/Link";
+import { asLocale, LANG_TAG, localeAlternates, localePath, OG_LOCALE, type Locale } from "@/i18n/locales";
+import { i18n } from "@/i18n/server";
+import { chanceColor, chanceText, durationLabel, eloLabel, isEven, mapName, oneVsOne, pairSlug, parseSlug, type MatchupData } from "@/lib/matchups";
+import { getMatchups } from "@/lib/matchupsServer";
+import { mapLine, matchupPageMeta, matchupStaticParams, pairCells, pairSummary, rivalsOf, teamOf } from "@/lib/matchupView";
 import { civLabel, SITE_NAME } from "@/lib/share";
 
 /**
@@ -17,55 +20,58 @@ export function generateStaticParams() {
   return matchupStaticParams(getMatchups());
 }
 
-function mapChoices(data: MatchupData): Choice[] {
-  return [{ index: 0, label: "Todos los mapas" }, ...data.mapKeys.map((key, i) => ({ index: i + 1, label: MAP_NAMES[key] ?? key }))];
+function mapChoices(data: MatchupData, locale: Locale): Choice[] {
+  return [{ index: 0, label: getDictionary(locale).matchups.allMaps }, ...data.mapKeys.map((key, i) => ({ index: i + 1, label: mapName(key, locale) }))];
 }
 
-function eloChoices(data: MatchupData): Choice[] {
-  return [0, 1, 2, 3, 4, 5].map((band) => ({ index: band, label: band === 0 ? "Todas las franjas" : eloLabel(data, band) }));
+function eloChoices(data: MatchupData, locale: Locale): Choice[] {
+  return [0, 1, 2, 3, 4, 5].map((band) => ({ index: band, label: band === 0 ? getDictionary(locale).matchups.allElos : eloLabel(data, band, locale) }));
 }
 
-export async function generateMetadata({ params }: PageProps<"/cruces/[slug]">): Promise<Metadata> {
-  const { slug } = await params;
-  const meta = matchupPageMeta(slug);
-  if (!meta) return { title: "No encontrado", robots: { index: false } };
-  const { title, description, path: url } = meta;
+export async function generateMetadata({ params }: PageProps<"/[locale]/cruces/[slug]">): Promise<Metadata> {
+  const { slug, locale: raw } = await params;
+  const locale = asLocale(raw);
+  const meta = matchupPageMeta(slug, locale);
+  if (!meta) return { title: getDictionary(locale).matchups.notFoundTitle, robots: { index: false } };
+  const { title, description, path } = meta;
   return {
     title,
     description,
-    alternates: { canonical: url },
-    openGraph: { siteName: SITE_NAME, locale: "es_AR", type: "article", title, description, url },
+    alternates: localeAlternates(locale, path),
+    openGraph: { siteName: SITE_NAME, locale: OG_LOCALE[locale], type: "article", title, description, url: localePath(locale, path) },
   };
 }
 
-export default async function MatchupPage({ params }: PageProps<"/cruces/[slug]">) {
+export default async function MatchupPage({ params }: PageProps<"/[locale]/cruces/[slug]">) {
   const { slug } = await params;
+  const { locale, t } = await i18n();
   const parsed = parseSlug(slug);
   if (!parsed) notFound();
-  if (!("civ" in parsed) && !parsed.canonical) permanentRedirect(`/cruces/${pairSlug(parsed.a, parsed.b)}`);
+  if (!("civ" in parsed) && !parsed.canonical) permanentRedirect(localePath(locale, `/cruces/${pairSlug(parsed.a, parsed.b)}`));
   const data = getMatchups();
   if (!data) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">Cruces de civs</h1>
-        <p className="text-muted">Todavía no hay estadísticas de cruces.</p>
+        <h1 className="text-2xl font-semibold">{t.matchups.shortTitle}</h1>
+        <p className="text-muted">{t.matchups.noData}</p>
       </div>
     );
   }
-  return "civ" in parsed ? <CivMatchups data={data} civ={parsed.civ} /> : <PairMatchup data={data} a={parsed.a} b={parsed.b} />;
+  return "civ" in parsed ? <CivMatchups data={data} civ={parsed.civ} locale={locale} /> : <PairMatchup data={data} a={parsed.a} b={parsed.b} locale={locale} />;
 }
 
-function Breadcrumb({ civ }: { civ?: string }) {
+function Breadcrumb({ civ, locale }: { civ?: string; locale: Locale }) {
+  const t = getDictionary(locale).matchups;
   return (
-    <nav aria-label="Ruta" className="text-sm">
+    <nav aria-label={t.breadcrumb} className="text-sm">
       <Link href="/cruces" className="text-faint hover:text-amber">
-        Cruces
+        {t.crumb}
       </Link>
       {civ ? (
         <>
           <span className="text-faint"> · </span>
           <Link href={`/cruces/${civ}`} className="text-faint hover:text-amber">
-            {civLabel(civ)}
+            {civLabel(civ, locale)}
           </Link>
         </>
       ) : null}
@@ -74,33 +80,33 @@ function Breadcrumb({ civ }: { civ?: string }) {
 }
 
 /** Una civ contra todas en 1v1 (con mapa y Elo para elegir) y cómo le va por equipos en cada mapa. */
-function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
+function CivMatchups({ data, civ, locale }: { data: MatchupData; civ: string; locale: Locale }) {
+  const t = getDictionary(locale).matchups;
+  const number = (n: number) => n.toLocaleString(LANG_TAG[locale]);
   const rivals = rivalsOf(data, civ);
   const teamCells = teamOf(data, civ);
   if (rivals.length === 0 && !teamCells) notFound();
-  const name = civLabel(civ);
-  const maps = mapChoices(data);
+  const name = civLabel(civ, locale);
+  const names = { civ: name, civLower: name.toLowerCase() };
+  const maps = mapChoices(data, locale);
   return (
     <article className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <Breadcrumb />
-        <h1 className="text-2xl font-semibold">{name}: cómo les va contra cada civ</h1>
-        <p className="max-w-3xl text-muted">
-          La chance de ganar de los {name.toLowerCase()} contra cada rival a Elo parejo, en partidas clasificatorias reales, con un
-          rango probable y cuántas partidas hay detrás. Tocá un rival para ver el cruce por mapa y por duración.
-        </p>
+        <Breadcrumb locale={locale} />
+        <h1 className="text-2xl font-semibold">{fill(t.civHeading, names)}</h1>
+        <p className="max-w-3xl text-muted">{fill(t.civIntro, names)}</p>
       </header>
 
       {rivals.length > 0 ? (
         <section aria-labelledby="rivales" className="flex flex-col gap-3">
           <h2 id="rivales" className="text-lg font-semibold">
-            En 1v1
+            {t.oneVsOne}
           </h2>
           <MatchupRivals
             civName={name}
-            rivals={rivals.map((r) => ({ rival: r.rival, name: civLabel(r.rival), slug: pairSlug(civ, r.rival), cells: r.cells }))}
+            rivals={rivals.map((r) => ({ rival: r.rival, name: civLabel(r.rival, locale), slug: pairSlug(civ, r.rival), cells: r.cells }))}
             maps={maps}
-            elos={eloChoices(data)}
+            elos={eloChoices(data, locale)}
           />
         </section>
       ) : null}
@@ -108,19 +114,16 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
       {teamCells ? (
         <section aria-labelledby="equipos" className="flex flex-col gap-3">
           <h2 id="equipos" className="text-lg font-semibold">
-            Por equipos
+            {t.teams}
           </h2>
-          <p className="max-w-3xl text-sm text-muted">
-            La chance de un equipo con {name.toLowerCase()} en lugar de una civ promedio, a Elo parejo. En equipos se
-            cuentan apariciones de la civ (cada jugador), no partidas.
-          </p>
+          <p className="max-w-3xl text-sm text-muted">{fill(t.teamsIntro, names)}</p>
           <div className="overflow-x-auto rounded-md border border-line">
             <table className="w-full min-w-[26rem] text-sm">
               <thead className="bg-panel-2 text-left text-faint">
                 <tr>
-                  <th className="px-3 py-2 font-normal">Mapa</th>
-                  <th className="px-3 py-2 font-normal">Ganan</th>
-                  <th className="px-3 py-2 text-right font-normal">Apariciones</th>
+                  <th className="px-3 py-2 font-normal">{t.map}</th>
+                  <th className="px-3 py-2 font-normal">{t.wins}</th>
+                  <th className="px-3 py-2 text-right font-normal">{t.appearances}</th>
                 </tr>
               </thead>
               <tbody>
@@ -130,10 +133,10 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
                     <tr key={m.index} className="border-t border-line">
                       <td className="px-3 py-1.5">{m.label}</td>
                       <td className={`px-3 py-1.5 tabular-nums ${chanceColor(c)}`}>
-                        {chanceText(c)}
-                        {isEven(c) ? <span className="text-faint"> · parejo</span> : null}
+                        {chanceText(c, locale)}
+                        {isEven(c) ? <span className="text-faint">{t.evenDot}</span> : null}
                       </td>
-                      <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.n > 0 ? c.n.toLocaleString("es-AR") : "estimado"}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-muted">{c.n > 0 ? number(c.n) : t.estimatedCell}</td>
                     </tr>
                   );
                 })}
@@ -143,53 +146,52 @@ function CivMatchups({ data, civ }: { data: MatchupData; civ: string }) {
         </section>
       ) : null}
 
-      <Method data={data} />
+      <Method data={data} locale={locale} />
     </article>
   );
 }
 
 /** El cruce de dos civs: el general desde los dos lados, por mapa y por duración. */
-function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }) {
+function PairMatchup({ data, a, b, locale }: { data: MatchupData; a: string; b: string; locale: Locale }) {
   if (!oneVsOne(data, a, b, 0, 0, 0)) notFound();
-  const [nameA, nameB] = [civLabel(a), civLabel(b)];
-  const summary = pairSummary(data, a, b);
+  const t = getDictionary(locale).matchups;
+  const number = (n: number) => n.toLocaleString(LANG_TAG[locale]);
+  const [nameA, nameB] = [civLabel(a, locale), civLabel(b, locale)];
+  const names = { a: nameA, b: nameB, aLower: nameA.toLowerCase(), bLower: nameB.toLowerCase() };
+  const summary = pairSummary(data, a, b, locale);
   const { general } = summary;
-  const estimated = mapLine(general, null);
+  const estimated = mapLine(general, null, locale);
   return (
     <article className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
-        <Breadcrumb civ={a} />
-        <h1 className="text-2xl font-semibold">
-          {nameA} contra {nameB.toLowerCase()}
-        </h1>
+        <Breadcrumb civ={a} locale={locale} />
+        <h1 className="text-2xl font-semibold">{fill(t.pairHeading, names)}</h1>
         <p className="text-lg">
           <span className={chanceColor(general)}>
-            {nameA} ganan {chanceText(general)}
+            {fill(t.civWins, { civ: nameA })} {chanceText(general, locale)}
           </span>
-          {isEven(general) ? <span className="text-faint"> (parejo)</span> : null}
-          <span className="text-muted">
-            ; {nameB.toLowerCase()}, {summary.rivalPercent} %.
-          </span>
+          {isEven(general) ? <span className="text-faint">{t.evenParens}</span> : null}
+          <span className="text-muted">{fill(t.pairRival, { ...names, percent: summary.rivalPercent })}</span>
         </p>
         <p className="text-sm text-faint">
-          {general.n > 0 ? `${general.n.toLocaleString("es-AR")} partidas 1v1 entre las dos civs. ` : `${estimated} `}
+          {general.n > 0 ? fill(t.pairGames, { n: number(general.n) }) : `${estimated} `}
           <Link href={`/cruces/${b}`} className="hover:text-amber">
-            Cómo les va a los {nameB.toLowerCase()} contra todas
+            {fill(t.pairRivalLink, names)}
           </Link>
         </p>
       </header>
 
       <section aria-labelledby="mapas" className="flex flex-col gap-3">
         <h2 id="mapas" className="text-lg font-semibold">
-          Por mapa
+          {t.byMap}
         </h2>
         <div className="overflow-x-auto rounded-md border border-line">
           <table className="w-full min-w-[26rem] text-sm">
             <thead className="bg-panel-2 text-left text-faint">
               <tr>
-                <th className="px-3 py-2 font-normal">Mapa</th>
-                <th className="px-3 py-2 font-normal">{nameA} ganan</th>
-                <th className="px-3 py-2 text-right font-normal">Partidas</th>
+                <th className="px-3 py-2 font-normal">{t.map}</th>
+                <th className="px-3 py-2 font-normal">{fill(t.civWins, { civ: nameA })}</th>
+                <th className="px-3 py-2 text-right font-normal">{t.games}</th>
               </tr>
             </thead>
             <tbody>
@@ -197,11 +199,11 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
                 <tr key={m.name} className="border-t border-line">
                   <td className="px-3 py-1.5">{m.name}</td>
                   <td className={`px-3 py-1.5 tabular-nums ${chanceColor(m.cell)}`}>
-                    {chanceText(m.cell)}
-                    {isEven(m.cell) ? <span className="text-faint"> · parejo</span> : null}
+                    {chanceText(m.cell, locale)}
+                    {isEven(m.cell) ? <span className="text-faint">{t.evenDot}</span> : null}
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums text-muted">
-                    {m.cell.n > 0 ? m.cell.n.toLocaleString("es-AR") : "estimado"}
+                    {m.cell.n > 0 ? number(m.cell.n) : t.estimatedCell}
                   </td>
                 </tr>
               ))}
@@ -212,62 +214,51 @@ function PairMatchup({ data, a, b }: { data: MatchupData; a: string; b: string }
 
       <section aria-labelledby="duracion" className="flex flex-col gap-3">
         <h2 id="duracion" className="text-lg font-semibold">
-          Según cuánto duró la partida
+          {t.byDuration}
         </h2>
-        <p className="max-w-3xl text-sm text-faint">
-          Es lo que pasó, no una receta: la duración es un resultado de la partida (las que se definen temprano duran poco).
-        </p>
+        <p className="max-w-3xl text-sm text-faint">{t.durationNote}</p>
         <MatchupDuration
           cells={pairCells(data, a, b)}
           civName={nameA}
-          rivalName={nameB.toLowerCase()}
-          maps={mapChoices(data)}
-          elos={eloChoices(data)}
-          durations={[1, 2, 3, 4, 5].map((band) => durationLabel(data, band))}
+          rivalName={locale === "es" ? nameB.toLowerCase() : nameB}
+          maps={mapChoices(data, locale)}
+          elos={eloChoices(data, locale)}
+          durations={[1, 2, 3, 4, 5].map((band) => durationLabel(data, band, locale))}
         />
       </section>
 
-      <Method data={data} />
+      <Method data={data} locale={locale} />
     </article>
   );
 }
 
 /** "Cómo se calcula", la fuente, las fechas y el parche. */
-function Method({ data }: { data: MatchupData }) {
+function Method({ data, locale }: { data: MatchupData; locale: Locale }) {
+  const t = getDictionary(locale).matchups;
+  const number = (n: number) => n.toLocaleString(LANG_TAG[locale]);
   return (
     <section aria-labelledby="como" className="flex flex-col gap-2 text-sm text-muted">
       <h2 id="como" className="text-lg font-semibold text-foreground">
-        Cómo se calcula
+        {t.methodTitle}
       </h2>
       <ul className="flex max-w-3xl list-disc flex-col gap-1 pl-5">
-        <li>Partidas clasificatorias de mapa aleatorio del parche actual, sin espejos ni partidas de menos de 5 minutos de juego.</li>
-        <li>
-          Primero se descuenta la diferencia de Elo de los jugadores, así lo que queda es de las civs: las chances son a Elo
-          parejo.
-        </li>
-        <li>
-          Un modelo suma la fuerza de cada civ y de cada cruce por mapa, franja de Elo y duración; lo que tiene pocas partidas
-          queda cerca de lo general, así un casillero con 4 partidas no inventa nada.
-        </li>
-        <li>
-          El rango es donde cae el 90 % de lo probable. Es parejo si toca el 50 %, y por duración solo se dice algo si la franja
-          más corta y la más larga no se tocan.
-        </li>
-        <li>La duración es en minutos del reloj del juego.</li>
+        {t.method.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
       </ul>
       <p className="text-faint">
-        Fuente:{" "}
+        {t.source}
         {data.source.url ? (
           <a href={data.source.url} className="hover:text-amber" rel="noopener noreferrer" target="_blank">
             {data.source.name ?? data.source.url}
           </a>
         ) : (
-          (data.source.name ?? "partidas clasificatorias")
+          (data.source.name ?? t.sourceFallback)
         )}
-        {data.source.from && data.source.to ? `, partidas del ${data.source.from} al ${data.source.to}` : ""}
-        {data.patch.label ? `, parche ${data.patch.label}` : ""}
-        {data.patch.previousMixed ? " (con partidas del parche anterior)" : ""}. {data.matches.oneVsOne.toLocaleString("es-AR")} partidas 1v1 y{" "}
-        {data.matches.team.toLocaleString("es-AR")} por equipos.
+        {data.source.from && data.source.to ? fill(t.sourceDates, { from: data.source.from, to: data.source.to }) : ""}
+        {data.patch.label ? fill(t.patch, { label: data.patch.label }) : ""}
+        {data.patch.previousMixed ? t.sourcePrevious : ""}
+        {fill(t.sourceMatches, { oneVsOne: number(data.matches.oneVsOne), team: number(data.matches.team) })}
       </p>
     </section>
   );

@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { setVisibility } from "@/app/actions";
+import { useI18n } from "@/i18n/client";
 import type { Visibility } from "@/lib/buildOrder";
 
 /** Pública o privada, para una BO propia en "Mi cuenta". */
 export function VisibilityToggle({ code, visibility }: { code: string; visibility: Visibility }) {
+  const { locale, t } = useI18n();
   const [value, setValue] = useState(visibility);
   const [pending, startTransition] = useTransition();
 
@@ -14,13 +16,13 @@ export function VisibilityToggle({ code, visibility }: { code: string; visibilit
       className="field py-0.5 text-xs"
       value={value}
       disabled={pending}
-      aria-label="Quién la ve"
+      aria-label={t.account.visibilityLabel}
       onChange={(e) => {
         const next = e.target.value as Visibility;
         const before = value;
         setValue(next);
         startTransition(async () => {
-          const result = await setVisibility(code, next);
+          const result = await setVisibility(code, next, locale);
           if (!result.ok) {
             setValue(before);
             alert(result.error);
@@ -28,8 +30,8 @@ export function VisibilityToggle({ code, visibility }: { code: string; visibilit
         });
       }}
     >
-      <option value="public">Pública</option>
-      <option value="private">Privada</option>
+      <option value="public">{t.account.public}</option>
+      <option value="private">{t.account.private}</option>
     </select>
   );
 }
