@@ -7,7 +7,6 @@ using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Engine;
 using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
-using BoCoach.Vision.Recording;
 using BoCoach.Vision.Regions;
 
 namespace BoCoach.App.Tests;
@@ -195,7 +194,8 @@ public sealed class HomeScreenTests : IDisposable
         public void PlaceOverlay(PixelRect area) { }
         public void SetOverlayVisible(bool visible) { }
         public void CloseOverlay() { }
-        public void RunOnUi(Action action) => action();
+        // El loop de fondo publica desde otro hilo; en la app va por la interfaz. Acá las lecturas las aplica el test.
+        public void RunOnUi(Action action) { }
         public void ShowReport(IReadOnlyList<string> summary, string path) { }
         public EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates) => null;
     }
@@ -230,7 +230,16 @@ public sealed class HomeScreenTests : IDisposable
 
     private static readonly BuildOrder Scouts = BuildOrderSerializer.Load(Path.Combine(AppContext.BaseDirectory, "fixtures", "build_orders", "scouts_feudal.json"));
 
-    private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
+    /// <summary>
+    /// El coach anda pero no llega ninguna captura: con una grabación, el loop de fondo aplica lecturas desde otro hilo
+    /// mientras el test mira el tablero (en la app van por el hilo de la interfaz).
+    /// </summary>
+    private sealed class SilentFrames : IFrameSource
+    {
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+        public Frame? Next() => null;
+    }
 
     private string ReportsFolder => Path.Combine(_dir.FullName, "informes");
 
@@ -242,7 +251,7 @@ public sealed class HomeScreenTests : IDisposable
         var buildOrders = new BuildOrdersViewModel(cache, web, dialogs, _data.GameData);
         var host = new FakeCapture();
         var tools = new CaptureToolsViewModel(new FakeScreen(), host, Path.Combine(_dir.FullName, "regions.json"), Path.Combine(_dir.FullName, "grabaciones"), () => null, Path.Combine(_dir.FullName, "perfiles"));
-        var coach = new CoachSessionViewModel(_data, new FakeCoachHost(), () => null, () => new RecordedFrames(RecordedSession.Load(Fixture), speed: 50)) { ReportsFolder = ReportsFolder };
+        var coach = new CoachSessionViewModel(_data, new FakeCoachHost(), () => null, () => new SilentFrames()) { ReportsFolder = ReportsFolder };
         return (new HomeViewModel(coach, buildOrders, tools, host), coach, host, buildOrders, dialogs);
     }
 
@@ -261,7 +270,7 @@ public sealed class HomeScreenTests : IDisposable
             Assert.Equal(HomeState.NoAccount, home.Screen.State);
             Assert.False(home.ShowLive);
 
-            coach.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+            coach.Start(Scouts, new SilentFrames());
             Assert.True(home.ShowLive);
             Assert.Equal(new HomeButton(Texts.StopCoach, HomeAction.StartStop), home.Screen.Secondary);
 
@@ -277,36 +286,33 @@ public sealed class HomeScreenTests : IDisposable
         }
     }
 
+    private static GameReport FinishedGame(double length) =>
+        new("BO", length, [new StepTiming(1, "a", 10, 12)], [], 0, [], 0, 0, 0, []);
+
     [Fact]
-    public async Task Al_terminar_una_partida_ofrece_el_informe_y_otra_partida_lo_saca()
+    public void Al_terminar_una_partida_ofrece_el_informe_y_otra_partida_lo_saca()
     {
         var (home, coach, host, _, _) = Build();
         using (coach)
         {
             Assert.Null(coach.LastReport);
-            coach.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
-            while (coach.LiveCoach!.Report().Length < 70 && await coach.LiveCoach.StepAsync())
-            {
-            }
-            coach.Stop();
+            coach.Finished(FinishedGame(1530));
 
             Assert.Equal(HomeState.Finished, home.Screen.State);
-            Assert.NotNull(coach.LastReport?.Summary);
+            Assert.Equal("Partida terminada · 25:30", home.Screen.Title);
+            Assert.Equal("1 de 1 pasos", coach.LastReport?.Summary);
+            Assert.True(File.Exists(coach.LastReport!.Path));
             home.RunCommand.Execute(HomeAction.OpenReport);
-            Assert.Equal(coach.LastReport!.Path, Assert.Single(host.Files));
+            Assert.Equal(coach.LastReport.Path, Assert.Single(host.Files));
 
             home.RunCommand.Execute(HomeAction.ReportSeen);
             Assert.NotEqual(HomeState.Finished, home.Screen.State);
             Assert.NotNull(coach.LastReport); // la tarjeta lo sigue mostrando
 
-            coach.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
-            while (coach.LiveCoach!.Report().Length < 70 && await coach.LiveCoach.StepAsync())
-            {
-            }
-            coach.Stop();
+            coach.Finished(FinishedGame(600));
             Assert.Equal(HomeState.Finished, home.Screen.State);
 
-            coach.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+            coach.Start(Scouts, new SilentFrames());
             coach.Apply(Frame(inGame: true, time: 10));
             Assert.False(coach.ReportPending);
             Assert.Equal(HomeState.InGame, home.Screen.State);

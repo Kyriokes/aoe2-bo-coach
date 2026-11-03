@@ -568,7 +568,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
-    private void Finished(GameReport report)
+    internal void Finished(GameReport report)
     {
         // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
         if (_matchupQuery is { } query)
