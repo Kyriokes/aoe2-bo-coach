@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BoCoach.Core.BuildOrders;
 
 namespace BoCoach.Core.Record;
 
@@ -28,6 +29,22 @@ public sealed class GameRecordReader
     public IReadOnlyList<JsonObject> Lines { get; }
 
     public bool Truncated { get; }
+
+    /// <summary>La BO con que se jugó, o null si el registro no la trae (se jugó sin BO) o no se entiende.</summary>
+    public BuildOrder? BuildOrder
+    {
+        get
+        {
+            try
+            {
+                return Meta?["build_order"] is JsonObject json ? BuildOrderSerializer.Parse(json.ToJsonString()) : null;
+            }
+            catch (Exception e) when (e is JsonException or InvalidDataException or InvalidOperationException)
+            {
+                return null;
+            }
+        }
+    }
 
     /// <summary>Las capturas (<c>cap</c>) con sus renglones del log completos (los que no se repitieron, tomados de la anterior).</summary>
     public IEnumerable<RecordedCapture> Captures

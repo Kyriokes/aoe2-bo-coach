@@ -14,7 +14,7 @@
 //
 //   replay <grabación> [--fonts data/fonts] [--events data/events.json] [--no-log] [--out lecturas.csv]
 //       Corre la visión completa (números, suavizado, edad y log) y escribe una fila por captura.
-//   coach <grabación | lecturas.csv | registro.jsonl.gz> <bo.json> [--civ clave] [--slot N] [--record salida.jsonl.gz] [--fonts ...] [--events ...] [--game-data data/game_data]
+//   coach <grabación | lecturas.csv | registro.jsonl.gz> <bo.json, opcional con un registro: trae la suya> [--civ clave] [--slot N] [--record salida.jsonl.gz] [--fonts ...] [--events ...] [--game-data data/game_data]
 //         [--economy] [--guide] [--allocator exact|greedy] [--until m:ss]
 //       Corre el loop completo (visión, motor y economía) y muestra lo que diría el overlay cada vez que cambia,
 //       y al final el estado de cada paso. --guide agrega los aldeanos por recurso: los que hay, la GD y la BO.
@@ -107,7 +107,7 @@ try
         "read" => Read(args[1], args[2], args[3], args),
         "ocr" => Ocr(args[1], args[2], args).GetAwaiter().GetResult(),
         "replay" => Replay(args[1], args).GetAwaiter().GetResult(),
-        "coach" => CoachReplay(args[1], args[2], args).GetAwaiter().GetResult(),
+        "coach" => CoachReplay(args[1], args.Length > 2 && !args[2].StartsWith("--") ? args[2] : null, args).GetAwaiter().GetResult(),
         "bench" => Bench(args[1], args).GetAwaiter().GetResult(),
         "import" => ImportGuide(args[1], args[2], args),
         "fetch-guides" => CivGuides.Fetch(args[1]).GetAwaiter().GetResult(),
@@ -691,11 +691,13 @@ static int AutoCalibrate(string screenshot, string[] args)
     return 0;
 }
 
-static async Task<int> CoachReplay(string recording, string boPath, string[] args)
+static async Task<int> CoachReplay(string recording, string? boPath, string[] args)
 {
+    BoCoach.Core.BuildOrders.BuildOrder? recordedBo = null;
     // Un registro de partida trae la civ, el número del jugador y el idioma; lo que se pase a mano manda.
-    if (BoCoach.Core.Record.GameRecordReader.IsRecord(recording) && BoCoach.Core.Record.GameRecordReader.Load(recording).Meta is { } recordMeta)
+    if (BoCoach.Core.Record.GameRecordReader.IsRecord(recording) && BoCoach.Core.Record.GameRecordReader.Load(recording) is { Meta: { } recordMeta } record)
     {
+        recordedBo = record.BuildOrder;
         void FromMeta(string option, string key)
         {
             if (!args.Contains(option) && recordMeta[key] is System.Text.Json.Nodes.JsonValue value)
@@ -708,7 +710,7 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
     var catalog = Catalog(args, data);
     // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
-    var bo = BuildOrderSerializer.Load(boPath);
+    var bo = boPath is not null ? BuildOrderSerializer.Load(boPath) : recordedBo ?? BoCoach.Core.BuildOrders.BuildOrder.None;
     bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
     // --slot N: el número del jugador en el panel de puntajes (en vivo sale de la pantalla de carga; si no, se deduce).
     var builder = new SnapshotBuilder(data, data.Civ(bo.Civ)) { PlayerSlot = args.Contains("--slot") ? Option(args, "--slot", 0) : null };
@@ -724,7 +726,7 @@ static async Task<int> CoachReplay(string recording, string boPath, string[] arg
     using var recordWriter = args.Contains("--record")
         ? BoCoach.Core.Record.GameRecordWriter.Create(Text(args, "--record", "registro.jsonl.gz"), BoCoach.Core.Record.GameRecorder.Meta(
             Guid.NewGuid().ToString("N"), DateTimeOffset.Now, "ReplaySession", data.DatVersion, RecordingHud(recording), 1, bo.Civ, bo.Id, bo.Name, null, null,
-            args.Contains("--slot") ? Option(args, "--slot", 0) : null, Text(args, "--idioma", "en"), 500))
+            args.Contains("--slot") ? Option(args, "--slot", 0) : null, Text(args, "--idioma", "en"), 500, bo))
         : null;
     var recorder = recordWriter is null ? null : new BoCoach.Core.Record.GameRecorder(recordWriter, data);
     var recordWatch = new System.Diagnostics.Stopwatch();

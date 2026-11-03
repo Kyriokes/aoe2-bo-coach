@@ -502,7 +502,7 @@ public sealed class LiveCoach : IDisposable
             _recordGameId = Guid.NewGuid().ToString("N");
             var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
             var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,
-                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.Interval.TotalMilliseconds);
+                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.Interval.TotalMilliseconds, BuildOrder with { Civ = Civ });
             _recordWriter = GameRecordWriter.Create(path, meta);
             _recorder = new GameRecorder(_recordWriter, _data);
             (_recordStart, _recordFlushedAt, _recordNotice) = (realTime, realTime, null);

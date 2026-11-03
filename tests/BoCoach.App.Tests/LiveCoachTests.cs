@@ -184,7 +184,7 @@ public sealed class LiveCoachTests : IDisposable
         new(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1 };
 
     private LiveCoach Recording(IFrameSource frames, string folder) =>
-        new(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1, RecordsFolder = folder, AppVersion = "v9.9" };
+        new(Scouts with { Author = "Fulano" }, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames) { MinReportSeconds = 1, RecordsFolder = folder, AppVersion = "v9.9" };
 
     // Spec 2026-11-02: cada partida con reloj deja su registro, y al terminar se avisa con la ruta.
     [Fact]
@@ -209,6 +209,9 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Equal(_data.GameData.DatVersion, record.Meta["game_data"]!.GetValue<string>());
         Assert.Equal(Scouts.Civ, record.Meta["civ"]!.GetValue<string>());
         Assert.True(record.Captures.Count() >= 13);
+        // La BO va adentro: sin ella la partida de otro jugador no se reproduce. Sin el autor, que es un nombre.
+        Assert.Equal(Scouts.Steps.Count, record.BuildOrder!.Steps.Count);
+        Assert.Null(record.BuildOrder.Author);
         Assert.Contains(record.Lines, l => l["t"]!.GetValue<string>() == GameRecordKeys.Show);
         Assert.Equal("fin", record.Lines[^1]["reason"]!.GetValue<string>());
 
