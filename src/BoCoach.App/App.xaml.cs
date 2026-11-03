@@ -428,7 +428,9 @@ public partial class App : Application
         // Solo lo de adentro: el marco de Windows no se dibuja y quedaba blanco en la imagen.
         BitmapSource image = bitmap;
         if (window.Content is FrameworkElement { ActualWidth: > 0, ActualHeight: > 0 } content)
-            image = new CroppedBitmap(bitmap, new Int32Rect(0, 0, Math.Min(bitmap.PixelWidth, (int)content.ActualWidth), Math.Min(bitmap.PixelHeight, (int)content.ActualHeight)));
+            image = new CroppedBitmap(bitmap, new Int32Rect(0, 0,
+                Math.Min(bitmap.PixelWidth, (int)(content.ActualWidth + content.Margin.Left + content.Margin.Right)),
+                Math.Min(bitmap.PixelHeight, (int)(content.ActualHeight + content.Margin.Top + content.Margin.Bottom))));
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
         using var file = File.Create(path);
