@@ -40,14 +40,31 @@ public sealed class QueueIconCatalog
 
     private readonly Shape[] _shapes;
 
+    private readonly Dictionary<string, bool[]> _playerCells = [];
+
     private static readonly int[] ComparedCells = [.. Enumerable.Range(0, ProductionQueue.Grid * ProductionQueue.Grid)
         .Where(cell => !ProductionQueue.Ignored(cell % ProductionQueue.Grid, cell / ProductionQueue.Grid))];
 
     private static int PackedLength => ComparedCells.Length * 3;
 
-    public QueueIconCatalog(IEnumerable<GameQueueIcon> icons) => _shapes = [.. icons.Select(Build)];
+    public QueueIconCatalog(IEnumerable<GameQueueIcon> icons)
+    {
+        var list = icons.ToList();
+        _shapes = [.. list.Select(Build)];
+        // Una clave puede ser unidad y tecnología (el ballestero): vale la de unidad, que es la que trae color del jugador.
+        foreach (var icon in list.Where(i => i.Skip.Length > 0))
+        {
+            var cells = new bool[ProductionQueue.Grid * ProductionQueue.Grid];
+            foreach (var cell in icon.Skip)
+                cells[cell] = true;
+            _playerCells[icon.Key] = cells;
+        }
+    }
 
     public IEnumerable<string> Keys => _shapes.Select(s => s.Key);
+
+    /// <summary>Las celdas del color del jugador de esa clave (índice = fila × 11 + columna), o null si no tiene.</summary>
+    public bool[]? PlayerCells(string key) => _playerCells.GetValueOrDefault(key);
 
     public static QueueIconCatalog? TryLoad(string path) =>
         File.Exists(path) ? new QueueIconCatalog(JsonSerializer.Deserialize<List<GameQueueIcon>>(File.ReadAllText(path)) ?? []) : null;

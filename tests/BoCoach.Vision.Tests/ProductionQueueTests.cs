@@ -94,6 +94,28 @@ public class QueueIconCatalogTests
         Assert.Equal(before, string.Join(" ", SamplesOnly.Read(Frame(recording, frame)).Select(i => i.Key)));
     }
 
+    // Todas las muestras son de partidas en azul. La hoja las trae en los 8 colores, una por celda de 33 px: a cada muestra
+    // se le suma lo que cambia entre el azul y ese color en el ícono del juego (el canal alfa dice cuánto de cada celda es
+    // color del jugador, y el color es el primero de resources/_common/palettes/playercolor_*.pal), así que conserva el
+    // ruido de una captura real. Sin comparar aparte las celdas del color del jugador salían 17 "?", casi todos en
+    // amarillo y en naranja.
+    [Fact]
+    public void Una_muestra_en_azul_sirve_para_cualquier_color_de_jugador()
+    {
+        var folder = Path.Combine(AppContext.BaseDirectory, "fixtures", "queue-colores");
+        var sheet = Png.Read(Path.Combine(folder, "muestras-en-8-colores.png"));
+        var size = ProductionQueue.IconSize;
+        var columns = sheet.Width / size;
+        var wrong = File.ReadAllLines(Path.Combine(folder, "muestras-en-8-colores.txt")).Select((line, cell) =>
+        {
+            var (x, y) = (cell % columns * size, cell / columns * size);
+            var match = Full.Match(ProductionQueue.Features(sheet, x, y), framed: ProductionQueue.HasIconFrame(sheet, x, y));
+            return match is { Distance: <= IconLibrary.MatchThreshold } m && m.Key == line.Split(' ')[0] ? null : $"{cell} {line}: {match}";
+        }).OfType<string>().ToList();
+
+        Assert.Empty(wrong);
+    }
+
     [Fact]
     public void Un_icono_con_marco_que_no_se_reconoce_no_corta_lo_que_viene_despues()
     {

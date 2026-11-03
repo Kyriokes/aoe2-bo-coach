@@ -74,7 +74,8 @@ public static class ProductionQueue
     public static bool Ignored(int gx, int gy) => (gx < 4 && gy < 5) || gx == 0 || gy == 0 || gx == Grid - 1 || gy == Grid - 1;
 
     /// <summary>Diferencia promedio entre dos resúmenes (0 = iguales, 1 = opuestos), sin las celdas ignoradas.</summary>
-    public static float Distance(float[] a, float[] b)
+    /// <param name="skip">Las celdas que tampoco se comparan: las del color del jugador (<see cref="QueueIconCatalog.PlayerCells"/>).</param>
+    public static float Distance(float[] a, float[] b, bool[]? skip = null)
     {
         float sum = 0;
         var count = 0;
@@ -82,14 +83,14 @@ public static class ProductionQueue
         {
             for (var gx = 0; gx < Grid; gx++)
             {
-                if (Ignored(gx, gy))
+                if (Ignored(gx, gy) || (skip is not null && skip[gy * Grid + gx]))
                     continue;
                 var i = (gy * Grid + gx) * 3;
                 sum += Math.Abs(a[i] - b[i]) + Math.Abs(a[i + 1] - b[i + 1]) + Math.Abs(a[i + 2] - b[i + 2]);
                 count += 3;
             }
         }
-        return sum / count;
+        return sum / Math.Max(count, 1);
     }
 
     /// <summary>
@@ -215,15 +216,26 @@ public sealed class IconLibrary(IReadOnlyList<QueueIcon> icons, QueueIconCatalog
     /// <summary>Los íconos de los archivos del juego (data/icons/queue_game.json), si están.</summary>
     public QueueIconCatalog? Catalog { get; } = catalog;
 
+    /// <summary>
+    /// Las muestras son de partidas en azul: en otro color, sus celdas del color del jugador harían más distinta a la
+    /// unidad (llevadas a amarillo o naranja, 3 de 5 muestras del arquero a caballo pasaban el umbral). Se toma lo mejor
+    /// de las dos: sin esas celdas, o con ellas si el jugador también es azul (si no, en azul a veces daba peor: con el
+    /// color del jugador afuera, lo que queda de un explorador a medio teñir pasaba el umbral).
+    /// </summary>
+    private readonly bool[]?[] _playerCells = [.. icons.Select(icon => catalog?.PlayerCells(icon.Key))];
+
     /// <param name="framed">El lugar tiene el marco de un ícono (<see cref="ProductionQueue.HasIconFrame"/>): recién ahí se mira lo que nunca se vio en una partida.</param>
     public (string Key, float Distance)? Match(float[] features, bool iconsOnly = false, bool framed = false)
     {
         (string Key, float Distance)? best = null;
-        foreach (var icon in Icons)
+        for (var i = 0; i < Icons.Count; i++)
         {
+            var icon = Icons[i];
             if (iconsOnly && icon.Key == Nothing)
                 continue;
             var d = ProductionQueue.Distance(features, icon.Features);
+            if (_playerCells[i] is { } cells)
+                d = Math.Min(d, ProductionQueue.Distance(features, icon.Features, cells));
             if (best is null || d < best.Value.Distance)
                 best = (icon.Key, d);
         }
