@@ -73,6 +73,7 @@ public sealed class GameSignals(GameData data)
     private readonly List<GameSignal> _signals = [];
     private readonly List<Player> _players = [];
     private readonly List<double> _ownClicks = [];
+    private readonly Dictionary<int, int> _clickedAges = [];
     private int? _villagerPeak;
     private (int Total, double Since)? _villagerDrop;
     private int _seenEvents;
@@ -160,10 +161,10 @@ public sealed class GameSignals(GameData data)
 
     private void Track(Player player, PlayerScore row, double time)
     {
-        if (row.DarkAge)
-            player.NextAge = 0;
-        else if (player.NextAge == 0)
-            player.NextAge = 1; // ya no está en la Oscura: lo próximo es Castillos
+        // Fuera de la Oscura lo próximo es, como mínimo, Castillos, y una edad ya clicada no se repite: en la 20261103-193834
+        // el rival clicaba Castillos a las 20:15, 40:14 y 48:27 porque un salto de puntaje lo hacía un jugador nuevo y una
+        // lectura mala del ícono volvía a la Oscura. Va por color, porque el jugador puede ser otro.
+        player.NextAge = Math.Max(_clickedAges.GetValueOrDefault(row.Slot), row.DarkAge ? 0 : 1);
 
         var age = player.NextAge;
         if (player.Pending is { } pending)
@@ -186,6 +187,7 @@ public sealed class GameSignals(GameData data)
     private void Clicked(Player player, double time, int age)
     {
         player.NextAge = age + 1;
+        _clickedAges[player.Slot] = age + 1;
         if (player.Me || (PlayerSlot is { } mine && player.Slot == mine) || _ownClicks.Any(t => Math.Abs(t - time) <= OwnClickWindow))
         {
             player.Me = true;

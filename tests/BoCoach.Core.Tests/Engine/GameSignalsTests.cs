@@ -130,6 +130,26 @@ public class GameSignalsTests
     }
 
     [Fact]
+    public void Una_lectura_mala_del_icono_de_edad_no_hace_repetir_un_clic()
+    {
+        // En la 20261103-193834 el rival hizo clic en Castillos a las 20:15, y a las 40:14 y 48:27 otra vez: el ícono de
+        // edad se leyó una vez como el de la Edad Oscura y volvía a esperar las edades de antes.
+        var (signals, state) = New();
+        var found = Feed(signals, state,
+            At(1200, null, new PlayerScore(3, 1700, false)),
+            At(1202, null, new PlayerScore(3, 1702, false)),
+            At(1204, null, new PlayerScore(3, 1604, false)),
+            At(1206, null, new PlayerScore(3, 1606, false)),
+            At(2000, null, new PlayerScore(3, 3100, true)),
+            At(2002, null, new PlayerScore(3, 3102, false)),
+            At(2004, null, new PlayerScore(3, 3104, false)),
+            At(2006, null, new PlayerScore(3, 3024, false)),
+            At(2008, null, new PlayerScore(3, 3026, false)));
+
+        Assert.Equal(["rival_castle_click"], found.Select(s => s.Kind));
+    }
+
+    [Fact]
     public void Despues_de_Feudal_vienen_Castillos_e_Imperial_con_caidas_mas_grandes()
     {
         var (signals, state) = New();
