@@ -247,7 +247,7 @@ export const es = {
   privacy: {
     title: "Privacidad",
     description: "Qué datos guarda AoE2 BO Coach y para qué.",
-    updated: "Última actualización: 2 de noviembre de 2026.",
+    updated: "Última actualización: 4 de noviembre de 2026.",
     appTitle: "La app de escritorio",
     appText:
       "BO Coach lee la pantalla del juego en tu PC. Nunca manda capturas de pantalla. Las grabaciones y los registros de cada partida se guardan en tu PC, en <code>%LOCALAPPDATA%\\BoCoach</code>. La app se conecta a esta web para bajar tus build orders y, si no lo apagás, para compartir tus partidas.",
@@ -260,7 +260,7 @@ export const es = {
       "tu civ, la del rival de enfrente, el mapa, la build order, la versión de la app y el idioma del juego.",
     ],
     shareText2:
-      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego se tapa antes de guardarlo), ni capturas de pantalla. El registro no está atado a tu cuenta de la web: lo identifica un número al azar de esa instalación de la app. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal.",
+      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego se tapa antes de guardarlo), ni capturas de pantalla. Si en el informe de la partida contás algo que anduvo mal, esa nota se sube también: no pongas datos personales. El registro no está atado a tu cuenta de la web: lo identifica un número al azar de esa instalación de la app. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal.",
     webTitle: "La web",
     webText1: "Para mirar la biblioteca y probar las build orders no hace falta cuenta y no se guarda nada tuyo.",
     webText2: "Si iniciás sesión con Discord o con Google, se guarda:",

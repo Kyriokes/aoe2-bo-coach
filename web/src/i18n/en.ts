@@ -245,7 +245,7 @@ export const en: Dictionary = {
   privacy: {
     title: "Privacy",
     description: "What data AoE2 BO Coach stores and why.",
-    updated: "Last updated: November 2, 2026.",
+    updated: "Last updated: November 4, 2026.",
     appTitle: "The desktop app",
     appText:
       "BO Coach reads the game's screen on your PC. It never sends screenshots. Recordings and the record of each game are saved on your PC, in <code>%LOCALAPPDATA%\\BoCoach</code>. The app connects to this website to download your build orders and, unless you turn it off, to share your games.",
@@ -258,7 +258,7 @@ export const en: Dictionary = {
       "your civ, the civ of the opponent facing you, the map, the build order, the app version and the game language.",
     ],
     shareText2:
-      "Your name, other players' names, the chat (anything in the log not recognized as a game message is blanked before saving) and screenshots are never sent. The record isn't tied to your website account: it is identified by a random number for that app installation. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly.",
+      "Your name, other players' names, the chat (anything in the log not recognized as a game message is blanked before saving) and screenshots are never sent. If you say in the match report that something went wrong, that note is uploaded too: do not include personal data. The record isn't tied to your website account: it is identified by a random number for that app installation. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly.",
     webTitle: "The website",
     webText1: "You don't need an account to browse the library and try build orders, and nothing about you is stored.",
     webText2: "If you sign in with Discord or Google, we store:",
