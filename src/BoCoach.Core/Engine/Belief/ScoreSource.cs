@@ -35,6 +35,13 @@ internal sealed class ScoreSource(GameData data)
     private const double Tolerance = 0.25;
     private const double Slack = 4;
 
+    /// <summary>
+    /// Lo mismo para deducir un edificio repetido: una galería sube 35 más la economía. Con 0,25 alcanzaba con 23 de
+    /// sobra: en la 20261104-095625 varios leñadores descargaron juntos a los 20 s de la galería (+27) y el coach creía
+    /// tener 3 con 2.
+    /// </summary>
+    private const double RepeatTolerance = 0.15;
+
     /// <summary>Suba mínima (ya descontada la economía) que vale la pena mirar.</summary>
     private const double MinJump = 10;
 
@@ -186,7 +193,7 @@ internal sealed class ScoreSource(GameData data)
         if (value < MinValue)
             return [];
         var count = (int)Math.Round(residual / value);
-        if (count < 1 || count > 3 || Math.Abs(residual - count * value) > Tolerance * value * count + Slack)
+        if (count < 1 || count > 3 || Math.Abs(residual - count * value) > RepeatTolerance * value * count + Slack)
             return [];
         return Enumerable.Repeat(logged.Building, count).ToList();
     }

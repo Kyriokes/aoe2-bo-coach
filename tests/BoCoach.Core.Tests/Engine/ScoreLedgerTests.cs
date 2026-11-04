@@ -62,6 +62,20 @@ public class ScoreLedgerTests
         Assert.Equal(0, Count(odd, "archery_range_built") + Count(after, "archery_range_built"));
     }
 
+    // Partida 20261104-095625: varios leñadores descargan juntos y el puntaje sube 27 en una lectura, a los 20 s de la
+    // galería. Calzaba con otra galería (35), y en vivo el coach creía tener 3 con 2 ("Galerías de tiro (3) paradas").
+    [Fact]
+    public void Lo_que_se_junta_de_golpe_no_es_otra_galeria()
+    {
+        var builder = Warm();
+        builder.Build(Score(12, 1051, "archery_range_built"));
+        builder.Build(Score(15, 1055));
+        var jump = builder.Build(Score(18, 1082));
+        var after = builder.Build(Score(21, 1086));
+
+        Assert.Equal(0, Count(jump, "archery_range_built") + Count(after, "archery_range_built"));
+    }
+
     [Fact]
     public void Si_el_aviso_del_log_llega_una_lectura_despues_de_la_suba_no_es_otro_edificio()
     {
