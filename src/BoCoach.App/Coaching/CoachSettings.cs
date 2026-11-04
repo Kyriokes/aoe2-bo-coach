@@ -76,9 +76,10 @@ public sealed class CoachSettings
     /// <summary>
     /// Instalar el diseño mínimo del mod (data/hud_layout_minimo.json: la barra del juego opaca con los números blancos)
     /// en vez del completo (log en el rincón, cola debajo, casilleros). Pedido del usuario del 2026-11-01: el completo
-    /// lee perfecto pero le cambia la estética al juego más de lo que otro jugador aceptaría.
+    /// lee perfecto pero le cambia la estética al juego más de lo que otro jugador aceptaría. Por eso viene prendido; quien
+    /// ya usaba la app sin elegir sigue con el completo, que es el que tiene instalado (ver <see cref="Load"/>).
     /// </summary>
-    public bool HudMinimal { get; set; }
+    public bool HudMinimal { get; set; } = true;
 
     /// <summary>"Compartir mis partidas para mejorar el coach" (spec 2026-11-02): prendido salvo que el jugador lo apague.</summary>
     public bool ShareGames { get; set; } = true;
@@ -117,7 +118,9 @@ public sealed class CoachSettings
                     Hotkeys = Strings(json["hotkeys"]),
                     DevMode = Flag(json["dev_mode"]),
                     AutoRecord = json["auto_record"] is JsonValue record && record.TryGetValue<bool>(out var auto) ? auto : true,
-                    HudMinimal = Flag(json["hud_minimo"]),
+                    HudMinimal = json["hud_minimo"] is JsonValue minimal && minimal.TryGetValue<bool>(out var chosen)
+                        ? chosen
+                        : !Flag(json["first_run_done"]) && string.IsNullOrWhiteSpace(json["player_name"]?.GetValue<string>()),
                     ShareGames = json["share_games"] is JsonValue share && share.TryGetValue<bool>(out var shared) ? shared : true,
                 };
             }

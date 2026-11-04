@@ -226,6 +226,37 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(new CoachSettings().AutoRecord);
     }
 
+    // El usuario, 2026-11-01: "un jugador no adopta un mod que le rompe la estética".
+    [Fact]
+    public void Un_jugador_nuevo_instala_el_mod_minimo()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        Assert.True(CoachSettings.Load(path).HudMinimal);
+        File.WriteAllText(path, """{ "app_language": "es" }""");
+        Assert.True(CoachSettings.Load(path).HudMinimal);
+    }
+
+    // Tiene el completo instalado: con el diseño mínimo la calibración no lo encontraría hasta reinstalar el mod.
+    [Theory]
+    [InlineData("""{ "first_run_done": true }""")]
+    [InlineData("""{ "player_name": "Kyriokes" }""")]
+    public void Quien_ya_usaba_la_app_sin_elegir_sigue_con_el_mod_completo(string settings)
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, settings);
+        Assert.False(CoachSettings.Load(path).HudMinimal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Lo_que_el_jugador_eligio_del_mod_se_respeta(bool minimal)
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { HudMinimal = minimal, FirstRunDone = !minimal }.Save(path);
+        Assert.Equal(minimal, CoachSettings.Load(path).HudMinimal);
+    }
+
     // Atajos editables: los textos dicen la combinación elegida, no la de fábrica.
     [Fact]
     public void Al_empezar_el_estado_nombra_los_atajos_elegidos()
