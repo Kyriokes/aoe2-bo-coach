@@ -7,12 +7,13 @@ using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
 
-/// <summary>Un paso de la BO: cuándo lo pedía el plan de la BO, cuándo se hizo y cuánto atraso.</summary>
+/// <summary>Un paso de la BO: cuándo lo terminaba el plan de la BO, cuándo se terminó y cuánto atraso.</summary>
 public sealed record StepTiming(int Number, string Text, double? Planned, double? Done)
 {
     /// <summary>
-    /// Lo que el juego no avisa (granjas): su hora es la del paso posterior que la dio por hecha, no la real, así que
-    /// no tiene atraso (en la partida 20261031-163414 las granjas salían 14:30 tarde).
+    /// Lo que el juego no avisa (granjas, mover aldeanos): su hora es la del paso posterior que la dio por hecha o la de
+    /// cuando se dejó de pedir, no la real, así que no tiene atraso (en la partida 20261031-163414 las granjas salían
+    /// 14:30 tarde).
     /// </summary>
     public bool Unannounced { get; init; }
 
@@ -142,10 +143,12 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
         var floating = _floating.Concat(_floatingSince.Where(f => _last - f.Value.Since >= FloatingSeconds)
             .Select(f => new FloatingResource(f.Key, f.Value.Since, _last - f.Value.Since, f.Value.Peak))).ToList();
 
-        var steps = _steps.Select(s => new StepTiming(s.Index + 1, StepText.Describe(s.Step), _plan.For(s.Step.Id)?.Start,
+        // Contra cuándo lo termina la BO, no contra cuándo lo arranca: en la 20261104-095625 "6 aldeanos en ovejas" salía
+        // 1:16 tarde hecho a tiempo, y las 2 casas 32 s tarde (lo que tardan en construirse).
+        var steps = _steps.Select(s => new StepTiming(s.Index + 1, StepText.Describe(s.Step), _plan.For(s.Step.Id) is { } planned ? planned.End ?? planned.Start : null,
             s.State == StepState.Done ? s.DoneAt : null)
         {
-            Unannounced = EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id),
+            Unannounced = s.Step.Do == StepAction.Move || (EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id)),
         }).ToList();
         var clicks = new List<AgeClick>();
         foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", "Castillos", bo.Targets?.CastleClickTime) })

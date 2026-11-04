@@ -42,10 +42,12 @@ public class GameReportTests
         var report = coach.Report();
 
         var first = report.Steps[0];
+        var planned = new Planner(TestData.GameData).Simulate(Archers).For(Archers.Steps[0].Id)!.End;
         Assert.Equal(1, first.Number);
-        Assert.Equal(0, first.Planned);
+        Assert.True(planned > 0);
+        Assert.Equal(planned, first.Planned);
         Assert.Equal(90, first.Done);
-        Assert.Equal(90, first.Delay);
+        Assert.Equal(90 - planned, first.Delay);
         Assert.Null(report.Steps[^1].Done); // Castillos, sin hacer
         Assert.Contains(report.AgeClicks, c => c.Age == "Feudal" && c.Click is null && c.Planned > 0);
     }
@@ -70,6 +72,34 @@ public class GameReportTests
         var html = GameReportText.Html(report, new DateTime(2026, 10, 20, 21, 0, 0));
         Assert.Contains("<title>Informe: Arqueros</title>", html);
         Assert.Contains("sin hacer", html);
+    }
+
+    // Partida 20261104-095625: "6 aldeanos en ovejas" salía 1:16 tarde hecho justo cuando lo terminaba la BO, porque se
+    // comparaba cuándo lo arrancaba la BO con cuándo se terminó.
+    [Fact]
+    public void Un_paso_hecho_cuando_lo_termina_la_BO_no_tiene_atraso()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 1, Assign = GatherSource.Sheep }] };
+        var end = new Planner(TestData.GameData).Simulate(bo).For("s1")!.End!.Value;
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(new GameSnapshot(end, new ResourceAmounts(200, 200, 100, 200), 5, 15, [new GameEvent("villager_created", end)]));
+
+        Assert.Equal(0, coach.Report().Steps[0].Delay);
+    }
+
+    // Lo que no se puede ver se cierra solo a su tiempo: su hora no dice cuándo lo hizo el jugador.
+    [Fact]
+    public void Un_Mover_no_tiene_atraso()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Move, Count = 3, Assign = GatherSource.Sheep }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(new GameSnapshot(1000, new ResourceAmounts(200, 200, 100, 200), 4, 15));
+        coach.Update(new GameSnapshot(1000 + Tracker.MoveSeconds, new ResourceAmounts(200, 200, 100, 200), 4, 15));
+
+        var step = coach.Report().Steps[0];
+
+        Assert.NotNull(step.Done);
+        Assert.Null(step.Delay);
     }
 
     // Partida 20261031-163414: las granjas (que el juego no avisa) se dieron por hechas recién con Castillos, y el
