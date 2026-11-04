@@ -219,6 +219,58 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Single(finished); // detener después no vuelve a cerrar nada
     }
 
+    // "Algo anduvo mal": el jugador marca el momento y el registro dice cuándo fue.
+    [Fact]
+    public async Task Una_marca_queda_en_el_registro_y_se_cuenta()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new RecordedFrames(session), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+
+        Assert.True(live.Flag());
+        Assert.True(live.Flag());
+        live.Stop();
+
+        var info = Assert.Single(finished);
+        Assert.Equal(2, info.Flags);
+        var flags = GameRecordReader.Load(info.Path).Lines.Where(l => l["t"]?.GetValue<string>() == GameRecordKeys.Flag).ToList();
+        Assert.Equal(2, flags.Count);
+        Assert.True(flags[0]["time"]!.GetValue<double>() > 0);
+    }
+
+    [Fact]
+    public void Sin_partida_no_hay_nada_que_marcar()
+    {
+        using var live = Recording(new RecordedFrames(RecordedSession.Load(Fixture)), Path.Combine(_library.FullName, "registros"));
+        Assert.False(live.Flag());
+    }
+
+    // Se aprieta jugando, sin mirar la otra ventana: el overlay tiene que confirmar que llegó, y después callarse.
+    [Fact]
+    public async Task La_marca_se_confirma_unos_segundos_en_el_overlay()
+    {
+        var session = RecordedSession.Load(Fixture);
+        using var live = Recording(new GapFrames(session, before: 13, gap: 70, gapInFront: true), Path.Combine(_library.FullName, "registros"));
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+
+        Assert.True(live.Flag());
+        Assert.Equal(Texts.FlagNoticed, last!.Notice);
+
+        await live.StepAsync();
+        Assert.Equal(Texts.FlagNoticed, last!.Notice);
+
+        for (var i = 0; i < 20; i++)
+            await live.StepAsync();
+        Assert.Null(last!.Notice);
+    }
+
     [Fact]
     public async Task Una_partida_nueva_cierra_el_registro_anterior()
     {

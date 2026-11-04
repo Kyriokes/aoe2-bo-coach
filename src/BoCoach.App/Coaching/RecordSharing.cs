@@ -19,10 +19,12 @@ public sealed class RecordSharing(string folder, string identityPath, Func<WebLi
         "Al terminar cada partida se sube un registro con números y eventos: lo que el coach leyó del HUD, lo que creyó y lo que te mostró, " +
         "con tu civ, el mapa y la BO. No viaja tu nombre, ni los de los otros jugadores, ni el chat, ni capturas de pantalla. " +
         "Sirve para encontrar lo que el coach lee o aconseja mal sin que nadie tenga que jugar de nuevo. " +
+        "Si contás en el informe algo que anduvo mal, esa nota se sube también. " +
         "Podés apagarlo cuando quieras y pedir que se borre lo que ya subiste.",
         "When each match ends, a record with numbers and events is uploaded: what the coach read from the HUD, what it believed and what it showed you, " +
         "with your civ, the map and the BO. Your name, other players' names, the chat and screenshots are never sent. " +
         "It helps find what the coach reads or advises wrongly without anyone having to play again. " +
+        "If you say in the report that something went wrong, that note is uploaded too. " +
         "You can turn it off whenever you want and ask for what you already uploaded to be deleted.");
 
     private readonly RecordQueue _queue = new(folder);
@@ -32,6 +34,15 @@ public sealed class RecordSharing(string folder, string identityPath, Func<WebLi
     public int Pending => _queue.Pending.Count;
 
     public void Enqueue(GameRecordInfo info, DateTimeOffset now) => _queue.Enqueue(info.Path, info.GameId, info.Length, now);
+
+    /// <summary>La nota del informe: un registro chico que apunta a su partida, a la cola como cualquier otro.</summary>
+    public void AddNote(GameRecordInfo game, string text, DateTimeOffset now)
+    {
+        var path = GameRecordNote.PathFor(game.Path);
+        var id = Guid.NewGuid().ToString("N");
+        GameRecordNote.Write(path, id, game.GameId, now, appVersion, text);
+        _queue.Enqueue(path, id, 0, now);
+    }
 
     /// <summary>Manda lo vencido. Si ya hay un envío en curso no hace nada: lo nuevo sale en el siguiente.</summary>
     public async Task<RecordSendResult> SendPendingAsync(DateTimeOffset now, CancellationToken cancel = default)

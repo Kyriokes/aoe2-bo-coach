@@ -314,6 +314,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             ShareStatus = Texts.ShareNotWritten(e.Message);
             return;
         }
+        LastRecord = info;
         await SendPendingRecordsAsync();
     }
 
@@ -334,6 +335,33 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             ShareStatus = Texts.ShareFailed(e.Message);
         }
+    }
+
+    /// <summary>El registro de la última partida que se subió o quedó en la cola: la nota del informe habla de esa.</summary>
+    public GameRecordInfo? LastRecord { get; private set; }
+
+    /// <summary>Hay a dónde mandar una nota: la última partida se compartió y se sigue compartiendo.</summary>
+    public bool CanSendNote => Sharing is not null && ShareGames && LastRecord is not null;
+
+    /// <summary>
+    /// La nota del informe. True si quedó guardada para salir (aunque ahora no haya conexión).
+    /// </summary>
+    /// <param name="game">La partida de ese informe; por defecto, la última.</param>
+    public async Task<bool> SendNoteAsync(string text, GameRecordInfo? game = null)
+    {
+        if (!CanSendNote || string.IsNullOrWhiteSpace(text))
+            return false;
+        try
+        {
+            Sharing!.AddNote(game ?? LastRecord!, text, DateTimeOffset.Now);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ShareStatus = Texts.ShareNotWritten(e.Message);
+            return false;
+        }
+        await SendPendingRecordsAsync();
+        return true;
     }
 
     /// <summary>El pedido de borrado de lo que subió esta instalación.</summary>
@@ -938,6 +966,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     [RelayCommand]
     private void Skip() => _coach?.Skip(SelectedLane.Lane);
+
+    /// <summary>"Algo anduvo mal": marca este momento en el registro de la partida.</summary>
+    [RelayCommand]
+    private void Flag() => _coach?.Flag();
 
     [RelayCommand]
     private void TogglePause()

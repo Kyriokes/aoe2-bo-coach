@@ -17,6 +17,18 @@
                 </ItemsControl>
             </ScrollViewer>
         </Border>
+        <!-- "¿Algo anduvo mal?": solo si se comparten las partidas (la nota viaja como un registro más) -->
+        <Border x:Name="NotePanel" Style="{StaticResource Card}" Margin="0,12,0,0" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="NotePrompt" Style="{StaticResource Body}" />
+                <TextBox x:Name="NoteText" AcceptsReturn="True" TextWrapping="Wrap" Height="64" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto"
+                         AutomationProperties.Name="{x:Static app:Texts.NoteLabel}" />
+                <DockPanel Margin="0,8,0,0">
+                    <Button x:Name="NoteSend" DockPanel.Dock="Right" Content="{x:Static app:Texts.NoteSend}" Margin="8,0,0,0" Click="SendNote_Click" />
+                    <TextBlock x:Name="NoteStatus" Text="{x:Static app:Texts.NoteHint}" Foreground="{StaticResource TextSoft}" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </DockPanel>
+            </StackPanel>
+        </Border>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <Button Content="{x:Static app:Texts.ReportOpenFull}" Style="{StaticResource PrimaryButton}" IsDefault="True" Click="Open_Click" />
             <Button Content="{x:Static app:Texts.Close}" IsCancel="True" Margin="0" Click="Close_Click" />

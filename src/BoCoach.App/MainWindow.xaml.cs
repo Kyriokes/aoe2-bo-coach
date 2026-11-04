@@ -228,6 +228,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             ["cursor_reminders"] = () => Coach.ToggleCursorRemindersCommand.Execute(null),
             ["diagnostic"] = () => Tools.DiagnosticCommand.Execute(null),
             ["accept_suggestion"] = () => Coach.AcceptSuggestionCommand.Execute(null),
+            ["flag"] = () => Coach.FlagCommand.Execute(null),
         };
         var map = new HotkeyMap(Coach.Hotkeys);
         HotkeyMap.Current = map;
@@ -305,8 +306,12 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
 
     public void RunOnUi(Action action) => Dispatcher.BeginInvoke(action);
 
-    public void ShowReport(IReadOnlyList<string> summary, string path) =>
-        new Coaching.ReportWindow(summary, () => OpenFile(path)) { Owner = this }.Show();
+    public void ShowReport(IReadOnlyList<string> summary, string path)
+    {
+        // La nota habla de esta partida, aunque la ventana quede abierta hasta la siguiente.
+        var game = Coach.LastRecord;
+        new Coaching.ReportWindow(summary, () => OpenFile(path), Coach.CanSendNote ? Texts.NotePrompt(game?.Flags ?? 0) : null, text => Coach.SendNoteAsync(text, game)) { Owner = this }.Show();
+    }
 
     public Core.Web.EloCandidate? ChooseElo(IReadOnlyList<Core.Web.EloCandidate> candidates)
     {

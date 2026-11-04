@@ -109,6 +109,9 @@
                             <ComboBox ItemsSource="{Binding DataContext.Coach.LaneChoices, ElementName=LivePanel}" SelectedItem="{Binding DataContext.Coach.SelectedLane, ElementName=LivePanel}"
                                       DisplayMemberPath="Name" Margin="0,0,6,0" MinWidth="150"
                                       ToolTip="{x:Static app:Texts.LaneTip}" />
+                            <Button Content="{x:Static app:Texts.FlagButton}" Command="{Binding DataContext.Coach.FlagCommand, ElementName=LivePanel}"
+                                    IsEnabled="{Binding DataContext.Coach.InGame, ElementName=LivePanel}"
+                                    ToolTip="{Binding Flag, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                             <Button Content="{x:Static app:Texts.Back}" Command="{Binding DataContext.Coach.BackCommand, ElementName=LivePanel}"
                                     ToolTip="{Binding Back, Source={x:Static hotkeys:HotkeyTips.Instance}}" />
                             <Button Content="{x:Static app:Texts.Skip}" Command="{Binding DataContext.Coach.SkipCommand, ElementName=LivePanel}" Margin="0"

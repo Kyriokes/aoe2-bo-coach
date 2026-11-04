@@ -35,4 +35,5 @@ public sealed class HotkeyTips : ObservableObject
     public string Back => Texts.TipBack(Key("back"));
     public string Advance => Texts.TipAdvance(Key("advance"));
     public string Skip => Texts.TipSkip(Key("skip"));
+    public string Flag => Texts.TipFlag(Key("flag"));
 }

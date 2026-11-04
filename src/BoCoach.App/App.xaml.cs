@@ -137,7 +137,7 @@ public partial class App : Application
         }
         if (args.Contains("--report"))
         {
-            CaptureOwnedAndExit(window, new Coaching.ReportWindow(SampleReport, () => { }) { ShowActivated = false, Left = -30000 }, screenshot);
+            CaptureOwnedAndExit(window, new Coaching.ReportWindow(SampleReport, () => { }, Texts.NotePrompt(1), _ => Task.FromResult(true)) { ShowActivated = false, Left = -30000 }, screenshot);
             return;
         }
         // Con un momento armado a mano, el mensaje de abajo es el de una cuenta conectada.

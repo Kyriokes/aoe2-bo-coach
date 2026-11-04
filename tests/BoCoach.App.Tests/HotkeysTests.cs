@@ -38,7 +38,7 @@ public sealed class HotkeysTests
         var map = new HotkeyMap();
         Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
         Assert.Empty(map.Overrides);
-        Assert.Equal(12, HotkeyActions.All.Count);
+        Assert.Equal(13, HotkeyActions.All.Count);
         Assert.Equal(["calibrate", "record", "debug", "diagnostic"], HotkeyActions.All.Where(a => a.Developer).Select(a => a.Id));
     }
 
@@ -140,7 +140,7 @@ public sealed class HotkeysTests
         var registrar = new FakeRegistrar("Ctrl+Alt+Right");
         var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: true);
         Assert.Equal(["advance"], binder.RegisterAll());
-        Assert.Equal(11, registrar.Registered.Count);
+        Assert.Equal(12, registrar.Registered.Count);
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public sealed class HotkeysTests
     {
         var registrar = new FakeRegistrar();
         new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: false).RegisterAll();
-        Assert.Equal(8, registrar.Registered.Count);
+        Assert.Equal(9, registrar.Registered.Count);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public sealed class HotkeysTests
         Assert.DoesNotContain("Ctrl+Alt+Right", registrar.Registered.Values);
         Assert.Equal(ChangeResult.Done, binder.Change("advance", null));
         Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public sealed class HotkeysTests
         var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: true);
         binder.RegisterAll();
         Assert.Equal(ChangeResult.Done, binder.Change("advance", HotkeyBinding.Parse("Ctrl+Alt+Right")));
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class HotkeysTests
         binder.ResetAll();
         Assert.Equal("Ctrl+Alt+→", map.Text("advance"));
         Assert.Equal("Ctrl+Alt+←", map.Text("back"));
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
         Assert.Empty(map.Overrides);
     }
 
@@ -260,8 +260,8 @@ public sealed class HotkeysTests
         vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F2);
         advance.ResetCommand.Execute(null);
         Assert.Equal("Ctrl+Alt+→", advance.Text);
-        Assert.Equal(12, vm.Rows.Count);
-        Assert.Equal(8, new HotkeysViewModel(new HotkeyBinder(new FakeRegistrar(), new HotkeyMap(), Actions(), false), new HotkeyMap(), includeDeveloper: false).Rows.Count);
+        Assert.Equal(13, vm.Rows.Count);
+        Assert.Equal(9, new HotkeysViewModel(new HotkeyBinder(new FakeRegistrar(), new HotkeyMap(), Actions(), false), new HotkeyMap(), includeDeveloper: false).Rows.Count);
     }
 
     // Mientras se espera la combinación nueva, los atajos se sueltan: si no, apretar una que ya está registrada (la de
@@ -279,19 +279,19 @@ public sealed class HotkeysTests
         advance.StartCaptureCommand.Execute(null);
         Assert.Empty(registrar.Registered);
         Assert.True(vm.Capture("advance", ModifierKeys.Control | ModifierKeys.Alt, Key.F1));
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
         Assert.Contains("Ctrl+Alt+F1", registrar.Registered.Values);
 
         advance.StartCaptureCommand.Execute(null);
         vm.Capture("advance", ModifierKeys.None, Key.Escape);
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
 
         // Cerrar la ventana esperando una combinación también los vuelve a tomar, sin registrar nada dos veces.
         advance.StartCaptureCommand.Execute(null);
         vm.CancelCapture();
         vm.CancelCapture();
-        Assert.Equal(12, registrar.Registered.Count);
-        Assert.Equal(12, registrar.Registered.Values.Distinct().Count());
+        Assert.Equal(13, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Values.Distinct().Count());
     }
 
     // Revisión: "Restaurar" en el renglón que esperaba la combinación dejaba todos los atajos sueltos.
@@ -306,7 +306,7 @@ public sealed class HotkeysTests
         var advance = vm.Rows.Single(r => r.Id == "advance");
         advance.StartCaptureCommand.Execute(null);
         advance.ResetCommand.Execute(null);
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
         Assert.False(advance.Capturing);
     }
 
@@ -348,13 +348,13 @@ public sealed class HotkeysTests
         var registrar = new FakeRegistrar();
         var binder = new HotkeyBinder(registrar, new HotkeyMap(), Actions(), includeDeveloper: false);
         binder.RegisterAll();
-        Assert.Equal(8, registrar.Registered.Count);
+        Assert.Equal(9, registrar.Registered.Count);
         binder.IncludeDeveloper = true;
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
         binder.IncludeDeveloper = true;
-        Assert.Equal(12, registrar.Registered.Count);
+        Assert.Equal(13, registrar.Registered.Count);
         binder.IncludeDeveloper = false;
-        Assert.Equal(8, registrar.Registered.Count);
+        Assert.Equal(9, registrar.Registered.Count);
         Assert.DoesNotContain("Ctrl+Alt+C", registrar.Registered.Values);
     }
 }

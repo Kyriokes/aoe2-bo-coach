@@ -14,6 +14,8 @@ public static class GameRecordKeys
     public const string Show = "show";
     public const string Forecast = "forecast";
     public const string Outcome = "outcome";
+    public const string Flag = "flag";
+    public const string Note = "note";
     public const string End = "end";
 
     /// <summary>Versión del formato que escribe esta app.</summary>

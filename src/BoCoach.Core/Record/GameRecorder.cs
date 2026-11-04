@@ -83,6 +83,9 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
         Forecasts(snapshot, coach, ms, time);
     }
 
+    /// <summary>"Algo anduvo mal": el jugador marcó este momento. Lo que pasaba se ve en las líneas de alrededor.</summary>
+    public void Flag(double time, double ms) => Write(GameRecordKeys.Flag, ms, Math.Round(time, 1), []);
+
     public void Flush() => writer.Flush();
 
     private void Write(string type, double ms, double time, JsonObject line)

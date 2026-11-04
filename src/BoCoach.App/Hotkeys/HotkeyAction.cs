@@ -20,6 +20,7 @@ public static class HotkeyActions
         new("overlay", Texts.HotkeyOverlay, new(CtrlAlt, Key.H), false),
         new("cursor_reminders", Texts.HotkeyCursorReminders, new(CtrlAlt, Key.M), false),
         new("accept_suggestion", Texts.HotkeyAcceptSuggestion, new(CtrlAlt, Key.B), false),
+        new("flag", Texts.HotkeyFlag, new(CtrlAlt, Key.F), false),
         new("calibrate", Texts.HotkeyCalibrate, new(CtrlAlt, Key.C), true),
         new("record", Texts.HotkeyRecord, new(CtrlAlt, Key.R), true),
         new("debug", Texts.HotkeyDebug, new(CtrlAlt, Key.D), true),

@@ -3,6 +3,7 @@ using System.Text;
 using BoCoach.App.Coaching;
 using BoCoach.App.Overlay;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Record;
 using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
 
@@ -120,6 +121,75 @@ public sealed class RecordSharingTests : IDisposable
             Assert.Equal(["POST /api/app/registros"], _web.Requests);
             Assert.Equal(0, sharing.Pending);
             Assert.Contains("enviado", session.ShareStatus);
+        }
+    }
+
+    // La nota del informe: el registro de la partida ya salió, así que va como un registro chico que apunta a ella.
+    [Fact]
+    public async Task La_nota_del_informe_se_sube_aparte_y_apunta_a_su_partida()
+    {
+        var (session, sharing) = Session();
+        using (session)
+        {
+            var game = Record();
+            await session.RecordDoneAsync(game);
+            _web.Requests.Clear();
+            Assert.True(session.CanSendNote);
+
+            Assert.True(await session.SendNoteAsync("el coach pidió una casa de más"));
+
+            Assert.Equal(["POST /api/app/registros"], _web.Requests);
+            Assert.Equal(0, sharing.Pending);
+            var note = GameRecordReader.Load(Path.Combine(_dir.FullName, "registros", "20261102-220000-nota.jsonl.gz"));
+            Assert.Equal(game.GameId, note.Meta!["note_for"]!.GetValue<string>());
+            Assert.NotEqual(game.GameId, note.Meta["game_id"]!.GetValue<string>());
+        }
+    }
+
+    [Fact]
+    public async Task Sin_internet_la_nota_queda_en_la_cola()
+    {
+        var (session, sharing) = Session();
+        using (session)
+        {
+            _web.Offline = true;
+            await session.RecordDoneAsync(Record());
+
+            Assert.True(await session.SendNoteAsync("algo"));
+
+            Assert.Equal(2, sharing.Pending);
+        }
+    }
+
+    [Fact]
+    public async Task Sin_compartir_o_sin_partida_no_hay_nota()
+    {
+        var (session, _) = Session();
+        using (session)
+        {
+            Assert.False(session.CanSendNote); // todavía no terminó ninguna partida
+            Assert.False(await session.SendNoteAsync("algo"));
+
+            await session.RecordDoneAsync(Record());
+            session.ShareGames = false;
+
+            Assert.False(session.CanSendNote);
+            Assert.False(await session.SendNoteAsync("algo"));
+        }
+    }
+
+    [Fact]
+    public async Task Una_nota_vacia_no_se_manda()
+    {
+        var (session, _) = Session();
+        using (session)
+        {
+            await session.RecordDoneAsync(Record());
+            _web.Requests.Clear();
+
+            Assert.False(await session.SendNoteAsync("   "));
+
+            Assert.Empty(_web.Requests);
         }
     }
 

@@ -224,6 +224,20 @@ public static class Texts
     // ---- El registro de la partida ----
     public static string ShareNotWritten(string error) => L($"No se pudo anotar el registro para enviarlo: {error}", $"Couldn't queue the record for sending: {error}");
     public static string SharePending(int pending) => L($"Registro guardado para enviar después ({pending} en espera).", $"Record saved to send later ({pending} waiting).");
+    public static string FlagButton => L("Algo anduvo mal", "Something went wrong");
+    public static string TipFlag(string key) => L($"Marca este momento en el registro de la partida, para revisarlo después. Desde el juego: {key}", $"Marks this moment in the match record, so it can be reviewed later. From the game: {key}");
+    public static string NotePrompt(int flags) => flags switch
+    {
+        0 => L("¿Algo anduvo mal en esta partida? Contalo acá.", "Did something go wrong in this match? Tell us here."),
+        1 => L("Marcaste un momento en esta partida. ¿Qué pasó?", "You marked a moment in this match. What happened?"),
+        _ => L($"Marcaste {flags} momentos en esta partida. ¿Qué pasó?", $"You marked {flags} moments in this match. What happened?"),
+    };
+    public static string NoteLabel => L("Qué anduvo mal", "What went wrong");
+    public static string NoteHint => L("Se sube con el registro de la partida. No pongas datos personales.", "It is uploaded with the match record. Do not include personal data.");
+    public static string NoteSend => L("Enviar", "Send");
+    public static string NoteThanks => L("¡Gracias! Sale con el registro de la partida.", "Thanks! It goes out with the match record.");
+    public static string NoteFailed => L("No se pudo guardar la nota. Probá de nuevo.", "The note could not be saved. Try again.");
+    public static string FlagNoticed => L("Marcado. Al terminar la partida contá qué pasó.", "Marked. When the match ends, tell what happened.");
     public static string ShareSent => L("Registro de la partida enviado. ¡Gracias!", "Match record sent. Thanks!");
     public static string ShareFailed(string error) => L($"No se pudo enviar el registro: {error}", $"Couldn't send the record: {error}");
     public static string ForgetConfirm => L("¿Borrar de la web los registros de partida que subió esta PC? Los que tenés guardados acá no se tocan.", "Delete from the website the match records this PC uploaded? The ones saved here aren't touched.");
@@ -320,6 +334,7 @@ public static class Texts
     public static string HotkeyAdvance => L("Ya está", "Done");
     public static string HotkeyBack => L("Atrás", "Back");
     public static string HotkeySkip => L("Saltear", "Skip");
+    public static string HotkeyFlag => L("Algo anduvo mal (marca el momento)", "Something went wrong (marks the moment)");
     public static string HotkeyPause => L("Pausa", "Pause");
     public static string HotkeyOverlay => L("Ocultar el overlay", "Hide the overlay");
     public static string HotkeyCursorReminders => L("Recordatorios en el mouse", "Mouse reminders");

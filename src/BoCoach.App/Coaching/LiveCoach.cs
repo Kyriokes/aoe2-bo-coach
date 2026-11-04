@@ -113,7 +113,7 @@ public sealed record CoachFrame(
 
 /// <summary>El registro de una partida que terminó (spec 2026-11-02).</summary>
 /// <param name="Reason">"fin" (30 s sin reloj), "nueva" (empezó otra) o "detenido".</param>
-public sealed record GameRecordInfo(string Path, string GameId, double Length, string Reason);
+public sealed record GameRecordInfo(string Path, string GameId, double Length, string Reason, int Flags = 0);
 
 /// <summary>
 /// El coach en vivo: cada <see cref="IFrameSource.Interval"/> toma una captura, la lee (Vision), arma el snapshot
@@ -160,6 +160,11 @@ public sealed class LiveCoach : IDisposable
     private double _recordFlushedAt;
     private bool _recordingStopped;
     private string? _recordNotice;
+    private int _flags;
+    private double _flagNoticeUntil = double.NegativeInfinity;
+
+    /// <summary>Cuánto se ve en el overlay que la marca llegó.</summary>
+    private const double FlagNoticeSeconds = 5;
     private readonly GameData _data;
     private readonly HudFonts _fonts;
     private readonly OcrReader? _ocr;
@@ -287,6 +292,26 @@ public sealed class LiveCoach : IDisposable
     public void Advance(Lane? lane = null) => Correct(c => c.Advance(lane));
 
     public void Back() => Correct(c => c.Back());
+
+    /// <summary>
+    /// "Algo anduvo mal": marca este momento en el registro de la partida y lo confirma en el overlay, porque se aprieta
+    /// jugando. False si no hay partida que marcar (todavía no se leyó el reloj).
+    /// </summary>
+    public bool Flag()
+    {
+        lock (_gate)
+        {
+            if (_recorder is null)
+                return false;
+            Record(r => r.Flag(_coach.View.Time, RecordMs(_now)));
+            if (_recorder is null)
+                return false;
+            _flags++;
+            _flagNoticeUntil = _now + FlagNoticeSeconds;
+        }
+        Publish();
+        return true;
+    }
 
     public void Skip(Lane? lane = null) => Correct(c => c.Skip(lane));
 
@@ -505,7 +530,7 @@ public sealed class LiveCoach : IDisposable
                 _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.Interval.TotalMilliseconds, BuildOrder with { Civ = Civ });
             _recordWriter = GameRecordWriter.Create(path, meta);
             _recorder = new GameRecorder(_recordWriter, _data);
-            (_recordStart, _recordFlushedAt, _recordNotice) = (realTime, realTime, null);
+            (_recordStart, _recordFlushedAt, _recordNotice, _flags) = (realTime, realTime, null, 0);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -559,7 +584,7 @@ public sealed class LiveCoach : IDisposable
                 writer.End(reason, length);
                 writer.Dispose();
                 if (length >= MinReportSeconds)
-                    info = new GameRecordInfo(writer.Path, _recordGameId, length, reason);
+                    info = new GameRecordInfo(writer.Path, _recordGameId, length, reason, _flags);
                 else
                     File.Delete(writer.Path);
             }
@@ -613,8 +638,10 @@ public sealed class LiveCoach : IDisposable
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FontNotice ?? _recordNotice, _clockSeenInGame, Frames.Regions));
+            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FlagNotice ?? FontNotice ?? _recordNotice, _clockSeenInGame, Frames.Regions));
     }
+
+    private string? FlagNotice => _now < _flagNoticeUntil ? Texts.FlagNoticed : null;
 
     /// <summary>Con el diseño nuevo y sin su letra, el coach no lee los números del HUD: hay que decirlo.</summary>
     private string? FontNotice => Frames.Hud is not null && _fonts.HudNumbers is null
