@@ -26,13 +26,14 @@ public sealed class ScreenReader
 
     /// <param name="ocr">OCR de Windows en inglés; sin él no se leen el log ni la edad.</param>
     /// <param name="layout">El diseño del mod nuevo con que se calibró o grabó (cada campo se recorta por él), o null.</param>
-    public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog, HudLayout? layout = null)
+    /// <param name="captureIntervalMs">Cada cuánto llegan las capturas.</param>
+    public ScreenReader(HudFonts fonts, OcrReader? ocr, EventCatalog catalog, HudLayout? layout = null, double captureIntervalMs = 500)
     {
         _layout = layout;
         _hud = new HudReader(fonts);
         _queueIcons = fonts.QueueIcons;
         _ocr = ocr;
-        _log = ocr is null ? null : new EventLogReader(ocr, catalog);
+        _log = ocr is null ? null : new EventLogReader(ocr, catalog, captureIntervalMs);
         _scores = ocr is null ? null : new ScoresPanelReader(ocr);
     }
 
@@ -94,10 +95,11 @@ public sealed class ScreenReader
 /// Vuelve a leer las capturas de un registro de partida, sin imágenes: el mismo suavizado y el mismo log que
 /// <see cref="ScreenReader"/>, partiendo de lo crudo.
 /// </summary>
-public sealed class ScreenReplay(EventCatalog catalog)
+/// <param name="captureIntervalMs">Cada cuánto se miró la pantalla en esa partida (<c>interval_ms</c> del registro).</param>
+public sealed class ScreenReplay(EventCatalog catalog, double captureIntervalMs = 500)
 {
     private readonly HudTracker _tracker = new();
-    private readonly EventLogReader _log = new(null, catalog);
+    private readonly EventLogReader _log = new(null, catalog, captureIntervalMs);
 
     public HudState Read(RawCapture raw, double realTime)
     {

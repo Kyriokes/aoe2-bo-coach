@@ -10,10 +10,11 @@ namespace BoCoach.Vision.Events;
 /// nuevos (<see cref="EventLogTracker"/>).
 /// </summary>
 /// <param name="ocr">null para reproducir renglones ya leídos (<see cref="Process(IReadOnlyList{string})"/>): sin OCR no se leen imágenes.</param>
-public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog)
+/// <param name="captureIntervalMs">Cada cuánto llegan las capturas: el log cuenta capturas para saber cuándo quedó vacío.</param>
+public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double captureIntervalMs = 500)
 {
     private readonly EventMatcher _matcher = new(catalog);
-    private readonly EventLogTracker _tracker = new();
+    private readonly EventLogTracker _tracker = new() { EmptyFrames = EventLogTracker.EmptyFramesFor(captureIntervalMs) };
     private CapturedImage? _lastMask;
     private IReadOnlyList<string> _lastLines = [];
 

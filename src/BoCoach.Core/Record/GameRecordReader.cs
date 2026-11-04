@@ -25,6 +25,9 @@ public sealed class GameRecordReader
 
     public JsonObject? Meta { get; }
 
+    /// <summary>Cada cuánto se miró la pantalla en esa partida.</summary>
+    public int IntervalMs => RawCapture.Int(Meta?["interval_ms"]) is { } ms and > 0 ? ms : RecordHealth.DefaultIntervalMs;
+
     /// <summary>Todas las líneas menos la meta, en orden.</summary>
     public IReadOnlyList<JsonObject> Lines { get; }
 

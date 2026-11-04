@@ -11,8 +11,9 @@ public sealed record RecordedFrame(int Index, long TimeMs);
 /// <summary>Lee una grabación hecha por <see cref="SessionRecorder"/> para correr el pipeline sin el juego.</summary>
 public sealed class RecordedSession
 {
-    private RecordedSession(string folder, IReadOnlyList<RecordedFrame> frames, IReadOnlyList<string> regions, double hudScale, HudLayout? hud)
+    private RecordedSession(string folder, IReadOnlyList<RecordedFrame> frames, IReadOnlyList<string> regions, double hudScale, HudLayout? hud, int intervalMs = 500)
     {
+        IntervalMs = intervalMs;
         Folder = folder;
         Frames = frames;
         Regions = regions;
@@ -21,6 +22,9 @@ public sealed class RecordedSession
     }
 
     public string Folder { get; }
+
+    /// <summary>Cada cuántos ms se grabó (session.json, interval_ms).</summary>
+    public int IntervalMs { get; }
     public IReadOnlyList<RecordedFrame> Frames { get; }
 
     /// <summary>Regiones que se grabaron (según session.json).</summary>
@@ -48,6 +52,7 @@ public sealed class RecordedSession
         using var session = JsonDocument.Parse(File.ReadAllText(Path.Combine(folder, "session.json")));
         var regions = session.RootElement.GetProperty("regions").EnumerateObject().Select(p => p.Name).ToList();
         var hudScale = session.RootElement.TryGetProperty("hud_scale", out var scale) && scale.TryGetDouble(out var s) && s > 0 ? s : 1;
+        var intervalMs = session.RootElement.TryGetProperty("interval_ms", out var interval) && interval.TryGetInt32(out var ms) && ms > 0 ? ms : 500;
         HudLayout? hud = null;
         if (session.RootElement.TryGetProperty("hud_layout", out var layout) && layout.ValueKind == JsonValueKind.Object)
         {

@@ -17,7 +17,7 @@ public sealed record RecordHealth
     /// <summary>Cada cuántos segundos se intenta leer el panel de puntajes.</summary>
     private const double ScoresEverySeconds = 2;
 
-    private const int DefaultIntervalMs = 500;
+    internal const int DefaultIntervalMs = 500;
 
     public required string File { get; init; }
     public string? GameId { get; init; }

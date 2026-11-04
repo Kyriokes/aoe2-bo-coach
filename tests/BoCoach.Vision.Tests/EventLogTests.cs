@@ -202,6 +202,44 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(["house_built"], news);
     }
 
+    // "Vacío" son unos 2,5 s de reloj, no 5 capturas: a 400 ms entre capturas, 5 son solo 2 s y un mensaje que se apaga sin
+    // leerse se contaría dos veces.
+    [Theory]
+    [InlineData(500, 5)]
+    [InlineData(400, 6)]
+    [InlineData(250, 10)]
+    [InlineData(1000, 3)] // nunca menos que lo que tarda en confirmarse un mensaje
+    public void El_tiempo_para_dar_el_log_por_vacio_no_depende_de_las_capturas(double intervalMs, int frames)
+    {
+        Assert.Equal(frames, EventLogTracker.EmptyFramesFor(intervalMs));
+    }
+
+    [Fact]
+    public void A_400_ms_un_mensaje_que_no_se_lee_2_s_no_cuenta_dos_veces()
+    {
+        var reader = new EventLogReader(null, Catalog, captureIntervalMs: 400);
+        Assert.Empty(reader.Process(["--Villager Created--"]));
+        Assert.Equal(["villager_created"], reader.Process(["--Villager Created--"]));
+
+        for (var i = 0; i < 5; i++)
+            Assert.Empty(reader.Process([]));
+        Assert.Empty(reader.Process(["--Villager Created--"]));
+        Assert.Empty(reader.Process(["--Villager Created--"]));
+    }
+
+    [Fact]
+    public void A_500_ms_cinco_capturas_sin_nada_siguen_vaciando_el_log()
+    {
+        var reader = new EventLogReader(null, Catalog);
+        reader.Process(["--Villager Created--"]);
+        reader.Process(["--Villager Created--"]);
+
+        for (var i = 0; i < 5; i++)
+            Assert.Empty(reader.Process([]));
+        Assert.Empty(reader.Process(["--Villager Created--"]));
+        Assert.Equal(["villager_created"], reader.Process(["--Villager Created--"]));
+    }
+
     [Fact]
     public void El_log_se_da_por_vacio_recien_despues_de_varias_capturas()
     {

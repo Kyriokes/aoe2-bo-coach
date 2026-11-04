@@ -20,6 +20,12 @@ public interface IFrameSource
     /// <summary>Cada cuánto se toma una captura.</summary>
     TimeSpan Interval { get; }
 
+    /// <summary>
+    /// Cada cuántos ms de partida hay una captura: en vivo es <see cref="Interval"/>, y en una grabación es con lo que se
+    /// grabó, a cualquier velocidad que se reproduzca.
+    /// </summary>
+    double CaptureIntervalMs => Interval.TotalMilliseconds;
+
     /// <summary>Zona del juego en la pantalla (para ubicar el overlay).</summary>
     PixelRect Area { get; }
 
@@ -117,7 +123,9 @@ public sealed class RecordedFrames(RecordedSession session, double speed = 1) : 
 {
     private int _next;
 
-    public TimeSpan Interval => TimeSpan.FromMilliseconds(500 / Math.Max(0.1, speed));
+    public TimeSpan Interval => TimeSpan.FromMilliseconds(session.IntervalMs / Math.Max(0.1, speed));
+
+    public double CaptureIntervalMs => session.IntervalMs;
 
     public PixelRect Area { get; init; } = GameWindow.PrimaryScreen;
 

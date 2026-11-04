@@ -219,6 +219,24 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Single(finished); // detener después no vuelve a cerrar nada
     }
 
+    // Reproducir una grabación más rápido no es mirar la pantalla más seguido: el registro dice lo segundo, y con eso se
+    // reproduce después (cuántas capturas son "log vacío").
+    [Fact]
+    public async Task El_registro_dice_cada_cuanto_se_miro_la_pantalla_y_no_a_que_velocidad_se_reprodujo()
+    {
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new RecordedFrames(RecordedSession.Load(Fixture), speed: 50), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        while (live.Report().Length < 5 && await live.StepAsync())
+        {
+        }
+
+        live.Stop();
+
+        Assert.Equal(500, GameRecordReader.Load(Assert.Single(finished).Path).IntervalMs);
+    }
+
     // "Algo anduvo mal": el jugador marca el momento y el registro dice cuándo fue.
     [Fact]
     public async Task Una_marca_queda_en_el_registro_y_se_cuenta()

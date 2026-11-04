@@ -27,6 +27,12 @@ public sealed class EventLogTracker
     /// </summary>
     public int EmptyFrames { get; init; } = 5;
 
+    /// <summary>Los segundos reales detrás de <see cref="EmptyFrames"/> (el hueco más corto medido, 5 capturas a 500 ms).</summary>
+    public const double EmptySeconds = 2.5;
+
+    /// <summary>Cuántas capturas son <see cref="EmptySeconds"/> mirando la pantalla cada ese tiempo (nunca menos que lo que tarda en confirmarse un mensaje).</summary>
+    public static int EmptyFramesFor(double captureIntervalMs) => Math.Max(3, (int)(EmptySeconds * 1000 / captureIntervalMs));
+
     /// <summary>Lo que se ve ahora en el log, ya estabilizado.</summary>
     public IReadOnlyList<string> Visible => _stable;
 

@@ -937,9 +937,10 @@ static async IAsyncEnumerable<(int Frame, ScreenReading Reading, double Ms, BoCo
 {
     if (BoCoach.Core.Record.GameRecordReader.IsRecord(source))
     {
-        var replay = new ScreenReplay(Catalog(args));
+        var record = BoCoach.Core.Record.GameRecordReader.Load(source);
+        var replay = new ScreenReplay(Catalog(args), record.IntervalMs);
         var index = 0;
-        foreach (var capture in BoCoach.Core.Record.GameRecordReader.Load(source).Captures)
+        foreach (var capture in record.Captures)
             yield return (index++, replay.Read(capture.Capture, capture.Ms / 1000.0).ToReading(), capture.Ms, capture.Capture);
         yield break;
     }

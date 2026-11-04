@@ -370,7 +370,7 @@ public sealed class LiveCoach : IDisposable
                 {
                     _lastRecalibrate = frame.RealTime;
                     if (Frames.Recalibrate())
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud);
+                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
                 }
             }
             else
@@ -384,7 +384,7 @@ public sealed class LiveCoach : IDisposable
                     _lastInGameRecalibrate = frame.RealTime;
                     var before = Frames.Hud?.Name;
                     if (Frames.Recalibrate() && Frames.Hud?.Name != before)
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud);
+                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
                 }
             }
             if (hud.ClockRead)
@@ -537,7 +537,7 @@ public sealed class LiveCoach : IDisposable
             _recordGameId = Guid.NewGuid().ToString("N");
             var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
             var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,
-                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.Interval.TotalMilliseconds, BuildOrder with { Civ = Civ });
+                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.CaptureIntervalMs, BuildOrder with { Civ = Civ });
             _recordWriter = GameRecordWriter.Create(path, meta);
             _recorder = new GameRecorder(_recordWriter, _data);
             (_recordStart, _recordFlushedAt, _recordNotice, _flags) = (realTime, realTime, null, 0);
@@ -616,7 +616,7 @@ public sealed class LiveCoach : IDisposable
     private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (
         new Coach(bo, _data, Events, economy: _economy),
         new SnapshotBuilder(_data, _data.Civ(bo.Civ)),
-        new ScreenReader(_fonts, _ocr, Events, Frames.Hud));
+        new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs));
 
     private async Task RunAsync(CancellationToken token)
     {
