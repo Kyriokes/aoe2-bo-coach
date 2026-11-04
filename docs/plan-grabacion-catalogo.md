@@ -2,6 +2,10 @@
 
 Una partida contra la IA, sin apuro, para que el coach vea en pantalla todo lo que puede pedir una BO. Se juega cuando vuelvas a casa, antes de la beta.
 
+## Ya se jugó (3/11, grabación 20261103-193834)
+
+Persas en violeta, 57 minutos, casi todo el árbol. Confirmó que el log sigue blanco en otro color y que el aldeano del mod se lee en violeta, y mostró que los íconos en espera eran lo más flojo (arreglado en la v0.9.89, ver `CLAUDE.md`). **Falta solo la prueba corta de abajo, sin Villager Highlighter.**
+
 ## Qué cambió el 3/11
 
 La biblioteca ya no necesita esta partida para conocer los íconos: desde la v0.9.87 los saca de los archivos del juego (543 unidades y tecnologías, teñidos como los tiñe el juego). En 4 partidas grabadas la cola vio todas las tecnologías que avisó el log, incluidas 8 que no tenían ninguna muestra real (minería de oro, sierra de arco, arado pesado, anillo del pulgar, las dos armaduras de arqueros, balística y hombre de armas). Ver `CLAUDE.md`.

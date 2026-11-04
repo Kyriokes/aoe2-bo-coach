@@ -8,7 +8,7 @@ Las cuatro partes del camino al público están publicadas: la v0.9.85 llegó a 
 
 ## Cuando vuelvas a casa (3/11)
 
-0v. **La partida de catálogo.** Antes de sumar partidas: una partida contra la IA en color amarillo, produciendo todas las unidades y tecnologías, para comprobar la cola y el OCR del log. Unos 30 minutos, con trucos de recursos, más 3 minutos en rojo con Villager Highlighter apagado. La lista paso a paso está en `docs/plan-grabacion-catalogo.md`. Abrí antes la v0.9.87 o más nueva.
+0v. **Sin Villager Highlighter, 3 minutos.** La partida de catálogo ya se jugó (3/11). Falta esto: apagá el mod Villager Highlighter en Mods instalados, jugá 3 minutos sacando aldeanos con un telar en el medio, en un color que no sea azul ni violeta, y volvé a prenderlo. Sin esto no sé si el coach ve bien el aldeano de un jugador sin el mod, que es lo que tiene casi todo el mundo.
 
 0w. **Mirar la app en inglés.** Arriba a la derecha está el selector de idioma: elegí English, aceptá que se reabra, mirá la ventana y los Ajustes, y volvé a Español. En tu PC dejé fijo el castellano, porque tu Windows está en inglés y la app habría abierto en inglés (la copia de antes está en `%APPDATA%\BoCoach\settings.json.anterior-20261103`).
 
