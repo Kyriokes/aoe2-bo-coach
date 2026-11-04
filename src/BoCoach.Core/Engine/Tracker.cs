@@ -87,6 +87,12 @@ public sealed class Tracker
     /// <summary>Segundos que el HUD tiene que mostrar el total para dar el paso por hecho (una lectura mala no alcanza).</summary>
     public const double HudConfirmSeconds = 2;
 
+    /// <summary>Segundos que se pide un "Mover" que nada puede confirmar (más o menos lo que tardaba el aldeano siguiente, que lo cerraba antes).</summary>
+    public const double MoveSeconds = 30;
+
+    /// <summary>Segundos que se pide un "Mover" que el HUD podría confirmar y no confirma: el jugador no quiso hacerlo.</summary>
+    public const double MoveHudSeconds = 90;
+
     private readonly Dictionary<int, double> _hudSince = [];
     private readonly Dictionary<int, double> _hudDone = [];
     private readonly HashSet<int> _noHud = [];
@@ -103,10 +109,30 @@ public sealed class Tracker
         _hudTarget = HudTargets(bo);
         _capTarget = CapTargets(bo, data);
         _atPop = PopulationTargets(bo, data);
+        _moveWaitsFor = bo.Steps.Select((s, i) => s.Do == StepAction.Move ? MoveWaitsFor(i) : null).ToArray();
         Recompute();
     }
 
     private readonly int?[] _atPop;
+
+    /// <summary>
+    /// El paso que espera cada "Mover": el que la BO pone justo antes, sin contar los de la línea de aldeanos (que se
+    /// esperan todos, <see cref="MoveReached"/>) ni lo que el log no puede confirmar (se quedaría esperando para siempre).
+    /// </summary>
+    private readonly int?[] _moveWaitsFor;
+
+    /// <summary>Desde cuándo se está pidiendo cada "Mover" (la BO llegó a él y se cumplen su población y su hora).</summary>
+    private readonly Dictionary<int, double> _moveSince = [];
+
+    private int? MoveWaitsFor(int index)
+    {
+        for (var j = index - 1; j >= 0; j--)
+        {
+            if (Lanes.Of(_bo.Steps[j]) != Lane.Villagers && _confirmEvent[j] is not null && !SameGroup(index, j))
+                return j;
+        }
+        return null;
+    }
 
     /// <summary>
     /// La población a la que espera cada paso: la de su <c>at_pop</c> o, si no es de aldeanos, la que tiene la BO cuando
@@ -181,7 +207,7 @@ public sealed class Tracker
     /// en cualquier paso anterior. Si la BO antes sacó gente de ese recurso, el HUD ya muestra ese total desde mucho
     /// antes: en la 20261028-232628 (británicos mejorada), "5 en bayas" pedía 6 en comida después de mover 6 de las
     /// ovejas y la caza, y a las 0:52 lo daba por hecho, y con él a todos los "Mover" de antes. Esos pasos se cuentan
-    /// por el log, como sin el HUD.
+    /// por el log, como sin el HUD. Un "Mover" entre recursos se confirma igual: los que llegaron se ven en el recurso.
     /// </summary>
     private static (Resource Resource, int Total)?[] HudTargets(BuildOrder bo)
     {
@@ -190,7 +216,7 @@ public sealed class Tracker
         for (var i = 0; i < bo.Steps.Count; i++)
         {
             var totals = LivePlan.PlannedVillagers(bo, i).GroupBy(v => v.Key.Resource()).ToDictionary(g => g.Key, g => g.Sum(v => v.Value));
-            if (LivePlan.IsVillagerTarget(bo.Steps[i]) && bo.Steps[i].Assign!.Value.Resource() is var resource
+            if ((LivePlan.IsVillagerTarget(bo.Steps[i]) || bo.Steps[i] is { Do: StepAction.Move, Assign: not null }) && bo.Steps[i].Assign!.Value.Resource() is var resource
                 && totals.GetValueOrDefault(resource) is var total && total > peak.GetValueOrDefault(resource))
                 targets[i] = (resource, total);
             foreach (var (r, t) in totals)
@@ -242,6 +268,9 @@ public sealed class Tracker
     /// </summary>
     private bool IsBehind(StepProgress s)
     {
+        // Un "Mover" al que la BO no llegó no la deja sin terminar: lo que espera sigue abierto, o quedó atrás.
+        if (s.Step.Do == StepAction.Move)
+            return !_eligible[s.Index];
         var lane = Lanes.Of(s.Step);
         if (lane == Lane.Villagers || s.Completed > 0 || !_eligibleSince.TryGetValue(s.Index, out var since))
             return false;
@@ -540,10 +569,47 @@ public sealed class Tracker
 
         bool IsDone(int i) => doneAt[i] is not null || _manualDone.ContainsKey(i);
 
+        // 2a. Los "Mover": el juego no los avisa, y que avance otra cosa no dice nada de ellos. En la partida 20261104-095625
+        // el telar de las 3:48 daba por hechos los 3 "Mover" a madera, que la BO pone después del clic de Feudal de las
+        // 8:17, y el último, sin nada después que lo cerrara, se pidió desde las 8:22 hasta el final: la BO nunca terminaba.
+        // Se piden cuando la BO llega a ellos y se cierran al verse en el HUD o pasado un tiempo.
+        var moveReached = new bool[n];
+        for (var i = 0; i < n; i++)
+        {
+            var step = _bo.Steps[i];
+            if (step.Do != StepAction.Move)
+                continue;
+            moveReached[i] = MoveReached(i);
+            if (!moveReached[i] || (step.AtPop is { } pop && _state.Population < pop) || (step.AtTime is { } time && _state.Time < time))
+            {
+                _moveSince.Remove(i);
+                continue;
+            }
+            _moveSince.TryAdd(i, _state.Time);
+            if (IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i) || _noHud.Contains(i))
+                continue;
+            var limit = _moveSince[i] + (_hudTarget[i] is not null && _state.VillagersOn is not null ? MoveHudSeconds : MoveSeconds);
+            if (_state.Time >= limit)
+                doneAt[i] = limit;
+        }
+
+        bool MoveReached(int i)
+        {
+            for (var j = 0; j < i; j++)
+            {
+                // Los aldeanos de antes tienen que estar: lo que se puede confirmar de la línea va en orden.
+                if (Lanes.Of(_bo.Steps[j]) == Lane.Villagers && !SameGroup(i, j) && Required(j) > 0 && !IsDone(j) && !_skipped.ContainsKey(j)
+                    && (_confirmEvent[j] is not null || _bo.Steps[j].Do == StepAction.Move))
+                    return false;
+            }
+            return _moveWaitsFor[i] is not { } before
+                || IsDone(before) || _skipped.ContainsKey(before) || _started.ContainsKey(before) || completed[before] > 0;
+        }
+
         // 2. Pasos que el log no puede confirmar: hechos cuando avanza algún paso posterior.
         for (var i = n - 1; i >= 0; i--)
         {
-            if (_confirmEvent[i] is not null || IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i))
+            if (_confirmEvent[i] is not null || _bo.Steps[i].Do == StepAction.Move || IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i))
                 continue;
             // Lo que el juego nunca avisa (granjas), en un paso mixto: hecho cuando las otras metas están hechas (los
             // aldeanos a granjas y sus granjas). Lo que el log avisa pero no se pudo leer espera a un paso posterior:
@@ -602,7 +668,7 @@ public sealed class Tracker
                 Reached(_bo.Steps[i].Do, what);
         }
         Age = age;
-        _eligible = Enumerable.Range(0, n).Select(i => Eligible(_bo.Steps[i])).ToArray();
+        _eligible = Enumerable.Range(0, n).Select(i => Eligible(_bo.Steps[i]) && (_bo.Steps[i].Do != StepAction.Move || moveReached[i])).ToArray();
         for (var i = 0; i < n; i++)
         {
             if (!_eligible[i])

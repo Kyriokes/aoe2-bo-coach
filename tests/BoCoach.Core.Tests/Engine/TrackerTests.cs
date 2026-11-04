@@ -484,7 +484,9 @@ public class TrackerTests
         var archers = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json"));
         var farms = archers.Steps.Select(s => s.Id).ToList().IndexOf("s40");
         var tracker = new Tracker(archers, TestData.GameData);
-        tracker.Update(new Partida().Play(archers, 0, farms).State);
+        var partida = new Partida();
+        for (var i = 0; i <= farms; i++)
+            tracker.Update(partida.Play(archers, i, i).Wait(archers.Steps[i].Do == StepAction.Move ? Tracker.MoveSeconds : 0).State);
 
         Assert.Equal("s41", tracker.Current?.Step.Id);
         Assert.Contains(tracker.Silent, s => s.Step.Id == "s40");
