@@ -65,6 +65,15 @@ public class CoachTextLanesTests
     }
 
     [Fact]
+    public void Con_un_solo_lugar_la_casa_lo_dice_en_singular()
+    {
+        var coach = new Coach(Feudal, TestData.GameData, TestData.Events);
+        var view = coach.Update(new GameSnapshot(300, new ResourceAmounts(500, 0, 0, 0), 14, 15));
+
+        Assert.Equal("Casa: queda 1 lugar", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
+    [Fact]
     public void LaneLines_con_el_hacha_esperando()
     {
         var view = new Coach(Axe, TestData.GameData, TestData.Events).Update(At(400, new ResourceAmounts(200, 0, 200, 200),

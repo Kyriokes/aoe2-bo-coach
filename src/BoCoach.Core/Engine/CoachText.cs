@@ -488,7 +488,7 @@ public static class CoachText
     private static string HouseText(CoachView view)
     {
         var left = Math.Max(0, view.PopulationCap - view.Population);
-        return L($"Casa: quedan {left} lugares", $"House: {left} {(left == 1 ? "slot" : "slots")} left");
+        return L(left == 1 ? "Casa: queda 1 lugar" : $"Casa: quedan {left} lugares", $"House: {left} {(left == 1 ? "slot" : "slots")} left");
     }
 
     private static string ClickText(string age) => L($"Hacé clic en {age}", $"Click {age}");
