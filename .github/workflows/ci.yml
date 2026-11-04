@@ -61,7 +61,7 @@ jobs:
 
       # La versión portable (BoCoach.exe con .NET adentro + data), para bajarla y probarla en otra PC.
       - run: dotnet publish src/BoCoach.App -c Release -r win-x64 -o publish/BoCoach
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BoCoach-portable-win-x64
           path: publish/
