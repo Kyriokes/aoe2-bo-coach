@@ -484,6 +484,8 @@ public sealed class Coach
             _queueSeenAt = snapshot.Time;
             if (queue.Any(item => IsTownCenterWork(item.Key)))
                 _townCenterQueuedAt = snapshot.Time;
+            if (queue.Any(item => item.Key == QueueItem.Unknown))
+                _queueUnknownAt = snapshot.Time;
         }
     }
 
@@ -510,6 +512,12 @@ public sealed class Coach
     private double _townCenterQueuedAt = double.NegativeInfinity;
 
     /// <summary>
+    /// La última vez que la cola mostró un ícono sin reconocer: puede ser del centro urbano, así que mientras esté no se
+    /// mira la cola para decir que está parado (partida 20261104-142003, jugador naranja: 5:57 de aviso falso).
+    /// </summary>
+    private double _queueUnknownAt = double.NegativeInfinity;
+
+    /// <summary>
     /// Cuánto lleva el centro urbano sin producir, contando desde el último aldeano (o desde que terminó de investigar)
     /// más lo que tarda uno. El centro urbano produce siempre hasta el máximo de aldeanos, salvo que la BO todavía
     /// pida aldeanos (entonces avisa aunque el máximo sea menor).
@@ -521,16 +529,17 @@ public sealed class Coach
         var pending = Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped));
         if (!pending && villagers >= _economySettings.MaxVillagers)
             return null;
-        if (State.Time - _queueSeenAt <= QueueStaleSeconds)
+        if (State.Time - _queueSeenAt <= QueueStaleSeconds && _queueUnknownAt < _queueSeenAt)
         {
-            // Desde la última vez que la cola tuvo algo del centro urbano (o desde que se empezó a leer).
-            var idleFor = State.Time - Math.Max(_townCenterQueuedAt, _queueFirstSeenAt);
+            // Desde la última vez que la cola tuvo algo del centro urbano o algo sin reconocer (o desde que se empezó a leer).
+            var idleFor = State.Time - Math.Max(Math.Max(_townCenterQueuedAt, _queueUnknownAt), _queueFirstSeenAt);
             return idleFor >= QueueIdleGrace ? idleFor : null;
         }
         var civ = _data.Civ(Tracker.BuildOrder.Civ);
         var age = LivePlan.Start(Tracker).Age;
         var train = civ.Time(villager, age) / civ.WorkRate("town_center", age);
-        var idle = State.Time - Math.Max(_lastVillagerAt, _townCenterBusyAt) - train;
+        // Lo del centro urbano que se vio en la cola también cuenta: con un "?" al lado, sigue estando ocupado.
+        var idle = Math.Min(State.Time - Math.Max(_lastVillagerAt, _townCenterBusyAt) - train, State.Time - _townCenterQueuedAt);
         return idle >= TownCenterIdleGrace ? idle : null;
     }
 

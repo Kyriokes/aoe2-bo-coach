@@ -59,5 +59,8 @@ public sealed record PlayerScore(int Slot, int Score, bool DarkAge);
 /// </summary>
 public sealed record QueueItem(string Key, bool Waiting = false)
 {
+    /// <summary>Un ícono que está en la cola y no se reconoció.</summary>
+    public const string Unknown = "?";
+
     public override string ToString() => Waiting ? $"{Key}…" : Key;
 }

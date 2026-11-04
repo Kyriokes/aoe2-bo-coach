@@ -446,6 +446,34 @@ public class CoachTests
         Assert.NotNull(coach.Update(Queue(1066, "archer")).TownCenterIdle);              // 6 s sin nada del centro urbano
     }
 
+    // Partida 20261104-142003 (jugador naranja): el aldeano recién empezado salía "?" unos 12 s cada 50 s, y el coach
+    // avisaba centro urbano parado en falso, 5:57 en toda la partida. Lo que no se reconoce no dice que no haya nada.
+    [Fact]
+    public void Un_icono_sin_reconocer_no_dice_que_el_centro_urbano_este_parado()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, int villagers, params string[] queue) =>
+            At(time, 200, villagers) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
+
+        coach.Update(Queue(1000, 30, "villager"));
+        coach.Update(Queue(1010, 31, QueueItem.Unknown)); // salió uno, y el siguiente no se reconoce
+        Assert.Null(coach.Update(Queue(1022, 31, QueueItem.Unknown)).TownCenterIdle);
+
+        // Con un "?" y algo del centro urbano a la vista, está ocupado (en esa partida, la carreta de mano a las 23:23).
+        Assert.Null(coach.Update(Queue(1045, 31, QueueItem.Unknown, "wheelbarrow")).TownCenterIdle);
+
+        // Y con eso no se esconde uno parado de verdad: sin aldeanos nuevos, se deduce por los aldeanos.
+        Assert.NotNull(coach.Update(Queue(1060, 31, QueueItem.Unknown)).TownCenterIdle);
+
+        // Se fue el "?" y no hay nada: el margen de siempre desde que se fue.
+        coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(Queue(1000, 30, "villager"));
+        coach.Update(Queue(1010, 31, QueueItem.Unknown));
+        Assert.Null(coach.Update(Queue(1012, 31)).TownCenterIdle);
+        Assert.NotNull(coach.Update(Queue(1016, 31)).TownCenterIdle);
+    }
+
     // Pedido del usuario (2026-10-31): el log no es confiable para las tecnologías. Una que pasó por la cola y se fue
     // después de su tiempo de investigación quedó hecha, aunque el log no lo avise.
     private static readonly BuildOrder Loom = new()
