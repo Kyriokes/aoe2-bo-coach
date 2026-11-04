@@ -319,21 +319,8 @@ public partial class App : Application
         if (stats is null)
             return;
 
-        var log = new StreamWriter(stats) { AutoFlush = true };
-        log.WriteLine("segundos,cpu_porcentaje,ram_mb,ms_por_captura");
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        var last = TimeSpan.Zero;
-        window.Coach.FrameApplied += frame =>
-        {
-            if (clock.Elapsed - last < TimeSpan.FromSeconds(2))
-                return;
-            last = clock.Elapsed;
-            log.WriteLine(string.Join(",",
-                ((int)clock.Elapsed.TotalSeconds).ToString(CultureInfo.InvariantCulture),
-                frame.Usage.CpuPercent.ToString("0.00", CultureInfo.InvariantCulture),
-                frame.Usage.MemoryMb.ToString("0.0", CultureInfo.InvariantCulture),
-                frame.FrameMs.ToString("0.0", CultureInfo.InvariantCulture)));
-        };
+        var log = new Coaching.UsageCsv(stats);
+        window.Coach.FrameApplied += log.Add;
         window.Closed += (_, _) => log.Dispose();
     }
 

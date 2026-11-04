@@ -64,6 +64,11 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         // Solo con la pantalla en vivo: con --replay grabaría el escritorio.
         Coach.FrameApplied += frame => autoRecorder.OnFrame(frame.InGame && Coach.IsLive);
         Coach.Stopped += autoRecorder.OnCoachStopped;
+        // Modo desarrollador: el consumo de cada partida, para comparar.
+        var usage = new GameUsageLog(() => DevMode.Instance.IsOn,
+            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "uso", $"{DateTime.Now:yyyyMMdd-HHmmss}-{Coach.LiveCoach?.Frames.CaptureIntervalMs:0}ms.csv"));
+        Coach.FrameApplied += frame => usage.OnFrame(frame, frame.InGame && Coach.IsLive);
+        Coach.Stopped += usage.OnCoachStopped;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
         // Las capturas de prueba (con su propia carpeta) no comparten nada.
         if (userDir is null)
