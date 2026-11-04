@@ -73,7 +73,7 @@ public sealed class EventMatcher
     /// no juntarse con el renglón siguiente (<see cref="Closes"/>), y no tiene letras: junto con el anterior da lo mismo
     /// que el anterior solo.
     /// </summary>
-    public const string Scrubbed = "?-";
+    public const string Scrubbed = BoCoach.Core.Record.RecordHealth.Unrecognized;
 
     /// <summary>
     /// Los renglones con lo que no se reconoce tapado (<see cref="Scrubbed"/>): por la caja del log puede pasar el chat,

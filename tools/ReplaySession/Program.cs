@@ -30,6 +30,10 @@
 //       "0=villager,3=archer"). Los grupos sin etiqueta (mapa, negro) se descartan.
 //   queue <grabación> <íconos.json> [--every 2]
 //       Lee la cola de producción y muestra cada cambio.
+//   registros <carpeta>
+//       El resumen de los registros de partida de la carpeta y sus subcarpetas (los bajados de Supabase, por ejemplo): qué
+//       se leyó bien en cada una, qué se dio por hecho y por qué fuente, las marcas y las notas. Para ver una partida:
+//       coach <registro.jsonl.gz> --guide.
 //   scores <grabación> [--every 4 | --frames 1,2,3] [--raw [--dump carpeta]]
 //       Lee el panel de puntajes (jugador:puntaje) y muestra cada cambio. --raw agrega lo que leyó el OCR y --dump
 //       guarda la imagen preparada de cada captura.
@@ -85,6 +89,7 @@ using BoCoach.Vision.Recording;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
+using BoCoach.Core.Record;
 using BoCoach.Vision.Events;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Regions;
@@ -123,6 +128,7 @@ try
         "queue" => args.Contains("--detail") ? QueueDetail(args[1], args[2], Option(args, "--every", 1), args.Contains("--features")) : ReadQueue(args[1], args[2], Option(args, "--every", 2), !args.Contains("--no-game")),
         "queue-sheet" => QueueSheet(args[1], args[2], !args.Contains("--no-game")),
         "scores" => Scores(args[1], args).GetAwaiter().GetResult(),
+        "registros" => Records(args[1]),
         "teach" => TeachIcon(args[1], int.Parse(args[2], CultureInfo.InvariantCulture), int.Parse(args[3], CultureInfo.InvariantCulture), args[4], args[5], args),
         _ => throw new ArgumentException($"Comando desconocido: {args[0]}"),
     };
@@ -324,6 +330,13 @@ static int ImportGuide(string guide, string output, string[] args)
     return 0;
 
     static string Clock(double? seconds) => seconds is { } s ? BoCoach.Core.GameClock.Format(s) : "-";
+}
+
+static int Records(string folder)
+{
+    foreach (var line in RecordHealthReport.Scan(folder).Lines())
+        Console.WriteLine(line);
+    return 0;
 }
 
 static InkSpec Ink(string color) => color switch
