@@ -127,10 +127,35 @@ public sealed class EventMatcher
             // letras mal leídas sigue entera: "I aeather Archer Armor" queda Padded.
             var distance = Levenshtein(normalized, phrase);
             var score = distance == 0 ? 0 : distance / (double)phrase.Length + (rare ? RarePenalty : 0);
-            if (score < bestScore)
+            if (score < bestScore && !IsAnotherName(normalized, phrase, distance))
                 (best, bestScore) = (eventId, score);
         }
         return best is not null && bestScore <= MaxRelativeDistance ? (best, bestScore) : null;
+    }
+
+    /// <summary>Largo desde el que lo distinto entre dos frases ya es un nombre, no un par de letras mal leídas.</summary>
+    private const int NameLength = 5;
+
+    /// <summary>Parte de ese nombre que tiene que cambiar para que sea otro: una lectura mala se le sigue pareciendo.</summary>
+    private const double AnotherNameShare = 0.6;
+
+    /// <summary>
+    /// Comparten el principio o el final y lo del medio no se parece: es otro mensaje, aunque la frase entera quede cerca.
+    /// En la partida 20261104-095625, "Champi Runner Research Complete" (que no está en el catálogo) daba el anillo del
+    /// pulgar por hecho 2 minutos antes de investigarlo: el final del mensaje pesa más que el nombre. Si a una de las
+    /// dos le falta un pedazo no es otro nombre: es el primer renglón de un mensaje largo, sin el segundo.
+    /// </summary>
+    private static bool IsAnotherName(string read, string phrase, int distance)
+    {
+        var shorter = Math.Min(read.Length, phrase.Length);
+        var start = 0;
+        while (start < shorter && read[start] == phrase[start])
+            start++;
+        var end = 0;
+        while (end < shorter - start && read[^(end + 1)] == phrase[^(end + 1)])
+            end++;
+        var middle = Math.Max(read.Length, phrase.Length) - start - end;
+        return Math.Min(read.Length, phrase.Length) - start - end > 1 && middle >= NameLength && distance >= AnotherNameShare * middle;
     }
 
     /// <summary>Minúsculas, solo letras y espacios simples, con las confusiones típicas del OCR corregidas.</summary>

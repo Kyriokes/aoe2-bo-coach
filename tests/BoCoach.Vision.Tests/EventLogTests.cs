@@ -30,6 +30,30 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(expected, Matcher.Match(line));
     }
 
+    // Partida 20261104-095625 (incas): "Champi Runner Research Complete" no está en el catálogo y lo que comparte con
+    // "Thumb Ring Research Complete" (el final del mensaje) alcanzaba: el coach dio el anillo por hecho a las 22:49, 2 min
+    // antes de investigarlo. Una lectura mala se parece a su nombre; esto es otro nombre con el mismo final.
+    [Theory]
+    [InlineData("—Champi Runner Research Complete--")]
+    [InlineData("—Heavy Camel Rider Research Complete—")] // la partida 20261103-193834 lo daba por Heavy Cavalry Archer
+    public void Otro_nombre_con_el_mismo_final_no_es_el_mismo_mensaje(string line)
+    {
+        Assert.Null(Matcher.Match(line));
+    }
+
+    [Theory]
+    [InlineData("—Thumb Rlng Research Complete—", "thumb_ring_researched")]
+    [InlineData("—Champi Ruooer Created--", "champi_runner_created")]
+    [InlineData("—Vtllager Created--", "villager_created")]
+    [InlineData("—Archery Range Bullt—", "archery_range_built")]
+    // El primer renglón de un mensaje largo, con el segundo fuera de la caja: le falta el final, no es otro nombre.
+    [InlineData("—Thumb Ring Research", "thumb_ring_researched")]
+    [InlineData("—Leather Archer Armor Researcb", "leather_archer_armor_researched")]
+    public void Un_nombre_mal_leido_se_sigue_reconociendo(string line, string expected)
+    {
+        Assert.Equal(expected, Matcher.Match(line));
+    }
+
     // Juego en castellano (amigos del usuario, 2026-10-20): las frases de events.es.json, unidas a las inglesas como en
     // la app. El OCR en inglés lee sin acentos y el de castellano con ellos: las dos tienen que dar el evento.
     private static readonly EventMatcher SpanishMatcher = new(EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, "events.json"))
