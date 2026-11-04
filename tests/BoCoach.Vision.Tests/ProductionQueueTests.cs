@@ -36,6 +36,17 @@ public class ProductionQueueTests
         Assert.Equal(expected, string.Join(" ", Library.Read(Frame(frame, "20261101-230201"))));
     }
 
+    // Partida 20261104-142003 (jugador naranja): el aldeano recién empezado con la cantidad en la esquina salía "?" unos
+    // 12 s cada 50 s, a 0,10 o 0,13 de lo que conocía la biblioteca (el umbral es 0,09).
+    [Theory]
+    [InlineData(5)]
+    [InlineData(64)]
+    [InlineData(130)]
+    public void Lee_al_aldeano_naranja_recien_empezado(int frame)
+    {
+        Assert.Equal("villager", string.Join(" ", Library.Read(Frame(frame, "20261104-142003"))));
+    }
+
     // Partida 20261029-211516 (coreanos, v0.9.44 con la caja de la cola en x 0): la carretilla y Castillos esperando,
     // amarillos, se leían como la Feudal en espera.
     [Theory]
