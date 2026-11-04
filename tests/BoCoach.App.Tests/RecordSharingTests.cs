@@ -6,6 +6,7 @@ using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Record;
 using BoCoach.Core.Web;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Recording;
 
 namespace BoCoach.App.Tests;
 
@@ -66,6 +67,105 @@ public sealed class RecordSharingTests : IDisposable
         public TimeSpan Interval => TimeSpan.FromHours(1);
         public PixelRect Area => new(0, 0, 1920, 1080);
         public Frame? Next() => new(_ => null, ++_served, Area);
+    }
+
+    /// <summary>Una grabación servida como si fuera la pantalla: para la sesión es una partida real.</summary>
+    private sealed class LiveRecording(RecordedSession session) : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+
+        public Frame? Next()
+        {
+            if (_served >= session.Frames.Count)
+                return null;
+            var frame = session.Frames[_served++];
+            return new Frame(region => session.Has(frame.Index, region) ? session.Image(frame.Index, region) : null, frame.TimeMs / 1000.0, Area);
+        }
+    }
+
+    /// <summary>
+    /// Como la ventana de verdad: lo que va por RunOnUi se encola (Dispatcher.BeginInvoke) y corre después de lo que está
+    /// corriendo. Anota lo que dice la sesión en el momento de mostrar el informe.
+    /// </summary>
+    private sealed class QueuedHost : ICoachHost
+    {
+        private readonly Queue<Action> _pending = new();
+        public CoachSessionViewModel? Session { get; set; }
+        public bool CouldSendNote { get; private set; }
+        public GameRecordInfo? Game { get; private set; }
+
+        public void RunPending()
+        {
+            while (_pending.TryDequeue(out var action))
+                action();
+        }
+
+        public void RunOnUi(Action action) => _pending.Enqueue(action);
+
+        public void ShowReport(IReadOnlyList<string> summary, string path) =>
+            (CouldSendNote, Game) = (Session!.CanSendNote, Session.LastRecord);
+
+        public void ShowOverlay(OverlayViewModel overlay, PixelRect area) { }
+        public void PlaceOverlay(PixelRect area) { }
+        public void SetOverlayVisible(bool visible) { }
+        public void CloseOverlay() { }
+        public EloCandidate? ChooseElo(IReadOnlyList<EloCandidate> candidates) => null;
+        public bool Confirm(string message) => true;
+    }
+
+    private static string Fixture => Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-214512");
+
+    private static async Task PlayAMinute(CoachSessionViewModel session, QueuedHost host)
+    {
+        session.Start(Scouts, new LiveRecording(RecordedSession.Load(Fixture)));
+        while (session.LiveCoach!.Report().Length < 70 && await session.LiveCoach.StepAsync())
+            host.RunPending();
+    }
+
+    // Partida 20261104-114422: 3 marcas con Ctrl+Alt+F y la caja de la nota nunca apareció. Al detener el coach, el informe
+    // se mostraba antes de cerrar el registro: para el informe todavía no había ninguna partida a la que anotarle algo.
+    [Fact]
+    public async Task Al_detener_el_coach_el_informe_ya_sabe_de_que_partida_habla_y_cuantas_marcas_tiene()
+    {
+        var folder = Path.Combine(_dir.FullName, "registros");
+        var host = new QueuedHost();
+        var sharing = new RecordSharing(folder, Path.Combine(_dir.FullName, "instalacion.json"),
+            () => new WebLibraryClient(new HttpClient(_web), new Uri("https://bo.example/")), "v9.9");
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException(), SettingsPath)
+        {
+            ManualSteps = true,
+            RecordsFolder = folder,
+            ReportsFolder = Path.Combine(_dir.FullName, "informes"),
+            Sharing = sharing,
+        };
+        host.Session = session;
+
+        await PlayAMinute(session, host);
+        Assert.True(session.LiveCoach!.Flag());
+        session.Stop();
+
+        Assert.True(host.CouldSendNote);
+        Assert.Equal(1, host.Game?.Flags);
+        var first = host.Game!.GameId;
+        await Sent(sharing);
+
+        // La segunda partida de la sesión no le anota nada a la primera.
+        await PlayAMinute(session, host);
+        session.Stop();
+
+        Assert.NotEqual(first, host.Game?.GameId);
+        Assert.Equal(0, host.Game?.Flags);
+        await Sent(sharing);
+    }
+
+    /// <summary>El registro sale solo después de detener el coach: se espera a que salga de la cola.</summary>
+    private static async Task Sent(RecordSharing sharing)
+    {
+        for (var i = 0; i < 500 && sharing.Pending > 0; i++)
+            await Task.Delay(10);
+        Assert.Equal(0, sharing.Pending);
     }
 
     private (CoachSessionViewModel Session, RecordSharing Sharing) Session(bool live = true)

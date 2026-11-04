@@ -282,9 +282,19 @@ public sealed class LiveCoach : IDisposable
 
     public void Stop()
     {
+        if (StopAndTakeRecord() is { } info)
+            RecordFinished?.Invoke(info);
+    }
+
+    /// <summary>
+    /// Detiene el coach y devuelve el registro que cerró (null si no había o era muy corto), sin avisar con
+    /// <see cref="RecordFinished"/>: quien detiene necesita tenerlo ya, antes de mostrar el informe.
+    /// </summary>
+    public GameRecordInfo? StopAndTakeRecord()
+    {
         _cancel?.Cancel();
         _recordingStopped = true;
-        CloseRecord("detenido");
+        return TakeClosedRecord("detenido");
     }
 
     public void Dispose() => Stop();
@@ -569,14 +579,21 @@ public sealed class LiveCoach : IDisposable
         _recordWriter = null;
     }
 
-    /// <summary>Cierra el registro de esta partida, si hay uno. Una partida muy corta (un reloj leído en un menú) no vale la pena: se borra.</summary>
+    /// <summary>Cierra el registro de esta partida, si hay uno, y avisa.</summary>
     private void CloseRecord(string reason)
+    {
+        if (TakeClosedRecord(reason) is { } info)
+            RecordFinished?.Invoke(info);
+    }
+
+    /// <summary>Cierra el registro de esta partida, si hay uno. Una partida muy corta (un reloj leído en un menú) no vale la pena: se borra.</summary>
+    private GameRecordInfo? TakeClosedRecord(string reason)
     {
         GameRecordInfo? info = null;
         lock (_gate)
         {
             if (_recordWriter is not { } writer)
-                return;
+                return null;
             var length = _coach.Report().Length;
             (_recordWriter, _recorder) = (null, null);
             try
@@ -593,8 +610,7 @@ public sealed class LiveCoach : IDisposable
                 RecordFailed(e);
             }
         }
-        if (info is not null)
-            RecordFinished?.Invoke(info);
+        return info;
     }
 
     private (Coach, SnapshotBuilder, ScreenReader) NewGame(BuildOrder bo) => (

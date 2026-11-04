@@ -937,9 +937,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         if (_coach is null)
             return;
-        if (_coach.TakePendingReport() is { } report)
+        // Primero el registro y después el informe: la caja de la nota pregunta por la partida de ese informe. En la
+        // 20261104-114422, 3 marcas con Ctrl+Alt+F y la caja nunca apareció, porque el informe salía antes de cerrar el
+        // registro; y en la segunda partida de una sesión la nota le habría tocado a la anterior.
+        var report = _coach.TakePendingReport();
+        if (_coach.StopAndTakeRecord() is { } record)
+            _ = RecordDoneAsync(record);
+        if (report is not null)
             Finished(report);
-        _coach.Stop();
         _coach = null;
         _host.CloseOverlay();
         IsRunning = false;
