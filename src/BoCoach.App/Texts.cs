@@ -320,6 +320,9 @@ public static class Texts
     public static string SettingsApplyHint => L("La civ, el idioma y el máximo de aldeanos se aplican al empezar el coach.", "The civ, the game language and the villager maximum apply when the coach starts.");
     public static string CalibrateButton => L("Calibrar pantalla…", "Calibrate screen…");
     public static string RecordingsButton => L("Grabaciones", "Recordings");
+    public static string CaptureIntervalLabel => L("Mirar la pantalla cada (ms)", "Read the screen every (ms)");
+    public static string CaptureIntervalTip => L("Menos es más seguido: reacciona antes y consume más. Se aplica al volver a empezar el coach", "Lower means more often: it reacts sooner and uses more. It applies when the coach starts again");
+    public static string CaptureIntervalHint => L("Cada partida deja su consumo en %LOCALAPPDATA%\\BoCoach\\uso, para comparar.", "Each match leaves its usage in %LOCALAPPDATA%\\BoCoach\\uso, to compare.");
     public static string AutoRecordLabel => L("Grabar cada partida sola", "Record every match automatically");
     public static string AutoRecordTip => L("Arranca a grabar cuando empieza una partida y corta cuando termina (o al detener el coach). No toca una grabación hecha a mano", "Starts recording when a match begins and stops when it ends (or when the coach stops). It doesn't touch a recording made by hand");
     public static string DiagnosticButton => L("Captura de diagnóstico", "Diagnostic capture");

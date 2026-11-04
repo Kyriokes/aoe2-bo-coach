@@ -81,6 +81,15 @@ public sealed class CoachSettings
     /// </summary>
     public bool HudMinimal { get; set; } = true;
 
+    /// <summary>Lo de siempre: 2 capturas por segundo.</summary>
+    public const int DefaultCaptureIntervalMs = 500;
+
+    /// <summary>
+    /// Cada cuántos ms el coach mira la pantalla (se aplica al empezar el coach). Se elige en el modo desarrollador, para
+    /// comparar consumo y fluidez (pedido del usuario del 2026-11-04). Lo raro vuelve al de siempre: a 0 se comería la PC.
+    /// </summary>
+    public int CaptureIntervalMs { get; set; } = DefaultCaptureIntervalMs;
+
     /// <summary>"Compartir mis partidas para mejorar el coach" (spec 2026-11-02): prendido salvo que el jugador lo apague.</summary>
     public bool ShareGames { get; set; } = true;
 
@@ -122,6 +131,7 @@ public sealed class CoachSettings
                         ? chosen
                         : !Flag(json["first_run_done"]) && string.IsNullOrWhiteSpace(json["player_name"]?.GetValue<string>()),
                     ShareGames = json["share_games"] is JsonValue share && share.TryGetValue<bool>(out var shared) ? shared : true,
+                    CaptureIntervalMs = json["capture_interval_ms"] is JsonValue interval && interval.TryGetValue<int>(out var ms) && ms is >= 200 and <= 1000 ? ms : DefaultCaptureIntervalMs,
                 };
             }
         }
@@ -163,6 +173,8 @@ public sealed class CoachSettings
             ["dev_mode"] = DevMode, ["auto_record"] = AutoRecord, ["hud_minimo"] = HudMinimal, ["share_games"] = ShareGames };
         if (AppLanguage.Length > 0)
             json["app_language"] = AppLanguage;
+        if (CaptureIntervalMs != DefaultCaptureIntervalMs)
+            json["capture_interval_ms"] = CaptureIntervalMs;
         if (Elo1v1 is { } elo1v1)
             json["elo_1v1"] = elo1v1;
         if (EloTeam is { } eloTeam)

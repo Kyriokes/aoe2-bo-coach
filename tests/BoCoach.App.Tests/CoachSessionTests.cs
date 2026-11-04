@@ -528,6 +528,33 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Null(session.Overlay.MatchAdvice);
     }
 
+    // Cada cuánto se mira la pantalla: se elige para comparar consumo y fluidez, y queda en los ajustes.
+    [Fact]
+    public void El_intervalo_de_captura_viene_en_500_ms_y_queda_en_los_ajustes()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+        Assert.Equal(500, session.CaptureIntervalMs);
+        Assert.Contains(400, session.CaptureIntervalOptions);
+
+        session.CaptureIntervalMs = 400;
+
+        Assert.Equal(400, CoachSettings.Load(path).CaptureIntervalMs);
+    }
+
+    [Theory]
+    [InlineData("400", 400)]
+    [InlineData("\"rápido\"", 500)] // un valor raro no rompe nada
+    [InlineData("0", 500)] // a 0 ms se comería la PC
+    [InlineData("100000", 500)]
+    public void Un_intervalo_de_captura_raro_vuelve_al_de_siempre(string value, int expected)
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, $$"""{ "capture_interval_ms": {{value}} }""");
+
+        Assert.Equal(expected, CoachSettings.Load(path).CaptureIntervalMs);
+    }
+
     // D5: al detener el coach después de más de un minuto de partida, se guarda el informe y se muestra el resumen.
     [Fact]
     public async Task Al_detener_el_coach_guarda_el_informe_y_muestra_el_resumen()

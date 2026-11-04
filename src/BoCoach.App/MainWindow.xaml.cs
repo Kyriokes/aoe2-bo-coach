@@ -54,7 +54,10 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         Coach = new CoachSessionViewModel(data, this, () => BuildOrders.SelectedBuildOrder, () =>
         {
             var calibrated = Tools.TryAutoCalibrate();
-            return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated);
+            return new ScreenFrames(_screen, Tools.Layout, () => Tools.TryAutoCalibrate() ? Tools.Layout : null, calibrated)
+            {
+                Interval = TimeSpan.FromMilliseconds(Coach!.CaptureIntervalMs),
+            };
         }, settingsPath ?? CoachSettings.DefaultPath);
         // Modo desarrollador: "Grabar cada partida sola".
         var autoRecorder = new AutoRecorder(Tools, () => DevMode.Instance is { IsOn: true, AutoRecord: true });

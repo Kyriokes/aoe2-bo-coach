@@ -75,6 +75,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         SelectedLane = LaneChoices[0];
         var settings = settingsPath is null ? new CoachSettings() : CoachSettings.Load(settingsPath);
         MaxVillagers = settings.MaxVillagers;
+        CaptureIntervalMs = settings.CaptureIntervalMs;
         CursorReminders = settings.CursorReminders;
         HudMinimal = settings.HudMinimal;
         GameCiv = data.GameData.IsKnownCiv(settings.GameCiv) ? settings.GameCiv : BoCiv;
@@ -109,6 +110,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     public partial bool IsRunning { get; set; }
 
     [ObservableProperty] public partial string Status { get; set; } = "";
+
+    /// <summary>Cada cuántos ms se mira la pantalla (ver <see cref="CoachSettings.CaptureIntervalMs"/>).</summary>
+    [ObservableProperty] public partial int CaptureIntervalMs { get; set; }
+
+    partial void OnCaptureIntervalMsChanged(int value) => SaveSettings();
+
+    /// <summary>Lo que se ofrece en el modo desarrollador: el de siempre y un 20 % menos.</summary>
+    public IReadOnlyList<int> CaptureIntervalOptions { get; } = [CoachSettings.DefaultCaptureIntervalMs, 400];
 
     /// <summary>Hasta cuántos aldeanos producen sin parar los centros urbanos (se aplica al empezar el coach).</summary>
     [ObservableProperty] public partial int MaxVillagers { get; set; }
@@ -456,6 +465,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             new CoachSettings
             {
                 MaxVillagers = MaxVillagers,
+                CaptureIntervalMs = CaptureIntervalMs,
                 CursorReminders = CursorReminders,
                 GameCiv = GameCiv == BoCiv ? "" : GameCiv,
                 AppLanguage = AppLanguage,
