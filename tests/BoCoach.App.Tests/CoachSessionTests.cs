@@ -549,6 +549,25 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Contains("<h2>Pasos contra la BO</h2>", File.ReadAllText(path));
     }
 
+    // Cerrar la app con una partida en curso: la ventana ya no existe y abrir el informe sobre ella tira un error (WPF no
+    // deja poner de dueña a una ventana cerrada), que además cortaba el resto de la limpieza.
+    [Fact]
+    public async Task Al_cerrar_la_app_guarda_el_informe_sin_abrir_ninguna_ventana()
+    {
+        var host = new FakeHost();
+        var folder = Path.Combine(_library.FullName, "informes");
+        var session = new CoachSessionViewModel(_data, host, () => null, () => throw new InvalidOperationException()) { ManualSteps = true, ReportsFolder = folder };
+        session.Start(Scouts, new RecordedFrames(RecordedSession.Load(Fixture), speed: 50));
+        while (session.LiveCoach!.Report().Length < 70 && await session.LiveCoach.StepAsync())
+        {
+        }
+
+        session.Dispose();
+
+        Assert.Null(host.Report);
+        Assert.Single(Directory.GetFiles(folder, "*.html"));
+    }
+
     [Fact]
     public void Sin_un_minuto_de_partida_no_hay_informe()
     {

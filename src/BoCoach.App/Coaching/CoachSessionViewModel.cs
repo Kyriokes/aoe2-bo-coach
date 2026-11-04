@@ -713,7 +713,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             File.WriteAllText(path, GameReportText.Html(report, now));
             LastReport = new ReportInfo(path, now, ReportLine(report), report.Length);
             ReportPending = true;
-            _host.ShowReport(GameReportText.Summary(report), path);
+            if (!_closing)
+                _host.ShowReport(GameReportText.Summary(report), path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -1009,7 +1010,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Overlay.ShowDebug = !Overlay.ShowDebug;
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        _closing = true;
+        Stop();
+    }
+
+    /// <summary>La app se está cerrando: el informe se guarda, pero ya no hay ventana sobre la que abrirlo.</summary>
+    private bool _closing;
 
     /// <summary>El coach mira la pantalla de verdad (no una grabación, como con --replay).</summary>
     public bool IsLive { get; private set; }
