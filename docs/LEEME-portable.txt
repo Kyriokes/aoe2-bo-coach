@@ -2,6 +2,7 @@ AoE2 BO Coach (versión portable)
 ================================
 
 No hay que instalar nada: descomprimí la carpeta donde quieras y abrí BoCoach.exe.
+El juego tiene que estar en inglés o en castellano: en otro idioma el coach confirma mucho menos.
 La carpeta "data" tiene que quedar al lado del .exe.
 
 La primera vez Windows puede avisar "Windows protegió su PC" porque el programa no está firmado:
@@ -13,7 +14,7 @@ cambies en esos segundos no se guarda, así que esperá a que se vuelva a abrir.
 en Avast, menú > Configuración > General > Excepciones > Agregar excepción, y escribí la carpeta
 de la app terminada en \* (por ejemplo C:\Juegos\BoCoach\*).
 
-Lo que la app guarda (biblioteca de BO, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
+Lo que la app guarda (BO guardadas, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
 así que se conserva aunque reemplaces la carpeta por una versión nueva.
 
 La primera vez se abre "Primeros pasos", que te lleva por lo mismo que sigue (cuenta, idioma, mod y
@@ -33,7 +34,10 @@ Para usar el coach:
      particular, tocala en la lista. Con el mod la pantalla se calibra sola, a cualquier resolución.
      Al terminar la partida te queda el informe.
 
-Si algo no se lee bien (no ve el reloj, los números no coinciden): hacé 5 clics sobre la versión
+Si algo anda mal: en ese momento tocá Ctrl+Alt+F (queda marcado en el registro de la partida) y al
+terminar contá en el informe qué pasó. Con eso alcanza si dejaste prendido "Compartir mis partidas".
+
+Si no se lee nada (no ve el reloj, los números no coinciden): hacé 5 clics sobre la versión
 (arriba) para prender el modo desarrollador y, en plena partida, tocá Ctrl+Alt+X (o "Captura de
 diagnóstico" en Ajustes): a los 2 segundos guarda la pantalla y lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
 

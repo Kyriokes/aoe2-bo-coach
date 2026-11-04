@@ -1,91 +1,109 @@
 # aoe2-bo-coach
 
-Overlay liviano para Age of Empires II: Definitive Edition que lee la pantalla con OCR, sigue una build order, se adapta cuando el jugador se desvía y sugiere cómo redistribuir aldeanos.
+Un coach para Age of Empires II: Definitive Edition: mira la pantalla, sigue tu build order (BO) mientras jugás, se acomoda cuando te desviás y te dice dónde poner a cada aldeano.
 
-Solo lee la pantalla: no lee memoria del proceso, no inyecta código y no envía inputs al juego.
+Solo lee la pantalla: no lee la memoria del juego, no le inyecta código y no le manda teclas ni clics.
 
-El diseño completo y las fases están en [PLAN.md](PLAN.md).
+- **Web:** <https://aoe2-bo-coach.vercel.app>: la biblioteca de BO, el editor, las estadísticas de cruces y [qué viene](https://aoe2-bo-coach.vercel.app/roadmap).
+- **Diseño y hoja de ruta:** [PLAN.md](PLAN.md).
 
-## Descargar
+Todavía no es la versión definitiva y casi nadie más la probó: es muy probable que encuentres algo roto. Cómo avisar está en [Si algo anda mal](#si-algo-anda-mal).
 
-Cada versión publicada está en [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases): un `.zip` con `BoCoach.exe` (trae .NET adentro, no hay que instalar nada) y la carpeta `data`. Cada corrida del CI también deja la versión portable como artefacto (14 días). Cada versión nueva que llega a `main` (la `<Version>` de `BoCoach.App.csproj` sin su etiqueta) se publica sola: el workflow `release.yml` arma el `.zip`, la release y la etiqueta `v<versión>`, y el botón "Descargar para Windows" de la web baja esa. También se puede publicar subiendo una etiqueta `v0.9.0` a mano.
+## Empezar a usarlo
 
-## Requisitos para desarrollar
+Hace falta Windows 10 (2004 o posterior) u 11, y el juego en inglés o en castellano: en otro idioma el coach no entiende los mensajes del juego y confirma mucho menos.
 
-- Windows 10 (2004 o posterior) u 11
-- SDK de .NET 10 (la versión exacta está en `global.json`)
+1. Bajá el último `.zip` de [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases), descomprimilo donde quieras y abrí `BoCoach.exe`. Trae .NET adentro: no hay que instalar nada. Windows puede avisar "Windows protegió su PC" porque el programa no está firmado: tocá "Más información" y "Ejecutar de todas formas".
+2. La primera vez se abre **Primeros pasos**, que te lleva por lo que hace falta: la cuenta de la web (ahí se eligen las BO), el idioma del juego, el mod del HUD, una partida rápida contra 7 IA para leer tu nombre y calibrar la pantalla, y si querés compartir tus partidas.
+3. Jugá. Con **Automática** el coach arranca solo con el juego y, en la pantalla de carga, elige la BO para tu civ, el mapa y tu rival. Si querés una en particular, elegila en la lista. Al terminar la partida te queda el informe.
 
-## Compilar y correr los tests
+La ventana es un tablero: arriba, el cuadro grande dice en qué momento estás y qué tocar; abajo, tu cuenta, la BO, la partida y el informe. Lo demás está en **Ajustes** (nombre, Elo, civ, idioma, mod, cuenta).
 
-```bash
-dotnet build BoCoach.slnx
-dotnet test BoCoach.slnx
-```
+## Qué hace durante la partida
 
-## Abrir el editor de build orders
+Arriba a la derecha del juego aparece el overlay, que no recibe el mouse ni el teclado:
 
-```bash
-dotnet run --project src/BoCoach.App
-```
+- **Las líneas:** un renglón por cada cosa que va en paralelo (aldeanos, construir, investigar, producir), con lo que falta para cada una. Lo crítico va arriba y en grande: "Hacé clic en Edad Feudal" en verde cuando ya se puede, "Casa: quedan N lugares" en rojo, con más margen cuantos más edificios estén produciendo.
+- **Dónde poner a los aldeanos:** cuántos tendría que haber en cada recurso, comparado con los que hay. "Pasá N de X a Y" sale solo si en 60 s algo va a faltar para lo próximo de la BO.
+- **Recordatorios junto al mouse:** casa, centro urbano parado e inactivos.
+- **Lo que hace el rival:** por el panel de puntajes se da cuenta de cuándo hace clic en una edad, y avisa si te atacan o si perdés aldeanos. Si la BO trae una rama para esa señal, el coach la agrega.
+- **Cuando dejás la BO:** el overlay dice "BO abandonada" y por qué, deja de pedir sus pasos y se queda con lo que siempre vale. Si volvés a seguirla, la retoma sola.
+- **Cuando la BO termina:** queda una tarjeta chica con lo que falta: la próxima edad, los edificios de la postura parados, mover aldeanos y las tecnologías que te faltan.
 
-La biblioteca se guarda en `%APPDATA%\BoCoach\build_orders`. Trae una BO por civ importada de [buildorderguide.com](https://www.buildorderguide.com) y su versión mejorada con el simulador del coach (misma estrategia, otro reparto u orden de pasos), además de los ejemplos; las que agrega una versión nueva se suman solas, y el filtro "Civ" ayuda a encontrarlas. "Importar…" también lee las guías de esa página. Cada BO puede decir para qué mapa es (lista "Mapa", `data/maps.json`): el validador avisa si usa pesca o el muelle donde no hay agua. Atajos: Ctrl+1 a Ctrl+4 agregan aldeanos, construcción, investigación o movimiento; Ctrl+D duplica el paso; Alt+↑/↓ lo mueve; Ctrl+Supr lo quita; Ctrl+S guarda. Los pasos también se reordenan arrastrando el ícono ⋮⋮.
+En la pantalla de carga sugiere una BO con tu civ, el mapa y los rivales, y da un consejo contra el de enfrente. Al terminar, el **informe** compara cada paso con la BO y dice cuánto estuvo parado el centro urbano, cuánto estuviste sin casas y cómo viene ese cruce. Queda en `%LOCALAPPDATA%\BoCoach\informes`.
 
-Si te sirve, podés **invitarme un café** desde la web (sección "Apoyar el proyecto": Cafecito, PayPal, Ko-fi o Mercado Pago) o con el botón "Apoyar ☕" de la app. Cada aporte se anota en `data/donaciones.json`, a la vista, y la web muestra cuánto falta para cada meta.
+### Atajos
 
-En la web también se puede **armar una BO** ([/subir](https://aoe2-bo-coach.vercel.app/subir)): una paleta de pasos que se arrastran a una línea de tiempo, con el stock de recursos arriba y cada paso en su lugar simulado por el mismo motor de la app (en WebAssembly). Una caja no se puede mover a donde el juego no la deja (una unidad antes del clic de su edad, el clic sin sus dos edificios, lo que se entrena antes de su edificio) y, dentro de lo posible, se pega al momento en que hay recursos; un cartel dice por qué. Lo armado se publica en la biblioteca o se baja como `.json` para la app. Los íconos de la paleta son del juego (© Microsoft, usados bajo sus [Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules)) y no son parte de la licencia MIT: ver `web/public/icons/LEEME.md`.
-
-Para verificar la interfaz sin abrirla: `BoCoach.exe --screenshot salida.png [--bo nombre | --open archivo.json] [--select número]` la dibuja en un PNG con una biblioteca temporal.
-
-## Mod del HUD, calibración y grabar partidas
-
-La primera vez se abre **Primeros pasos** (se vuelve a abrir con el botón de la barra): idioma del juego, instalar el mod, una partida rápida contra 7 IA (mientras tanto la app mira la pantalla: en la pantalla de carga lee la lista de jugadores y, ya en la partida, se calibra sola con el HUD) y elegir tu nombre de esa lista.
-
-En la barra de arriba de la app:
-
-- **Instalar mod del HUD** agrega al juego el mod local "BoCoach HUD": los aldeanos de cada recurso en cuadrados negros con una franja de color y el reloj más grande, que el coach lee mucho mejor. Se arma en la PC del jugador a partir de los paneles del juego (no se redistribuye nada) y se puede volver a tocar sin problema. Después hay que reabrir el juego y verlo activo en Mods.
-- Con el mod, la pantalla **se calibra sola** al empezar el coach, a cualquier resolución y tamaño de HUD: busca las franjas de color, mide la escala del HUD y lleva cada captura a 1080p antes de leerla.
-- **Calibrar pantalla…** (o **Ctrl+Alt+C** desde el juego) es la calibración a mano, para jugar sin el mod: una capa transparente sobre la ventana del juego con un rectángulo por región (madera, comida, oro, piedra, población, inactivos, edad, reloj, log de eventos, cola de producción y puntajes). Se arrastran y se estiran; debajo de cada uno se ve en vivo lo que lee el OCR. Se guarda en `%APPDATA%\BoCoach\regions.json`, relativo a la ventana del juego, así anda en cualquier monitor y en modo ventana.
-- **Grabar partida** (o **Ctrl+Alt+R** desde el juego; arriba aparece "● Grabando") guarda las regiones 2 veces por segundo en `%LOCALAPPDATA%\BoCoach\recordings\<fecha>`: `session.json`, `frames.csv` y un PNG por región y captura. Sirve para probar el OCR sin volver a jugar.
-
-## Usar el coach durante una partida
-
-1. En la segunda fila de arriba, los ajustes de la partida: **Tu nombre** (como sale en la lista de jugadores de la pantalla de carga: ahí el coach lee tu civ y contra quién jugás, y empieza la partida de cero), **Civ** (la que jugás si no se vio la pantalla de carga; el coach usa sus bonificaciones), **Idioma del juego** (inglés, castellano de España o de Latinoamérica: el log y la edad se leen con sus frases y su OCR), **Máx. aldeanos** y **Recordatorios en el mouse**. En la biblioteca de la izquierda, elegí la build order.
-2. **▶ Empezar coach** (o **Ctrl+Alt+S** desde el juego). Arriba a la derecha del juego aparece el overlay: el paso actual en grande, qué falta para hacerlo, lo que está en curso (por ejemplo la Feudal, desde que se paga), el paso siguiente, los atrasados, el objetivo de la BO ("Feudal estimada en 9:12, objetivo 9:00") y la sugerencia de aldeanos ("Pasá 2 de madera a comida").
-   **Coach automático** (casilla en la segunda fila, prendida por defecto): no hace falta tocar nada. Al abrir el juego, el coach arranca solo con la última BO que usaste; el overlay aparece recién en la pantalla de carga (si otra BO de tu biblioteca encaja mejor con tu civ, el mapa y los rivales, cambia sola y avisa; Ctrl+Alt+B vuelve a la tuya) o con el reloj de la partida; si hacés alt-tab se esconde y no lee nada hasta que volvés; a los 30 s sin reloj (pantalla de resultados) da la partida por terminada y muestra el informe; y al cerrar el juego se detiene. Si lo detenés a mano, no vuelve a arrancar hasta que abras el juego de nuevo.
-   Cuando terminan los pasos, el coach sigue con la **postura de cierre** de la BO: qué unidades van siempre en cola (avisa si un edificio queda parado) y a qué edad apuntar con lo que sobra ("Edad de los Castillos: faltan 430 de comida", "Hacé clic en Edad de los Castillos"). Se arma en el editor (sección "POSTURA DE CIERRE"); si la BO no la trae, se deduce de sus pasos.
-   **Informe de la partida:** al detener el coach (o al empezar otra partida), si se jugó al menos un minuto, se abre un resumen y se guarda el informe completo en `%LOCALAPPDATA%\BoCoach\informes`: cada paso contra el plan de la BO, los clics de edad, el centro urbano parado, los inactivos, las trabas por población y los recursos acumulados.
-   **BO sugerida:** en la pantalla de carga, con tu civ, el mapa y los rivales, el overlay (que sin reloj baja a la esquina de abajo a la derecha) sugiere la BO de tu biblioteca que mejor encaja (el rival de enfrente pesa más que los demás, y cuenta si sos flanco o bolsillo) y da un consejo contra el rival de enfrente; Ctrl+Alt+B la usa. Las aperturas típicas de cada civ, qué le gana a qué y los consejos están en `data/civ_styles.json`.
-   **Señales de la partida:** el coach avisa cuando el rival hace clic en una edad (lo ve en el panel de puntajes: su puntaje cae la décima parte de lo que cuesta), cuando te atacan y cuando perdés aldeanos. Si la BO trae una **rama** para esa señal (se arma en el editor con "Pasos de"), sus pasos van primero en el overlay; Ctrl+Alt+→ la cierra.
-   Si dejás la BO (más de 5 unidades militares que la BO no tiene mientras la de la BO no sale hace un minuto, o 3 minutos sin avanzar ningún paso), el overlay dice "BO abandonada" y por qué, deja de pedir los pasos y se queda con lo básico: centro urbano produciendo, casas, inactivos y la guía de aldeanos contra lo que tenés.
-3. El overlay no recibe el mouse ni el teclado. Los atajos (todos con Ctrl+Alt, que el juego no usa) lo corrigen sin salir del juego:
+Todos con Ctrl+Alt, que el juego no usa. Se cambian en **Atajos**, arriba en la ventana.
 
 | Atajo | Qué hace |
 |---|---|
 | Ctrl+Alt+S | Empieza o detiene el coach |
-| Ctrl+Alt+→ | Da por hecho el paso actual |
+| Ctrl+Alt+→ | Da por hecho el paso de la línea elegida |
 | Ctrl+Alt+← | Deshace lo último (un paso hecho, salteado o un clic mal detectado); con la BO abandonada, la retoma |
-| Ctrl+Alt+↓ | Saltea el paso actual |
+| Ctrl+Alt+↓ | Saltea el paso de la línea elegida |
 | Ctrl+Alt+P | Pausa o sigue la lectura |
 | Ctrl+Alt+H | Oculta o muestra el overlay |
-| Ctrl+Alt+D | Muestra CPU, RAM y milisegundos por captura |
-| Ctrl+Alt+M | Prende o apaga los recordatorios junto al mouse (casa, centro urbano parado, inactivos) |
+| Ctrl+Alt+M | Prende o apaga los recordatorios junto al mouse |
 | Ctrl+Alt+B | Usa la BO sugerida en la pantalla de carga |
-| Ctrl+Alt+X | Captura de diagnóstico: a los 2 s guarda la pantalla sin pérdida y un `.txt` con lo que encontró la app en `%LOCALAPPDATA%\BoCoach\diagnostico` (para mandar si algo no se lee bien) |
+| Ctrl+Alt+F | Algo anduvo mal: marca el momento en el registro de la partida |
 
-Para probarlo sin el juego, sobre una grabación: `BoCoach.exe --replay "<carpeta de la grabación>" --bo scouts [--speed 4] [--stats uso.csv]`. Para ver cómo queda el overlay en un momento de una partida: `BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo scouts --at 8:20`.
+## El mod del HUD
 
-## Biblioteca web
+**Instalar mod del HUD** (Ajustes, pestaña "Juego y HUD", con el juego cerrado) agrega al juego el mod local "BoCoach HUD", que se arma en tu PC a partir de los archivos del juego. Por defecto es el **mod mínimo**: la barra del juego donde está, opaca, con los números blancos y una franja fina de color bajo cada ícono. Sin marcar "Mod mínimo" se instala el completo, que también corre el log y la cola de producción.
 
-La web (`web/`, ver [web/README.md](web/README.md)) es una biblioteca pública de BO: cada una muestra la línea de tiempo calculada por el mismo motor que la app (compilado a WebAssembly). Desde la app:
+Con el mod, la pantalla se calibra sola al empezar el coach: busca las marcas de color, mide la escala del HUD y lleva cada captura a 1080p antes de leerla. Todavía nadie la probó jugando en otra resolución. Sin el mod, los aldeanos por recurso se estiman y hay que calibrar a mano.
 
-- **Desde la web…** (biblioteca) importa una BO con su código de 6 letras, el enlace «Abrir en BO Coach» o la dirección de su página.
-- **Publicar en la web** (editor) la publica con tu cuenta, o la reemplaza si ya la habías publicado desde esta PC. La primera vez pide el token, que se crea en "Mi cuenta" de la web.
-- **Cuenta de la web…** cambia la dirección de la web o el token, y registra los enlaces `bocoach://` para que el botón «Abrir en BO Coach» de la web abra la app directo.
-- `BoCoach.exe --publish <carpeta> [--dry-run]` publica todas las BO de una carpeta con esa misma cuenta (así se subieron las de `build_orders/civs`), o las reemplaza si ya se publicaron desde esta PC. Con `--dry-run` solo dice qué haría. La app no tiene consola: para ver lo que escribe, redirigila (`| Write-Output` en PowerShell).
+Si venís de una versión anterior, volvé a instalarlo: el diseño cambia entre versiones.
 
-En la web, una BO dice quién armó la guía (el `author` del JSON) y, si es otro, la cuenta que la subió: "por Hera, subida por Ana".
+## Si algo anda mal
 
-## Probar la visión sobre una grabación (tools/ReplaySession)
+1. En ese momento, **Ctrl+Alt+F** (o "Algo anduvo mal" en la ventana): queda marcado en el registro de la partida y el overlay lo confirma.
+2. Al terminar, el informe pregunta qué pasó: con una frase alcanza ("me pidió una casa que ya tenía").
+3. Si preferís, abrí un [aviso en GitHub](https://github.com/Kyriokes/aoe2-bo-coach/issues) con lo que viste y, si podés, una captura.
+
+## Compartir tus partidas
+
+"Compartir mis partidas para mejorar el coach" viene prendido y se apaga en Ajustes o en Primeros pasos. Al terminar cada partida de un minuto o más se sube un registro con números y eventos: lo que el coach leyó del HUD, lo que creyó y lo que te mostró, con tu civ, el mapa y la BO. No viaja tu nombre, ni los de los otros jugadores, ni el chat, ni capturas de pantalla. La nota del informe se sube también, si la escribís.
+
+Con eso cada error se reproduce y se arregla sin que nadie tenga que jugar de nuevo. "Borrar lo compartido…" pide que se borre lo que ya subiste. Tu copia queda en `%LOCALAPPDATA%\BoCoach\registros`. Los detalles están en la [página de privacidad](https://aoe2-bo-coach.vercel.app/privacidad).
+
+## La web
+
+La app no tiene editor: las BO se arman y se eligen en [la web](https://aoe2-bo-coach.vercel.app), y la app guarda las que usás para que anden sin internet (`%APPDATA%\BoCoach\cache`).
+
+- **Conectar cuenta** abre "Mi cuenta" en la web; ahí "Conectar la app" la conecta con un token.
+- En la web, **Usar en el coach** suma una BO a tu lista. **Pegar código** hace lo mismo desde la app, con el código de 6 letras.
+- En [/subir](https://aoe2-bo-coach.vercel.app/subir) se arma una BO con una paleta y una línea de tiempo, o se la genera con objetivos en la pestaña Asistido; cada cambio se simula con el mismo motor que la app, compilado a WebAssembly.
+
+Hay una BO por civ importada de [buildorderguide.com](https://www.buildorderguide.com), más su versión mejorada con el simulador. Si te sirve, podés **invitarme un café** desde la web o con "Apoyar" en la app: cada aporte se anota en `data/donaciones.json`, a la vista.
+
+El código de la web está en `web/` (ver [web/README.md](web/README.md)).
+
+## Desarrollar
+
+Hace falta el SDK de .NET 10 (la versión exacta está en `global.json`).
+
+```bash
+dotnet build BoCoach.slnx
+dotnet test BoCoach.slnx
+dotnet run --project src/BoCoach.App
+```
+
+Cada versión nueva que llega a `main` (la `<Version>` de `BoCoach.App.csproj` sin su etiqueta) se publica sola: `release.yml` arma el `.zip`, la release y la etiqueta, y el botón "Descargar para Windows" de la web baja esa. Cada corrida del CI también deja la versión portable como artefacto (14 días).
+
+### Modo desarrollador
+
+Cinco clics sobre el número de versión. Suma **Calibrar pantalla** (Ctrl+Alt+C: una capa con un rectángulo por región, para jugar sin el mod), **Grabar partida** (Ctrl+Alt+R: 2 capturas por segundo en `%LOCALAPPDATA%\BoCoach\recordings`) o "Grabar cada partida sola", **Captura de diagnóstico** (Ctrl+Alt+X: a los 2 s guarda la pantalla sin pérdida y un `.txt` con lo que encontró la app en `%LOCALAPPDATA%\BoCoach\diagnostico`), lo que ve el coach en el panel de abajo y CPU, RAM y milisegundos por captura en el overlay (Ctrl+Alt+D).
+
+### Probar sin el juego
+
+- Sobre una grabación: `BoCoach.exe --replay "<carpeta>" --bo <archivo.json> [--speed 4] [--stats uso.csv]`.
+- El overlay en un momento de una partida: `BoCoach.exe --overlay-screenshot salida.png --readings lecturas.csv --bo <archivo.json> --at 8:20`.
+- La ventana en un PNG: `BoCoach.exe --screenshot salida.png [--state sin-cuenta|esperando|en-partida|terminada|elegir] [--settings N] [--report] [--first-run] [--hotkeys] [--dev] [--lang en]`.
+- Publicar BO con tu cuenta: `BoCoach.exe --publish <carpeta> [--dry-run]`.
+
+### Probar la visión sobre una grabación (tools/ReplaySession)
 
 Los números del HUD se leen por plantillas (`data/fonts`), sacadas de una grabación real; el log de eventos, con el OCR de Windows. Todo se puede correr sobre una grabación, sin el juego:
 
@@ -93,9 +111,9 @@ Los números del HUD se leen por plantillas (`data/fonts`), sacadas de una graba
 dotnet run --project tools/ReplaySession -c Release -- replay "%LOCALAPPDATA%\BoCoach\recordings\<carpeta>"
 ```
 
-Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y avisa si alguna caja corta los números. Otros comandos (ver el comienzo de `tools/ReplaySession/Program.cs`): `coach` corre el loop completo (visión, motor y economía) con una BO y muestra lo que diría el overlay cada vez que cambia (también desde un `lecturas.csv`, sin OCR); `bench` mide cuánto tarda cada parte de la lectura; `glyphs` agrupa los caracteres de una región para etiquetarlos, `font` arma una letra con esas etiquetas, `read` lee una región y `ocr` pasa el OCR de Windows; `autocalibrate <pantalla.png> --read` calibra sobre una captura entera (por ejemplo la de diagnóstico) y muestra lo que lee; `loading <pantalla.png> --nombre "tu nombre"` lee la pantalla de carga (jugadores, equipos y civs). Con el juego en castellano, `--idioma es` o `--idioma mx`.
+Escribe `lecturas.csv` (reloj, recursos, aldeanos, edad y eventos por captura) y avisa si alguna caja corta los números. Para lo que manda la gente, `registros <carpeta>` resume cada registro de partida (qué se leyó, las marcas y las notas) y `coach <registro.jsonl.gz> --guide` la reproduce sin PNG ni juego. Otros comandos (ver el comienzo de `tools/ReplaySession/Program.cs`): `coach` corre el loop completo (visión, motor y economía) con una BO y muestra lo que diría el overlay cada vez que cambia (también desde un `lecturas.csv`, sin OCR); `bench` mide cuánto tarda cada parte de la lectura; `glyphs` agrupa los caracteres de una región para etiquetarlos, `font` arma una letra con esas etiquetas, `read` lee una región y `ocr` pasa el OCR de Windows; `autocalibrate <pantalla.png> --read` calibra sobre una captura entera (por ejemplo la de diagnóstico) y muestra lo que lee; `loading <pantalla.png> --nombre "tu nombre"` lee la pantalla de carga (jugadores, equipos y civs). Con el juego en castellano, `--idioma es` o `--idioma mx`.
 
-## Regenerar los datos del juego (una vez por parche)
+### Regenerar los datos del juego (una vez por parche)
 
 `data/game_data/v<versión>.json` sale del `.dat` del juego con un script de Python que no se usa durante la partida. El mismo script arma las frases del log de eventos con los textos del juego: `data/events.json` (inglés), `data/events.es.json` (castellano de España) y `data/events.mx.json` (de Latinoamérica), con los mismos ids.
 
@@ -107,19 +125,19 @@ tools/extractor/.venv/Scripts/python tools/extractor/extract.py
 
 Por defecto lee `H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2_x2_p1.dat`; se cambia con `--dat`. Para agregar entidades, sumalas a `ENTIDADES` en `extract.py` por su id del `.dat`.
 
-## Estructura
+### Estructura
 
 | Proyecto | Target | Qué tiene |
 |---|---|---|
 | `src/BoCoach.Core` | `net10.0` | Lógica pura: datos del juego, build orders, motor y economía. Sin dependencias de Windows. |
 | `src/BoCoach.Vision` | `net10.0-windows10.0.19041.0` | Captura de pantalla, OCR y suavizado. |
-| `src/BoCoach.App` | `net10.0-windows10.0.19041.0` | App WPF: overlay, calibración, editor de BO, hotkeys y conexión con la web. |
+| `src/BoCoach.App` | `net10.0-windows10.0.19041.0` | App WPF: el tablero, el overlay, la calibración, los atajos y la conexión con la web. |
 | `src/BoCoach.Wasm` | `net10.0` (browser-wasm) | El `Core` en WebAssembly para la web. |
 | `web` | Next.js | Biblioteca web (Supabase + Vercel). |
 | `tests/BoCoach.Core.Tests` | `net10.0` | Tests de `Core`, incluido uno que verifica que no dependa de Windows. |
 | `tests/BoCoach.Vision.Tests` | `net10.0-windows10.0.19041.0` | Tests de `Vision`. |
-| `tests/BoCoach.App.Tests` | `net10.0-windows10.0.19041.0` | Tests de los ViewModels del editor, el overlay y la sesión de coach. |
+| `tests/BoCoach.App.Tests` | `net10.0-windows10.0.19041.0` | Tests de los ViewModels, el overlay y la sesión de coach. |
 
 ## Licencia
 
-[MIT](LICENSE)
+[MIT](LICENSE), salvo los íconos de `web/public/icons`, que son © Microsoft y se usan bajo sus Game Content Usage Rules.
