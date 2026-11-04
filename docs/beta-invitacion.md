@@ -31,7 +31,7 @@ Conviene que haya variedad: otra resolución (sobre todo 1440p) y, si se puede, 
 > I'm looking for 3 to 5 people to try it. It will have bugs, and finding them is the whole point. What I'm asking:
 >
 > 1. Download it from https://aoe2-bo-coach.vercel.app/en (Windows, nothing to install) and follow "First steps". You need a Discord or Google account to choose build orders, and the game in English or Spanish.
-> 2. Play 2 or 3 matches, ideally the first one against the AI, with "Share my matches" on. Each match uploads a record with numbers and events: your name, the chat and screenshots are never sent (https://aoe2-bo-coach.vercel.app/en/privacidad).
+> 2. Play 2 or 3 matches, ideally the first one against the AI, with "Share my games" on. Each match uploads a record with numbers and events: your name, the chat and screenshots are never sent (https://aoe2-bo-coach.vercel.app/en/privacidad).
 > 3. When something is wrong, press Ctrl+Alt+F right then and, when the match ends, say in the report what happened. One sentence is enough.
 >
 > And let me know what resolution you use and whether you got stuck installing it. Thanks!
