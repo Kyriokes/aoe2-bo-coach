@@ -23,6 +23,18 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
+        try
+        {
+            Begin(e);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
+    }
+
+    private void Begin(StartupEventArgs e)
+    {
         Themes.DarkTitleBar.ApplyToAllWindows();
 
         var args = Web.LinkProtocol.StartupArguments(e.Args);
@@ -489,8 +501,31 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(Texts.UnexpectedError(e.Exception.Message), Texts.AppName,
-            MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
+        ShowError(e.Exception);
+    }
+
+    private bool _showingError;
+
+    /// <summary>
+    /// El cartel de un error inesperado, uno por vez: mientras está abierto el despachador sigue andando, y un error que se
+    /// repite no abre otro encima. Sin una ventana a la vista la app se cierra: seguía abierta sin ventana y con la
+    /// instancia única tomada, así que cada apertura siguiente esperaba 10 s y se cerraba sin decir nada.
+    /// </summary>
+    private void ShowError(Exception error)
+    {
+        if (_showingError)
+            return;
+        _showingError = true;
+        try
+        {
+            MessageBox.Show(Texts.UnexpectedError(error.Message), Texts.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _showingError = false;
+        }
+        if (MainWindow is not { IsLoaded: true })
+            Shutdown(1);
     }
 }
