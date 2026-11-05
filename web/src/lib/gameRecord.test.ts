@@ -23,9 +23,24 @@ describe("registro de partida", () => {
   });
 
   it("frena una bomba de gzip", () => {
-    const bomb = gzipSync(Buffer.alloc(70 * 1024 * 1024));
+    const bomb = gzipSync(Buffer.alloc(17 * 1024 * 1024));
     expect(bomb.length).toBeLessThan(MAX_RECORD_BYTES);
     expect(recordProblem(bomb, game)).toMatch(/grande/);
+  });
+
+  it("acepta lo que da una partida muy larga", () => {
+    const captures = '{"t":"cap","clock":1,"food":200,"wood":200,"gold":100,"stone":200}\n'.repeat(130_000);
+    expect(captures.length).toBeGreaterThan(8 * 1024 * 1024);
+    expect(recordProblem(zipped(`${meta()}\n${captures}`), game)).toBeNull();
+  });
+
+  it("no lee una primera línea enorme", () => {
+    expect(recordProblem(zipped(`${meta({ pad: "x".repeat(1024 * 1024) })}\n`), game)).toMatch(/meta/);
+    expect(recordProblem(zipped("x".repeat(2 * 1024 * 1024)), game)).toMatch(/meta/);
+  });
+
+  it("una línea meta con una BO entera pasa", () => {
+    expect(recordProblem(zipped(`${meta({ build_order: { pad: "x".repeat(128_000) } })}\n`), game)).toBeNull();
   });
 
   it("lee la identidad de las cabeceras", () => {

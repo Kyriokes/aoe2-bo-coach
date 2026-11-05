@@ -3,8 +3,14 @@ import { gunzipSync } from "node:zlib";
 /** Lo que acepta la web de un registro de partida (lo mismo que la base y el bucket): hasta 1 MB comprimido. */
 export const MAX_RECORD_BYTES = 1024 * 1024;
 
-/** Descomprimido nunca pasa de esto (una partida larga da 2 MB): lo demás es una bomba de gzip. */
-const MAX_UNZIPPED_BYTES = 64 * 1024 * 1024;
+/**
+ * Descomprimido nunca pasa de esto (una partida larga da 2 a 4 MB): lo demás es una bomba de gzip, y descomprimirla
+ * entera frena al servidor antes de llegar a la base.
+ */
+const MAX_UNZIPPED_BYTES = 16 * 1024 * 1024;
+
+/** La línea meta lleva la BO jugada (hasta 128 KB) y poco más: una más larga no se llega a parsear. */
+const MAX_META_BYTES = 1024 * 1024;
 
 const INSTALL = /^[0-9a-f]{32}$/;
 const SECRET = /^[0-9a-f]{64}$/;
@@ -33,16 +39,18 @@ export function isAppVersion(value: string | null): value is string {
  */
 export function recordProblem(bytes: Uint8Array, gameId: string): string | null {
   if (bytes.length === 0 || bytes.length > MAX_RECORD_BYTES) return "El registro tiene que pesar hasta 1 MB.";
-  let text: string;
+  let unzipped: Buffer;
   try {
-    text = gunzipSync(bytes, { maxOutputLength: MAX_UNZIPPED_BYTES }).toString("utf8");
+    unzipped = gunzipSync(bytes, { maxOutputLength: MAX_UNZIPPED_BYTES });
   } catch {
     return "El registro no es un gzip válido, o descomprimido es demasiado grande.";
   }
-  const end = text.indexOf("\n");
+  const end = unzipped.indexOf(0x0a);
+  const line = end < 0 ? unzipped : unzipped.subarray(0, end);
+  if (line.length > MAX_META_BYTES) return "El registro no empieza con su línea meta.";
   let meta: unknown;
   try {
-    meta = JSON.parse(end < 0 ? text : text.slice(0, end));
+    meta = JSON.parse(line.toString("utf8"));
   } catch {
     return "El registro no empieza con su línea meta.";
   }
