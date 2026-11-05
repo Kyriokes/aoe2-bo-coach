@@ -74,7 +74,7 @@ public sealed class GameRecordReader
     /// </summary>
     internal const long MaxChars = 64L * 1024 * 1024;
 
-    /// <summary>La línea más larga: la meta, con la BO (la web acepta hasta 512 KB).</summary>
+    /// <summary>La línea más larga: la meta, con la BO (la más grande que acepta la web entra de sobra).</summary>
     internal const int MaxLineChars = 1024 * 1024;
 
     /// <summary>Cuántas líneas se leen: sin esto, una línea corta ocupa mucho más en memoria que en el texto. 5 horas de partida son unas 50.000.</summary>

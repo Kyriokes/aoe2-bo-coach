@@ -67,11 +67,10 @@ public sealed class CivStyles
     {
         if (!File.Exists(path))
             return Empty;
-        var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
         JsonNode? parsed;
         try
         {
-            parsed = JsonNode.Parse(File.ReadAllText(path), documentOptions: options);
+            parsed = JsonNode.Parse(File.ReadAllText(path), documentOptions: BuildOrderSerializer.DocumentOptions);
         }
         catch (JsonException e)
         {

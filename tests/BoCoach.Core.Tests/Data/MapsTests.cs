@@ -27,6 +27,23 @@ public class MapsTests
     }
 
     [Fact]
+    public void Una_clave_repetida_dice_en_que_archivo_esta()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"maps-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, """{ "maps": { "arabia": { }, "arabia": { } } }""");
+        try
+        {
+            var error = Assert.Throws<InvalidDataException>(() => Maps.Load(path));
+
+            Assert.Contains(Path.GetFileName(path), error.Message);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void Null_o_any_es_cualquier_mapa()
     {
         Assert.True(Maps.IsAny(null));

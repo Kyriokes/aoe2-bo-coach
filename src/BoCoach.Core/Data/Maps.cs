@@ -78,7 +78,7 @@ public sealed class Maps
     {
         if (string.IsNullOrWhiteSpace(json))
             return Empty;
-        var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+        var options = new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true, AllowDuplicateProperties = false };
         var root = JsonNode.Parse(json, documentOptions: options) as JsonObject;
         if (root?["maps"] is not JsonObject maps)
             return Empty;
