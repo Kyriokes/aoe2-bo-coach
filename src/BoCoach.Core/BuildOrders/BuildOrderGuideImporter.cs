@@ -23,7 +23,7 @@ public static class BuildOrderGuideImporter
         {
             return JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) is JsonObject obj && obj["build"] is JsonArray && obj["civilization"] is JsonValue;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             return false;
         }
@@ -39,7 +39,7 @@ public static class BuildOrderGuideImporter
             root = JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) as JsonObject
                 ?? throw new BuildOrderFormatException("La build order tiene que ser un objeto JSON.");
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             throw BuildOrderSerializer.Invalid(e);
         }

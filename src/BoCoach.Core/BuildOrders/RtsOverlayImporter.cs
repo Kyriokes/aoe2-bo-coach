@@ -33,7 +33,7 @@ public static partial class RtsOverlayImporter
         {
             return JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) is JsonObject obj && obj["build_order"] is JsonArray;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             return false;
         }
@@ -47,7 +47,7 @@ public static partial class RtsOverlayImporter
             root = JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) as JsonObject
                 ?? throw new BuildOrderFormatException("La build order tiene que ser un objeto JSON.");
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             throw BuildOrderSerializer.Invalid(e);
         }

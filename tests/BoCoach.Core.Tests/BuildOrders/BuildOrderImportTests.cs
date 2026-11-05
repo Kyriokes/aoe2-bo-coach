@@ -51,6 +51,7 @@ public class BuildOrderImportTests
     [InlineData("""{"build":[null, 3, {"type":5}],"resources":"x"}""")]
     [InlineData("""{"build":[{"type":"newVillagers","count":"x","task":null}]}""")]
     [InlineData("""{"schema_version":2,"steps":[null]}""")]
+    [InlineData("""{"schema_version":1,"steps":[null]}""")]
     [InlineData("""[1,2]""")]
     public void ReadJson_GuiaRara_NoTira(string guide)
     {

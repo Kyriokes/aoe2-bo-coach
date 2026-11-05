@@ -52,7 +52,7 @@ public static class BuildOrderImport
                 w.WritePropertyName("build_order");
                 w.WriteRawValue(serialized);
             }
-            catch (Exception e) when (e is BuildOrderFormatException or JsonException or FormatException or InvalidOperationException)
+            catch (Exception e) when (e is BuildOrderFormatException or JsonException or FormatException or InvalidOperationException or ArgumentException)
             {
                 w.WriteBoolean("ok", false);
                 w.WriteString("error", e.Message);
