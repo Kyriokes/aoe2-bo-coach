@@ -16,8 +16,15 @@ export type LocaleRoute =
 /** El primer tramo de cada página de la web. */
 const PAGES = new Set(["", "biblioteca", "bo", "subir", "cruces", "cuenta", "login", "privacidad", "roadmap", "opengraph-image", "twitter-image"]);
 
-/** Lo que no pasa por el idioma: la API, la vuelta del login, el selector, el Core y lo interno de Next. */
-const UNLOCALIZED = /^\/(?:_|api(?:\/|$)|auth(?:\/|$)|coach(?:\/|$)|idioma(?:\/|$))/;
+/** Lo que no pasa por el idioma: la API, la vuelta del login, el selector, el Core y lo interno de Next y de Vercel. */
+const UNLOCALIZED = /^\/(?:_next|_vercel|api|auth|coach|idioma)(?:\/|$)/;
+
+/**
+ * Los archivos del sitio: las carpetas de public/ (un test recorre public/: si se agrega otra, va acá) y los que arma Next
+ * en la raíz. Lo demás con un punto (/wp-login.php, /.env) no es nuestro: sin esto, Next lo toma como el idioma y sale la
+ * portada con 200.
+ */
+const SITE_FILES = /^\/(?:(?:capturas|icons)\/|(?:favicon\.ico|robots\.txt|sitemap\.xml)$)/;
 
 /** Una imagen generada: Next escribe og:image con el segmento del idioma (/es/opengraph-image), y ahí se queda. */
 const GENERATED_IMAGE = /\/(?:opengraph-image|twitter-image)(?:-[^/]*)?$/;
@@ -28,9 +35,7 @@ export function notFoundPath(locale: Locale) {
 }
 
 export function localeRouting(pathname: string, cookie?: string): LocaleRoute {
-  const lastSegment = pathname.slice(pathname.lastIndexOf("/") + 1);
-  // Archivos de public/, sitemap.xml y robots.txt.
-  if (UNLOCALIZED.test(pathname) || lastSegment.includes(".")) return { kind: "pass", locale: DEFAULT_LOCALE, path: pathname };
+  if (UNLOCALIZED.test(pathname) || SITE_FILES.test(pathname)) return { kind: "pass", locale: DEFAULT_LOCALE, path: pathname };
 
   const { locale, path, prefixed } = stripLocale(pathname);
   if (prefixed && locale === DEFAULT_LOCALE && !GENERATED_IMAGE.test(path)) return { kind: "redirect", to: path, status: 308 };
