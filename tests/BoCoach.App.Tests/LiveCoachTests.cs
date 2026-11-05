@@ -492,6 +492,73 @@ public sealed class LiveCoachTests : IDisposable
         Assert.NotNull(live.TakePendingReport()); // lecturas nuevas desde el informe
     }
 
+    /// <summary>La grabación de scouts, con el reloj tapado desde la captura 13 y el tiempo real que le diga el test.</summary>
+    private sealed class PausedFrames(RecordedSession session) : IFrameSource
+    {
+        private int _served;
+        private double _extra;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => GameWindow.PrimaryScreen;
+        public bool GameInFront { get; set; } = true;
+        public void Wait(double seconds) => _extra += seconds;
+
+        public Frame? Next()
+        {
+            var frame = session.Frames[Math.Min(_served, session.Frames.Count - 1)];
+            var clock = _served++ < 13;
+            return new Frame(region => clock && session.Has(frame.Index, region) ? session.Image(frame.Index, region) : null, frame.TimeMs / 1000.0 + _extra, Area);
+        }
+    }
+
+    // AP-24: el tiempo en pausa contaba como tiempo sin reloj: al salir de una pausa de más de 30 s, una sola captura sin
+    // reloj daba la partida por terminada.
+    [Fact]
+    public async Task Salir_de_una_pausa_larga_con_una_captura_sin_reloj_no_termina_la_partida()
+    {
+        var frames = new PausedFrames(RecordedSession.Load(Fixture));
+        using var live = Live(frames);
+        var reports = 0;
+        live.GameFinished += _ => reports++;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        Assert.True(last!.InGame);
+
+        live.Paused = true;
+        await live.StepAsync();
+        frames.Wait(120);
+        await live.StepAsync();
+        Assert.True(last!.Paused);
+        live.Paused = false;
+        await live.StepAsync();
+
+        Assert.Equal(0, reports);
+        Assert.True(last!.InGame);
+        Assert.False(last.Waiting);
+        Assert.True(last.SecondsWithoutClock < 30, $"sin reloj {last.SecondsWithoutClock} s");
+    }
+
+    // AP-24: en pausa no se captura nada, pero el overlay no tiene que quedar encima de otra ventana.
+    [Fact]
+    public async Task En_pausa_el_coach_sigue_mirando_si_el_juego_esta_al_frente()
+    {
+        var frames = new PausedFrames(RecordedSession.Load(Fixture));
+        using var live = Live(frames);
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+        await live.StepAsync();
+
+        live.Paused = true;
+        frames.GameInFront = false;
+        await live.StepAsync();
+        Assert.False(last!.InFront);
+
+        frames.GameInFront = true;
+        await live.StepAsync();
+        Assert.True(last!.InFront);
+    }
+
     // El panel del coach bajaba en plena partida con 2 s sin leer el reloj y tapaba el minimapa (pedido del usuario,
     // 2026-10-26: "esto jamás debería ocurrir durante el juego"). Un hueco sin reloj de menos de 30 s sigue siendo la
     // partida; recién al terminar deja de serlo.

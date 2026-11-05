@@ -332,6 +332,15 @@ public sealed class LiveCoach : IDisposable
         var watch = Stopwatch.StartNew();
         try
         {
+            if (Paused)
+            {
+                // En pausa no se captura nada, pero el overlay no tiene que quedar encima de otra ventana.
+                (_resuming, _inFront) = (true, Frames.GameInFront);
+                _frameMs = watch.Elapsed.TotalMilliseconds;
+                Publish();
+                return true;
+            }
+
             if (Frames.Next() is not { } frame)
             {
                 _ended = true;
@@ -343,21 +352,19 @@ public sealed class LiveCoach : IDisposable
             {
                 // Alt-tab (D6): el juego está abierto pero no al frente. No se lee nada y el tiempo sin reloj no
                 // corre: lo que había sigue igual cuando el jugador vuelve.
-                var elapsed = frame.RealTime - _now;
-                if (_lastClockAt is { } clockAt)
-                    _lastClockAt = clockAt + elapsed;
-                if (_noClockSince is { } since)
-                    _noClockSince = since + elapsed;
-                if (_lastLoadingTry is { } tried)
-                    _lastLoadingTry = tried + elapsed;
-                if (_lastRecalibrate is { } recalibrated)
-                    _lastRecalibrate = recalibrated + elapsed;
-                (_now, _inFront, _error) = (frame.RealTime, false, null);
+                SkipTime(frame.RealTime);
+                (_inFront, _error) = (false, null);
                 _frameMs = watch.Elapsed.TotalMilliseconds;
                 Publish();
                 return true;
             }
             _inFront = true;
+            // Lo mismo con la pausa: si no, después de 30 s en pausa una sola captura sin reloj daba la partida por terminada.
+            if (_resuming)
+            {
+                _resuming = false;
+                SkipTime(frame.RealTime);
+            }
             if (await LoadingScreenAsync(frame) is { } reading)
                 StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
@@ -438,6 +445,24 @@ public sealed class LiveCoach : IDisposable
         _frameMs = watch.Elapsed.TotalMilliseconds;
         Publish();
         return true;
+    }
+
+    /// <summary>Hubo una pausa desde la última captura leída.</summary>
+    private bool _resuming;
+
+    /// <summary>El tiempo que pasó sin mirar la pantalla (alt-tab, pausa) no cuenta como tiempo sin reloj ni para las esperas.</summary>
+    private void SkipTime(double realTime)
+    {
+        var elapsed = realTime - _now;
+        if (_lastClockAt is { } clockAt)
+            _lastClockAt = clockAt + elapsed;
+        if (_noClockSince is { } since)
+            _noClockSince = since + elapsed;
+        if (_lastLoadingTry is { } tried)
+            _lastLoadingTry = tried + elapsed;
+        if (_lastRecalibrate is { } recalibrated)
+            _lastRecalibrate = recalibrated + elapsed;
+        _now = realTime;
     }
 
     /// <summary>
@@ -641,11 +666,6 @@ public sealed class LiveCoach : IDisposable
         {
             do
             {
-                if (Paused)
-                {
-                    Publish();
-                    continue;
-                }
                 if (!await StepAsync())
                     return;
             }
