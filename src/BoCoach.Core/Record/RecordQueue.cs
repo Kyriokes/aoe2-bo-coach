@@ -66,6 +66,13 @@ public sealed class RecordQueue
             return _items.Where(r => r.NextTry <= now).ToList();
     }
 
+    /// <summary>Si sigue esperando salir.</summary>
+    public bool Contains(QueuedRecord record)
+    {
+        lock (_items)
+            return _items.Any(r => r.GameId == record.GameId);
+    }
+
     /// <summary>Salió, o no va a salir nunca.</summary>
     public void Remove(QueuedRecord record)
     {

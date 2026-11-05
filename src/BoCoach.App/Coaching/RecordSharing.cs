@@ -45,13 +45,14 @@ public sealed class RecordSharing(string folder, string identityPath, Func<WebLi
     }
 
     /// <summary>Manda lo vencido. Si ya hay un envío en curso no hace nada: lo nuevo sale en el siguiente.</summary>
-    public async Task<RecordSendResult> SendPendingAsync(DateTimeOffset now, CancellationToken cancel = default)
+    /// <param name="keepSending">Si se sigue compartiendo: se pregunta antes de cada envío (ver <see cref="RecordUploader"/>).</param>
+    public async Task<RecordSendResult> SendPendingAsync(DateTimeOffset now, CancellationToken cancel = default, Func<bool>? keepSending = null)
     {
         if (!await _sending.WaitAsync(0, cancel))
             return new RecordSendResult(0, 0, 0);
         try
         {
-            return await RecordUploader.SendPendingAsync(_queue, client(), InstallIdentity.LoadOrCreate(identityPath), appVersion, now, cancel);
+            return await RecordUploader.SendPendingAsync(_queue, client(), InstallIdentity.LoadOrCreate(identityPath), appVersion, now, cancel, keepSending);
         }
         finally
         {
@@ -59,7 +60,22 @@ public sealed class RecordSharing(string folder, string identityPath, Func<WebLi
         }
     }
 
-    /// <summary>El pedido de borrado de lo que subió esta instalación. Devuelve cuántos registros se borraron.</summary>
-    public Task<int> ForgetAsync(CancellationToken cancel = default) =>
-        RecordUploader.ForgetAsync(_queue, client(), InstallIdentity.LoadOrCreate(identityPath), cancel);
+    /// <summary>
+    /// El pedido de borrado de lo que subió esta instalación. Devuelve cuántos registros se borraron. Primero vacía la cola,
+    /// así un envío en curso no sigue con el próximo, y espera a que termine: si no, lo que ya salió podría llegar después
+    /// del pedido y quedar en la web.
+    /// </summary>
+    public async Task<int> ForgetAsync(CancellationToken cancel = default)
+    {
+        _queue.Clear();
+        await _sending.WaitAsync(cancel);
+        try
+        {
+            return await RecordUploader.ForgetAsync(_queue, client(), InstallIdentity.LoadOrCreate(identityPath), cancel);
+        }
+        finally
+        {
+            _sending.Release();
+        }
+    }
 }

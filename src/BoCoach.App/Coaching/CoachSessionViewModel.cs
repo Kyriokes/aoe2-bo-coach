@@ -334,7 +334,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         try
         {
-            var result = await Sharing.SendPendingAsync(DateTimeOffset.Now);
+            var result = await Sharing.SendPendingAsync(DateTimeOffset.Now, keepSending: () => ShareGames);
             if (result.Sent + result.Failed > 0)
                 ShareStatus = result.Failed > 0
                     ? Texts.SharePending(Sharing.Pending)

@@ -17,14 +17,23 @@ public static class RecordUploader
 {
     public const int MaxDenials = 5;
 
+    /// <param name="keepSending">
+    /// Se pregunta antes de cada envío: si da false (se apagó el interruptor), lo que falta queda en la cola, sin contar
+    /// como un intento.
+    /// </param>
     public static async Task<RecordSendResult> SendPendingAsync(RecordQueue queue, WebLibraryClient client, InstallIdentity identity, string appVersion,
-        DateTimeOffset now, CancellationToken cancel = default)
+        DateTimeOffset now, CancellationToken cancel = default, Func<bool>? keepSending = null)
     {
         var (sent, failed, dropped) = (0, 0, 0);
         var due = queue.Due(now);
         for (var i = 0; i < due.Count; i++)
         {
+            if (keepSending?.Invoke() == false)
+                break;
             var record = due[i];
+            // Mientras se mandaba lo anterior salió de la cola: "Borrar lo compartido" la vació.
+            if (!queue.Contains(record))
+                continue;
             var file = new FileInfo(queue.PathOf(record));
             if (!file.Exists || file.Length > RecordQueue.MaxUploadBytes)
             {

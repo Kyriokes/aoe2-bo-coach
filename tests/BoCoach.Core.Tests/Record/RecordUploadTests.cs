@@ -409,6 +409,50 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Empty(_web.Requests);
     }
 
+    // "Borrar lo compartido" con un envío en curso: lo que faltaba de la tanda seguía saliendo y quedaba en la web.
+    [Fact]
+    public async Task Si_se_vacia_la_cola_durante_un_envio_no_sale_lo_que_faltaba()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        _web.WhileAnswering = queue.Clear;
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(1, 0, 0), result);
+        Assert.Single(_web.Requests);
+        Assert.Empty(queue.Pending);
+    }
+
+    // Lo que la cola saca mientras se manda otra cosa (por el tope de espacio) no sale, y lo que sigue sí.
+    [Fact]
+    public async Task Lo_que_salio_de_la_cola_durante_un_envio_no_sale_y_lo_demas_si()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        var second = queue.Pending[1];
+        _web.WhileAnswering = () => queue.Remove(second);
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(2, 0, 0), result);
+        Assert.Equal([GameId('a'), GameId('c')], _web.RequestHeaders.Select(h => h["X-BoCoach-Game"]));
+    }
+
+    [Fact]
+    public async Task Si_se_apaga_durante_un_envio_lo_que_faltaba_queda_en_la_cola_sin_contar_como_intento()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        var sharing = true;
+        _web.WhileAnswering = () => sharing = false;
+
+        var result = await RecordUploader.SendPendingAsync(queue, Client(), _identity, "v1", Now, keepSending: () => sharing);
+
+        Assert.Equal(new RecordSendResult(1, 0, 0), result);
+        Assert.Single(_web.Requests);
+        Assert.Equal([GameId('b'), GameId('c')], queue.Pending.Select(r => r.GameId));
+        Assert.All(queue.Pending, r => Assert.Equal(0, r.Attempts));
+        Assert.Equal(2, queue.Due(Now).Count);
+    }
+
     [Fact]
     public async Task El_pedido_de_borrado_manda_la_identidad_y_vacia_la_cola()
     {

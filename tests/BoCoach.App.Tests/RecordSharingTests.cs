@@ -31,12 +31,29 @@ public sealed class RecordSharingTests : IDisposable
         public List<string> Requests { get; } = [];
         public bool Offline { get; set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
+        /// <summary>Lo que pasa mientras la web atiende un pedido.</summary>
+        public Func<Task>? WhileAnswering { get; set; }
+
+        /// <summary>Si está, los POST no contestan hasta que se complete.</summary>
+        public TaskCompletionSource? Hold { get; set; }
+
+        /// <summary>Se completa cuando llega un POST.</summary>
+        public TaskCompletionSource Posted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
         {
             if (Offline)
                 throw new HttpRequestException("sin conexión");
             Requests.Add($"{request.Method} {request.RequestUri!.AbsolutePath}");
-            return Task.FromResult(new HttpResponseMessage(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") });
+            if (WhileAnswering is { } whileAnswering)
+                await whileAnswering();
+            if (request.Method == HttpMethod.Post)
+            {
+                Posted.TrySetResult();
+                if (Hold is { } hold)
+                    await hold.Task;
+            }
+            return new HttpResponseMessage(Status) { Content = new StringContent(Body, Encoding.UTF8, "application/json") };
         }
     }
 
@@ -376,6 +393,76 @@ public sealed class RecordSharingTests : IDisposable
         Assert.Equal(["DELETE /api/app/registros"], _web.Requests);
         Assert.Equal(0, sharing.Pending);
         Assert.Contains("4", session.ShareStatus);
+    }
+
+    // "Borrar lo compartido" con un envío en curso: el POST que ya salió podía llegar después del DELETE y lo que faltaba de
+    // la tanda seguía saliendo; todo eso quedaba en la web después de decirle al jugador que estaba borrado.
+    [Fact]
+    public async Task El_pedido_de_borrado_espera_el_envio_en_curso_y_corta_lo_que_faltaba()
+    {
+        var (_, sharing) = Session(live: false);
+        sharing.Enqueue(Record(), DateTimeOffset.Now);
+        sharing.Enqueue(Record() with { GameId = new string('b', 32) }, DateTimeOffset.Now);
+        _web.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var sending = sharing.SendPendingAsync(DateTimeOffset.Now);
+        await _web.Posted.Task;
+        var forgetting = sharing.ForgetAsync();
+        await Task.Delay(100);
+
+        Assert.False(forgetting.IsCompleted);
+        Assert.Equal(["POST /api/app/registros"], _web.Requests);
+        Assert.Equal(0, sharing.Pending);
+
+        _web.Body = """{"forgotten":1,"duplicate":false}""";
+        _web.Hold.SetResult();
+        await sending;
+        Assert.Equal(1, await forgetting);
+
+        Assert.Equal(["POST /api/app/registros", "DELETE /api/app/registros"], _web.Requests);
+        Assert.Equal(0, sharing.Pending);
+    }
+
+    // Mientras dura el borrado no empieza otro envío: lo nuevo sale en el siguiente.
+    [Fact]
+    public async Task Durante_el_pedido_de_borrado_no_sale_nada()
+    {
+        var (_, sharing) = Session(live: false);
+        var game = Record();
+        RecordSendResult? during = null;
+        _web.Status = HttpStatusCode.OK;
+        _web.Body = """{"forgotten":0}""";
+        _web.WhileAnswering = async () =>
+        {
+            sharing.Enqueue(game, DateTimeOffset.Now);
+            during = await sharing.SendPendingAsync(DateTimeOffset.Now);
+        };
+
+        await sharing.ForgetAsync();
+
+        Assert.Equal(new RecordSendResult(0, 0, 0), during);
+        Assert.Equal(["DELETE /api/app/registros"], _web.Requests);
+    }
+
+    [Fact]
+    public async Task Apagar_el_interruptor_corta_el_envio_en_curso()
+    {
+        var (session, sharing) = Session();
+        using (session)
+        {
+            sharing.Enqueue(Record(), DateTimeOffset.Now.AddHours(-1));
+            sharing.Enqueue(Record() with { GameId = new string('b', 32) }, DateTimeOffset.Now.AddHours(-1));
+            _web.WhileAnswering = () =>
+            {
+                session.ShareGames = false;
+                return Task.CompletedTask;
+            };
+
+            await session.SendPendingRecordsAsync();
+
+            Assert.Single(_web.Requests);
+            Assert.Equal(1, sharing.Pending); // queda para cuando lo vuelva a prender
+        }
     }
 
     [Fact]
