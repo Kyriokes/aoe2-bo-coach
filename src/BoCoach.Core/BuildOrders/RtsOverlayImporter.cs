@@ -725,11 +725,15 @@ public static partial class RtsOverlayImporter
     [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.*?\S)\s*-->\s*(?<then>.+)$", RegexOptions.Singleline)]
     private static partial Regex HalfWayFirst();
 
-    internal static int? Number(JsonNode? node)
+    /// <summary>Cuántos aldeanos, unidades o edificios dice la guía (ver <see cref="Quantity"/>).</summary>
+    internal static int? Number(JsonNode? node) => RawNumber(node) is { } value ? Quantity(value) : null;
+
+    /// <summary>El número tal cual: lo que se vende en el mercado son recursos, no tiene ese tope.</summary>
+    internal static int? RawNumber(JsonNode? node)
     {
         try
         {
-            return node?.GetValue<int>() is { } value ? Quantity(value) : null;
+            return node?.GetValue<int>();
         }
         catch (Exception e) when (e is FormatException or InvalidOperationException)
         {

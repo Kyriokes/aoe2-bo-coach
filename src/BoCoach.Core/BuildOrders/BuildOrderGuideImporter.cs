@@ -125,7 +125,7 @@ public static class BuildOrderGuideImporter
                         converter.Remark(text.Replace('\n', ' '));
                     break;
                 case "trade":
-                    converter.Remark($"Mercado: {(Str(step["action"]) == "buy" ? "comprá" : "vendé")} {RtsOverlayImporter.Number(step["count"]) ?? 100} de {Str(step["resource"])}");
+                    converter.Remark($"Mercado: {(Str(step["action"]) == "buy" ? "comprá" : "vendé")} {RtsOverlayImporter.RawNumber(step["count"]) ?? 100} de {Str(step["resource"])}");
                     break;
                 case "collectGold":
                     converter.Remark("Juntá un poco de oro con un aldeano (lo justo para lo que sigue)");
