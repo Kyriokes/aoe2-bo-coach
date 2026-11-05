@@ -16,6 +16,8 @@ public sealed class ValueFilter
     private double? _lastAccepted;
     private double? _pending;
     private int _pendingCount;
+    private double? _first;
+    private double _firstTime;
 
     /// <summary>Cuántas lecturas aceptadas entran en la mediana.</summary>
     public int Window { get; init; } = 5;
@@ -46,7 +48,7 @@ public sealed class ValueFilter
     /// salto de más de 10 minutos no se confirma nunca.
     public static ValueFilter GameClock() => new()
     {
-        Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600,
+        Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600, ConfirmFirst = true,
     };
 
     /// <summary>
@@ -54,6 +56,12 @@ public sealed class ValueFilter
     /// Null, cualquiera se confirma con <see cref="ConfirmJump"/>.
     /// </summary>
     public double? MaxConfirmedJump { get; init; }
+
+    /// <summary>
+    /// La primera lectura no se toma sola: hace falta una siguiente que pueda seguirle, y mientras tanto no hay valor.
+    /// Con el reloj, que nunca baja, una primera lectura mala ("09:06:10") quedaba clavada toda la partida.
+    /// </summary>
+    public bool ConfirmFirst { get; init; }
 
     /// <summary>Valor suavizado actual, o null si todavía no hubo ninguna lectura válida.</summary>
     public double? Value => _window.Count == 0 ? null : Median();
@@ -65,6 +73,12 @@ public sealed class ValueFilter
         var dt = _lastAcceptedTime is { } previous ? Math.Max(0, time - previous) : 0;
         if (reading is not { } value)
             return Value;
+
+        if (ConfirmFirst && _lastAccepted is null && !(_first is { } first && Plausible(value - first, Math.Max(0, time - _firstTime))))
+        {
+            (_first, _firstTime) = (value, time);
+            return Value;
+        }
 
         if (_lastAccepted is { } last && !Plausible(value - last, dt))
         {

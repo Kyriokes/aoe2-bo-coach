@@ -85,6 +85,16 @@ internal static class HudLayoutScreens
         return canvas.Image;
     }
 
+    /// <summary>El reloj del mod: el texto pintado con las plantillas de la letra sobre negro.</summary>
+    public static CapturedImage ClockBox(string text, GlyphFont font)
+    {
+        const int points = 56;
+        const double ppu = 0.4348;
+        var canvas = new Canvas(200, 40, Black);
+        canvas.Text(text, new PixelRect(0, 0, 200, 40), font, points, ppu, White);
+        return canvas.Image;
+    }
+
     private static void DrawBar(Canvas canvas, HudLayout layout, Func<int, int, int, int, PixelRect> rect)
     {
         var bar = layout.Bar;

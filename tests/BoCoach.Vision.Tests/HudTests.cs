@@ -63,6 +63,25 @@ public class HudTests
         }
     }
 
+    // Hasta que se confirma la primera lectura del reloj no hay hora: lo que se ve en esa captura no se puede fechar (la
+    // cola se tomaría como vista en el 0:00, a mitad de partida).
+    [Fact]
+    public void Con_la_primera_lectura_del_reloj_sin_confirmar_no_hay_hora_para_la_cola()
+    {
+        var tracker = new HudTracker();
+        var reading = new HudReading(370, null, null, null, null, null, null, []);
+        IReadOnlyList<Core.Engine.QueueItem> queue = [new("loom")];
+
+        var first = tracker.Update(0, reading) with { Queue = queue };
+        var second = tracker.Update(0.5, reading) with { Queue = queue };
+
+        Assert.True(first.ClockRead);
+        Assert.Null(first.Clock);
+        Assert.Null(first.ToReading().Queue);
+        Assert.Equal(370, second.Clock);
+        Assert.Equal(queue, second.ToReading().Queue);
+    }
+
     [Theory]
     [InlineData("Dark Age", Age.Dark)]
     [InlineData("Feudal Agc", Age.Feudal)]
