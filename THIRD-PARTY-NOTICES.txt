@@ -1,0 +1,65 @@
+AoE2 BO Coach: avisos de terceros
+=================================
+
+El código de AoE2 BO Coach es MIT (LICENSE.txt). La versión portable trae además lo que sigue, que no es parte de esa
+licencia.
+
+
+Contenido de Age of Empires II
+------------------------------
+En la carpeta data: los íconos de data\icons, las letras de data\fonts, las frases de data\events*.json y los valores de
+data\game_data salen de los archivos y de la pantalla del juego.
+
+Age of Empires II © Microsoft Corporation. AoE2 BO Coach se hizo bajo las Game Content Usage Rules de Microsoft
+(https://www.xbox.com/en-US/developers/rules) con contenido de Age of Empires II, y no está respaldado por Microsoft ni
+afiliado a Microsoft.
+
+
+Estadísticas de cruces
+----------------------
+data\matchup_stats.json está calculado con las partidas clasificatorias que publica aoe2-guide
+(https://aoe2-guide.vercel.app/data), que salen de la API oficial del juego.
+
+
+Componentes de software (van adentro de BoCoach.exe)
+----------------------------------------------------
+.NET Runtime y sus bibliotecas (https://github.com/dotnet/runtime)
+    MIT, el texto de abajo. Lo que usa de terceros está en THIRD-PARTY-NOTICES-dotnet.txt, al lado de este archivo.
+
+Windows Presentation Foundation (https://github.com/dotnet/wpf)
+    MIT, el texto de abajo. Lo que usa de terceros:
+    https://github.com/dotnet/wpf/blob/main/THIRD-PARTY-NOTICES.TXT
+
+CommunityToolkit.Mvvm (https://github.com/CommunityToolkit/dotnet)
+    MIT, el texto de abajo. Copyright (c) .NET Foundation and Contributors.
+
+Proyección de las API de Windows (Microsoft.Windows.SDK.NET y WinRT.Runtime, del paquete Microsoft.Windows.SDK.NET.Ref)
+    © Microsoft Corporation. Licencia del paquete: https://aka.ms/WinSDKLicenseURL
+    C#/WinRT, de donde sale WinRT.Runtime, es MIT: https://github.com/microsoft/CsWinRT
+
+
+Texto de la licencia MIT de .NET, WPF y CommunityToolkit.Mvvm
+-------------------------------------------------------------
+The MIT License (MIT)
+
+Copyright (c) .NET Foundation and Contributors
+
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

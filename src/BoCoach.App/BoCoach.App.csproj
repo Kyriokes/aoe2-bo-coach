@@ -55,9 +55,19 @@
     <None Include="..\..\data\icons\*.json" Link="data\icons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
-  <!-- Instrucciones de la versión portable -->
+  <!-- Instrucciones y licencias de la versión portable -->
   <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
     <None Include="..\..\docs\LEEME-portable.txt" Link="LEEME.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\LICENSE" Link="LICENSE.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
+
+  <!-- El runtime de .NET va adentro del .exe: sus avisos de terceros salen de su paquete, así siguen a la versión -->
+  <Target Name="CopiarAvisosDeDotNet" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' != ''">
+    <ItemGroup>
+      <AvisosDeDotNet Include="@(ResolvedRuntimePack->'%(PackageDirectory)\THIRD-PARTY-NOTICES.TXT')" Condition="'%(ResolvedRuntimePack.FrameworkName)' == 'Microsoft.NETCore.App'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AvisosDeDotNet)" DestinationFiles="$(PublishDir)THIRD-PARTY-NOTICES-dotnet.txt" />
+  </Target>
 
 </Project>
