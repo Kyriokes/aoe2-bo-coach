@@ -498,6 +498,7 @@ export const es = {
     replaceConfirm: "Tenés cambios sin guardar en esta BO y se van a perder. ¿Seguís?",
     draftRestored: "Recuperamos lo que estabas armando y no habías guardado.",
     draftDiscard: "Descartarlo",
+    newName: "Nueva build order",
     changeCiv: "civ {value}",
     changeMap: "mapa {value}",
     any: "Cualquiera",

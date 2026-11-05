@@ -10,7 +10,7 @@ import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
-import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
@@ -177,7 +177,7 @@ export function BuildOrderEditor({
       setStrip(null);
       lastPlanRef.current = null;
       if (!initialJson) {
-        const next = newAssisted(stateRef.current, newBoId());
+        const next = newAssisted(stateRef.current, newBoId(), t.newName);
         stateRef.current = next;
         setState(next);
         return;
@@ -190,7 +190,7 @@ export function BuildOrderEditor({
         if (result.assisted?.regenerated) showNotice(t.regenerated);
       } else showNotice(fill(t.readFailed, { error: result.error }));
     },
-    [initialJson, locale, showNotice, t.readFailed, t.regenerated],
+    [initialJson, locale, showNotice, t.newName, t.readFailed, t.regenerated],
   );
 
   // El motor, los datos del juego y los mapas; con el motor, el borrador, la BO que se edita o una nueva. Next recrea este
@@ -633,7 +633,7 @@ export function BuildOrderEditor({
             return;
           }
           if (!canReplace()) return;
-          const next = newAssisted(stateRef.current, newBoId());
+          const next = newAssisted(stateRef.current, newBoId(), t.newName);
           stateRef.current = next;
           setState(next);
           setStrip(null);
@@ -663,7 +663,7 @@ export function BuildOrderEditor({
         bo={state.bo}
         maps={maps.length > 0 ? maps : [{ key: "any", name: t.any, water: true, sources: [...SOURCES] }]}
         onField={(field, value) => {
-          changeRef.current = field === "civ" ? fill(t.changeCiv, { value }) : field === "map" ? fill(t.changeMap, { value }) : field;
+          changeRef.current = fieldChangeLabel(field, value, maps, locale);
           if (field === "civ" && !plan) changeCiv(value);
           else dispatch({ type: "setField", field, value });
         }}

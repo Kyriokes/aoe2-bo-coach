@@ -1,6 +1,7 @@
 import { fill, getDictionary } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
 import { formatClock } from "../buildOrder";
+import { civNames } from "../civNames";
 import type { Analysis } from "../coach/types";
 import { entityName } from "../stepText";
 import { fromAnalysis, reduce, type EditorBo, type EditorState, type EditorStep } from "./model";
@@ -54,8 +55,8 @@ export function defaultPlan(): AssistedPlan {
 }
 
 /** Una BO nueva en Asistido: la apertura de siempre y los objetivos de ejemplo, todavía sin cambios para guardar. */
-export function newAssisted(state: EditorState, id: string): EditorState {
-  const next = reduce(reduce(state, { type: "new", id }), { type: "setAssisted", assisted: defaultPlan() });
+export function newAssisted(state: EditorState, id: string, name?: string): EditorState {
+  const next = reduce(reduce(state, { type: "new", id, name }), { type: "setAssisted", assisted: defaultPlan() });
   return { ...next, cleanRevision: next.revision };
 }
 
@@ -184,6 +185,14 @@ export function diffGoals(
     return fill(t.shift, { goal: s.label, from, to, delta });
   });
   return { change, shifts, lines };
+}
+
+/** Lo que dice la franja cuando se toca un dato de la BO: el nombre de la civ o del mapa, no su clave. */
+export function fieldChangeLabel(field: "name" | "civ" | "map" | "author" | "description", value: string, maps: { key: string; name: string }[], locale: Locale = "es") {
+  const dict = getDictionary(locale);
+  if (field === "civ") return fill(dict.editor.changeCiv, { value: value === "any" ? dict.civ.anyShort : (civNames(locale)[value] ?? value) });
+  if (field === "map") return fill(dict.editor.changeMap, { value: maps.find((m) => m.key === value)?.name ?? value });
+  return dict.editor.fields[field];
 }
 
 /** Si dos objetivos son "el mismo" para comparar horas: misma edad, unidad, tecnología o centros urbanos. */

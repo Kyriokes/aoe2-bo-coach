@@ -496,6 +496,7 @@ export const en: Dictionary = {
     replaceConfirm: "You have unsaved changes in this BO and they'll be lost. Continue?",
     draftRestored: "We recovered what you were working on and hadn't saved.",
     draftDiscard: "Discard it",
+    newName: "New build order",
     changeCiv: "civ {value}",
     changeMap: "map {value}",
     any: "Any",

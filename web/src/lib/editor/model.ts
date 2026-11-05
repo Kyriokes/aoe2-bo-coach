@@ -71,7 +71,8 @@ export interface EditorState {
 export type EditorAction =
   /** `restored`: es un borrador recuperado, que sigue teniendo cambios sin guardar. */
   | { type: "load"; analysis: Analysis; restored?: boolean }
-  | { type: "new"; id: string }
+  /** `name`: el nombre en el idioma de la página. */
+  | { type: "new"; id: string; name?: string }
   /** Lo que hay quedó guardado en la web. */
   | { type: "saved" }
   | { type: "setField"; field: "name" | "civ" | "map" | "author" | "description"; value: string }
@@ -320,7 +321,7 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       // Una BO nueva arranca con la apertura de siempre: los 3 iniciales hacen 2 casas y van a las ovejas (si no,
       // quedan sin tarea y ningún paso puede arrancar). Se cambia en la caja "Inicio".
       return edited(state, {
-        bo: { id: action.id, name: NEW_NAME, civ: "any", map: "any", author: "", description: "", tags: [] },
+        bo: { id: action.id, name: action.name ?? NEW_NAME, civ: "any", map: "any", author: "", description: "", tags: [] },
         steps: [{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }],
         selected: null,
         analysis: null,

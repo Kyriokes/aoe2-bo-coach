@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { getDictionary } from "@/i18n";
 import type { Analysis } from "../coach/types";
-import { addGoal, debouncer, defaultPlan, diffGoals, goalLabel, moveGoal, planFromJson, removeGoal, setUntil, toManual, updateGoal } from "./assisted";
+import { addGoal, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, moveGoal, newAssisted, planFromJson, removeGoal, setUntil, toManual, updateGoal } from "./assisted";
+import { initialState, isDirty } from "./model";
 
 const scouts = { unit: "scout_cavalry", count: 20, buildings: 2 };
 const stableOf = (unit: string) => (unit === "scout_cavalry" ? "stable" : undefined);
@@ -79,6 +81,30 @@ describe("la franja Último cambio", () => {
 
   it("sin análisis anterior no hay franja", () => {
     expect(diffGoals(null, analysis([589]), "x", defaultPlan(), null)).toBeNull();
+  });
+
+  // Antes escribía la clave cruda: "civ britons", y el nombre del campo en inglés también en castellano ("name").
+  it("nombra lo que se tocó en el idioma de la página, no con su clave", () => {
+    const maps = [{ key: "arabia", name: "Arabia" }, { key: "black_forest", name: "Bosque Negro" }];
+    expect(fieldChangeLabel("civ", "britons", maps)).toBe("civ Britanos");
+    expect(fieldChangeLabel("civ", "britons", maps, "en")).toBe("civ Britons");
+    expect(fieldChangeLabel("civ", "any", maps)).toBe("civ Cualquiera");
+    expect(fieldChangeLabel("civ", "any", maps, "en")).toBe("civ Any");
+    expect(fieldChangeLabel("map", "black_forest", maps)).toBe("mapa Bosque Negro");
+    expect(fieldChangeLabel("map", "otro", maps, "en")).toBe("map otro");
+    expect(fieldChangeLabel("name", "x", maps)).toBe("Nombre");
+    expect(fieldChangeLabel("description", "x", maps, "en")).toBe("Description");
+  });
+});
+
+describe("una BO nueva", () => {
+  it("se llama como en el idioma de la página", () => {
+    expect(newAssisted(initialState(), "n1", getDictionary("en").editor.newName).bo.name).toBe("New build order");
+    expect(newAssisted(initialState(), "n1", getDictionary("es").editor.newName).bo.name).toBe("Nueva build order");
+  });
+
+  it("arranca sin cambios para guardar", () => {
+    expect(isDirty(newAssisted(initialState(), "n1", "x"))).toBe(false);
   });
 });
 
