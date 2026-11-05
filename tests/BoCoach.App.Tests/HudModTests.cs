@@ -656,6 +656,33 @@ public sealed class HudModTests : IDisposable
         Assert.Contains("abrí el juego", Assert.Single(result.Warnings));
     }
 
+    // AP-13: no había forma de sacar el mod desde la app. Se borra solo su carpeta: lo demás de los mods es del jugador.
+    [Fact]
+    public void Desinstalar_borra_solo_la_carpeta_del_mod_en_cada_perfil()
+    {
+        var game = FakeGame(_dir.FullName);
+        var mods = Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods")).FullName;
+        var other = Directory.CreateDirectory(Path.Combine(mods, "local", "Otro mod")).FullName;
+        File.WriteAllText(Path.Combine(other, "info.json"), "{}");
+        var subscribed = Directory.CreateDirectory(Path.Combine(mods, "subscribed", "17306_Otro panel")).FullName;
+        File.WriteAllText(Path.Combine(mods, "mod-status.json"), """{ "Mods": [] }""");
+        Directory.CreateDirectory(Path.Combine(Profiles, "222", "mods"));
+        Directory.CreateDirectory(Path.Combine(Profiles, "logs"));
+        HudMod.Install(game, Layout(), Profiles);
+
+        Assert.Equal(["111", "222"], HudMod.Uninstall(Profiles));
+
+        Assert.False(Directory.Exists(Path.Combine(mods, "local", HudMod.Name)));
+        Assert.False(Directory.Exists(Path.Combine(Profiles, "222", "mods", "local", HudMod.Name)));
+        Assert.True(File.Exists(Path.Combine(other, "info.json")));
+        Assert.True(Directory.Exists(subscribed));
+        Assert.True(File.Exists(Path.Combine(mods, "mod-status.json")));
+        Assert.Empty(HudMod.Uninstall(Profiles));
+    }
+
+    [Fact]
+    public void Sin_perfiles_no_hay_nada_que_desinstalar() => Assert.Empty(HudMod.Uninstall(Profiles));
+
     /// <summary>Un panel del juego que cambió de forma (un parche): el menú sin el tamaño de su fondo.</summary>
     private static void BreakMenuPanel(string game) => File.WriteAllText(Path.Combine(game, "widgetui", "menupanel.json"),
         """{ "Collection": { "Widgets": [ { "Widget": { "Name": "Background", "ViewPort": { "xorigin": 0 } } } ] } }""");

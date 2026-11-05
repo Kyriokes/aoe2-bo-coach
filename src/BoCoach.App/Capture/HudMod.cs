@@ -144,6 +144,27 @@ public static class HudMod
     }
 
     /// <summary>
+    /// Saca el mod del juego: borra solo <c>mods\local\BoCoach HUD</c> de cada perfil, nada más de la carpeta de mods (el
+    /// juego se entera solo la próxima vez que abre). Devuelve los perfiles de donde lo sacó.
+    /// </summary>
+    public static IReadOnlyList<string> Uninstall(string? profilesRoot = null)
+    {
+        profilesRoot ??= DefaultProfilesRoot;
+        var removed = new List<string>();
+        if (!Directory.Exists(profilesRoot))
+            return removed;
+        foreach (var profile in Directory.EnumerateDirectories(profilesRoot).Order())
+        {
+            var target = Path.Combine(profile, "mods", "local", Name);
+            if (!Directory.Exists(target))
+                continue;
+            Directory.Delete(target, recursive: true);
+            removed.Add(Path.GetFileName(profile));
+        }
+        return removed;
+    }
+
+    /// <summary>
     /// Los paneles del mod ya armados, en texto. Null: el diseño no lo ubica o el juego no lo trae, y se borra la copia de
     /// antes (el log, la cola, la franja de arriba y el menú; el de recursos y el del reloj están siempre).
     /// </summary>

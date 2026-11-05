@@ -331,6 +331,14 @@ public static class Texts
     public static string ReportsLabel => L("Informes de las partidas", "Match reports");
     public static string ReportsHint => L("Cada partida deja una página con los pasos contra la BO, el centro urbano parado y los recursos acumulados.", "Each match leaves a page with the steps against the BO, the idle town center and the floating resources.");
     public static string ReportsButton => L("Abrir la carpeta", "Open the folder");
+    public static string UninstallLabel => L("Sacar el mod y los enlaces", "Remove the mod and the links");
+    public static string UninstallHint => L("Si dejás de usar la app: borra el mod «BoCoach HUD» de tus perfiles del juego y los enlaces bocoach:// de Windows. Tus otros mods y tu cuenta no se tocan.", "If you stop using the app: it deletes the \"BoCoach HUD\" mod from your game profiles and the bocoach:// links from Windows. Your other mods and your account aren't touched.");
+    public static string UninstallButton => L("Sacar…", "Remove…");
+    public static string UninstallConfirm(string name) => L($"¿Borrar el mod «{name}» de tus perfiles del juego y los enlaces bocoach:// de Windows? Se puede volver a instalar cuando quieras.", $"Delete the \"{name}\" mod from your game profiles and the bocoach:// links from Windows? You can install it again whenever you want.");
+    public static string UninstallDone(int profiles) => profiles == 0
+        ? L("El mod no estaba en ningún perfil del juego. Los enlaces bocoach:// ya no están.", "The mod wasn't in any game profile. The bocoach:// links are gone.")
+        : L($"Listo: se sacó el mod de {(profiles == 1 ? "1 perfil" : $"{profiles} perfiles")} del juego, y los enlaces bocoach://. Si el juego está abierto, cerralo y volvé a abrirlo.", $"Done: the mod was removed from {(profiles == 1 ? "1 game profile" : $"{profiles} game profiles")}, and the bocoach:// links too. If the game is open, close it and open it again.");
+    public static string UninstallFailed(string error) => L($"No se pudo sacar todo: {error} Si el juego está abierto, cerralo y volvé a probar.", $"Not everything could be removed: {error} If the game is open, close it and try again.");
     public static string ShareGamesLabel => L("Compartir mis partidas para mejorar el coach", "Share my games to improve the coach");
     public static string ShareExplanation => Coaching.RecordSharing.Explanation;
     public static string ForgetSharedButton => L("Borrar lo compartido…", "Delete what I shared…");

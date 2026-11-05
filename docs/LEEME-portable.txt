@@ -41,4 +41,9 @@ Si no se lee nada (no ve el reloj, los números no coinciden): hacé 5 clics sob
 (arriba) para prender el modo desarrollador y, en plena partida, tocá Ctrl+Alt+X (o "Captura de
 diagnóstico" en Ajustes): a los 2 segundos guarda la pantalla y lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
 
+Para sacar BO Coach del todo: en Ajustes, pestaña "Avanzado", tocá "Sacar..." (borra solo el mod
+"BoCoach HUD" de tus perfiles del juego y los enlaces bocoach:// de Windows). Después cerrá la app y
+borrá esta carpeta y, si querés, %APPDATA%\BoCoach y %LOCALAPPDATA%\BoCoach (ajustes, informes y
+registros de tus partidas).
+
 Más información: https://github.com/Kyriokes/aoe2-bo-coach

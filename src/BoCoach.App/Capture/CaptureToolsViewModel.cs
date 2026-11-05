@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using BoCoach.App.Overlay;
+using BoCoach.App.Web;
 using BoCoach.Core;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
@@ -23,6 +24,9 @@ public interface ICaptureHost
 
     /// <summary>Un mensaje con aceptar (por ejemplo, cómo quedó la instalación del mod).</summary>
     void ShowMessage(string title, string text, bool warning);
+
+    /// <summary>Una pregunta de sí o no.</summary>
+    bool Confirm(string message);
 }
 
 /// <summary>Calibrar la pantalla, grabar partidas (RecordSession) e instalar el mod del HUD.</summary>
@@ -40,13 +44,15 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     private readonly Func<GameData?> _gameData;
     private readonly Func<string?> _playerName;
     private readonly string _diagnosticsFolder;
+    private readonly LinkProtocol _links;
     private SessionRecorder? _recorder;
 
     public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
         Func<string?>? findGame = null, string? gameProfiles = null,
         Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null,
-        Func<GameData?>? gameData = null, Func<string?>? playerName = null, Func<HudLayout>? layout = null)
+        Func<GameData?>? gameData = null, Func<string?>? playerName = null, Func<HudLayout>? layout = null, LinkProtocol? links = null)
     {
+        _links = links ?? new LinkProtocol();
         _screen = screen;
         _host = host;
         _regionsPath = regionsPath ?? RegionLayout.DefaultPath;
@@ -199,6 +205,27 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
             return;
         }
         _host.ShowMessage(title, ModText(result), !result.Ok || result.Warnings.Count > 0);
+    }
+
+    /// <summary>
+    /// Lo que la app dejó afuera de su carpeta: el mod en los perfiles del juego y la clave de los enlaces bocoach:// en el
+    /// registro de Windows. Pregunta antes; lo demás del jugador no se toca.
+    /// </summary>
+    [RelayCommand]
+    private void Uninstall()
+    {
+        if (!_host.Confirm(Texts.UninstallConfirm(HudMod.Name)))
+            return;
+        try
+        {
+            var profiles = HudMod.Uninstall(_gameProfiles);
+            _links.Unregister();
+            _host.ShowMessage(Texts.UninstallLabel, Texts.UninstallDone(profiles.Count), false);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _host.ShowMessage(Texts.UninstallLabel, Texts.UninstallFailed(e.Message), true);
+        }
     }
 
     internal static string ModText(HudModResult result)

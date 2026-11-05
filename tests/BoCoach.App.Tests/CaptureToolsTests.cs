@@ -1,7 +1,9 @@
 using System.Text.Json;
 using BoCoach.App.Capture;
+using BoCoach.App.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
+using Microsoft.Win32;
 
 namespace BoCoach.App.Tests;
 
@@ -9,7 +11,16 @@ public sealed class CaptureToolsTests : IDisposable
 {
     private readonly DirectoryInfo _dir = Directory.CreateTempSubdirectory("bocoach-tools-");
 
-    public void Dispose() => _dir.Delete(recursive: true);
+    /// <summary>Una clave de prueba propia: "Sacar" no tiene que tocar la de verdad (HKCU\Software\Classes).</summary>
+    private readonly string _testKey = $"BoCoachTests-{Guid.NewGuid():N}";
+
+    private LinkProtocol Links => new($@"Software\{_testKey}\Classes");
+
+    public void Dispose()
+    {
+        Registry.CurrentUser.DeleteSubKeyTree($@"Software\{_testKey}", throwOnMissingSubKey: false);
+        _dir.Delete(recursive: true);
+    }
 
     private string RegionsPath => Path.Combine(_dir.FullName, "regions.json");
     private string RecordingsRoot => Path.Combine(_dir.FullName, "recordings");
@@ -33,13 +44,22 @@ public sealed class CaptureToolsTests : IDisposable
         public RegionLayout? Calibrate(RegionLayout current) => OnCalibrate(current);
         public void OpenFolder(string path) => OpenedFolder = path;
         public void ShowMessage(string title, string text, bool warning) => Message = (text, warning);
+
+        public bool ConfirmAnswer { get; set; } = true;
+        public string? Asked { get; private set; }
+
+        public bool Confirm(string message)
+        {
+            Asked = message;
+            return ConfirmAnswer;
+        }
     }
 
     private string DiagnosticsFolder => Path.Combine(_dir.FullName, "diagnostico");
 
     private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null, IScreenSource? screen = null) =>
         new(screen ?? new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"),
-            diagnosticsFolder: DiagnosticsFolder) { DiagnosticDelay = TimeSpan.Zero };
+            diagnosticsFolder: DiagnosticsFolder, links: Links) { DiagnosticDelay = TimeSpan.Zero };
 
     private static readonly string HudFixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "hud-20261018-132830");
 
@@ -303,6 +323,53 @@ public sealed class CaptureToolsTests : IDisposable
 
         Assert.Equal(manual.Regions[RegionNames.Clock], Tools(new FakeHost()).Layout.Regions[RegionNames.Clock]);
         Assert.False(File.Exists(Path.Combine(_dir.FullName, "regions.roto.json")));
+    }
+
+    // AP-13: sacar lo que la app dejó afuera de su carpeta: el mod y la clave de los enlaces.
+    [Fact]
+    public void Sacar_pregunta_antes_y_borra_el_mod_y_los_enlaces()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        var mods = Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "111", "mods")).FullName;
+        var host = new FakeHost();
+        var tools = Tools(host, () => game);
+        tools.InstallModCommand.Execute(null);
+        Links.Register(@"C:\BoCoach\BoCoach.exe");
+        var mod = Path.Combine(mods, "local", HudMod.Name);
+
+        host.ConfirmAnswer = false;
+        tools.UninstallCommand.Execute(null);
+
+        Assert.Contains(HudMod.Name, host.Asked);
+        Assert.True(Directory.Exists(mod));
+        Assert.True(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
+
+        host.ConfirmAnswer = true;
+        tools.UninstallCommand.Execute(null);
+
+        Assert.False(Directory.Exists(mod));
+        Assert.False(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
+        Assert.False(host.Message?.Warning);
+        Assert.Contains("1 perfil", host.Message?.Text);
+    }
+
+    [Fact]
+    public void Si_no_se_puede_sacar_el_mod_lo_dice_y_los_enlaces_quedan()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "111", "mods"));
+        var host = new FakeHost();
+        var tools = Tools(host, () => game);
+        tools.InstallModCommand.Execute(null);
+        Links.Register(@"C:\BoCoach\BoCoach.exe");
+        var info = Path.Combine(_dir.FullName, "perfiles", "111", "mods", "local", HudMod.Name, "info.json");
+
+        using (new FileStream(info, FileMode.Open, FileAccess.Read, FileShare.None))
+            tools.UninstallCommand.Execute(null);
+
+        Assert.True(host.Message?.Warning);
+        Assert.Contains("No se pudo sacar todo", host.Message?.Text);
+        Assert.True(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
     }
 
     // AP-11: un panel que cambió de forma daba excepciones que el botón no atrapaba.
