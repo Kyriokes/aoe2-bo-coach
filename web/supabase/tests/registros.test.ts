@@ -42,6 +42,16 @@ describe("registros de partida", () => {
     await expect(as(db, null, "select public.app_record_forget($1, $2)", [install, "e".repeat(64)])).rejects.toMatchObject({ code: "28000" });
   });
 
+  it("sin haber reservado nunca, marcar subido o pedir el borrado no crea la instalación", async () => {
+    const forget = await as<{ app_record_forget: string[] }>(db, null, "select public.app_record_forget($1, $2)", [install, secret]);
+    expect(forget.rows[0].app_record_forget).toEqual([]);
+    await expect(as(db, null, "select public.app_record_done($1, $2, $3)", [install, secret, game])).rejects.toMatchObject({ code: "28000" });
+    await expect(as(db, null, "select public.app_record_forget($1, $2)", ["x", secret])).rejects.toMatchObject({ code: "23514" });
+
+    expect((await db.query("select 1 from public.record_installs")).rows).toEqual([]);
+    await expect(as(db, null, "select public.record_install_known($1, $2)", [install, secret])).rejects.toThrow(/permission/);
+  });
+
   it("reservar otra vez sin haber subido vuelve a dar la misma ruta, y ya subida dice que existe", async () => {
     const first = await reserve(db);
     expect(await reserve(db)).toEqual(first);
