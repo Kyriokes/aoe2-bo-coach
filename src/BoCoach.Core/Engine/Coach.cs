@@ -421,10 +421,8 @@ public sealed class Coach
     private bool CanResearchNow(Entity tech, Age age) =>
         tech.Age <= age && (tech.MadeIn is not { } building || building == BuildOrderValidator.StartingBuilding || Built(building));
 
-    /// <summary>Hay un edificio así: lo avisó el log o está hecho un paso de la BO que lo construye.</summary>
-    private bool Built(string building) =>
-        State.Count($"{building}_built") > 0
-        || Tracker.Steps.Any(s => s.Step.Do == StepAction.Build && s.Step.What == building && s.State == StepState.Done);
+    /// <summary>Hay un edificio así: lo avisó el log (y "Atrás" no lo descartó) o está hecho un paso de la BO que lo construye.</summary>
+    private bool Built(string building) => Tracker.Built(building);
 
     /// <summary>Un paso de la BO hizo esa investigación, la tiene en curso o se salteó.</summary>
     private bool ResearchedByBuildOrder(string tech) =>

@@ -376,6 +376,56 @@ public class TrackerLanesTests
         Assert.True(tracker.Built("lumber_camp"));
     }
 
+    // "Atrás" sobre un aviso mal leído: el paso volvía a pendiente, pero el edificio, la edad y la tecnología seguían
+    // contando, y lo que dependía de ellos seguía a la vista.
+    [Fact]
+    public void Atras_descarta_del_todo_un_aviso_falso()
+    {
+        var bo = Bo(Build("stable", "stable"), Research("bloodlines", "bloodlines"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("stable_built").State);
+        Assert.True(tracker.Built("stable"));
+        Assert.Equal(Age.Feudal, tracker.Age); // un establo es de Feudal
+
+        tracker.Back();
+
+        Assert.False(tracker.Built("stable"));
+        Assert.Equal(Age.Dark, tracker.Age);
+        Assert.False(tracker.IsEligible(Index(bo, "bloodlines")));
+    }
+
+    [Fact]
+    public void Atras_saca_del_plan_la_tecnologia_de_un_aviso_falso()
+    {
+        var bo = Bo(Research("loom", "loom"));
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("loom_researched").State);
+        Assert.Contains("loom", LivePlan.Start(tracker).Researched);
+
+        tracker.Back();
+
+        Assert.DoesNotContain("loom", LivePlan.Start(tracker).Researched);
+    }
+
+    [Fact]
+    public void Atras_saca_el_edificio_de_lo_que_el_coach_da_por_hecho()
+    {
+        // Con el molino falso, el coach pedía la collera (Hay un edificio así) aunque "Atrás" lo hubiera descartado.
+        var bo = Bo(Build("mill", "mill"), Research("feudal", "feudal_age"), Research("collar", "horse_collar"));
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var rich = new ResourceAmounts(1000, 1000, 1000, 1000);
+        coach.Update(new GameSnapshot(100, rich, 10, 15, [new GameEvent("mill_built", 100), new GameEvent("feudal_age_researched", 100)]));
+        coach.Update(new GameSnapshot(101, rich, 10, 15));
+        coach.Back(); // la Feudal
+        coach.Back(); // el molino
+
+        // Una baja justo del costo de la collera no es su clic: no hay molino.
+        coach.Update(new GameSnapshot(102, rich, 10, 15, [new GameEvent("feudal_age_researched", 102)]));
+        coach.Update(new GameSnapshot(103, rich - TestData.GameData.Get("horse_collar").Cost, 10, 15));
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[Index(bo, "collar")].State);
+    }
+
     // Partida 20261031-125929 (británicos, Fast Archers mejorada): Investigar pedía el telar desde el 0:00 (la BO lo
     // pone a 19 de población) y Construir el campamento minero a 15 (la BO lo pone después del clic de Feudal a 20).
     // Un paso de Construir, Investigar o Producir espera a la población que tiene la BO cuando llega a él.

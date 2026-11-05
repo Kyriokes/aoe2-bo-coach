@@ -504,6 +504,9 @@ public sealed class Tracker
         Recompute();
     }
 
+    /// <summary>"Atrás" descartó ese evento por ser una lectura falsa: no cuenta para nada.</summary>
+    public bool IsDiscarded(GameEvent e) => _ignored.Contains(e);
+
     private string? ConfirmableEvent(Step step)
     {
         var id = EventConventions.EventFor(step);
@@ -657,7 +660,8 @@ public sealed class Tracker
         }
         foreach (var e in _state.Events)
         {
-            if (EventConventions.Parse(e.EventId) is { } parsed)
+            // Lo que "Atrás" descartó no dice nada: ni el edificio ni la edad.
+            if (!_ignored.Contains(e) && EventConventions.Parse(e.EventId) is { } parsed)
                 Reached(parsed.Action, parsed.What);
         }
         for (var i = 0; i < n; i++)

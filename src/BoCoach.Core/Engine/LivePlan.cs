@@ -50,7 +50,7 @@ public static class LivePlan
         var researched = layout.Researched;
         foreach (var e in state.Events)
         {
-            if (EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
+            if (!tracker.IsDiscarded(e) && EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
                 researched.Add(done.What);
         }
         return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, layout.Age, layout.Villagers, layout.Idle, layout.Buildings)
