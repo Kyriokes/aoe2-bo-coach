@@ -259,12 +259,47 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Matches("^[0-9a-f]{64}$", first.Secret);
     }
 
-    [Fact]
-    public void Una_identidad_rota_se_vuelve_a_crear()
+    [Theory]
+    [InlineData("""{"id":"no sirve"}""")]
+    [InlineData("")]
+    [InlineData("{ esto no es")]
+    [InlineData("[]")]
+    [InlineData("""{"id":5,"secret":[]}""")]
+    [InlineData("""{"id":"\ud800","secret":"\ud800"}""")]
+    [InlineData("""{"id":"a","id":"b"}""")]
+    public void Una_identidad_rota_se_vuelve_a_crear(string contents)
     {
         var path = Path.Combine(_dir, "rota.json");
-        File.WriteAllText(path, """{"id":"no sirve"}""");
-        Assert.Matches("^[0-9a-f]{32}$", InstallIdentity.LoadOrCreate(path).Id);
+        File.WriteAllText(path, contents);
+
+        var created = InstallIdentity.LoadOrCreate(path);
+
+        Assert.Matches("^[0-9a-f]{32}$", created.Id);
+        Assert.Equal(created, InstallIdentity.LoadOrCreate(path));
+    }
+
+    // Un antivirus que tiene tomado el archivo: se puede escribir pero no leer. Otra identidad escrita encima dejaba
+    // afuera de "Borrar lo compartido" todo lo que subió la anterior.
+    [Fact]
+    public void Un_bloqueo_al_leer_no_cambia_la_identidad()
+    {
+        var path = Path.Combine(_dir, "tomada.json");
+        var first = InstallIdentity.LoadOrCreate(path);
+
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Write))
+            Assert.ThrowsAny<IOException>(() => InstallIdentity.LoadOrCreate(path));
+
+        Assert.Equal(first, InstallIdentity.LoadOrCreate(path));
+    }
+
+    [Fact]
+    public void Crear_la_identidad_no_deja_temporales()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_dir, "sola")).FullName;
+
+        InstallIdentity.LoadOrCreate(Path.Combine(folder, "instalacion.json"));
+
+        Assert.Equal(["instalacion.json"], Directory.EnumerateFiles(folder).Select(Path.GetFileName));
     }
 
     [Fact]
