@@ -211,6 +211,49 @@ public sealed class RecordSharingTests : IDisposable
         Assert.False(CoachSettings.Load(SettingsPath).ShareGames);
     }
 
+    // AP-04: un corte al guardar dejaba el archivo vacío, y al abrir volvía a compartir contra lo que había elegido el
+    // jugador. Un archivo que está y no se puede leer nunca prende nada, y queda copiado para poder mirarlo.
+    [Theory]
+    [InlineData("")]
+    [InlineData("""{ "share_games": fal""")]
+    [InlineData("[]")]
+    [InlineData("""{ "share_games": false, "share_games": false }""")]
+    public void Un_archivo_que_no_se_puede_leer_no_prende_compartir_y_queda_copiado(string content)
+    {
+        File.WriteAllText(SettingsPath, content);
+
+        Assert.False(CoachSettings.Load(SettingsPath).ShareGames);
+        Assert.Equal(content, File.ReadAllText(SettingsPath + ".roto"));
+    }
+
+    [Fact]
+    public void Un_archivo_que_otro_programa_tiene_abierto_tampoco_prende_compartir()
+    {
+        File.WriteAllText(SettingsPath, """{ "share_games": false }""");
+
+        using var locked = new FileStream(SettingsPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        Assert.False(CoachSettings.Load(SettingsPath).ShareGames);
+    }
+
+    [Fact]
+    public void Un_archivo_que_no_existe_es_un_usuario_nuevo()
+    {
+        Assert.True(CoachSettings.Load(SettingsPath).ShareGames);
+        Assert.False(File.Exists(SettingsPath + ".roto"));
+    }
+
+    [Fact]
+    public void Si_el_archivo_estaba_roto_la_ventana_dice_por_que_quedo_apagado_y_no_sube_nada()
+    {
+        File.WriteAllText(SettingsPath, "");
+
+        var (session, _) = Session(live: false);
+
+        Assert.False(session.ShareGames);
+        Assert.Contains("settings.json.roto", session.ShareStatus);
+    }
+
     [Fact]
     public async Task Al_terminar_una_partida_real_se_sube()
     {

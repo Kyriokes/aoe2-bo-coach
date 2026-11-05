@@ -175,6 +175,69 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(session.IsLive);
     }
 
+    // AP-04: un solo campo de otro tipo tiraba todos los ajustes, y "Compartir" volvía a prenderse.
+    [Fact]
+    public void Un_valor_raro_en_un_campo_no_pierde_los_demas()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, """
+            {
+              "max_villagers": "muchos", "cursor_reminders": 1, "civ": 5, "game_language": [], "player_name": 7, "auto_start": "no",
+              "last_build_order": {}, "share_games": false, "hud_minimo": true, "elo_1v1": 1200, "app_language": "en", "bo_mode": "manual"
+            }
+            """);
+
+        var settings = CoachSettings.Load(path);
+
+        Assert.False(settings.WasBroken);
+        Assert.False(settings.ShareGames);
+        Assert.True(settings.HudMinimal);
+        Assert.Equal(1200, settings.Elo1v1);
+        Assert.Equal("en", settings.AppLanguage);
+        Assert.Equal(BuildOrderMode.Manual, settings.BoMode);
+        Assert.Equal(CoachSettings.DefaultMaxVillagers, settings.MaxVillagers);
+        Assert.True(settings.CursorReminders);
+        Assert.True(settings.AutoStart);
+        Assert.Equal("", settings.GameCiv);
+        Assert.Equal("", settings.PlayerName);
+        Assert.Equal("", settings.LastBuildOrder);
+        Assert.Equal("en", settings.GameLanguage);
+        Assert.False(File.Exists(path + ".roto"));
+    }
+
+    [Fact]
+    public void Guardar_los_ajustes_escribe_por_un_temporal_y_si_falla_queda_lo_anterior()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { PlayerName = "Ana" }.Save(path);
+        Directory.CreateDirectory(path + ".tmp"); // no se puede escribir el temporal
+
+        Assert.ThrowsAny<Exception>(() => new CoachSettings { PlayerName = "Beto" }.Save(path));
+
+        Assert.Equal("Ana", CoachSettings.Load(path).PlayerName);
+    }
+
+    [Fact]
+    public void Sin_permiso_para_guardar_los_ajustes_valen_para_esta_sesion()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { PlayerName = "Ana" }.Save(path);
+        File.SetAttributes(path, FileAttributes.ReadOnly);
+        try
+        {
+            using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+
+            session.PlayerName = "Beto";
+
+            Assert.Equal("Beto", session.PlayerName);
+            Assert.Equal("Ana", CoachSettings.Load(path).PlayerName);
+        }
+        finally
+        {
+            File.SetAttributes(path, FileAttributes.Normal);
+        }
+    }
+
     // Parte 4: cómo se elige la BO (automática por defecto, o a mano) queda en settings.json.
     [Fact]
     public void El_modo_de_eleccion_de_la_BO_se_guarda()

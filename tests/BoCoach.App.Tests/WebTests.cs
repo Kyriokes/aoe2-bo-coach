@@ -61,6 +61,57 @@ public sealed class WebTests : IDisposable
 
         Assert.Equal(WebSettings.DefaultUrl, settings.WebUrl);
         Assert.False(settings.HasToken);
+        Assert.Equal("{ esto no es json", File.ReadAllText(SettingsPath + ".roto"));
+    }
+
+    // AP-04: un solo campo de otro tipo perdía toda la cuenta, y un archivo que no se podía leer cortaba el arranque.
+    [Fact]
+    public void Un_valor_raro_en_un_campo_de_la_cuenta_no_pierde_los_demas()
+    {
+        new WebAccount(new HttpClient(), SettingsPath).Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+        var json = JsonNode.Parse(File.ReadAllText(SettingsPath))!.AsObject();
+        json["published"] = new JsonObject { ["scouts"] = "k7m2xq", ["rara"] = 5 };
+        File.WriteAllText(SettingsPath, json.ToJsonString());
+
+        var settings = new WebAccount(new HttpClient(), SettingsPath).Settings;
+
+        Assert.Equal("https://bo.example", settings.WebUrl);
+        Assert.Equal(Token, settings.Token);
+        Assert.Equal("k7m2xq", Assert.Single(settings.Published).Value);
+    }
+
+    [Fact]
+    public void Un_token_de_otro_usuario_de_Windows_no_pierde_la_direccion_ni_los_codigos()
+    {
+        File.WriteAllText(SettingsPath, """{ "web_url": "https://bo.example", "token": "bm8gZXMgdW4gdG9rZW4=", "published": { "scouts": "k7m2xq" } }""");
+
+        var settings = new WebAccount(new HttpClient(), SettingsPath).Settings;
+
+        Assert.False(settings.HasToken);
+        Assert.Equal("https://bo.example", settings.WebUrl);
+        Assert.Equal("k7m2xq", settings.Published["scouts"]);
+    }
+
+    [Fact]
+    public void Un_archivo_de_la_cuenta_que_no_se_puede_leer_no_corta_el_arranque()
+    {
+        File.WriteAllText(SettingsPath, "{}");
+
+        using var locked = new FileStream(SettingsPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        Assert.False(new WebAccount(new HttpClient(), SettingsPath).Settings.HasToken);
+    }
+
+    [Fact]
+    public void Guardar_la_cuenta_escribe_por_un_temporal_y_si_falla_queda_lo_anterior()
+    {
+        var account = new WebAccount(new HttpClient(), SettingsPath);
+        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+        Directory.CreateDirectory(SettingsPath + ".tmp"); // no se puede escribir el temporal
+
+        Assert.ThrowsAny<Exception>(() => account.Save(new WebSettings { WebUrl = "https://otra.example", Token = Token }));
+
+        Assert.Equal("https://bo.example", new WebAccount(new HttpClient(), SettingsPath).Settings.WebUrl);
     }
 
     [Fact]

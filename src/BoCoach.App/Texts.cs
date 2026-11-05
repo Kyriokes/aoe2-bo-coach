@@ -222,6 +222,7 @@ public static class Texts
     public static string GameInLanguageNoOcr(string language) => L($", juego en {language} (Windows no tiene el OCR en castellano: lee con el inglés)", $", game in {language} (Windows doesn't have Spanish OCR: reading with the English one)");
 
     // ---- El registro de la partida ----
+    public static string SettingsWereBroken => L("No se pudieron leer tus ajustes (quedó una copia en settings.json.roto): volvieron los de fábrica y Compartir mis partidas quedó apagado hasta que lo prendas.", "Your settings couldn't be read (a copy was left in settings.json.roto): they went back to the defaults and Share my games stays off until you turn it on.");
     public static string ShareNotWritten(string error) => L($"No se pudo anotar el registro para enviarlo: {error}", $"Couldn't queue the record for sending: {error}");
     public static string SharePending(int pending) => L($"Registro guardado para enviar después ({pending} en espera).", $"Record saved to send later ({pending} waiting).");
     public static string FlagButton => L("Algo anduvo mal", "Something went wrong");

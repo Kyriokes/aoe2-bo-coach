@@ -85,6 +85,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         ShareGames = settings.ShareGames;
+        if (settings.WasBroken)
+            ShareStatus = Texts.SettingsWereBroken;
         LastBuildOrderId = settings.LastBuildOrder;
         BoMode = settings.BoMode;
         Hotkeys = settings.Hotkeys;
@@ -485,7 +487,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 ShareGames = ShareGames,
             }.Save(_settingsPath);
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // Si no se puede guardar, vale para esta sesión.
         }
