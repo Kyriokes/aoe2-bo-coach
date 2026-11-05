@@ -33,7 +33,7 @@ public sealed class Branches(BuildOrder bo, GameData data, EventCatalog? events)
                 _fired.Add(branch);
                 var own = new PlayerState(state.Population, state.PopulationCap, state.Villagers);
                 var steps = new BuildOrder { Name = bo.Name, Civ = bo.Civ, Steps = branch.Steps };
-                _runs.Add(new Run(branch, own, new Tracker(steps, data, events)));
+                _runs.Add(new Run(branch, own, new Tracker(steps, data, events, fromNow: true)));
             }
         }
     }

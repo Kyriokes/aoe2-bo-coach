@@ -99,15 +99,19 @@ public sealed class Tracker
 
     /// <param name="events">Eventos que Vision sabe reconocer. Un paso cuyo evento no está acá no se puede
     /// confirmar por el log y se da por hecho cuando avanza un paso posterior. Null = todos reconocibles.</param>
-    public Tracker(BuildOrder bo, GameData data, EventCatalog? events = null)
+    /// <param name="fromNow">
+    /// Solo cuenta lo que pasa desde ahora (una rama, que arranca a mitad de partida): el HUD y el tope de población
+    /// muestran lo de toda la partida, así que no dan nada por hecho.
+    /// </param>
+    public Tracker(BuildOrder bo, GameData data, EventCatalog? events = null, bool fromNow = false)
     {
         _bo = bo;
         _data = data;
         _events = events;
         _confirmEvent = bo.Steps.Select(ConfirmableEvent).ToArray();
         _units = LivePlan.Units(bo);
-        _hudTarget = HudTargets(bo);
-        _capTarget = CapTargets(bo, data);
+        _hudTarget = fromNow ? new (Resource, int)?[bo.Steps.Count] : HudTargets(bo);
+        _capTarget = fromNow ? new int?[bo.Steps.Count] : CapTargets(bo, data);
         _atPop = PopulationTargets(bo, data);
         _moveWaitsFor = bo.Steps.Select((s, i) => s.Do == StepAction.Move ? MoveWaitsFor(i) : null).ToArray();
         Recompute();
