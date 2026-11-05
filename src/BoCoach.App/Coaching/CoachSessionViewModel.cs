@@ -526,37 +526,47 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>
     /// D6: la ventana lo llama cada segundo con si corre el proceso del juego (y no está abierto el tutorial). Con
     /// "Coach automático", arranca solo con la última BO usada y se detiene (con el informe) cuando el juego se cierra.
+    /// Un error no sale de acá: apagaría el temporizador de la ventana para siempre (un DispatcherTimer no se vuelve a
+    /// armar), y el coach dejaría de seguir al juego. Se dice en el estado y no se insiste hasta que el juego se vuelva a abrir.
     /// </summary>
     public void Tick(bool gameRunning)
     {
-        if (!gameRunning)
+        try
         {
-            _autoBlocked = false;
-            if (IsRunning && _startedAutomatically)
+            if (!gameRunning)
             {
-                Stop();
-                Status = Texts.GameClosedStopped;
+                _autoBlocked = false;
+                if (IsRunning && _startedAutomatically)
+                {
+                    Stop();
+                    Status = Texts.GameClosedStopped;
+                }
+                return;
             }
-            return;
+            if (!AutoStart || IsRunning || _autoBlocked)
+                return;
+            if (AutoBuildOrder() is not { } bo)
+            {
+                if (!_autoNoBoWarned)
+                {
+                    _autoNoBoWarned = true;
+                    Status = Texts.AutoNeedsBuildOrder;
+                }
+                return;
+            }
+            _autoNoBoWarned = false;
+            _previousBuildOrder = null;
+            _declined.Clear();
+            Start(bo, _liveFrames(), automatic: true);
+            // La BO tiene errores: no se insiste cada segundo.
+            if (!IsRunning)
+                _autoBlocked = true;
         }
-        if (!AutoStart || IsRunning || _autoBlocked)
-            return;
-        if (AutoBuildOrder() is not { } bo)
+        catch (Exception e)
         {
-            if (!_autoNoBoWarned)
-            {
-                _autoNoBoWarned = true;
-                Status = Texts.AutoNeedsBuildOrder;
-            }
-            return;
-        }
-        _autoNoBoWarned = false;
-        _previousBuildOrder = null;
-        _declined.Clear();
-        Start(bo, _liveFrames(), automatic: true);
-        // La BO tiene errores: no se insiste cada segundo.
-        if (!IsRunning)
             _autoBlocked = true;
+            Status = Texts.AutoFailed(e.Message);
+        }
     }
 
     /// <summary>

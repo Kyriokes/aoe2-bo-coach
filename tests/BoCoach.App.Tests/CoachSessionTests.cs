@@ -996,6 +996,30 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("No se pudo consultar la API del juego: sin red", session.EloStatus);
     }
 
+    // AP-03: una excepción en el temporizador de la ventana lo apaga para siempre (el coach ya no se cierra con el juego), y
+    // pasa con algo tan común como el juego minimizado justo al arrancar. Se dice en el estado y no se insiste.
+    [Fact]
+    public void Si_falla_el_arranque_automatico_lo_dice_y_no_insiste_hasta_que_el_juego_se_vuelva_a_abrir()
+    {
+        var tries = 0;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () =>
+        {
+            tries++;
+            throw new ArgumentException("El rectángulo está vacío.");
+        }) { ManualSteps = true };
+
+        session.Tick(gameRunning: true);
+        session.Tick(gameRunning: true);
+
+        Assert.Equal(1, tries);
+        Assert.False(session.IsRunning);
+        Assert.Contains("El rectángulo está vacío", session.Status);
+
+        session.Tick(gameRunning: false);
+        session.Tick(gameRunning: true);
+        Assert.Equal(2, tries);
+    }
+
     [Fact]
     public async Task Buscar_sin_nombre_lo_pide()
     {

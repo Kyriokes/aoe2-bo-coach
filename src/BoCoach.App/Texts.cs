@@ -189,6 +189,8 @@ public static class Texts
     public static string GameClosedStopped => L("El juego se cerró: coach detenido.", "The game closed: coach stopped.");
     public static string AutoNeedsBuildOrder => L("Coach automático: elegí una BO de tu lista (o pasá a Automática) para que arranque solo con el juego.", "Automatic coach: choose a BO from your list (or switch to Automatic) so it starts on its own with the game.");
     public static string CoachStopped => L("Coach detenido.", "Coach stopped.");
+    public static string AutoFailed(string error) => L($"El coach automático no pudo arrancar: {error} Vuelve a probar cuando abras el juego de nuevo; también podés empezarlo a mano.", $"The automatic coach couldn't start: {error} It tries again when you reopen the game; you can also start it by hand.");
+    public static string WatchingGameFailed(string error) => L($"No se pudo mirar si el juego está abierto: {error}", $"Couldn't check whether the game is open: {error}");
     public static string InvalidElo => L("Elo no válido: un número de 1 a 4000.", "Invalid Elo: a number from 1 to 4000.");
     public static string EloNeedsName => L("Poné tu nombre primero.", "Enter your name first.");
     public static string EloSearching => L("Buscando...", "Searching...");
@@ -451,6 +453,7 @@ public static class Texts
     public static string GameOpen(int width, int height, int x, int y) => L($"Juego abierto: {width}×{height} en ({x}, {y}).", $"Game open: {width}×{height} at ({x}, {y}).");
     public static string Calibrated(int width, int height, DateTime date) => L($"Calibrada para {width}×{height} ({date:d/M HH:mm}).", $"Calibrated for {width}×{height} ({date:d/M HH:mm}).");
     public static string CalibrateCaptureFailed(string error) => L($"No se pudo capturar la pantalla para calibrar sola: {error}", $"Couldn't capture the screen to calibrate automatically: {error}");
+    public static string CalibrateNotSaved(string error) => L($"No se pudo guardar la calibración sola: {error}", $"Couldn't save the automatic calibration: {error}");
     public static string HudNotFoundManual(DateTime date) => L($"No encontré el HUD del mod en la pantalla: sigue la calibración manual ({date:d/M HH:mm}).", $"I couldn't find the mod's HUD on screen: keeping the manual calibration ({date:d/M HH:mm}).");
     public static string CalibratedWithLayout(string layout, int width, int height, int squares) => L($"Calibrada sola con el diseño {layout} para {width}×{height}: {squares} casilleros y el reloj", $"Calibrated automatically with the {layout} layout for {width}×{height}: {squares} boxes and the clock");
     public static string CalibratedAuto(int width, int height, int squares) => L($"Calibrada sola para {width}×{height}: {squares} cuadrados y el reloj", $"Calibrated automatically for {width}×{height}: {squares} squares and the clock");

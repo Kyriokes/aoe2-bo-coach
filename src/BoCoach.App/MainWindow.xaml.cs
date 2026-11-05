@@ -96,13 +96,21 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
 
         _tick.Tick += (_, _) =>
         {
-            Tools.Tick();
-            var gameRunning = GameWindow.IsRunning();
-            Home.GameOpen = gameRunning;
-            // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
-            Coach.Tick(gameRunning && _firstRun is null);
-            if (Tools.IsRecording)
-                _indicator.SetText($"● {Tools.RecordingStatus}");
+            // Una excepción acá apaga el temporizador para siempre: un DispatcherTimer no se vuelve a armar.
+            try
+            {
+                Tools.Tick();
+                var gameRunning = GameWindow.IsRunning();
+                Home.GameOpen = gameRunning;
+                // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
+                Coach.Tick(gameRunning && _firstRun is null);
+                if (Tools.IsRecording)
+                    _indicator.SetText($"● {Tools.RecordingStatus}");
+            }
+            catch (Exception e)
+            {
+                BuildOrders.Status = Texts.WatchingGameFailed(e.Message);
+            }
         };
         _tick.Start();
         Tools.PropertyChanged += (_, e) =>

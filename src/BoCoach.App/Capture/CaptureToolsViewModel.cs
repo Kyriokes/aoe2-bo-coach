@@ -265,8 +265,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         {
             screen = _screen.Capture(area);
         }
-        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
         {
+            // ArgumentException: con el juego minimizado, el rectángulo está vacío.
             CalibrationStatus = Texts.CalibrateCaptureFailed(e.Message);
             return false;
         }
@@ -277,7 +278,15 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
                 : Texts.HudNotFoundDefault;
             return false;
         }
-        SaveIfChanged(found.Layout);
+        try
+        {
+            SaveIfChanged(found.Layout);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            CalibrationStatus = Texts.CalibrateNotSaved(e.Message);
+            return false;
+        }
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = (found.Hud is { } hud
                 ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)

@@ -211,6 +211,44 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.Contains("No encontré", tools.CalibrationStatus);
     }
 
+    private sealed class EmptyAreaScreen : IScreenSource
+    {
+        public PixelRect CaptureArea => new(0, 0, 0, 0);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => throw new ArgumentException("El rectángulo está vacío.");
+    }
+
+    // AP-03: estos errores salían del temporizador de la ventana y lo apagaban para siempre. Pasa con el juego minimizado.
+    [Fact]
+    public void Si_no_se_puede_capturar_la_calibracion_sola_lo_dice_y_no_tira()
+    {
+        var tools = Tools(new FakeHost(), screen: new EmptyAreaScreen());
+
+        Assert.False(tools.TryAutoCalibrate());
+
+        Assert.Contains("El rectángulo está vacío", tools.CalibrationStatus);
+    }
+
+    [Fact]
+    public void Si_no_se_puede_guardar_la_calibracion_sola_lo_dice_y_no_tira()
+    {
+        RegionLayout.Default.Save(RegionsPath);
+        File.SetAttributes(RegionsPath, FileAttributes.ReadOnly);
+        try
+        {
+            var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+            Assert.False(tools.TryAutoCalibrate());
+
+            Assert.Contains("No se pudo guardar", tools.CalibrationStatus);
+        }
+        finally
+        {
+            foreach (var file in _dir.GetFiles())
+                file.Attributes = FileAttributes.Normal;
+        }
+    }
+
     [Fact]
     public void Instalar_el_mod_sin_el_juego_avisa()
     {
