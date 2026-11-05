@@ -247,34 +247,36 @@ export const es = {
   privacy: {
     title: "Privacidad",
     description: "Qué datos guarda AoE2 BO Coach y para qué.",
-    updated: "Última actualización: 4 de noviembre de 2026.",
+    updated: "Última actualización: 5 de noviembre de 2026.",
     appTitle: "La app de escritorio",
     appText:
       "BO Coach lee la pantalla del juego en tu PC. Nunca manda capturas de pantalla. Las grabaciones y los registros de cada partida se guardan en tu PC, en <code>%LOCALAPPDATA%\\BoCoach</code>. La app se conecta a esta web para bajar tus build orders y, si no lo apagás, para compartir tus partidas.",
     shareTitle: "Compartir tus partidas",
     shareText1:
-      "La opción \"Compartir mis partidas para mejorar el coach\" viene prendida y se apaga en la ventana de la app o en Primeros pasos. Con ella prendida, al terminar cada partida de un minuto o más se sube un registro con:",
+      "La opción \"Compartir mis partidas para mejorar el coach\" viene prendida y se apaga en los ajustes de la app o en Primeros pasos. Con ella prendida, al terminar cada partida de un minuto o más se sube un registro con:",
     shareItems: [
-      "los números que el coach leyó del HUD (reloj, recursos, aldeanos, población, cola de producción y puntajes);",
-      "los mensajes del juego que reconoció en el log, y lo que creyó, pronosticó y te mostró;",
-      "tu civ, la del rival de enfrente, el mapa, la build order, la versión de la app y el idioma del juego.",
+      "los números que el coach leyó del HUD (reloj, recursos, aldeanos, población, cola de producción y puntajes, sin nombres) y la escala del HUD en tu pantalla;",
+      "los mensajes del juego que reconoció en el log, siempre como la frase del catálogo del juego y nunca como el texto leído, y lo que creyó, pronosticó y te mostró;",
+      "tu civ, tu número de jugador en la partida, la civ del rival de enfrente, el mapa (solo si es uno de los que conoce el coach) y el idioma del juego;",
+      "la build order que usaste, con sus pasos, su nombre y sus notas, sin el autor ni el código;",
+      "el día en que se jugó (en UTC, sin la hora), la versión de la app y la de los datos del juego.",
     ],
     shareText2:
-      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego se tapa antes de guardarlo), ni capturas de pantalla. Si en el informe de la partida contás algo que anduvo mal, esa nota se sube también: no pongas datos personales. El registro no está atado a tu cuenta de la web: lo identifica un número al azar de esa instalación de la app. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal.",
+      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego no se guarda), ni capturas de pantalla. Si marcás que algo anduvo mal durante la partida, queda en qué momento fue; si en el informe contás qué pasó, esa nota se sube también: no pongas datos personales. El registro no está atado a tu cuenta de la web: lo identifica un número al azar de esa instalación de la app, y a la partida, otro. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal. Además del archivo, la base guarda esos dos números, lo que pesa, la versión de la app y las fechas.",
     webTitle: "La web",
     webText1: "Para mirar la biblioteca y probar las build orders no hace falta cuenta y no se guarda nada tuyo.",
     webText2: "Si iniciás sesión con Discord o con Google, se guarda:",
     webItems: [
       "tu mail y el identificador de tu cuenta, para que puedas volver a entrar;",
-      "tu nombre y tu foto de perfil, que se muestran como autor de las build orders que publiques;",
-      "las build orders que publiques y tus votos;",
+      "tu nombre y tu foto de perfil, que se muestran como autor de tus build orders públicas (sin ninguna pública, no los ve nadie más);",
+      "las build orders que publiques, tus votos y las que sumes a tu coach (de los votos se muestra solo el total de cada BO, y lo que sumás no lo ve nadie más);",
       "los tokens que crees para la app (solo una huella, no el token).",
     ],
     webText3:
       "No se usan para publicidad, no se venden ni se comparten con nadie. Se guardan en Supabase (la base de datos) y el sitio corre en Vercel. Las cookies que usa el sitio son las de la sesión, para que sigas conectado, y la del idioma, si lo elegís.",
     deleteTitle: "Borrar tus datos",
     deleteText:
-      "Los registros que subió tu PC se borran con \"Borrar lo compartido…\" en la ventana de la app. Cada build order tuya la podés borrar desde su página, y los tokens desde <em>Mi cuenta</em>. Para borrar la cuenta entera, pedilo en <github>GitHub</github> y se borra junto con todo lo tuyo.",
+      "Los registros que subió tu PC se borran con \"Borrar lo compartido…\" en los ajustes de la app: se borran los archivos y en la base quedan solo los datos de arriba, para que la misma partida no se vuelva a subir. Cada build order tuya la podés borrar desde su página, y los tokens desde <em>Mi cuenta</em>. Para borrar la cuenta entera, pedilo en <github>GitHub</github> y se borra junto con todo lo tuyo.",
   },
   sim: {
     loading: "Simulando la BO con el motor de la app…",

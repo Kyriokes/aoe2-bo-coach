@@ -245,34 +245,36 @@ export const en: Dictionary = {
   privacy: {
     title: "Privacy",
     description: "What data AoE2 BO Coach stores and why.",
-    updated: "Last updated: November 4, 2026.",
+    updated: "Last updated: November 5, 2026.",
     appTitle: "The desktop app",
     appText:
       "BO Coach reads the game's screen on your PC. It never sends screenshots. Recordings and the record of each game are saved on your PC, in <code>%LOCALAPPDATA%\\BoCoach</code>. The app connects to this website to download your build orders and, unless you turn it off, to share your games.",
     shareTitle: "Sharing your games",
     shareText1:
-      "The \"Share my games to improve the coach\" option comes turned on, and you can turn it off in the app window or in First steps. While it is on, when each game of one minute or longer ends, the app uploads a record with:",
+      "The \"Share my games to improve the coach\" option comes turned on, and you can turn it off in the app's settings or in First steps. While it is on, when each game of one minute or longer ends, the app uploads a record with:",
     shareItems: [
-      "the numbers the coach read from the HUD (clock, resources, villagers, population, production queue and scores);",
-      "the game messages it recognized in the log, and what it believed, predicted and showed you;",
-      "your civ, the civ of the opponent facing you, the map, the build order, the app version and the game language.",
+      "the numbers the coach read from the HUD (clock, resources, villagers, population, production queue and scores, without names) and the HUD's scale on your screen;",
+      "the game messages it recognized in the log, always as the phrase from the game's catalog and never as the text it read, and what it believed, predicted and showed you;",
+      "your civ, your player number in the game, the civ of the opponent facing you, the map (only if it's one the coach knows) and the game language;",
+      "the build order you used, with its steps, name and notes, without its author or code;",
+      "the day the game was played (in UTC, without the time), the app version and the game data version.",
     ],
     shareText2:
-      "Your name, other players' names, the chat (anything in the log not recognized as a game message is blanked before saving) and screenshots are never sent. If you say in the match report that something went wrong, that note is uploaded too: do not include personal data. The record isn't tied to your website account: it is identified by a random number for that app installation. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly.",
+      "Your name, other players' names, the chat (anything in the log not recognized as a game message isn't saved) and screenshots are never sent. If you flag during the game that something went wrong, the moment is recorded; if you say in the match report what happened, that note is uploaded too: do not include personal data. The record isn't tied to your website account: it is identified by a random number for that app installation, and the game by another. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly. Besides the file, the database keeps those two numbers, its size, the app version and the dates.",
     webTitle: "The website",
     webText1: "You don't need an account to browse the library and try build orders, and nothing about you is stored.",
     webText2: "If you sign in with Discord or Google, we store:",
     webItems: [
       "your email and your account identifier, so you can sign back in;",
-      "your name and profile picture, shown as the author of the build orders you publish;",
-      "the build orders you publish and your votes;",
+      "your name and profile picture, shown as the author of your public build orders (with none public, nobody else sees them);",
+      "the build orders you publish, your votes and the ones you add to your coach (only each BO's vote total is shown, and nobody else sees what you add);",
       "the tokens you create for the app (only a fingerprint, not the token).",
     ],
     webText3:
       "They aren't used for advertising, sold or shared with anyone. They're stored in Supabase (the database) and the site runs on Vercel. The cookies the site uses are the session ones, to keep you signed in, and the language one, if you pick a language.",
     deleteTitle: "Deleting your data",
     deleteText:
-      "Records your PC uploaded are deleted with \"Delete what I shared…\" in the app window. You can delete each of your build orders from its page, and tokens from <em>My account</em>. To delete your whole account, ask on <github>GitHub</github> and it gets deleted along with everything of yours.",
+      "Records your PC uploaded are deleted with \"Delete what I shared…\" in the app's settings: the files are deleted and the database keeps only the data above, so the same game isn't uploaded again. You can delete each of your build orders from its page, and tokens from <em>My account</em>. To delete your whole account, ask on <github>GitHub</github> and it gets deleted along with everything of yours.",
   },
   sim: {
     loading: "Simulating the BO with the app's engine…",
