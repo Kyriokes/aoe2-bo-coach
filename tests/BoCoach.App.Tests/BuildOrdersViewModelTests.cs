@@ -232,6 +232,33 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.Empty(_dialogs.Confirmations);
     }
 
+    // AP-08: pegar el token en "Pegar código" lo mostraba entero en la barra de estado.
+    [Fact]
+    public async Task Pegar_el_token_conecta_con_el_y_no_lo_repite()
+    {
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        _dialogs.Answer = Token;
+        var vm = ViewModel();
+
+        await vm.PasteCodeAsync();
+
+        Assert.Contains("Ana", Assert.Single(_dialogs.Confirmations));
+        Assert.Equal(Token, _account.Settings.Token);
+        Assert.DoesNotContain(Token, vm.Status);
+    }
+
+    [Fact]
+    public async Task Pegar_un_token_incompleto_no_lo_repite()
+    {
+        _dialogs.Answer = "bocoach_0123456789abcdef";
+        var vm = ViewModel();
+
+        await vm.PasteCodeAsync();
+
+        Assert.Equal(Texts.NotAWholeToken, vm.Status);
+        Assert.False(_account.Settings.HasToken);
+    }
+
     [Fact]
     public async Task Un_enlace_de_la_web_pide_confirmacion_con_nombre_y_autor()
     {

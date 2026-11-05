@@ -182,9 +182,15 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     {
         if (_dialogs.AskText(Texts.AddBuildOrderTitle, Texts.AddBuildOrderPrompt) is not { } text)
             return;
+        // El token de la app es un secreto: si eso es lo que se pegó, se conecta con él y no se repite en la barra de estado.
+        if (AppLink.TokenIn(text) is { } token)
+        {
+            await ConnectWithTokenAsync(token);
+            return;
+        }
         if (WebCode.Parse(text) is not { } code)
         {
-            Status = Texts.NotACode(text.Trim());
+            Status = AppLink.LooksLikeToken(text) ? Texts.NotAWholeToken : Texts.NotACode(text.Trim());
             return;
         }
         await ImportAsync(code, confirm: false);

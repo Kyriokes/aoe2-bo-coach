@@ -41,4 +41,27 @@ public class AppLinkTests
     {
         Assert.Null(AppLink.Parse(text));
     }
+
+    // AP-08: lo que se pega en "Pegar código" puede ser el token, solo o en su enlace.
+    [Fact]
+    public void Encuentra_el_token_solo_o_en_su_enlace()
+    {
+        Assert.Equal(Token, AppLink.TokenIn(Token));
+        Assert.Equal(Token, AppLink.TokenIn($"  {Token.ToUpperInvariant()} "));
+        Assert.Equal(Token, AppLink.TokenIn($"bocoach://conectar/{Token}/"));
+        Assert.Null(AppLink.TokenIn("bocoach_corto"));
+        Assert.Null(AppLink.TokenIn("k7m2xq"));
+        Assert.Null(AppLink.TokenIn(null));
+    }
+
+    [Theory]
+    [InlineData("bocoach_corto", true)]
+    [InlineData("BOCOACH_0123", true)]
+    [InlineData("bocoach://conectar/bocoach_0123", true)]
+    [InlineData("k7m2xq", false)]
+    [InlineData("otra cosa", false)]
+    public void Reconoce_lo_que_parece_un_token_aunque_este_incompleto(string text, bool expected)
+    {
+        Assert.Equal(expected, AppLink.LooksLikeToken(text));
+    }
 }

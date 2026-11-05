@@ -118,6 +118,7 @@ public static class Texts
     public static string AddBuildOrderTitle => L("Sumar una BO", "Add a BO");
     public static string AddBuildOrderPrompt => L("El código de la BO (6 letras y números) o el enlace de su página en la web:", "The BO's code (6 letters and numbers) or the link to its page on the website:");
     public static string ForeignLink => L("Ese enlace no es de BO Coach.", "That link isn't from BO Coach.");
+    public static string NotAWholeToken => L("Eso parece un token de la app, pero no está completo: copialo de nuevo de Mi cuenta en la web.", "That looks like an app token, but it isn't complete: copy it again from My account on the website.");
     public static string NoAccountName => L("(sin nombre)", "(no name)");
     public static string ConnectToAdd => L("Conectá tu cuenta para sumar BO.", "Connect your account to add BOs.");
     public static string ConnectInWeb => L("En la web, tocá \"Conectar la app\" en Mi cuenta.", "On the website, press \"Connect the app\" in My account.");
