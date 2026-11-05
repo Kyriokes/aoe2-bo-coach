@@ -283,3 +283,22 @@ create trigger build_orders_limit_changes
 
 revoke execute on function public.check_build_order_space(uuid, uuid, jsonb) from public, anon, authenticated;
 revoke execute on function public.limit_build_order_changes() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- Cuentas y votos.
+-- ---------------------------------------------------------------------------------------------------------------
+
+-- BD-06: con la clave pública, GET /rest/v1/profiles listaba a todos los registrados aunque nunca hubieran publicado y
+-- GET /rest/v1/votes decía quién votó qué, y la página de privacidad promete otra cosa. Un perfil se ve si es el propio
+-- o si tiene una BO pública (el autor de esa BO), y cada uno ve solo sus votos. El contador sigue andando: lo mantiene
+-- count_votes, que corre con los permisos de su dueño.
+drop policy if exists "Los perfiles son públicos" on public.profiles;
+drop policy if exists "Tu perfil y los de quien publica" on public.profiles;
+create policy "Tu perfil y los de quien publica" on public.profiles for select
+  using (
+    id = auth.uid()
+    or exists (select 1 from public.build_orders b where b.owner_id = profiles.id and b.visibility = 'public'));
+
+drop policy if exists "Los votos de las BO que se ven" on public.votes;
+drop policy if exists "Tus votos" on public.votes;
+create policy "Tus votos" on public.votes for select to authenticated using (user_id = auth.uid());

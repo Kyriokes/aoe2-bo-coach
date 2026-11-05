@@ -358,6 +358,63 @@ describe("privadas y suscripciones", () => {
     await expect(as(db, ana, "update public.build_orders set visibility = 'secreta'")).rejects.toThrow(/check/);
   });
 
+  describe("lo que se ve de cada cuenta", () => {
+    const profiles = async (userId: string | null) =>
+      (await as<{ display_name: string }>(db, userId, "select display_name from public.profiles order by display_name")).rows.map((r) => r.display_name);
+
+    it("un perfil se ve solo si tiene una BO pública, o si es el propio", async () => {
+      expect(await profiles(null)).toEqual([]);
+      expect(await profiles(beto)).toEqual(["Beto"]);
+
+      const bo = await publishAs(ana, "Pública", "public");
+      expect(await profiles(null)).toEqual(["Ana"]);
+      expect(await profiles(beto)).toEqual(["Ana", "Beto"]);
+
+      // Pasarla a privada lo vuelve a esconder.
+      await as(db, ana, "update public.build_orders set visibility = 'private' where id = $1", [bo.id]);
+      expect(await profiles(null)).toEqual([]);
+      expect(await profiles(ana)).toEqual(["Ana"]);
+    });
+
+    it("el autor sigue saliendo en la biblioteca, en lo propio y el contador sigue contando", async () => {
+      // Lo que arma PostgREST con profiles!owner_id(display_name): un left join que pasa por las políticas de los dos lados.
+      const authors = async (userId: string | null) =>
+        (await as<{ name: string; author: string | null }>(db, userId, `select b.name, p.display_name as author
+           from public.build_orders b left join public.profiles p on p.id = b.owner_id order by b.name`)).rows;
+      const publica = await publishAs(ana, "Pública", "public");
+      await publishAs(beto, "Privada de Beto", "private");
+
+      expect(await authors(null)).toEqual([{ name: "Pública", author: "Ana" }]);
+      expect(await authors(beto)).toEqual([
+        { name: "Privada de Beto", author: "Beto" },
+        { name: "Pública", author: "Ana" },
+      ]);
+
+      await as(db, beto, "insert into public.votes (build_order_id) values ($1)", [publica.id]);
+      await as(db, ana, "insert into public.votes (build_order_id) values ($1)", [publica.id]);
+      expect((await as<{ votes: number }>(db, null, "select votes from public.build_orders")).rows).toEqual([{ votes: 2 }]);
+    });
+
+    it("cada uno ve solo sus votos, y saber si votó o sacar el voto sigue andando", async () => {
+      const publica = await publishAs(ana, "Pública", "public");
+      await as(db, ana, "insert into public.votes (build_order_id) values ($1)", [publica.id]);
+      await as(db, beto, "insert into public.votes (build_order_id) values ($1)", [publica.id]);
+      const voters = async (userId: string | null) =>
+        (await as<{ user_id: string }>(db, userId, "select user_id from public.votes")).rows.map((r) => r.user_id);
+
+      expect(await voters(null)).toEqual([]);
+      expect(await voters(beto)).toEqual([beto]);
+      expect(await voters(ana)).toEqual([ana]);
+
+      // Votar de nuevo (upsert con ignoreDuplicates) no choca aunque el voto de otro no se vea.
+      await as(db, beto, "insert into public.votes (build_order_id) values ($1) on conflict do nothing", [publica.id]);
+
+      await as(db, beto, "delete from public.votes where build_order_id = $1", [publica.id]);
+      expect(await voters(beto)).toEqual([]);
+      expect((await db.query<{ votes: number }>("select votes from public.build_orders")).rows).toEqual([{ votes: 1 }]);
+    });
+  });
+
   it("se suscribe solo a públicas ajenas y cada uno ve las suyas", async () => {
     const publica = await publishAs(ana, "Pública", "public");
     const privada = await publishAs(ana, "Privada", "private");
