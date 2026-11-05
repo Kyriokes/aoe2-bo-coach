@@ -132,8 +132,8 @@ public class QueueScaleTests
         Assert.Equal("villager", Assert.Single(Library.Read(screen.Crop(box).AtHudScale(found.Scale))).Key);
     }
 
-    // La misma captura: el panel de puntajes ("Humayun: 693/693" en rojo y "wololo: 571/571" en azul) cae en su caja
-    // escalada y se lee reescalado a 1080p, como en vivo.
+    // La misma captura: el panel de puntajes (693/693 en rojo y 571/571 en azul, con el nick del amigo tapado) cae en su
+    // caja escalada y se lee reescalado a 1080p, como en vivo.
     [Fact]
     public async Task La_captura_del_amigo_lee_el_panel_de_puntajes()
     {
