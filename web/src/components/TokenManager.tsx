@@ -5,8 +5,8 @@ import { useState, useTransition } from "react";
 import { createAppToken, revokeAppToken } from "@/app/actions";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
-import { LANG_TAG } from "@/i18n/locales";
 import { copyText } from "@/lib/clipboard";
+import { dayOf } from "@/lib/dates";
 import { safeAction } from "@/lib/safeAction";
 
 export interface TokenRow {
@@ -47,7 +47,7 @@ export function TokenManager({ tokens }: { tokens: TokenRow[] }) {
     });
   }
 
-  const date = (iso: string) => new Date(iso).toLocaleDateString(LANG_TAG[locale]);
+  const date = (iso: string) => dayOf(iso, locale);
 
   return (
     <div className="flex flex-col gap-3">
