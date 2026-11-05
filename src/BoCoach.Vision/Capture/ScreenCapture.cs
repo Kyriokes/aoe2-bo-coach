@@ -63,7 +63,8 @@ public sealed class ScreenCapture : IScreenSource
                     BitCount = 32,
                 },
             };
-            var pixels = new byte[rect.Width * rect.Height * 4];
+            // Sin checked, un tamaño absurdo daba un arreglo chico y GetDIBits escribía afuera.
+            var pixels = new byte[checked(rect.Width * rect.Height * 4)];
             if (Gdi.GetDIBits(memory, bitmap, 0, (uint)rect.Height, pixels, ref info, 0) == 0)
                 throw new InvalidOperationException("GDI no pudo leer los píxeles de la captura.");
             for (var i = 3; i < pixels.Length; i += 4)
