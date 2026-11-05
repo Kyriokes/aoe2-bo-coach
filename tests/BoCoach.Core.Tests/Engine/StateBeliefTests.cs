@@ -15,6 +15,36 @@ public class StateBeliefTests
     private static ScreenReading Queue(double clock, params (string Key, bool Waiting)[] items) =>
         Reading(clock) with { Queue = items.Select(i => new QueueItem(i.Key, i.Waiting)).ToList() };
 
+    private static ScreenReading WithCap(double clock, int cap, params string[] events) =>
+        new(clock, 200, 200, 100, 200, 7, 8, cap, events);
+
+    // Auditoría del 2026-11-05: una casa deducida por el tope dejaba acreditada su población, como si esa suba todavía no
+    // hubiera llegado, y la casa siguiente dentro de los 20 s se perdía.
+    [Fact]
+    public void Dos_casas_seguidas_que_solo_delata_el_tope_son_dos_casas()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(WithCap(100, 15), 100);
+
+        belief.Observe(WithCap(101, 20), 101);
+        belief.Observe(WithCap(105, 25), 105);
+
+        Assert.Equal(2, belief.TakeNew().Count(c => c.EventId == "house_built"));
+        Assert.Equal(2, belief.View.Count("house"));
+    }
+
+    [Fact]
+    public void Una_casa_que_avisa_el_log_explica_la_suba_que_llega_despues()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(WithCap(100, 15), 100);
+
+        belief.Observe(WithCap(101, 15, "house_built"), 101);
+        belief.Observe(WithCap(102, 20), 102);
+
+        Assert.Equal(1, belief.TakeNew().Count(c => c.EventId == "house_built"));
+    }
+
     [Fact]
     public void El_log_suma_un_edificio_por_aviso_y_el_centro_urbano_arranca_en_uno()
     {
