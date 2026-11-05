@@ -15,6 +15,9 @@ public interface IBuildOrderDialogs
 {
     bool Confirm(string message);
 
+    /// <summary>Una pregunta donde equivocarse sale caro: Enter responde que no.</summary>
+    bool ConfirmNoByDefault(string message);
+
     /// <summary>Pide un texto (el código de una BO). null = cancelado.</summary>
     string? AskText(string title, string message, string initial = "");
 
@@ -204,7 +207,8 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
 
     /// <summary>
     /// El token que manda la web ("Conectar la app"): pregunta con el nombre de la cuenta antes de guardarlo (cualquier
-    /// página puede abrir un enlace bocoach://conectar con el token de otra cuenta) y pide la lista.
+    /// página puede abrir un enlace bocoach://conectar con el token de otra cuenta) y pide la lista. Si ya hay una cuenta
+    /// conectada nombra las dos, y por defecto la respuesta es no: otra cuenta puede llamarse igual que la tuya.
     /// </summary>
     public async Task ConnectWithTokenAsync(string token)
     {
@@ -222,7 +226,11 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
                 return;
             }
             var account = list.Account.Length > 0 ? list.Account : Texts.NoAccountName;
-            if (!_dialogs.Confirm(Texts.ConfirmConnect(account)))
+            var replaces = _web.Settings.HasToken && _web.Settings.Token != token;
+            var accepted = replaces
+                ? _dialogs.ConfirmNoByDefault(Texts.ConfirmReplaceAccount(_cache.List.Account.Length > 0 ? _cache.List.Account : Texts.NoAccountName, account))
+                : _dialogs.Confirm(Texts.ConfirmConnect(account));
+            if (!accepted)
                 return;
             _web.Save(_web.Settings with { Token = token });
         }

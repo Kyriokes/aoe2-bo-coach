@@ -207,6 +207,7 @@ public sealed class HomeScreenTests : IDisposable
     {
         public List<string> Opened { get; } = [];
         public bool Confirm(string message) => true;
+        public bool ConfirmNoByDefault(string message) => true;
         public string? AskText(string title, string message, string initial = "") => null;
         public WebSettings? EditWebAccount(WebSettings current) => null;
         public void OpenUrl(string url) => Opened.Add(url);

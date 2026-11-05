@@ -50,12 +50,16 @@ public static class AppDialog
         Open(owner, title, message, Texts.Accept, null);
 
     /// <summary>Una pregunta por sí o por no.</summary>
-    public static bool Confirm(Window owner, string message) =>
-        Open(owner, Texts.ConfirmTitle, message, Texts.Yes, Texts.No);
+    /// <param name="noByDefault">Enter responde que no, y ese es el botón destacado.</param>
+    public static bool Confirm(Window owner, string message, bool noByDefault = false) =>
+        Open(owner, Texts.ConfirmTitle, message, Texts.Yes, Texts.No, noByDefault);
 
-    private static bool Open(Window owner, string title, string message, string accept, string? cancel)
+    private static bool Open(Window owner, string title, string message, string accept, string? cancel, bool noByDefault = false)
     {
-        var ok = new Button { Content = accept, IsDefault = true, Style = (Style)Application.Current.FindResource("PrimaryButton"), Margin = new Thickness(0) };
+        var primary = (Style)Application.Current.FindResource("PrimaryButton");
+        var ok = new Button { Content = accept, Margin = new Thickness(0) };
+        if (!noByDefault)
+            (ok.IsDefault, ok.Style) = (true, primary);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
         if (cancel is null)
             ok.IsCancel = true;
@@ -63,7 +67,10 @@ public static class AppDialog
         if (cancel is not null)
         {
             ok.Margin = new Thickness(0, 0, 6, 0);
-            buttons.Children.Add(new Button { Content = cancel, IsCancel = true, Margin = new Thickness(0) });
+            var no = new Button { Content = cancel, IsCancel = true, Margin = new Thickness(0) };
+            if (noByDefault)
+                (no.IsDefault, no.Style) = (true, primary);
+            buttons.Children.Add(no);
         }
         var window = new Window
         {

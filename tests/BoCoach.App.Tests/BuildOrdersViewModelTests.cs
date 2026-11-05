@@ -60,6 +60,15 @@ public sealed class BuildOrdersViewModelTests : IDisposable
             return ConfirmAnswer;
         }
 
+        /// <summary>Las que se hicieron con "no" por defecto.</summary>
+        public List<string> RiskyConfirmations { get; } = [];
+
+        public bool ConfirmNoByDefault(string message)
+        {
+            RiskyConfirmations.Add(message);
+            return ConfirmAnswer;
+        }
+
         public string? AskText(string title, string message, string initial = "") => Answer;
         public WebSettings? EditWebAccount(WebSettings current) => null;
         public void OpenUrl(string url) => Opened.Add(url);
@@ -146,6 +155,47 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.Contains("Ana", Assert.Single(_dialogs.Confirmations));
         Assert.False(_account.Settings.HasToken);
         Assert.False(vm.Connected);
+    }
+
+    // AP-07: la pregunta no decía que reemplazaba la cuenta actual, y Enter decía que sí: una página podía pasar la app a
+    // otra cuenta con el mismo nombre a la vista.
+    [Fact]
+    public async Task Reemplazar_la_cuenta_conectada_nombra_las_dos_y_por_defecto_es_no()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        const string other = "bocoach_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        _web.Routes["GET /api/app/mis-bo"] = (HttpStatusCode.OK, new JsonObject { ["account"] = "Beto", ["items"] = new JsonArray() }.ToJsonString());
+        _dialogs.ConfirmAnswer = false;
+
+        await vm.HandleLinkAsync($"bocoach://conectar/{other}");
+
+        var question = Assert.Single(_dialogs.RiskyConfirmations);
+        Assert.Contains("Ana", question);
+        Assert.Contains("Beto", question);
+        Assert.Empty(_dialogs.Confirmations);
+        Assert.Equal(Token, _account.Settings.Token);
+
+        _dialogs.ConfirmAnswer = true;
+        await vm.HandleLinkAsync($"bocoach://conectar/{other}");
+        Assert.Equal(other, _account.Settings.Token);
+    }
+
+    [Fact]
+    public async Task Otra_conexion_con_el_mismo_nombre_tambien_pregunta_con_no_por_defecto()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        _dialogs.ConfirmAnswer = false;
+
+        await vm.HandleLinkAsync("bocoach://conectar/bocoach_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        Assert.Contains("puede ser de otra cuenta", Assert.Single(_dialogs.RiskyConfirmations));
+        Assert.Equal(Token, _account.Settings.Token);
     }
 
     [Fact]

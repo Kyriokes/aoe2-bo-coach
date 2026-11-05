@@ -130,6 +130,11 @@ public static class Texts
     public static string NotACode(string text) => L($"\"{text}\" no es un código de la web (son 6 letras y números).", $"\"{text}\" isn't a website code (they're 6 letters and numbers).");
     public static string ConnectFailed(string error) => L($"No se pudo conectar la cuenta: {error}", $"Couldn't connect the account: {error}");
     public static string ConfirmConnect(string account) => L($"¿Conectar BO Coach con la cuenta {account} de la web?", $"Connect BO Coach to the website account {account}?");
+    public static string ConfirmReplaceAccount(string current, string next) => current == next
+        ? L($"BO Coach ya está conectado a la cuenta {current}. Este enlace trae otra conexión con ese mismo nombre, que puede ser de otra cuenta. ¿Usarla? Si no tocaste vos «Conectar la app» en Mi cuenta de la web, decí que no.",
+            $"BO Coach is already connected to the account {current}. This link brings another connection with that same name, which may belong to another account. Use it? If you didn't press \"Connect the app\" in My account on the website yourself, say no.")
+        : L($"BO Coach ya está conectado a la cuenta {current}. Este enlace la reemplaza por la cuenta {next}. ¿Cambiar de cuenta? Si no tocaste vos «Conectar la app» en Mi cuenta de la web, decí que no.",
+            $"BO Coach is already connected to the account {current}. This link replaces it with the account {next}. Switch accounts? If you didn't press \"Connect the app\" in My account on the website yourself, say no.");
     public static string ConfirmAdd(string name, string author) => L($"¿Sumar \"{name}\" (subida por {author}) a tus BO?", $"Add \"{name}\" (uploaded by {author}) to your BOs?");
     public static string Added(string name) => L($"Sumada \"{name}\" a tus BO.", $"Added \"{name}\" to your BOs.");
     public static string AddFailed(string code, string error) => L($"No se pudo sumar {code}: {error}", $"Couldn't add {code}: {error}");

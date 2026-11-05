@@ -373,6 +373,8 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
 
     public bool Confirm(string message) => AppDialog.Confirm(this, message);
 
+    public bool ConfirmNoByDefault(string message) => AppDialog.Confirm(this, message, noByDefault: true);
+
     private bool _restarting;
 
     /// <summary>La de ahora tiene que cerrarse para soltar la instancia única; la nueva la espera (<see cref="App.RestartArgument"/>).</summary>
