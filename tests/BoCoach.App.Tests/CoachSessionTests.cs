@@ -63,6 +63,29 @@ public sealed class CoachSessionTests : IDisposable
     private CoachFrame Frame(CoachView view, double withoutClock = 0, bool ended = false, HudState? hud = null) =>
         new(view, hud, withoutClock, 30, new ProcessUsage(1.5, 80), false, ended, null, new PixelRect(0, 0, 1920, 1080));
 
+    /// <summary>Una partida contra uno de otra civ, como la lee la pantalla de carga.</summary>
+    private static LoadingReading TwoPlayers(string me, string civ) =>
+        new([new LoadingPlayer(1, me, "", civ, null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+
+    private CoachView ViewAt(double time) => new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(time, PlanStart.Standard.Stock, 4, 5));
+
+    /// <summary>Lo guardado de otra fuente, y lo que se baja es siempre la misma BO; cuenta las bajadas.</summary>
+    private sealed class FixedDownload(IBuildOrderSource inner, BuildOrder download) : IBuildOrderSource
+    {
+        public int Downloads { get; private set; }
+        public bool Fresh { get; init; } = true;
+        public WebBuildOrderList List => inner.List;
+        public BuildOrder? Saved(string code) => inner.Saved(code);
+        public IEnumerable<BuildOrder> AllSaved() => inner.AllSaved();
+        public bool IsFresh(string code) => Fresh;
+
+        public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default)
+        {
+            Downloads++;
+            return Task.FromResult(download);
+        }
+    }
+
     [Fact]
     public void Recordatorio_de_casa_junto_al_mouse_salvo_que_este_apagado_o_no_se_vea_el_reloj()
     {
@@ -798,6 +821,48 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(session.IsRunning);
         Assert.Contains("tiene errores", session.Status);
         Assert.Contains("count", session.Status);
+    }
+
+    // AP-17: Start detenía al coach antes de validar la BO nueva: se quedaba sin coach y el estado decía que corría.
+    [Fact]
+    public void Una_BO_con_errores_no_detiene_al_coach_que_corre()
+    {
+        var broken = Scouts with { Steps = Scouts.Steps.Select(s => s.What == "villager" ? s with { Count = 2_000_000_000 } : s).ToList() };
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames()) { ManualSteps = true };
+        session.Start(Scouts, new HiddenFrames());
+        var running = session.LiveCoach;
+
+        session.Start(broken, new HiddenFrames());
+
+        Assert.True(session.IsRunning);
+        Assert.Same(running, session.LiveCoach);
+        Assert.Contains("tiene errores", session.Status);
+    }
+
+    // AP-17: en Automática, con la mejor de la lista con errores, el coach moría, volvía a arrancar solo, leía la pantalla
+    // de carga y se repetía todo. Y el estado decía que corría con esa BO.
+    [Fact]
+    public void En_automatica_una_BO_con_errores_no_para_al_coach_y_no_se_vuelve_a_intentar()
+    {
+        var broken = Scouts with { Id = "rota", Name = "Rota", Steps = Scouts.Steps.Select(s => s.What == "villager" ? s with { Count = 2_000_000_000 } : s).ToList() };
+        var source = new FixedDownload(new RepoBuildOrders(), broken);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(source, _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var running = session.LiveCoach;
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        Assert.True(session.IsRunning);
+        Assert.Same(running, session.LiveCoach);
+        Assert.Contains("tiene errores", session.Status);
+        Assert.Null(session.Overlay!.BoSuggestion);
+        Assert.Equal(1, source.Downloads);
     }
 
     // D6 (2026-10-21): el coach arranca solo cuando corre el juego, con la última BO usada, y se detiene cuando se cierra.

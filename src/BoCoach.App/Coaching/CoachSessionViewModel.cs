@@ -558,9 +558,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _autoNoBoWarned = false;
             _previousBuildOrder = null;
             _declined.Clear();
-            Start(bo, _liveFrames(), automatic: true);
             // La BO tiene errores: no se insiste cada segundo.
-            if (!IsRunning)
+            if (!Start(bo, _liveFrames(), automatic: true))
                 _autoBlocked = true;
         }
         catch (Exception e)
@@ -578,12 +577,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? (BoMode == BuildOrderMode.Auto ? BuildOrder.None : null);
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
-    public void Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
+    /// <returns>False si la BO tiene errores: el coach que corre sigue con la suya y el estado dice qué pasó.</returns>
+    public bool Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
     {
-        // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
-        StopCoach(notify: false);
-        IsLive = frames is not RecordedFrames;
-        _startedAutomatically = automatic;
         // Una BO con errores no se simula: el editor y la web validan antes, pero un .json importado a mano no pasa
         // por ahí, y un count enorme agota la memoria del Planner (encola una entrada por unidad). Se valida con su
         // propia civ: jugar con otra civ una BO que pide algo que esa civ no tiene no frena al coach.
@@ -591,8 +587,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (!bo.IsNone && _data.Validator.Validate(bo).Issues.FirstOrDefault(i => i.Severity == Severity.Error) is { } error)
         {
             Status = Texts.HasErrors(bo.Name, error.Message);
-            return;
+            return false;
         }
+        // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
+        StopCoach(notify: false);
+        IsLive = frames is not RecordedFrames;
+        _startedAutomatically = automatic;
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
         bo = bo with { Civ = CivFor(bo) };
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
@@ -629,6 +629,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _coach.Start();
         IsRunning = true;
         Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
+        return true;
     }
 
     /// <summary>
@@ -818,8 +819,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
-        Start(bo, _liveFrames(), _startedAutomatically);
-        Status = Texts.NewVersionRunning(bo.Name);
+        if (Start(bo, _liveFrames(), _startedAutomatically))
+            Status = Texts.NewVersionRunning(bo.Name);
     }
 
     /// <summary>
@@ -859,9 +860,19 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             }
             return;
         }
+        if (!Start(bo, _liveFrames(), automatic: true))
+        {
+            // Con errores: el coach sigue con la que tiene y en esta partida no se vuelve a probar. Antes el coach moría,
+            // volvía a arrancar solo, leía la pantalla de carga y se repetía todo.
+            _declined.Add(bo.Id);
+            if (best is not null)
+                _declined.Add(best.Summary.Key);
+            if (Overlay is not null)
+                Overlay.BoSuggestion = null;
+            return;
+        }
         _previousBuildOrder = running.IsNone ? null : running;
         _lastSwitchBest = best?.Summary.Key;
-        Start(bo, _liveFrames(), automatic: true);
         var why = best is not null && best.Summary.Key == bo.Id ? Texts.SwitchReason(best.Reason) : "";
         var back = running.IsNone ? "" : Texts.SwitchBack(Key("accept_suggestion"), running.Name);
         if (Overlay is not null)
@@ -905,8 +916,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_lastSwitchBest is not null)
             _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
-        Start(previous, _liveFrames(), automatic: true);
-        Status = Texts.BackToBuildOrder(previous.Name);
+        if (Start(previous, _liveFrames(), automatic: true))
+            Status = Texts.BackToBuildOrder(previous.Name);
     }
 
     /// <summary>Baja la sugerida (si no está guardada) y empieza el coach con ella.</summary>
@@ -925,8 +936,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_coach != session)
             return;
-        Start(bo, _liveFrames(), _startedAutomatically);
-        Status = Texts.SuggestedRunning(bo.Name);
+        if (Start(bo, _liveFrames(), _startedAutomatically))
+            Status = Texts.SuggestedRunning(bo.Name);
     }
 
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
