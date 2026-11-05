@@ -244,7 +244,7 @@ public sealed class Coach
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
         Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
-        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
+        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot);
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
         {
@@ -437,21 +437,61 @@ public sealed class Coach
     /// lecturas seguidas) ya se pagó: queda en curso aunque la baja del stock no se haya visto. En la 20261018-132830 el
     /// clic en Castillos (20:26) no se vio en el stock y la cola lo mostraba. La que termina sin que el log lo avise llega
     /// como evento sintético "&lt;tech&gt;_researched" y el Tracker la confirma por el camino de siempre.
+    /// <para>Solo al aparecer en la cola: si no, la cancelación y "Atrás" se deshacían en la captura siguiente. Y si se
+    /// va de la cola sin terminar, lo que solo la cola había dicho se deshace: era un ícono mal leído o se canceló. Lo
+    /// que también se vio en el stock lo decide <see cref="ExpireClicks"/>.</para>
     /// </summary>
     private bool ResearchInQueue(GameSnapshot snapshot)
     {
         if (snapshot.Belief is not { } belief)
             return false;
-        var started = false;
-        foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready))
+        var changed = false;
+        var inQueue = belief.Research.Where(r => r.Value == ResearchStatus.InProgress).Select(r => r.Key).ToHashSet();
+        foreach (var step in Tracker.Steps.Where(s => s.Step is { Do: StepAction.Research, What: not null }))
         {
-            if (step.Step.What is { } tech && belief.InProgress(tech))
+            var tech = step.Step.What!;
+            if (inQueue.Contains(tech) && !_researchInQueue.Contains(tech) && step.State is StepState.Pending or StepState.Ready)
             {
                 Tracker.MarkStarted(step.Index, snapshot.Time);
-                started = true;
+                _startedByQueue.Add(step.Index);
+                changed = true;
+            }
+            else if (!inQueue.Contains(tech) && _researchInQueue.Contains(tech) && _startedByQueue.Remove(step.Index)
+                && step.State == StepState.InProgress && !belief.Done(tech))
+            {
+                Tracker.ClearStarted(step.Index);
+                changed = true;
             }
         }
-        return started;
+        _researchInQueue = inQueue;
+        return changed;
+    }
+
+    private HashSet<string> _researchInQueue = [];
+    private readonly HashSet<int> _startedByQueue = [];
+
+    /// <summary>
+    /// Un clic visto en el stock que ni el log ni la cola confirman vence, igual que en <see cref="TechReminders"/>: dos
+    /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
+    /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue.
+    /// </summary>
+    private bool ExpireClicks(GameSnapshot snapshot)
+    {
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = LivePlan.Start(Tracker).Age;
+        var expired = false;
+        foreach (var step in Tracker.InProgress.ToList())
+        {
+            if (step.Step.What is not { } tech || !_data.TryGet(tech, out var entity) || step.StartedAt is not { } clicked
+                || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true)
+                continue;
+            if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
+            {
+                Tracker.ClearStarted(step.Index);
+                expired = true;
+            }
+        }
+        return expired;
     }
 
     /// <summary>

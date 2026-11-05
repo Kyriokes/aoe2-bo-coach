@@ -219,6 +219,11 @@ public sealed class StateBelief
             if (_research.GetValueOrDefault(tech) != ResearchStatus.Done)
                 Add(EventConventions.EventFor(StepAction.Research, tech)!, EvidenceSource.Queue, Strength.Observed, now, CreditSeconds);
         }
+        foreach (var tech in facts.Left)
+        {
+            if (_research.TryGetValue(tech, out var status) && status == ResearchStatus.InProgress)
+                _research.Remove(tech);
+        }
     }
 
     private void Hud(ScreenReading reading, double now)

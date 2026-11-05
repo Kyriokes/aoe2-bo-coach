@@ -89,8 +89,13 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
         var dt = first ? 0 : Math.Clamp(now - _last, 0, 5); // un hueco sin capturas no suma de más
         _last = now;
         _steps = steps;
-        foreach (var s in steps.Where(s => s.State == StepState.InProgress && s.StartedAt is not null && s.Step.What is not null))
-            _clicks.TryAdd(s.Step.What!, s.StartedAt!.Value);
+        foreach (var s in steps.Where(s => s.Step.What is not null))
+        {
+            if (s.State == StepState.InProgress && s.StartedAt is { } clicked)
+                _clicks[s.Step.What!] = clicked;
+            else if (s.State is StepState.Pending or StepState.Ready)
+                _clicks.Remove(s.Step.What!); // se canceló, o era otra cosa y venció
+        }
 
         // Cada hueco cuenta desde que paró (el aviso sale después de un margen), no desde el aviso.
         if (view.TownCenterIdle is { } idle)

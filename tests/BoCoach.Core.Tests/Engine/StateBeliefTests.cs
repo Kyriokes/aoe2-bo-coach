@@ -146,6 +146,56 @@ public class StateBeliefTests
         Assert.True(done.Synthetic);
     }
 
+    // Auditoría del 2026-11-05: dos lecturas de un ícono mal leído dejaban la investigación en curso toda la partida.
+    [Fact]
+    public void Una_tecnologia_que_se_va_de_la_cola_sin_terminar_deja_de_estar_en_curso()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(200, ("feudal_age", false)), 200);
+        belief.Observe(Queue(201, ("feudal_age", false)), 201);
+        Assert.True(belief.View.InProgress("feudal_age"));
+
+        // Unos segundos sin ella pueden ser un error de lectura (el ícono casi lleno de verde se confunde).
+        belief.Observe(Queue(202, ("villager", false)), 202);
+        belief.Observe(Queue(210, ("villager", false)), 210);
+        Assert.True(belief.View.InProgress("feudal_age"));
+
+        belief.Observe(Queue(216, ("villager", false)), 216);
+        Assert.False(belief.View.InProgress("feudal_age"));
+        Assert.False(belief.View.Done("feudal_age"));
+
+        // Y si vuelve, vuelve a estar en curso.
+        belief.Observe(Queue(300, ("feudal_age", false)), 300);
+        belief.Observe(Queue(301, ("feudal_age", false)), 301);
+        Assert.True(belief.View.InProgress("feudal_age"));
+    }
+
+    [Fact]
+    public void Una_tecnologia_que_solo_espero_y_se_fue_deja_de_estar_en_curso()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(200, ("loom", true)), 200);
+        belief.Observe(Queue(201, ("loom", true)), 201);
+        Assert.True(belief.View.InProgress("loom"));
+
+        belief.Observe(Queue(202, ("villager", false)), 202);
+        belief.Observe(Queue(216, ("villager", false)), 216);
+
+        Assert.False(belief.View.InProgress("loom"));
+    }
+
+    [Fact]
+    public void Una_lectura_de_la_cola_despues_de_un_rato_sin_leerla_no_dice_que_se_fue()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(200, ("feudal_age", false)), 200);
+        belief.Observe(Queue(201, ("feudal_age", false)), 201);
+
+        belief.Observe(Queue(260, ("villager", false)), 260); // la primera sin ella, y hace rato que no se leía la cola
+
+        Assert.True(belief.View.InProgress("feudal_age"));
+    }
+
     [Fact]
     public void El_aviso_tardio_del_log_de_una_tecnologia_hecha_por_la_cola_no_cuenta_dos_veces()
     {
