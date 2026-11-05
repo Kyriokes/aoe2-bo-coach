@@ -230,8 +230,9 @@ public static partial class LoadingScreen
         var match = TeamHeader().Match(text.Trim());
         if (!match.Success)
             return null;
-        var digit = match.Groups["n"].Value;
-        return digit is "l" or "I" or "|" ? 1 : int.Parse(digit, CultureInfo.InvariantCulture);
+        // La regex no distingue mayúsculas: también entran "L" e "i".
+        var digit = match.Groups["n"].Value.ToUpperInvariant();
+        return digit is "L" or "I" or "|" ? 1 : int.Parse(digit, CultureInfo.InvariantCulture);
     }
 
     [GeneratedRegex(@"^(?:team|equipo|eq\.?)\s*(?<n>[1-8lI|])$", RegexOptions.IgnoreCase)]
