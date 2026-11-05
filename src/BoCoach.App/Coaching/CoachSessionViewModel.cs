@@ -325,9 +325,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             ShareStatus = Texts.ShareNotWritten(e.Message);
             return;
         }
-        LastRecord = info;
+        (LastRecord, _lastRecordReported) = (info, false);
         await SendPendingRecordsAsync();
     }
+
+    /// <summary>El informe de <see cref="LastRecord"/> ya salió: el registro de una partida llega antes que su informe.</summary>
+    private bool _lastRecordReported;
 
     /// <summary>Manda lo que esté vencido en la cola (al terminar una partida y al abrir la app, nunca jugando). Nunca tira error.</summary>
     public async Task SendPendingRecordsAsync()
@@ -743,6 +746,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
     internal void Finished(GameReport report)
     {
+        // Esta partida no dejó registro (no se pudo escribir, se apagó el interruptor): la nota de su informe caía en la anterior.
+        if (_lastRecordReported)
+            LastRecord = null;
+        _lastRecordReported = true;
         // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
         if (_matchupQuery is { } query)
         {

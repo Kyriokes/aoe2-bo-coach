@@ -321,6 +321,26 @@ public sealed class RecordSharingTests : IDisposable
         }
     }
 
+    // AP-25: si la partida no dejó registro (no se pudo escribir, se apagó el interruptor), la nota de su informe caía en
+    // la partida anterior.
+    [Fact]
+    public async Task Sin_registro_de_esta_partida_el_informe_no_ofrece_nota_para_la_anterior()
+    {
+        var (session, _) = Session();
+        using (session)
+        {
+            var report = new Core.Engine.GameReport("BO", 600, [], [], 0, [], 0, 0, 0, []);
+            await session.RecordDoneAsync(Record());
+            session.Finished(report);
+            Assert.True(session.CanSendNote);
+
+            session.Finished(report);
+
+            Assert.False(session.CanSendNote);
+            Assert.Null(session.LastRecord);
+        }
+    }
+
     [Fact]
     public async Task Una_nota_vacia_no_se_manda()
     {
