@@ -209,7 +209,9 @@ public sealed class CapturedImage
     /// Queda igual una imagen que ya tiene blancos, que es toda negra (por el tope) o en la que lo más claro ocupa
     /// buena parte (una zona gris pareja no es texto oscurecido).
     /// </summary>
-    public CapturedImage Stretched(double maxGain)
+    /// <param name="maxGain">Hasta cuántas veces se multiplica el brillo.</param>
+    /// <param name="tightText">La caja va justa a las letras (el reloj sin el mod: 59×16): lo más claro ocupa buena parte y sigue siendo texto.</param>
+    public CapturedImage Stretched(double maxGain, bool tightText = false)
     {
         var histogram = new int[256];
         for (var i = 0; i < Bgra.Length; i += 4)
@@ -225,7 +227,7 @@ public sealed class CapturedImage
         }
 
         var gain = Math.Min(maxGain, 255.0 / Math.Max(1, peak));
-        if (gain <= 1.01 || histogram.Skip(peak * 4 / 5).Sum() > pixels / 4)
+        if (gain <= 1.01 || (!tightText && histogram.Skip(peak * 4 / 5).Sum() > pixels / 4))
             return this;
         var output = new byte[Bgra.Length];
         for (var i = 0; i < Bgra.Length; i += 4)

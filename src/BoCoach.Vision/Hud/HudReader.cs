@@ -235,6 +235,11 @@ public sealed class HudReader(HudFonts fonts)
         static double? TimeAtStart(GlyphReading reading) =>
             ModClockTime.Match(reading.Text) is { Success: true } time && GameClock.TryParse(time.Value, out var seconds) ? seconds : null;
 
+        // La letra de siempre: el "hh:mm:ss" del principio o, si la lectura está entera, la hora sin el cero de adelante.
+        static double? UsualTime(GlyphReading reading) =>
+            TimeAtStart(reading)
+            ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
+
         double? clockSeconds = null;
         if (image(RegionNames.Clock) is { } clockImage)
         {
@@ -252,10 +257,20 @@ public sealed class HudReader(HudFonts fonts)
             if (clockSeconds is null)
             {
                 var reading = _clock.Read(clockImage);
-                clockSeconds = TimeAtStart(reading)
-                    ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
+                clockSeconds = UsualTime(reading);
                 clockClipped |= reading.Clipped;
                 confidence["clock"] = reading.Confidence;
+            }
+            // En pausa el juego oscurece todo ×0,2: sobre el panel opaco del mod (24, 21, 18) o la textura no hay negro
+            // puro y el blanco no llega a la tinta de ninguna letra. Sin reloj, a los 30 s el coach da la partida por
+            // terminada. Una imagen con blancos queda igual y ya se leyó. Primero la letra de siempre, que es la que lee
+            // estas cajas fuera de la pausa (la del mod a veces lee el cero de la hora como 9).
+            if (clockSeconds is null && clockImage.Stretched(PauseGain, tightText: true) is var bright && !ReferenceEquals(bright, clockImage))
+            {
+                if (_clock.Read(bright) is var usual && UsualTime(usual) is { } usualTime)
+                    (clockSeconds, confidence["clock"]) = (usualTime, usual.Confidence);
+                else if (_modClock?.Read(bright) is { } mod && TimeAtStart(mod) is { } modTime)
+                    (clockSeconds, confidence["clock"]) = (modTime, mod.Confidence);
             }
             if (clockSeconds is null && clockClipped)
                 clipped.Add(RegionNames.Clock);
