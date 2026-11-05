@@ -338,21 +338,21 @@ public sealed class HudLayout
 
     private static int Scale(int units, int pixels, int totalUnits) => (int)Math.Round((double)units * pixels / totalUnits);
 
-    public static HudLayout Load(string path)
+    public static HudLayout Load(string path) => Parse(File.ReadAllText(path), Path.GetFileName(path));
+
+    /// <exception cref="InvalidDataException">Cualquier cosa que no se entienda, también un tipo equivocado: quien lo guardó promete ignorar un diseño roto.</exception>
+    public static HudLayout Parse(string json, string source = FileName)
     {
+        Dto? parsed;
         try
         {
-            return Parse(File.ReadAllText(path), Path.GetFileName(path));
+            parsed = JsonSerializer.Deserialize<Dto>(json, JsonOptions);
         }
         catch (JsonException e)
         {
-            throw new InvalidDataException($"{Path.GetFileName(path)} está mal formado: {e.Message}", e);
+            throw new InvalidDataException($"{source} está mal formado: {e.Message}", e);
         }
-    }
-
-    public static HudLayout Parse(string json, string source = FileName)
-    {
-        var dto = JsonSerializer.Deserialize<Dto>(json, JsonOptions) ?? throw new InvalidDataException($"{source} está vacío.");
+        var dto = parsed ?? throw new InvalidDataException($"{source} está vacío.");
         string Missing(string what) => $"{source}: falta {what}.";
         if (string.IsNullOrWhiteSpace(dto.Name))
             throw new InvalidDataException(Missing("name"));
@@ -369,13 +369,13 @@ public sealed class HudLayout
         var cells = new List<HudCell>();
         foreach (var name in CellOrder)
         {
-            if (dto.Cells is null || !dto.Cells.TryGetValue(name, out var c))
+            if (dto.Cells is null || !dto.Cells.TryGetValue(name, out var c) || c is null)
                 throw new InvalidDataException(Missing($"la celda {name}"));
             var icon = c.Icon ?? throw new InvalidDataException(Missing($"el ícono de {name}"));
             var fields = new Dictionary<string, HudField>();
             foreach (var field in FieldsOf[name])
             {
-                if (c.Fields is null || !c.Fields.TryGetValue(field, out var f))
+                if (c.Fields is null || !c.Fields.TryGetValue(field, out var f) || f is null)
                     throw new InvalidDataException(Missing($"el campo {field} de {name}"));
                 if (!Fonts.Contains(f.Font ?? ""))
                     throw new InvalidDataException($"{source}: la letra \"{f.Font}\" del campo {field} de {name} no existe (vale {string.Join(", ", Fonts)}).");
@@ -389,7 +389,7 @@ public sealed class HudLayout
             HudChip? chip = c.Chip is { } ch ? new HudChip(ch.X, ch.Y, ch.Width, ch.Height, Color(ch.Color, $"{name}.chip.color", source)) : null;
             if (chip is null && name is not ("idle" or "age"))
                 throw new InvalidDataException(Missing($"el casillero de {name}"));
-            var backgrounds = (c.Backgrounds ?? []).Select(b => new UnitRect(b.X, b.Y, b.Width, b.Height)).ToList();
+            var backgrounds = (c.Backgrounds ?? []).Select(b => b is null ? throw new InvalidDataException(Missing($"un fondo de {name}")) : new UnitRect(b.X, b.Y, b.Width, b.Height)).ToList();
             HudSeparator? separator = c.Separator is { } s
                 ? new HudSeparator(s.X, s.Y, s.Width, s.Height, s.Text, s.Points, Color(s.Color, $"{name}.separator.color", source))
                 : null;

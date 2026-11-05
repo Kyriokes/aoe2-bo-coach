@@ -130,6 +130,60 @@ public sealed class RegionLayoutTests : IDisposable
         Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X, 5);
     }
 
+    // El código promete ignorar un diseño que no entiende, pero un tipo equivocado salía como JsonException y rompía la carga.
+    public static TheoryData<string> BrokenLayouts =>
+    [
+        """{ "name": 5 }""",
+        """{ "name": "x", "bar": "no es un objeto" }""",
+        """[1, 2, 3]""",
+    ];
+
+    [Theory]
+    [MemberData(nameof(BrokenLayouts))]
+    public void Un_diseno_guardado_con_tipos_equivocados_se_ignora(string layout)
+    {
+        File.WriteAllText(_path, $$"""{ "regions": { "food": [0.1, 0.2, 0.03, 0.02] }, "hud_layout": {{layout}} }""");
+
+        var loaded = RegionLayout.LoadOrDefault(_path);
+
+        Assert.Null(loaded.Hud);
+        Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X, 5);
+    }
+
+    [Theory]
+    [InlineData("""{ "name": 5 }""")]
+    [InlineData("""no es json""")]
+    public void HudLayout_avisa_con_InvalidDataException_si_no_entiende_el_json(string json)
+    {
+        var error = Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json, "prueba.json"));
+
+        Assert.Contains("prueba.json", error.Message);
+    }
+
+    [Theory]
+    [InlineData("cells/wood")]
+    [InlineData("cells/wood/fields/stock")]
+    [InlineData("cells/wood/icon")]
+    [InlineData("cells/wood/chip")]
+    public void Un_null_adentro_del_diseno_es_un_diseno_roto_y_no_una_excepcion_cualquiera(string where)
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Hud().ToJson())!;
+        var parts = where.Split('/');
+        var parent = parts[..^1].Aggregate(json, (node, part) => node[part]!);
+        parent[parts[^1]] = null;
+
+        Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json.ToJsonString()));
+    }
+
+    [Fact]
+    public void Un_fondo_null_adentro_del_diseno_es_un_diseno_roto()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Hud().ToJson())!;
+        json["cells"]!["wood"]!["backgrounds"] = new System.Text.Json.Nodes.JsonArray((System.Text.Json.Nodes.JsonNode?)null);
+
+        Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json.ToJsonString()));
+    }
+
     [Fact]
     public void La_calibracion_manual_conserva_el_diseno()
     {

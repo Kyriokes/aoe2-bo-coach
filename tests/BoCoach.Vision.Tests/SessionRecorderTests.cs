@@ -106,6 +106,21 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Equal(1, RecordedSession.Load(recorder.Folder!).HudScale);
     }
 
+    // "Una grabación nunca deja de abrirse por su diseño": tampoco con un tipo equivocado adentro.
+    [Fact]
+    public void Una_grabacion_con_un_diseno_de_tipos_equivocados_se_abre_sin_diseno()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default.WithHud(HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"))), _root.FullName);
+        recorder.Open();
+        recorder.Stop();
+        var path = Path.Combine(recorder.Folder!, "session.json");
+        var session = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        session["hud_layout"]!["name"] = 5;
+        File.WriteAllText(path, session.ToJsonString());
+
+        Assert.Null(RecordedSession.Load(recorder.Folder!).Hud);
+    }
+
     [Fact]
     public void Session_json_guarda_pantalla_y_regiones_en_pixeles()
     {
