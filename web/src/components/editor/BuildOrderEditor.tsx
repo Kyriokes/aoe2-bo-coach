@@ -533,7 +533,7 @@ export function BuildOrderEditor({
   const selectedIssues = state.analysis?.issues.filter((i) => i.step_id === state.selected) ?? [];
   const analysisIsCurrent = state.analysis !== null && state.analyzedRevision >= state.revision;
   // Sin esto, "calculando" para siempre y publicar desactivado sin explicar por qué. Otra edición lo vuelve a intentar.
-  const failed = failure?.revision === state.revision ? failure.message : null;
+  const failed = failure?.revision === state.revision && !analysisIsCurrent ? failure.message : null;
   const canPublish = loggedIn && analysisIsCurrent && state.analysis!.valid && !pending && !drag;
   const canDownload = analysisIsCurrent && state.analysis!.valid;
 
