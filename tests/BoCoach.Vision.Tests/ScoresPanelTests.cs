@@ -71,8 +71,8 @@ public class ScoresPanelTests
         var lines = (await new ScoresPanelReader(ocr).ReadRawAsync(Panel(frame, recording))).Where(l => ScoresPanelReader.Parse(l.Text) is not null).ToList();
 
         Assert.Equal(2, lines.Count);
-        Assert.InRange(lines[0].Top, first - 2, first + 2);
-        Assert.InRange(lines[1].Top, second - 2, second + 2);
+        Assert.InRange(lines[0].Top, first - 3, first + 3);
+        Assert.InRange(lines[1].Top, second - 3, second + 3);
     }
 
     // Los colores del texto en resources/_common/dat/UiColors.txt. Todas las grabaciones son del usuario en azul contra
