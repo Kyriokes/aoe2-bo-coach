@@ -10,7 +10,9 @@ Los íconos son de Microsoft: se usan bajo las "Game Content Usage Rules" y no s
 (ver data/icons/LEEME.md).
 
 Uso:
-    tools/extractor/.venv/Scripts/python.exe tools/extractor/queue_icons.py [--dat ...] [--juego H:/Steam/.../AoE2DE]
+    tools/extractor/.venv/Scripts/python.exe tools/extractor/queue_icons.py [--dat ...] [--juego RUTA_AL_JUEGO]
+
+Sin --juego usa la carpeta de la variable de entorno AOE2DE_PATH o la biblioteca de Steam que tenga el juego.
 """
 
 from __future__ import annotations
@@ -24,7 +26,8 @@ from pathlib import Path
 from genieutils.datfile import DatFile
 
 from extract import ENTIDADES, Extractor, cargar_disponibles, cargar_edades_de_unidades, cargar_textos, clave_de_nombre
-from icons import JUEGO_POR_DEFECTO, buscar, leer_dds
+from icons import buscar, leer_dds
+from juego import ubicar_dat, ubicar_juego
 
 REPO = Path(__file__).resolve().parents[2]
 GRILLA = 11
@@ -72,10 +75,12 @@ def claves_comunes() -> set[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dat", type=Path, default=JUEGO_POR_DEFECTO / "resources" / "_common" / "dat" / "empires2_x2_p1.dat")
-    parser.add_argument("--juego", type=Path, default=JUEGO_POR_DEFECTO)
+    parser.add_argument("--dat", type=Path)
+    parser.add_argument("--juego", type=Path)
     parser.add_argument("--salida", type=Path, default=REPO / "data" / "icons" / "queue_game.json")
     args = parser.parse_args()
+    args.juego = args.juego or ubicar_juego(parser)
+    args.dat = ubicar_dat(parser, args.dat, args.juego)
 
     print(f"Leyendo {args.dat.name} (unos 30 s)...")
     dat = DatFile.parse(str(args.dat))

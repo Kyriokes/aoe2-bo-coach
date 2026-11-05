@@ -112,3 +112,5 @@ jobs:
 
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+      # La búsqueda de la carpeta del juego del extractor (no necesita sus dependencias ni el juego).
+      - run: python -m pytest -q ../extractor
