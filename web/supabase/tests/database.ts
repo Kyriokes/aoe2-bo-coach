@@ -31,7 +31,7 @@ export async function database(options: { storage?: boolean } = {}) {
       create table storage.buckets (id text primary key, name text not null, public boolean not null default false,
         file_size_limit bigint, allowed_mime_types text[]);
       create table storage.objects (bucket_id text not null references storage.buckets (id), name text not null,
-        primary key (bucket_id, name));
+        metadata jsonb, primary key (bucket_id, name));
       alter table storage.objects enable row level security;
       grant usage on schema storage to anon, authenticated;
       grant select, insert, delete on storage.objects to anon, authenticated;
