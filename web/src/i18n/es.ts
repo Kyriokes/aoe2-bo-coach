@@ -231,6 +231,7 @@ export const es = {
     openInAppHelp: "Si el botón no abre la app: en BO Coach usá «Importar desde la web» y pegá el código.",
     downloadFailed: "No se pudo descargar: {error}",
     serverSaid: "la web respondió {status}",
+    failed: "No se pudo completar: se cortó la conexión o la web se actualizó. Probá de nuevo y, si sigue, recargá la página.",
   },
   notFound: {
     title: "No encontramos esa página",
@@ -493,6 +494,7 @@ export const es = {
     publish: "Publicar en la biblioteca",
     needLogin: "Para publicarla hace falta <link>iniciar sesión</link>; descargarla no.",
     fixErrors: "Corregí los errores antes de publicar.",
+    publishFailed: "No se pudo guardar: se cortó la conexión o la web se actualizó. Tu BO sigue acá: probá de nuevo y, si sigue, recargá la página.",
     changeCiv: "civ {value}",
     changeMap: "mapa {value}",
     any: "Cualquiera",

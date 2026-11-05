@@ -229,6 +229,7 @@ export const en: Dictionary = {
     openInAppHelp: "If the button doesn't open the app: in BO Coach use «Importar desde la web» (import from the web) and paste the code.",
     downloadFailed: "Couldn't download: {error}",
     serverSaid: "the server answered {status}",
+    failed: "That didn't go through: the connection dropped or the site was updated. Try again and, if it keeps failing, reload the page.",
   },
   notFound: {
     title: "We couldn't find that page",
@@ -491,6 +492,7 @@ export const en: Dictionary = {
     publish: "Publish to the library",
     needLogin: "Publishing requires you to <link>sign in</link>; downloading doesn't.",
     fixErrors: "Fix the errors before publishing.",
+    publishFailed: "Couldn't save: the connection dropped or the site was updated. Your BO is still here: try again and, if it keeps failing, reload the page.",
     changeCiv: "civ {value}",
     changeMap: "map {value}",
     any: "Any",

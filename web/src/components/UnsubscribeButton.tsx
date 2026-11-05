@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { setSubscription } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
+import { safeAction } from "@/lib/safeAction";
 
 /** "Quitar" una suscripción desde Mi cuenta. */
 export function UnsubscribeButton({ buildOrderId }: { buildOrderId: string }) {
@@ -18,7 +19,7 @@ export function UnsubscribeButton({ buildOrderId }: { buildOrderId: string }) {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          const result = await setSubscription(buildOrderId, false, locale);
+          const result = await safeAction(() => setSubscription(buildOrderId, false, locale), t.actions.failed);
           if (!result.ok) alert(result.error);
           router.refresh();
         })

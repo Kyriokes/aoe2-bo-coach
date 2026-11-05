@@ -4,6 +4,7 @@ import Link from "@/i18n/Link";
 import { useState, useTransition } from "react";
 import { setSubscription } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
+import { safeAction } from "@/lib/safeAction";
 
 /**
  * Sumar una BO pública de otro a las que usa la app ("Usar en el coach"). Las propias ya están siempre; sin sesión,
@@ -33,7 +34,7 @@ export function SubscribeButton(props: { buildOrderId: string; code: string; sub
         startTransition(async () => {
           const next = !subscribed;
           setSubscribed(next);
-          const result = await setSubscription(props.buildOrderId, next, locale);
+          const result = await safeAction(() => setSubscription(props.buildOrderId, next, locale), t.failed);
           if (!result.ok) {
             setSubscribed(!next);
             alert(result.error);

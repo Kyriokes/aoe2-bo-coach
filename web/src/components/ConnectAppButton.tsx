@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createAppToken } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
+import { safeAction } from "@/lib/safeAction";
 
 /**
  * Conecta la app de escritorio de un toque: crea un token y abre bocoach://conectar/<token>, que la app guarda. Si la
@@ -18,7 +19,7 @@ export function ConnectAppButton() {
 
   function connect() {
     startTransition(async () => {
-      const result = await createAppToken("BO Coach", locale);
+      const result = await safeAction(() => createAppToken("BO Coach", locale), t.actions.failed);
       if (!result.ok) {
         setError(result.error);
         return;

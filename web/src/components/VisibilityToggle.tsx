@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { setVisibility } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
 import type { Visibility } from "@/lib/buildOrder";
+import { safeAction } from "@/lib/safeAction";
 
 /** Pública o privada, para una BO propia en "Mi cuenta". */
 export function VisibilityToggle({ code, visibility }: { code: string; visibility: Visibility }) {
@@ -22,7 +23,7 @@ export function VisibilityToggle({ code, visibility }: { code: string; visibilit
         const before = value;
         setValue(next);
         startTransition(async () => {
-          const result = await setVisibility(code, next, locale);
+          const result = await safeAction(() => setVisibility(code, next, locale), t.actions.failed);
           if (!result.ok) {
             setValue(before);
             alert(result.error);

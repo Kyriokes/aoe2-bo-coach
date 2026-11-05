@@ -20,6 +20,7 @@ import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, typ
 import { entityName } from "@/lib/stepText";
 import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
+import { safeAction } from "@/lib/safeAction";
 import { whatToLoad } from "@/lib/editor/startup";
 import {
   chainLabel,
@@ -451,7 +452,10 @@ export function BuildOrderEditor({
     const castle = state.analysis.castle_click ?? null;
     setPublishError(null);
     startTransition(async () => {
-      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle, visibility, locale) : await publishBuildOrder(json, feudal, castle, visibility, locale);
+      const result = await safeAction<string | null>(
+        () => (editCode ? updateBuildOrder(editCode, json, feudal, castle, visibility, locale) : publishBuildOrder(json, feudal, castle, visibility, locale)),
+        t.publishFailed,
+      );
       if (!result.ok) {
         setPublishError(result.error);
         return;

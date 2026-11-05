@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteBuildOrder } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
+import { safeAction } from "@/lib/safeAction";
 
 /** Editar o borrar una BO propia (la base igual rechaza tocar las ajenas). */
 export function OwnerActions({ code }: { code: string }) {
@@ -15,7 +16,7 @@ export function OwnerActions({ code }: { code: string }) {
   function remove() {
     if (!confirm(t.actions.ownerDeleteConfirm)) return;
     startTransition(async () => {
-      const result = await deleteBuildOrder(code, locale);
+      const result = await safeAction(() => deleteBuildOrder(code, locale), t.actions.failed);
       if (result.ok) router.push(href("/cuenta"));
       else alert(result.error);
     });

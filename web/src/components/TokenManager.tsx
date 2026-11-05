@@ -6,6 +6,7 @@ import { createAppToken, revokeAppToken } from "@/app/actions";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { LANG_TAG } from "@/i18n/locales";
+import { safeAction } from "@/lib/safeAction";
 
 export interface TokenRow {
   id: string;
@@ -25,7 +26,7 @@ export function TokenManager({ tokens }: { tokens: TokenRow[] }) {
 
   function create() {
     startTransition(async () => {
-      const result = await createAppToken(label, locale);
+      const result = await safeAction(() => createAppToken(label, locale), dict.actions.failed);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -39,7 +40,7 @@ export function TokenManager({ tokens }: { tokens: TokenRow[] }) {
   function revoke(id: string) {
     if (!confirm(t.revokeConfirm)) return;
     startTransition(async () => {
-      const result = await revokeAppToken(id, locale);
+      const result = await safeAction(() => revokeAppToken(id, locale), dict.actions.failed);
       if (!result.ok) setError(result.error);
       router.refresh();
     });
