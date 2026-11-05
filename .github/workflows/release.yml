@@ -9,8 +9,10 @@ on:
     branches: [main]
     tags: ["v*"]
 
+# Compilar y correr los tests ejecuta código de los paquetes de NuGet: ese job no ve un token que pueda escribir. Escribe
+# solo publish, que no baja el repo ni ejecuta nada de él.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
@@ -19,10 +21,13 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Qué versión publicar
         id: version
@@ -31,12 +36,16 @@ jobs:
             tag="$GITHUB_REF_NAME"
           else
             tag="v$(sed -n 's|.*<Version>\(.*\)</Version>.*|\1|p' src/BoCoach.App/BoCoach.App.csproj | head -1)"
-            if [ "$tag" = v ]; then
-              echo "::error::No encontré <Version> en BoCoach.App.csproj"
-              exit 1
-            fi
-            # Un push a main que no cambia la versión (como los de la web) no la vuelve a publicar. Fuera del if, para que
-            # un error de git corte el paso (bash -e) en vez de publicar.
+          fi
+          # La etiqueta va a comandos y a nombres de archivo: lo que no sea vN.N.N corta acá. El mensaje no la repite,
+          # porque el log también interpreta lo que se escribe en él.
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::La versión tiene que ser vN.N.N (la etiqueta que se subió o la <Version> de BoCoach.App.csproj)"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            # Un push a main que no cambia la versión (como los de la web) no la vuelve a publicar. Una asignación suelta,
+            # no la condición de un if, para que un error de git corte el paso (bash -e) en vez de publicar.
             existing="$(git ls-remote --tags origin "refs/tags/$tag")"
             if [ -n "$existing" ]; then
               echo "La $tag ya está publicada."
@@ -50,25 +59,58 @@ jobs:
     needs: version
     if: needs.version.outputs.tag != ''
     runs-on: windows-latest
+    # Un test colgado no retiene el grupo release hasta las 6 horas que da GitHub.
+    timeout-minutes: 45
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      - run: dotnet test BoCoach.slnx -c Release
+      - run: dotnet test BoCoach.slnx -c Release --blame-crash --blame-hang-timeout 10m
 
       - name: Versión portable
         shell: pwsh
+        run: dotnet publish src/BoCoach.App -c Release -r win-x64 "-p:Version=$($env:TAG.TrimStart('v'))" -o publish/BoCoach
+
+      # El .sha256 tiene el formato de sha256sum (huella, dos espacios y el archivo), en minúsculas y con salto de línea LF.
+      - name: Zip y su huella
+        shell: pwsh
         run: |
-          $tag = "${{ needs.version.outputs.tag }}"
-          dotnet publish src/BoCoach.App -c Release -r win-x64 -p:Version=$($tag.TrimStart('v')) -o publish/BoCoach
-          Compress-Archive -Path publish/BoCoach -DestinationPath "BoCoach-$tag-win-x64.zip"
+          $zip = "BoCoach-${env:TAG}-win-x64.zip"
+          Compress-Archive -Path publish/BoCoach -DestinationPath $zip
+          $huella = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$PWD/$zip.sha256", "$huella  $zip`n")
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            BoCoach-*-win-x64.zip
+            BoCoach-*-win-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [version, portable]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
 
       # Desde main la etiqueta no existe: la crea la release en el commit que se subió. Una etiqueta creada con el token
       # del workflow no vuelve a disparar este workflow.
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ needs.version.outputs.tag }}" "BoCoach-${{ needs.version.outputs.tag }}-win-x64.zip" --target "${{ github.sha }}" --title "BO Coach ${{ needs.version.outputs.tag }}" --generate-notes
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh release create "$TAG" "BoCoach-$TAG-win-x64.zip" "BoCoach-$TAG-win-x64.zip.sha256" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "BO Coach $TAG" --generate-notes

@@ -41,6 +41,12 @@ Si no se lee nada (no ve el reloj, los números no coinciden): hacé 5 clics sob
 (arriba) para prender el modo desarrollador y, en plena partida, tocá Ctrl+Alt+X (o "Captura de
 diagnóstico" en Ajustes): a los 2 segundos guarda la pantalla y lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
 
+Para comprobar que el .zip no cambió en el camino: en la página de la versión, en Releases, al lado del
+.zip está su huella (BoCoach-v<versión>-win-x64.zip.sha256, se abre con el Bloc de notas). En PowerShell,
+en la carpeta donde lo bajaste:
+  Get-FileHash .\BoCoach-v<versión>-win-x64.zip -Algorithm SHA256
+tiene que dar la misma huella (no importa si en mayúsculas o minúsculas).
+
 Licencias: el programa es MIT (LICENSE.txt). Los íconos, las letras, las frases del juego y sus datos,
 en la carpeta "data", salen del juego: Age of Empires II © Microsoft Corporation. AoE2 BO Coach se hizo
 bajo las Game Content Usage Rules de Microsoft (https://www.xbox.com/en-US/developers/rules) con contenido
