@@ -65,7 +65,7 @@ public sealed class RecordedSession
                 hud = null; // una grabación nunca deja de abrirse por su diseño
             }
         }
-        return new RecordedSession(folder, frames, regions, hudScale, hud);
+        return new RecordedSession(folder, frames, regions, hudScale, hud, intervalMs);
     }
 
     public bool Has(int frame, string region) => File.Exists(PathOf(frame, region));

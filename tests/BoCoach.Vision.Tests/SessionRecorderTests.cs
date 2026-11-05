@@ -124,6 +124,16 @@ public sealed class SessionRecorderTests : IDisposable
     }
 
     [Fact]
+    public void La_grabacion_devuelve_cada_cuanto_se_grabo()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(400));
+        recorder.Open();
+        recorder.Stop();
+
+        Assert.Equal(400, RecordedSession.Load(recorder.Folder!).IntervalMs);
+    }
+
+    [Fact]
     public async Task Con_el_temporizador_graba_hasta_que_se_detiene()
     {
         using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(50));
