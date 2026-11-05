@@ -455,6 +455,8 @@ export const es = {
     schemaVersion: "Esta web entiende hasta schema_version {n}.",
     noName: "Falta el nombre.",
     noSteps: "La BO no tiene pasos.",
+    nameTooLong: "El nombre tiene hasta {n} caracteres.",
+    tooManySteps: "La BO tiene más de {n} pasos: sacale algunos.",
     tooBig: "La BO pesa más de {n} KB: sacale notas o pasos.",
     notJson: "No es un JSON válido.",
   },

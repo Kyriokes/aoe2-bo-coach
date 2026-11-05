@@ -453,6 +453,8 @@ export const en: Dictionary = {
     schemaVersion: "This website understands up to schema_version {n}.",
     noName: "The name is missing.",
     noSteps: "The BO has no steps.",
+    nameTooLong: "The name can have up to {n} characters.",
+    tooManySteps: "The BO has more than {n} steps: remove some.",
     tooBig: "The BO weighs more than {n} KB: remove some notes or steps.",
     notJson: "That isn't valid JSON.",
   },
