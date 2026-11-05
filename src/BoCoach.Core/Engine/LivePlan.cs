@@ -73,11 +73,12 @@ public static class LivePlan
     /// <summary>
     /// Dónde quiere la BO a los aldeanos en el punto en que va el jugador: todos los pasos anteriores al actual como
     /// hechos (lo que planea la BO, no lo que el Tracker les asignó) más lo que avanzó el actual. A diferencia de
-    /// <see cref="Start"/>, no salta cuando el Tracker reparte los aldeanos nuevos entre varios pasos abiertos.
+    /// <see cref="Start"/>, no salta cuando el Tracker reparte los aldeanos nuevos entre varios pasos abiertos. Sin paso
+    /// actual (la edad en curso y lo demás esperándola), hasta el primero que falta: al final de la BO solo si no falta nada.
     /// </summary>
     public static IReadOnlyDictionary<GatherSource, int> IntendedVillagers(Tracker tracker)
     {
-        var current = tracker.Current;
+        var current = tracker.Current ?? tracker.FirstOpen;
         var upTo = current?.Index ?? tracker.Steps.Count;
         var steps = tracker.Steps.Take(upTo).Select(s => (s.Step, s.Required, true)).ToList();
         if (current is not null)

@@ -116,6 +116,62 @@ public class CoachLanesTests
         Assert.False(view.Compact);
     }
 
+    // Auditoría del 2026-11-05: sin paso actual (la edad en curso y lo demás esperándola), el reparto saltaba al final de
+    // la BO: mientras subía a Feudal, el overlay ya pedía la gente de lo que viene después.
+    private static readonly BuildOrder ThenGold = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            Villagers("v1", 8, GatherSource.Wood),
+            new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+            new Step { Id = "smith", Do = StepAction.Build, What = "blacksmith", From = GatherSource.Wood, Assign = GatherSource.Gold, Builders = 5 },
+        ],
+    };
+
+    [Fact]
+    public void Subiendo_de_edad_sin_paso_actual_el_reparto_es_el_de_ese_punto_de_la_BO()
+    {
+        var coach = new Coach(ThenGold, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(600, 200, 200, 200);
+        coach.Update(new GameSnapshot(300, stock, 12, 15, [new GameEvent("lumber_camp_built", 300), new GameEvent("barracks_built", 300)]) { Villagers = 11 });
+        coach.Tracker.MarkStarted(3, 301);
+
+        var view = coach.Update(new GameSnapshot(330, stock, 12, 15) { Villagers = 11 });
+
+        Assert.Null(view.Current);
+        var intended = LivePlan.IntendedVillagers(coach.Tracker);
+        Assert.Equal(8, intended[GatherSource.Wood]);
+        Assert.Equal(0, intended[GatherSource.Gold]);
+    }
+
+    [Fact]
+    public void Con_solo_granjas_abiertas_el_reparto_es_el_final_de_la_BO()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                Villagers("v1", 8, GatherSource.Wood),
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "farms", Do = StepAction.Build, What = "farm", Count = 2, From = GatherSource.Wood, Assign = GatherSource.Farm },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(600, 200, 200, 200);
+        coach.Update(new GameSnapshot(300, stock, 12, 15, [new GameEvent("mill_built", 300)]) { Villagers = 11 });
+
+        var view = coach.Update(new GameSnapshot(330, stock, 12, 15) { Villagers = 11 });
+
+        Assert.Null(view.Current);
+        var intended = LivePlan.IntendedVillagers(coach.Tracker);
+        Assert.Equal(6, intended[GatherSource.Wood]);
+        Assert.Equal(2, intended[GatherSource.Farm]);
+    }
+
     // Partida 20261030-203917: con todo lo demás hecho, el segundo molino que nunca se hizo volvía al renglón de
     // Construir y a los 3 minutos la BO quedaba "abandonada" en vez de terminada.
     [Fact]

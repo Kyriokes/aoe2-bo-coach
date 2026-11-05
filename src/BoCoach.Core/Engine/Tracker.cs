@@ -306,7 +306,10 @@ public sealed class Tracker
     /// Quedan pasos de la BO por hacer, se puedan mostrar o no (subiendo de edad, lo que sigue es de la edad siguiente y
     /// la BO no terminó). No cuentan lo que el juego no avisa ni la producción en marcha, que nunca se cierran solos.
     /// </summary>
-    public bool HasOpenSteps => _steps.Any(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s) && !IsBehind(s));
+    public bool HasOpenSteps => FirstOpen is not null;
+
+    /// <summary>El primero de los pasos que la BO todavía tiene por hacer (ver <see cref="HasOpenSteps"/>), aunque no se pueda mostrar.</summary>
+    public StepProgress? FirstOpen => _steps.FirstOrDefault(s => IsOpen(s) && !IsProducing(s) && !IsSilent(s) && !IsBehind(s));
 
     /// <summary>
     /// El paso sigue abierto pero quedó atrás (<see cref="IsBehind"/>): no impide terminar la BO. En la
