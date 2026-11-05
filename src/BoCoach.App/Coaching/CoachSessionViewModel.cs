@@ -628,6 +628,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             RecordsFolder = RecordsFolder,
             AppVersion = BoCoach.App.AppVersion.Text,
+            KnownMaps = _data.Maps,
         };
         _loading = null;
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.

@@ -277,6 +277,23 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Single(finished); // detener después no vuelve a cerrar nada
     }
 
+    // AP-27: lo que lee el OCR es texto libre; al registro solo va un mapa que la app conoce, por su clave.
+    [Theory]
+    [InlineData("Arabia", "arabia")]
+    [InlineData("ARABIA", "arabia")]
+    [InlineData("Black Forest", "black_forest")]
+    [InlineData("Bosque Negro", "black_forest")]
+    [InlineData("Nómada", "nomad")]
+    [InlineData("El Mapa De Fulano", null)]
+    [InlineData("Cualquiera", null)]
+    [InlineData("---", null)]
+    [InlineData(null, null)]
+    public void Al_registro_solo_va_un_mapa_conocido(string? read, string? expected)
+    {
+        Assert.Equal(expected, LiveCoach.KnownMap(read, _data.Maps));
+        Assert.Null(LiveCoach.KnownMap(read, null));
+    }
+
     // AP-14: el nombre del archivo es la fecha del calendario común, sea cual sea el de Windows.
     [Fact]
     public async Task El_nombre_del_registro_no_depende_del_calendario_del_sistema()

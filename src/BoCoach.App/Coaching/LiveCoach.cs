@@ -238,6 +238,9 @@ public sealed class LiveCoach : IDisposable
     /// <summary>La versión de la app, para el registro.</summary>
     public string AppVersion { get; init; } = "";
 
+    /// <summary>Los mapas que conoce la app: al registro solo va un mapa que esté acá (<see cref="KnownMap"/>).</summary>
+    public Maps? KnownMaps { get; init; }
+
     /// <summary>Se cerró el registro de una partida de <see cref="MinReportSeconds"/> o más (las más cortas se borran).</summary>
     public event Action<GameRecordInfo>? RecordFinished;
 
@@ -585,8 +588,8 @@ public sealed class LiveCoach : IDisposable
                 path = Path.Combine(RecordsFolder!, $"{name}-{i}.jsonl.gz");
             _recordGameId = Guid.NewGuid().ToString("N");
             var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
-            var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,
-                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.CaptureIntervalMs, BuildOrder with { Civ = Civ });
+            var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ,
+                KnownMap(_loadingReading?.Map, KnownMaps), rival, _me?.Slot, _language, (int)Frames.CaptureIntervalMs, BuildOrder with { Civ = Civ });
             _recordWriter = GameRecordWriter.Create(path, meta);
             _recorder = new GameRecorder(_recordWriter, _data);
             (_recordStart, _recordFlushedAt, _recordNotice, _flags) = (realTime, realTime, null, 0);
@@ -595,6 +598,18 @@ public sealed class LiveCoach : IDisposable
         {
             RecordFailed(e);
         }
+    }
+
+    /// <summary>
+    /// El mapa para el registro: su clave en data/maps.json (por la clave o por el nombre en cualquier idioma), o null. Lo que
+    /// lee el OCR es texto libre: un mapa personalizado puede llamarse de cualquier forma, y hasta identificar la partida.
+    /// </summary>
+    internal static string? KnownMap(string? read, Maps? maps)
+    {
+        if (read is null || maps is null || LoadingScreen.NormalizeName(read) is not { Length: > 0 } wanted)
+            return null;
+        return maps.All.FirstOrDefault(m => !Maps.IsAny(m.Key)
+            && new[] { m.Key, m.Name, m.NameEn ?? m.Name }.Any(name => LoadingScreen.NormalizeName(name) == wanted))?.Key;
     }
 
     /// <summary>Un error del registro (disco lleno, carpeta sin permiso) lo apaga para esta sesión y lo dice, sin tocar al coach.</summary>

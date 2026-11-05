@@ -15,13 +15,13 @@ Que cada partida con reloj deje un archivo chico con todo lo que el coach vio y 
 - Se escribe en vivo, línea por línea, y se vacía el búfer cada 10 s reales. Tamaño esperado: cientos de KB por partida (a medir sobre la grabación 20261102-212823; el número va a `CLAUDE.md`).
 - Sin nombres de jugadores, sin pantalla de carga, sin los nombres del panel de puntajes, sin recortes de pantalla. Solo números, los renglones del log que son mensajes del juego y lo que mostró el overlay.
 - **El chat se tapa.** Por la caja del log pasa también el chat ("Nombre: mensaje"), así que un renglón que el catálogo no reconoce no se guarda: va `?-` (`EventMatcher.Scrub`). El marcador termina en guion para no juntarse con el renglón siguiente y no tiene letras, así que `MatchAll` da lo mismo con los renglones tapados (hay un test). Costo: un catálogo mejor no puede recuperar lo tapado; se sabe que hubo un renglón sin reconocer, no qué decía. Lo mismo con el texto de la edad: si no se entiende, va `?`.
-- **La BO va adentro** (`meta.build_order`, sin `author`): otro jugador puede tenerla privada y una publicada se republica distinta, y sin ella la partida no se reproduce.
+- **La BO va adentro** (`meta.build_order`, sin `author` ni `id`): otro jugador puede tenerla privada y una publicada se republica distinta, y sin ella la partida no se reproduce. El código no hace falta para reproducirla y una BO privada lleva a una sola cuenta.
 
 ### 2.2 Líneas
 
 Todas llevan `t` (tipo) y `ms` (milisegundos reales desde que empezó a leerse esta partida). Las que salen del coach llevan además `time` (segundo de partida, el reloj menos lo que el jugador estuvo quieto).
 
-- `meta` (una vez, primero): `schema`, `game_id` (GUID aleatorio de esta partida), `started` (hora local ISO), `app` (texto de `AppVersion`, o "ReplaySession"), `game_data` (`GameData.DatVersion`), `hud` (nombre del diseño del HUD, o null), `hud_scale`, `civ`, `bo` (código o id de la BO), `bo_name`, `map` (null si no se leyó), `rival_civ` (la del rival de enfrente, null si no se sabe), `slot` (número del jugador, o null), `language`, `interval_ms`.
+- `meta` (una vez, primero): `schema`, `game_id` (GUID aleatorio de esta partida), `started` (el día en UTC, `aaaa-mm-dd`: la hora con el huso ayudaba a reidentificar la partida), `app` (texto de `AppVersion`, o "ReplaySession"), `game_data` (`GameData.DatVersion`), `hud` (nombre del diseño del HUD, o null), `hud_scale`, `civ`, `map` (la clave de `data/maps.json`; null si no se leyó o no está ahí, porque el OCR es texto libre), `rival_civ` (la del rival de enfrente, null si no se sabe), `slot` (número del jugador, o null), `language`, `interval_ms`.
 - `cap` (una por captura leída, tenga o no reloj): lo crudo antes de suavizar, con `null` donde no se leyó.
   - `clock`, `food`, `wood`, `gold`, `stone`, `vil` (total), `idle`, `pop`, `cap` (N y M de "N/M").
   - `on`: `{food, wood, gold, stone}` aldeanos por recurso (solo los leídos).

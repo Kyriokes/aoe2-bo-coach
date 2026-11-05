@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Data;
@@ -25,35 +26,39 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
     public double ForecastHorizon { get; init; } = 60;
 
     /// <summary>
-    /// La BO tal como se jugó, sin el autor (es un nombre). Va adentro del registro porque sin ella la partida no se puede
-    /// reproducir: otro jugador puede tenerla privada, y una publicada se puede republicar distinta (partida 20261102-212823).
+    /// La BO tal como se jugó, sin el autor (es un nombre) ni el código: una BO privada lleva a una sola cuenta. Va adentro
+    /// del registro porque sin ella la partida no se puede reproducir: otro jugador puede tenerla privada, y una publicada
+    /// se puede republicar distinta (partida 20261102-212823).
     /// </summary>
     private static JsonNode? PlayedBuildOrder(BuildOrder? bo)
     {
         if (bo is null || bo.IsNone)
             return null;
-        var json = JsonNode.Parse(BuildOrderSerializer.Serialize(bo));
-        json?.AsObject().Remove("author");
+        var json = JsonNode.Parse(BuildOrderSerializer.Serialize(bo))?.AsObject();
+        json?.Remove("author");
+        json?.Remove("id");
         return json;
     }
 
-    /// <summary>La línea <c>meta</c> de una partida.</summary>
+    /// <summary>El día, en UTC: alcanza para ordenar los registros, sin decir a qué hora se juega ni en qué huso se vive.</summary>
+    public static string Day(DateTimeOffset when) => when.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>La línea <c>meta</c> de una partida: lo que hace falta para reproducirla, y nada que la ate a una cuenta.</summary>
+    /// <param name="map">La clave del mapa en data/maps.json, o null: lo que lee el OCR es texto libre y no va tal cual.</param>
     /// <param name="buildOrder">La BO con que se jugó.</param>
-    public static JsonObject Meta(string gameId, DateTimeOffset started, string app, string gameData, string? hud, double hudScale, string civ, string bo, string boName,
+    public static JsonObject Meta(string gameId, DateTimeOffset started, string app, string gameData, string? hud, double hudScale, string civ,
         string? map, string? rivalCiv, int? slot, string language, int intervalMs, BuildOrder? buildOrder = null) => new()
         {
             ["build_order"] = PlayedBuildOrder(buildOrder),
             ["t"] = GameRecordKeys.Meta,
             ["schema"] = GameRecordKeys.Schema,
             ["game_id"] = gameId,
-            ["started"] = started.ToString("O"),
+            ["started"] = Day(started),
             ["app"] = app,
             ["game_data"] = gameData,
             ["hud"] = hud,
             ["hud_scale"] = hudScale,
             ["civ"] = civ,
-            ["bo"] = bo,
-            ["bo_name"] = boName,
             ["map"] = map,
             ["rival_civ"] = rivalCiv,
             ["slot"] = slot,
