@@ -85,6 +85,21 @@ public class BuildOrderValidatorTests
     }
 
     [Fact]
+    public void Los_aldeanos_de_mas_no_cuentan_dos_veces_para_la_poblacion()
+    {
+        // "7 en ovejas" para los chinos: los 3 de más y los 3 iniciales ya están ahí, sale uno solo. Son 8 de población, no 11.
+        var bo = Bo(
+            new Step { Id = "s1", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+            new Step { Id = "s2", Do = StepAction.Train, What = "villager", Count = 7, Assign = GatherSource.Sheep },
+            new Step { Id = "s3", Do = StepAction.Research, What = "loom", AtPop = 10 }) with { Civ = "chinese" };
+
+        var warning = Assert.Single(Validator.Validate(bo).Warnings, w => w.StepId == "s3");
+
+        Assert.Contains("nunca llega a 10", warning.Message);
+        Assert.Contains("hay 8", warning.Message);
+    }
+
+    [Fact]
     public void Imperial_pide_dos_edificios_de_Castillos_o_un_castillo()
     {
         static BuildOrder ToImperial(params string[] buildings) => Bo(

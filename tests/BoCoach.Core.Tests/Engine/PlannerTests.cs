@@ -31,6 +31,57 @@ public class PlannerTests
         Assert.InRange(plan.ClickTime("feudal_age")!.Value, feudalMin, feudalMax);
     }
 
+    // Auditoría del 2026-11-05: en la BO de los chinos, "7 en ovejas" es el total (como el HUD), pero el Planner arrancaba
+    // con los 3 de más en las ovejas y además hacía los 4 que dan los pasos sin ellos: terminaba con 10.
+    [Theory]
+    [InlineData("chinese", 3, 7)]
+    [InlineData("mayan", 1, 5)]
+    [InlineData("any", 0, 4)]
+    public void Los_aldeanos_de_mas_de_la_civ_cuentan_en_el_total_del_paso(string civ, int extra, int population)
+    {
+        var bo = Bo(
+            new Step { Id = "h", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+            Villagers("v", 7)) with { Civ = civ };
+
+        var plan = Planner.Simulate(bo);
+
+        Assert.True(plan.Completed);
+        Assert.Equal(7, plan.Timeline[^1].Villagers);
+        Assert.Equal(population + (7 - 3 - extra), plan.Timeline[^1].Population);
+        Assert.Equal(7 - 3 - extra, plan.Jobs.Count(j => j.What == "villager"));
+        Assert.Equal([2, 7 - 3 - extra], LivePlan.Units(bo, extra));
+    }
+
+    [Fact]
+    public void Lo_que_espera_la_poblacion_de_la_BO_no_cuenta_dos_veces_los_aldeanos_de_mas()
+    {
+        var bo = Bo(
+            new Step { Id = "h", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+            Villagers("v", 7),
+            new Step { Id = "loom", Do = StepAction.Research, What = "loom" }) with { Civ = "chinese" };
+
+        // El telar va después del aldeano que falta para los 7: a 8 de población (7 del arranque y 1), no a 11.
+        Assert.InRange(new Tracker(bo, TestData.GameData).Steps[2].AtPop!.Value, 7, 8);
+    }
+
+    [Fact]
+    public void En_vivo_los_aldeanos_de_mas_se_cuentan_en_la_primera_lectura()
+    {
+        // El Tracker no cambia: los 3 de más salen como aldeanos en la primera lectura del HUD y el paso pide los que le faltan.
+        var bo = Bo(
+            new Step { Id = "h", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+            Villagers("v", 7)) with { Civ = "chinese" };
+        var builder = new SnapshotBuilder(TestData.GameData, TestData.GameData.Civ("chinese"));
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        static ScreenReading At(double clock, int villagers) => new(clock, 0, 150, 100, 200, villagers, null, null, []);
+
+        coach.Update(builder.Build(At(5, 6))!);
+        Assert.Equal((3, 4), (coach.Tracker.Steps[1].Completed, coach.Tracker.Steps[1].Required));
+
+        coach.Update(builder.Build(At(30, 7))!);
+        Assert.Equal(StepState.Done, coach.Tracker.Steps[1].State);
+    }
+
     [Fact]
     public void Marca_el_bloqueo_de_poblacion_si_no_se_hacen_casas()
     {

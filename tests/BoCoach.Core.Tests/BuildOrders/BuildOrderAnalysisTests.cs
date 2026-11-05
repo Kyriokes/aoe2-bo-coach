@@ -124,6 +124,26 @@ public class BuildOrderAnalysisTests
         Assert.Equal(houses, start.GetProperty("houses").GetBoolean());
     }
 
+    // El editor de la web carga las unidades de cada paso y las manda de vuelta en formato 1: la ida y vuelta tiene que dar
+    // lo mismo también con los aldeanos de más de los chinos y los mayas.
+    [Theory]
+    [InlineData("chinese", 7, 1)]
+    [InlineData("mayan", 7, 3)]
+    [InlineData("any", 7, 4)]
+    public void Las_unidades_no_cuentan_los_aldeanos_de_mas_y_vuelven_al_mismo_total(string civ, int total, int units)
+    {
+        const string Steps = """[ { "id": "h", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep" }, { "id": "v", "do": "train", "what": "villager", "count": COUNT, "assign": "sheep" } ]""";
+        string Json(int version, int count) => $$"""{ "schema_version": {{version}}, "name": "x", "civ": "{{civ}}", "steps": {{Steps.Replace("COUNT", count.ToString(System.Globalization.CultureInfo.InvariantCulture))}} }""";
+
+        var saved = Analyze(Json(2, total));
+        Assert.Equal(units, saved.GetProperty("steps")[1].GetProperty("units").GetInt32());
+
+        var back = Analyze(Json(1, units));
+        Assert.Equal(total, back.GetProperty("build_order").GetProperty("steps")[1].GetProperty("count").GetInt32());
+        Assert.Equal(units, back.GetProperty("steps")[1].GetProperty("units").GetInt32());
+        Assert.Equal(saved.GetProperty("steps")[1].GetProperty("end").GetDouble(), back.GetProperty("steps")[1].GetProperty("end").GetDouble());
+    }
+
     [Fact]
     public void Un_JSON_roto_devuelve_el_error()
     {

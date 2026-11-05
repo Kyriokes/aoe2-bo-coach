@@ -216,7 +216,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
     public PlanResult Simulate(BuildOrder bo, IStepPolicy? policy)
     {
         var civ = CivOf(bo);
-        var units = LivePlan.Units(bo);
+        // Los aldeanos de más de la civ ya están en las ovejas (PlanStart.For): "7 en ovejas" de los chinos es el total.
+        var units = LivePlan.Units(bo, civ.Start.ExtraVillagers);
         var steps = policy is null
             ? bo.Steps
             : bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? s with { Count = units[i] } : s).ToList();

@@ -20,7 +20,11 @@ public static class BuildOrderSerializer
         }
     }
 
-    public static BuildOrder Parse(string json)
+    /// <param name="data">
+    /// Para pasar el formato 1 a totales con los aldeanos de más de la civ (ver <see cref="Engine.LivePlan.Units"/>): el
+    /// editor de la web manda unidades en formato 1. Sin datos, se pasa sin ellos.
+    /// </param>
+    public static BuildOrder Parse(string json, Data.GameData? data = null)
     {
         JsonNode? root;
         try
@@ -62,7 +66,7 @@ public static class BuildOrderSerializer
         // Formato 1 → 2: en los pasos de aldeanos, 'count' pasó de "cuántos se entrenan" a "cuántos tiene que haber en
         // la fuente" (como el contador del HUD).
         if (version < 2)
-            Engine.LivePlan.CountsToTotals(bo);
+            Engine.LivePlan.CountsToTotals(bo, data?.Civ(bo.Civ).Start.ExtraVillagers ?? 0);
         return bo;
     }
 

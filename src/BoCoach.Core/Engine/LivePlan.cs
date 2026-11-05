@@ -95,15 +95,19 @@ public static class LivePlan
     /// <summary>
     /// Cuántas unidades hace cada paso: en los de aldeanos con fuente, lo que falta para llegar a 'count' en esa
     /// fuente ("6 aldeanos en ovejas" con los 3 iniciales ya ahí son 3 nuevos); en los demás, 'count' (o 1).
+    /// <para>Los aldeanos de más de la civ (chinos 3, mayas 1) arrancan en las ovejas (<see cref="PlanStart.For"/>).
+    /// <paramref name="extraVillagers"/> los descuenta: lo que hay que entrenar de verdad, para simular y para el editor. En
+    /// vivo van sin descontar, porque el <see cref="Tracker"/> los ve salir: <see cref="PlayerState"/> los cuenta como
+    /// aldeanos nuevos en la primera lectura del HUD.</para>
     /// </summary>
-    public static int[] Units(BuildOrder bo)
+    public static int[] Units(BuildOrder bo, int extraVillagers = 0)
     {
         var units = new int[bo.Steps.Count];
         for (var i = 0; i < units.Length; i++)
         {
             var step = bo.Steps[i];
             units[i] = IsVillagerTarget(step)
-                ? Math.Max(0, step.Count - LayoutOf(bo, units, i).Villagers.GetValueOrDefault(step.Assign!.Value))
+                ? Math.Max(0, step.Count - LayoutOf(bo, units, i, extraVillagers).Villagers.GetValueOrDefault(step.Assign!.Value))
                 : step.Do is StepAction.Train or StepAction.Build ? step.Count : 1;
         }
         return units;
@@ -120,25 +124,27 @@ public static class LivePlan
     /// Migración del formato 1, donde 'count' de un paso de aldeanos era cuántos se entrenan: lo pasa al total en la
     /// fuente, así la BO simula lo mismo ("6 nuevos a ovejas" después de las casas son 9 en ovejas).
     /// </summary>
-    public static void CountsToTotals(BuildOrder bo)
+    /// <param name="extraVillagers">Los aldeanos de más de la civ, que están en las ovejas (ver <see cref="Units"/>).</param>
+    public static void CountsToTotals(BuildOrder bo, int extraVillagers = 0)
     {
         var units = bo.Steps.Select(s => s.Do is StepAction.Train or StepAction.Build ? s.Count : 1).ToArray();
-        var totals = bo.Steps.Select((s, i) => IsVillagerTarget(s) ? LayoutOf(bo, units, i + 1).Villagers.GetValueOrDefault(s.Assign!.Value) : s.Count).ToList();
+        var totals = bo.Steps.Select((s, i) => IsVillagerTarget(s) ? LayoutOf(bo, units, i + 1, extraVillagers).Villagers.GetValueOrDefault(s.Assign!.Value) : s.Count).ToList();
         for (var i = 0; i < totals.Count; i++)
             bo.Steps[i].Count = totals[i];
     }
 
-    private static VillagerLayout LayoutOf(BuildOrder bo, int[] units, int stepCount) =>
-        Layout(bo.Steps.Take(stepCount).Select((s, j) => (s, units[j], true)));
+    private static VillagerLayout LayoutOf(BuildOrder bo, int[] units, int stepCount, int extraVillagers = 0) =>
+        Layout(bo.Steps.Take(stepCount).Select((s, j) => (s, units[j], true)), extraVillagers);
 
     private sealed record VillagerLayout(
         Dictionary<GatherSource, int> Villagers, int Idle, Dictionary<string, int> Buildings, Age Age, List<string> Researched);
 
     /// <summary>Dónde quedan los aldeanos, los edificios y la edad después de hacer esos pasos (en orden).</summary>
-    private static VillagerLayout Layout(IEnumerable<(Step Step, int Completed, bool Done)> steps)
+    private static VillagerLayout Layout(IEnumerable<(Step Step, int Completed, bool Done)> steps, int extraVillagers = 0)
     {
         var start = PlanStart.Standard;
         var villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, _ => 0);
+        villagers[GatherSource.Sheep] = extraVillagers;
         var idle = start.IdleVillagers;
         var buildings = new Dictionary<string, int>(start.Buildings);
         var age = start.Age;

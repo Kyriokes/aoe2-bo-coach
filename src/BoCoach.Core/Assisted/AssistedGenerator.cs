@@ -157,7 +157,7 @@ public sealed class AssistedGenerator(GameData data, Maps maps)
             Steps = result.Steps.Select(s => s.Step with { After = [.. s.Step.After] }).ToList(),
             Posture = Posture(plan, state, result),
         };
-        LivePlan.CountsToTotals(generated);
+        LivePlan.CountsToTotals(generated, data.Civ(bo.Civ).Start.ExtraVillagers);
         return new AssistedResult(generated, state.Reasons, goals, problems, result);
     }
 
