@@ -164,3 +164,17 @@ language sql stable security definer set search_path = '' as $$
 $$;
 
 revoke execute on function public.record_install_known(text, text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- Build orders.
+-- ---------------------------------------------------------------------------------------------------------------
+
+-- BD-07: votar actualiza build_orders (el contador) y el trigger tocaba updated_at: cambiaba la fecha mostrada y el
+-- sitemap, y la app creía que había una versión nueva, la bajaba y reiniciaba el coach en la pantalla de carga, sin
+-- ningún cambio. Cualquier cuenta lo podía disparar contra todos los suscriptos. La fecha es la del JSON.
+drop trigger if exists build_orders_touch on public.build_orders;
+create trigger build_orders_touch
+  before update on public.build_orders
+  for each row
+  when (old.body is distinct from new.body)
+  execute function public.touch_updated_at();

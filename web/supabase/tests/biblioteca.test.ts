@@ -71,6 +71,23 @@ describe("biblioteca", () => {
     expect((await db.query<{ votes: number }>("select votes from public.build_orders")).rows[0].votes).toBe(1);
   });
 
+  it("votar o cambiar la visibilidad no cambia la fecha de la BO; cambiar la BO, sí", async () => {
+    const { rows } = await as<{ code: string }>(db, ana, insertBo, ["Scouts", scouts]);
+    const id = (await db.query<{ id: string }>("select id from public.build_orders where code = $1", [rows[0].code])).rows[0].id;
+    const old = "2026-01-01T00:00:00.000Z";
+    await db.query("update public.build_orders set updated_at = $1", [old]);
+    const updatedAt = async () => (await db.query<{ updated_at: Date }>("select updated_at from public.build_orders")).rows[0].updated_at.toISOString();
+    expect(await updatedAt()).toBe(old);
+
+    await as(db, beto, "insert into public.votes (build_order_id) values ($1)", [id]);
+    await as(db, beto, "delete from public.votes where build_order_id = $1", [id]);
+    await as(db, ana, "update public.build_orders set visibility = 'private'");
+    expect(await updatedAt()).toBe(old);
+
+    await as(db, ana, `update public.build_orders set body = body || '{"name": "Scouts 2"}'`);
+    expect(await updatedAt()).not.toBe(old);
+  });
+
   describe("publicar desde la app", () => {
     async function token(userId: string) {
       const { rows } = await as<{ token: string }>(db, userId, "select public.create_app_token('Mi PC') as token");
