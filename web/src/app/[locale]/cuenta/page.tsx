@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ConnectAppButton } from "@/components/ConnectAppButton";
-import { TokenManager, type TokenRow } from "@/components/TokenManager";
+import { TokenManager } from "@/components/TokenManager";
 import { UnsubscribeButton } from "@/components/UnsubscribeButton";
 import { VisibilityToggle } from "@/components/VisibilityToggle";
 import { fill, getDictionary, rich } from "@/i18n";
 import Link from "@/i18n/Link";
 import { asLocale, localePath } from "@/i18n/locales";
 import { i18n } from "@/i18n/server";
-import { formatClock, type Visibility } from "@/lib/buildOrder";
+import { formatClock } from "@/lib/buildOrder";
 import { byline } from "@/lib/share";
-import { mySubscriptions } from "@/lib/ownData";
+import { myAccountLists, mySubscriptions } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
-import { sessionClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/cuenta">): Promise<Metadata> {
   return { title: getDictionary(asLocale((await params).locale)).account.title, robots: { index: false, follow: false } };
@@ -45,24 +44,7 @@ async function Account() {
     return <p className="text-sm text-muted">{rich(t.needLogin, { link: amber(`/login?volver=${localePath(locale, "/cuenta")}`) })}</p>;
   }
 
-  const supabase = await sessionClient();
-  const [{ data: mine }, { data: tokens }, subscriptions] = await Promise.all([
-    supabase
-      .from("build_orders")
-      .select("code, name, votes, feudal_click, updated_at, visibility")
-      .eq("owner_id", user.id)
-      .order("updated_at", { ascending: false }),
-    supabase.from("app_tokens").select("id, label, created_at, last_used_at").order("created_at", { ascending: false }),
-    mySubscriptions(),
-  ]);
-  const own = (mine ?? []) as {
-    code: string;
-    name: string;
-    votes: number;
-    feudal_click: number | null;
-    updated_at: string;
-    visibility: Visibility;
-  }[];
+  const [{ own, tokens }, subscriptions] = await Promise.all([myAccountLists(user.id), mySubscriptions()]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -113,7 +95,7 @@ async function Account() {
         <h2 className="text-lg font-semibold">{t.connectTitle}</h2>
         <p className="max-w-2xl text-sm text-muted">{t.connectText}</p>
         <ConnectAppButton />
-        <TokenManager tokens={(tokens ?? []) as TokenRow[]} />
+        <TokenManager tokens={tokens} />
       </section>
     </div>
   );

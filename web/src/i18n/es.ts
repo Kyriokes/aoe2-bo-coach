@@ -242,7 +242,7 @@ export const es = {
     text: "No se pudo cargar esta página. Puede ser un problema momentáneo de la base de datos: probá de nuevo en un rato.",
     code: "Código del error: {digest}",
     retry: "Probar de nuevo",
-    home: "Ir a la biblioteca",
+    home: "Ir a la portada",
   },
   privacy: {
     title: "Privacidad",

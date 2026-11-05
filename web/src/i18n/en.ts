@@ -240,7 +240,7 @@ export const en: Dictionary = {
     text: "This page couldn't be loaded. It may be a temporary database problem: try again in a while.",
     code: "Error code: {digest}",
     retry: "Try again",
-    home: "Go to the library",
+    home: "Go to the home page",
   },
   privacy: {
     title: "Privacy",
