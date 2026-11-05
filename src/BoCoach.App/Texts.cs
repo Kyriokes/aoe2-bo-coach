@@ -174,6 +174,14 @@ public static class Texts
     public static string FoodFloor(int floor) => L($"mínimo en comida para no parar el centro urbano: {floor}", $"minimum on food to keep the town center going: {floor}");
     public static string Abandoned(string reason) => L($"BO abandonada: {reason} (\"◀ Atrás\" la retoma)", $"BO abandoned: {reason} (\"◀ Back\" resumes it)");
     public static string StepLine(int number, int total, string text, string state) => L($"Paso {number}/{total}: {text} ({state})", $"Step {number}/{total}: {text} ({state})");
+    public static string StepStateName(Core.Engine.StepState state) => state switch
+    {
+        Core.Engine.StepState.Ready => L("se puede hacer", "ready"),
+        Core.Engine.StepState.InProgress => L("en curso", "in progress"),
+        Core.Engine.StepState.Done => L("hecho", "done"),
+        Core.Engine.StepState.Skipped => L("salteado", "skipped"),
+        _ => L("falta", "pending"),
+    };
     public static string BuildOrderDoneWith(string posture, bool derived) => L($"BO terminada. {posture}{(derived ? " (deducida de la BO)" : "")}", $"BO finished. {posture}{(derived ? " (deduced from the BO)" : "")}");
     public static string Clipped(string regions) => L($"Números cortados en: {regions}", $"Numbers cut off in: {regions}");
     public static string LiveError(string error) => $"Error: {error}";

@@ -99,7 +99,7 @@ public sealed partial class LiveReadingViewModel : ObservableObject
         Game = GameText(frame);
         Lanes = Core.Engine.CoachText.LaneLines(view, null).Select(l => $"{l.Label}: {l.Text}").ToList();
         Step = view.Abandoned is { } reason ? Texts.Abandoned(reason)
-            : view.Current is { } current ? Texts.StepLine(current.Index + 1, view.TotalSteps, StepText.Describe(current.Step), current.State.ToString())
+            : view.Current is { } current ? Texts.StepLine(current.Index + 1, view.TotalSteps, StepText.Describe(current.Step), Texts.StepStateName(current.State))
             : view.Posture is { } posture ? Texts.BuildOrderDoneWith(Core.Engine.CoachText.PostureTitle(posture), posture.Derived)
             : Texts.BuildOrderDone;
         Problems = hud is { Clipped.Count: > 0 }

@@ -656,7 +656,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             _coach.Start();
         IsRunning = true;
         _followedSelection = _selected()?.Id;
-        Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
+        Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(CivLabel(bo.Civ)) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
         return true;
     }
 
@@ -997,13 +997,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (frame.Me is not { } me)
         {
             return PlayerName.Trim().Length == 0
-                ? Texts.LoadingNoPlayerName(frame.Civ)
-                : Texts.LoadingPlayerNotFound(PlayerName.Trim(), string.Join(", ", loading.Players.Select(p => p.Name)), frame.Civ);
+                ? Texts.LoadingNoPlayerName(CivLabel(frame.Civ))
+                : Texts.LoadingPlayerNotFound(PlayerName.Trim(), string.Join(", ", loading.Players.Select(p => p.Name)), CivLabel(frame.Civ));
         }
-        var rivals = loading.Opponents(me).Select(p => p.Civ ?? "?").ToList();
-        var civ = me.Civ is null ? Texts.LoadingCivUnknown(me.CivText, frame.Civ) : Texts.LoadingPlayingWith(me.Civ);
+        var rivals = loading.Opponents(me).Select(p => p.Civ is { } rival ? CivName(rival) : "?").ToList();
+        var civ = me.Civ is null ? Texts.LoadingCivUnknown(me.CivText, CivLabel(frame.Civ)) : Texts.LoadingPlayingWith(CivName(me.Civ));
         return Texts.LoadingNote(civ, rivals.Count > 0 ? Texts.LoadingVs(string.Join(", ", rivals)) : "", loading.Map is { } map ? Texts.LoadingOnMap(map) : "");
     }
+
+    /// <summary>Una clave de civ para mostrar: su nombre, o "cualquier civ" si no es una civ ("any").</summary>
+    private string CivLabel(string civ) => _data.GameData.IsKnownCiv(civ) ? CivName(civ) : Texts.CivAny;
 
     /// <summary>Qué idioma lee, si no es el inglés, y si falta el OCR de ese idioma en este Windows.</summary>
     private string LanguageNote(OcrReader? ocr)

@@ -742,6 +742,30 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Contains(esperado, session.Overlay.MatchupLine);
     }
 
+    // AP-29: la barra de estado mostraba las claves de game_data ("jugás con japanese").
+    [Fact]
+    public void La_barra_de_estado_nombra_las_civs_como_el_juego()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames()) { ManualSteps = true, PlayerName = "Ana" };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Pantalla de carga: jugás con japoneses contra britanos en Arabia", session.Status);
+
+        using (Core.Lang.Use(Core.Lang.English))
+        {
+            var again = TwoPlayers("Ana", "japanese");
+            session.Apply(Frame(ViewAt(0)) with { Loading = again, Me = again.Players[0] });
+            Assert.StartsWith("Loading screen: you play Japanese vs Britons on Arabia", session.Status);
+        }
+
+        // Sin civ todavía: no dice "any".
+        var other = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = other, Me = null });
+        Assert.Contains("Sigue con cualquier civ", session.Status);
+    }
+
     // D10 (revisión de c): una pantalla de carga nueva donde no se encuentra tu nombre dejaba el cruce de la partida
     // anterior en el overlay (y en el informe, si la anterior no llegó al minuto).
     [Fact]

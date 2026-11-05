@@ -32,6 +32,7 @@ public partial class TextsTests
         parameter.ParameterType == typeof(int) || parameter.ParameterType == typeof(int?) ? 3
         : parameter.ParameterType == typeof(bool) ? true
         : parameter.ParameterType == typeof(DateTime) ? new DateTime(2026, 11, 3)
+        : parameter.ParameterType.IsEnum ? Enum.GetValues(parameter.ParameterType).GetValue(0)
         : "X";
 
     [Fact]
