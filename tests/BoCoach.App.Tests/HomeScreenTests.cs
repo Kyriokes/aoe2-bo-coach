@@ -366,6 +366,27 @@ public sealed class HomeScreenTests : IDisposable
         }
     }
 
+    // AP-28: el panel "En la partida" se avisaba solo cuando cambiaba el tablero, y con la partida anterior terminada el
+    // tablero es el mismo con el coach andando o no.
+    [Fact]
+    public void El_panel_de_la_partida_aparece_aunque_el_tablero_no_cambie()
+    {
+        var (home, coach, _, _, _) = Build();
+        using (coach)
+        {
+            coach.Finished(FinishedGame(1530));
+            var before = home.Screen;
+            var told = new List<string?>();
+            home.PropertyChanged += (_, e) => told.Add(e.PropertyName);
+
+            coach.Start(Scouts, new SilentFrames());
+
+            Assert.Equal(before, home.Screen);
+            Assert.True(home.ShowLive);
+            Assert.Contains(nameof(HomeViewModel.ShowLive), told);
+        }
+    }
+
     [Fact]
     public void Los_enlaces_hacen_lo_que_dicen()
     {

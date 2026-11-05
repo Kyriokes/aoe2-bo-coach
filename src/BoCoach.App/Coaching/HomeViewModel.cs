@@ -140,7 +140,13 @@ public sealed partial class HomeViewModel : ObservableObject
     private string Playing() =>
         Coach.Live.Lanes.Count > 0 ? string.Join("   ·   ", Coach.Live.Lanes.Take(2)) : Coach.Live.Step;
 
-    private void OnChanged(object? sender, PropertyChangedEventArgs e) => Refresh();
+    private void OnChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        Refresh();
+        // Sale de Screen, pero hay momentos en que el tablero es el mismo con el coach andando o no (partida terminada).
+        if (e.PropertyName == nameof(CoachSessionViewModel.IsRunning))
+            OnPropertyChanged(nameof(ShowLive));
+    }
 
     private void Refresh() => Screen = _preview ?? HomeScreen.Build(Inputs());
 
