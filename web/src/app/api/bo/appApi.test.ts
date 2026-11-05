@@ -64,6 +64,12 @@ describe("publicar desde la app", () => {
     expect((await response.json()).error).not.toMatch(/integer/);
   });
 
+  it("deja la versión nueva a la vista enseguida: el siguiente pedido no recibe la vieja", async () => {
+    await publish(JSON.stringify({ build_order: buildOrder }), "abc234");
+    expect(revalidateTag).toHaveBeenCalledWith("biblioteca", { expire: 0 });
+    expect(revalidateTag).toHaveBeenCalledWith("bo-abc234", { expire: 0 });
+  });
+
   it("sin el token no publica", async () => {
     const { publishFromApp } = await import("./appApi");
     const response = await publishFromApp(new Request("https://sitio.example/api/bo", { method: "POST", body: "{}" }), null);

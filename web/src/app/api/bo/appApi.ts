@@ -54,8 +54,9 @@ export async function publishFromApp(request: Request, code: string | null) {
   if (dbError) return error(dbErrorStatus(dbError), dbErrorMessage(dbError));
 
   const published = data as string;
-  revalidateTag(LIBRARY_TAG, "max");
-  revalidateTag(buildOrderTag(published), "max");
+  // Sin servir lo viejo ni una vez: la app puede bajar la BO enseguida y guardaría la versión anterior.
+  revalidateTag(LIBRARY_TAG, { expire: 0 });
+  revalidateTag(buildOrderTag(published), { expire: 0 });
   return Response.json({ code: published, url: `${new URL(request.url).origin}/bo/${published}` }, { status: code ? 200 : 201 });
 }
 
