@@ -192,6 +192,27 @@ describe("registros de partida", () => {
     expect((await reserve(db)).status).toBe("new");
   });
 
+  it("una reserva nueva espera su turno, y la que ya estaba no", async () => {
+    // Sin eso, pedidos simultáneos pasaban los topes. PGlite tiene una sola conexión: se mira que el candado quede tomado.
+    const locks = async () => (await db.query<{ n: number }>("select count(*)::int as n from pg_locks where locktype = 'advisory'")).rows[0].n;
+    await db.exec("begin");
+    try {
+      await reserve(db);
+      expect(await locks()).toBe(1);
+    } finally {
+      await db.exec("commit");
+    }
+    expect(await locks()).toBe(0);
+
+    await db.exec("begin");
+    try {
+      expect((await reserve(db)).status).toBe("new");
+      expect(await locks()).toBe(0);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
   it("con la clave pública no se lee nada de las tablas", async () => {
     await reserve(db);
     await expect(as(db, null, "select * from public.record_installs")).rejects.toThrow(/permission/);

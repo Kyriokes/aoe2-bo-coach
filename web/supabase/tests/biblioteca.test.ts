@@ -299,6 +299,30 @@ describe("biblioteca", () => {
       await expect(as(db, ana, direct, [{ ...scouts, schema_version: 1.5 }])).rejects.toThrow(/schema_version/);
     });
 
+    it("publicar, reemplazar y crear tokens esperan su turno por cuenta", async () => {
+      // Sin eso, pedidos simultáneos pasaban los topes. PGlite tiene una sola conexión y no puede probar la espera: se
+      // mira que el candado quede tomado hasta el final de la transacción.
+      const locks = async () => (await db.query<{ n: number }>("select count(*)::int as n from pg_locks where locktype = 'advisory'")).rows[0].n;
+      const { rows } = await as<{ code: string }>(db, ana, insertBo, ["Scouts", scouts]);
+      await settle(db);
+      expect(await locks()).toBe(0);
+
+      await db.exec("begin");
+      try {
+        await as(db, ana, insertBo, ["Otra", scouts]);
+        expect(await locks()).toBe(1); // el mismo candado para toda la cuenta
+        await as(db, ana, `update public.build_orders set body = body || '{"name": "Scouts 2"}' where code = $1`, [rows[0].code]);
+        expect(await locks()).toBe(1);
+        await as(db, ana, "select public.create_app_token()");
+        expect(await locks()).toBe(2);
+        await as(db, beto, insertBo, ["De Beto", scouts]);
+        expect(await locks()).toBe(3);
+      } finally {
+        await db.exec("rollback");
+      }
+      expect(await locks()).toBe(0);
+    });
+
     it("hasta 150 BO nuevas por cuenta en 24 horas", async () => {
       await db.query(
         `insert into public.build_orders (owner_id, name, schema_version, body)

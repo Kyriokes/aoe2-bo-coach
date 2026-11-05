@@ -72,6 +72,8 @@ language sql immutable as $$
 $$;
 
 -- Reserva el lugar de un registro. { path, status }: "new" = hay que subirlo, "exists" = ya estaba (reenviar no duplica).
+-- BD-13: sin un candado, pedidos simultáneos pasaban los topes (cada uno cuenta antes de que el otro inserte). Es uno
+-- solo porque hay topes en total; dura lo que tarda esta función y lo toma únicamente una reserva nueva.
 create or replace function public.app_record_reserve(p_install text, p_secret text, p_game text, p_size int, p_version text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -100,6 +102,7 @@ begin
     return jsonb_build_object('path', existing.path, 'status', 'new');
   end if;
 
+  perform pg_advisory_xact_lock(hashtextextended('registros', 0));
   if (select count(*) from public.game_records where install_id = p_install and reserved_at > now() - interval '1 day') >= public.record_limit('install_per_day') then
     raise exception 'Demasiadas partidas de esta instalación hoy.' using errcode = 'BC429';
   end if;
@@ -252,9 +255,11 @@ begin
   end if;
 end $$;
 
+-- BD-13: los topes de cada cuenta se cuentan de a uno por vez: sin el candado, pedidos simultáneos los pasaban.
 create or replace function public.limit_new_build_orders() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform pg_advisory_xact_lock(hashtextextended('build_orders:' || new.owner_id::text, 0));
   if (select count(*) from public.build_orders
        where owner_id = new.owner_id and created_at > now() - interval '24 hours') >= 150 then
     raise exception 'Publicaste muchas build orders en las últimas 24 horas: probá de nuevo mañana.' using errcode = '23514';
@@ -267,6 +272,7 @@ end $$;
 create or replace function public.limit_build_order_changes() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  perform pg_advisory_xact_lock(hashtextextended('build_orders:' || new.owner_id::text, 0));
   if old.updated_at > now() - interval '5 seconds' then
     raise exception 'Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo.' using errcode = 'BC430';
   end if;
@@ -302,3 +308,37 @@ create policy "Tu perfil y los de quien publica" on public.profiles for select
 drop policy if exists "Los votos de las BO que se ven" on public.votes;
 drop policy if exists "Tus votos" on public.votes;
 create policy "Tus votos" on public.votes for select to authenticated using (user_id = auth.uid());
+
+-- BD-13: dos votos a la vez dejaban el contador uno abajo: cada uno contaba sin ver el voto del otro, todavía sin
+-- confirmar. Con la fila tomada antes de contar, el segundo espera y cuenta con el primero ya confirmado. FOR NO KEY UPDATE
+-- y no FOR UPDATE: la clave foránea de cada voto ya tiene FOR KEY SHARE sobre la BO, y con FOR UPDATE dos votos a la vez
+-- se esperarían entre sí hasta que la base aborte uno.
+create or replace function public.count_votes() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+  target uuid := coalesce(new.build_order_id, old.build_order_id);
+begin
+  perform 1 from public.build_orders where id = target for no key update;
+  update public.build_orders
+     set votes = (select count(*) from public.votes where build_order_id = target)
+   where id = target;
+  return null;
+end $$;
+
+-- BD-13: el tope de tokens, también de a uno por vez.
+create or replace function public.create_app_token(p_label text default 'BO Coach') returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  token text := 'bocoach_' || replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+begin
+  if auth.uid() is null then
+    raise exception 'Hace falta iniciar sesión.' using errcode = '42501';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('app_tokens:' || auth.uid()::text, 0));
+  if (select count(*) from public.app_tokens where user_id = auth.uid()) >= 20 then
+    raise exception 'Ya tenés 20 tokens: borrá alguno que no uses antes de crear otro.' using errcode = '23514';
+  end if;
+  insert into public.app_tokens (user_id, token_hash, label)
+  values (auth.uid(), public.hash_token(token), coalesce(nullif(trim(p_label), ''), 'BO Coach'));
+  return token;
+end $$;
