@@ -171,13 +171,13 @@ export function BuildOrderEditor({
   const textDebounce = useRef(debouncer(TEXT_DEBOUNCE_MS));
   useEffect(() => {
     if (!coach || state.bo.assisted !== undefined || state.analyzedRevision >= state.revision) return;
-    const pending = textDebounce.current;
+    const timer = textDebounce.current;
     const revision = state.revision;
-    pending.schedule(() => {
+    timer.schedule(() => {
       stateRef.current = settle(stateRef.current, coach, locale, (error) => setFailure({ revision, message: fill(t.readFailed, { error }) }));
       setState(stateRef.current);
     });
-    return () => pending.cancel();
+    return () => timer.cancel();
   }, [coach, locale, state.analyzedRevision, state.bo.assisted, state.revision, t.readFailed]);
 
   /** Lo que manda la página: la BO que se edita o una nueva. */
