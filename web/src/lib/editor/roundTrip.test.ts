@@ -10,7 +10,7 @@ import { draftJson } from "./draft";
 import { paletteItems } from "./gameData";
 import { blockOf, fromAnalysis, initialState, insertBlock, isDirty, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
 import { openingForCiv, placeNew, STANDARD_START, withOpening } from "./opening";
-import { brokenBy } from "./guard";
+import { brokenBy, neverStartsReason } from "./guard";
 
 /**
  * El editor contra el Core de verdad (WebAssembly): la ida y vuelta de cada BO del repo por el modelo en unidades,
@@ -193,6 +193,20 @@ describe("un borrador vuelve como estaba", () => {
     expect(analysis.assisted?.regenerated).toBe(false);
     expect(planFromJson(restored.bo.assisted)).toEqual(plan);
     expect(restored.steps.length).toBeGreaterThan(5);
+  });
+});
+
+describe("por qué un paso nunca arranca", () => {
+  // El texto del aviso lo escribe el Core: si cambia, explain.ts deja de reconocerlo y el editor dice otra cosa.
+  it.each(["es", "en"] as const)("una población que no se alcanza se explica con el aviso del Core (%s)", (locale) => {
+    const steps: EditorStep[] = [
+      { id: "s1", do: "move", count: 3, assign: "sheep", after: [], withPrevious: false },
+      { id: "s2", do: "research", what: "feudal_age", count: 1, at_pop: 22, after: [], withPrevious: false },
+    ];
+    const result = coach.analyze(JSON.stringify(toJson({ bo: initialState().bo, steps })), locale);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(neverStartsReason(result, [steps[1]], data, locale)).toMatch(locale === "es" ? /^La población nunca llega a 22/ : /^Population never reaches 22/);
   });
 });
 

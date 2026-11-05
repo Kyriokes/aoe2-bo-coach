@@ -62,6 +62,13 @@ describe("por qué espera una caja", () => {
     expect(waitReason(analysis({}), [feudal], data)).toBeNull();
   });
 
+  it("el aviso se reconoce también en inglés (el Core avisa en el idioma de la página)", () => {
+    const message = "Population never reaches 22: the previous steps give 19 (villagers and units, with the scout).";
+    expect(waitReason(analysis({ issues: [{ severity: "warning", step_id: "f", message }] }), [feudal], data, "en")).toBe(message);
+    // Otro aviso del mismo paso no explica la espera.
+    expect(waitReason(analysis({ issues: [{ severity: "warning", step_id: "f", message: "The civ 'x' isn't in the game data." }] }), [feudal], data, "en")).toBeNull();
+  });
+
   it("el último bloqueo manda, y los de otros pasos no cuentan", () => {
     const a = analysis({
       blocks: [
