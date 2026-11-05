@@ -283,10 +283,10 @@ Lo genera el extractor con los textos del juego (594 eventos, también `events.e
 **Tasas observadas** en una ventana deslizante de 20 s:
 
 ```
-tasa_r = (Δstock_r + gasto_r) / Δt
+tasa_r = Σ max(0, Δstock_r) / Δt
 ```
 
-`gasto_r` sale de los eventos confirmados por los costos de `game_data`.
+Las bajas son gastos y no se cuentan: el juego cobra al encolar o al hacer clic, y el aviso del log llega al terminar, así que los eventos no dicen nada del stock de ese momento. Una suba imposible de recolectar es una devolución y tampoco cuenta. Con el mod, los aldeanos por recurso se leen del HUD y las tasas solo dan la eficiencia.
 
 **Aldeanos estimados por recurso:**
 
