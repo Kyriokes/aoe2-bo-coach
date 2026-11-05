@@ -1,4 +1,5 @@
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -91,6 +92,14 @@ def test_comando_bajar_con_la_fuente_caida_no_toca_la_cache(tmp_path, monkeypatc
     assert stats.main(["bajar", "--cache", str(tmp_path)]) == 1
     con = duckdb.connect()
     assert con.execute(f"SELECT count(*) FROM '{(tmp_path / 'partidas.parquet').as_posix()}'").fetchone()[0] == 3
+
+
+def test_comando_bajar_con_un_apostrofe_en_la_ruta(tmp_path, monkeypatch, capsys):
+    foto_aoe2guide(tmp_path / "foto")
+    monkeypatch.setattr(aoe2guide, "bajar", lambda destino, url: shutil.copytree(tmp_path / "foto", destino, dirs_exist_ok=True))
+
+    assert stats.main(["bajar", "--cache", str(tmp_path / "de O'Higgins")]) == 0
+    assert "1 partidas nuevas, 1 en total" in capsys.readouterr().out
 
 
 def test_dos_fotos_de_parches_distintos_no_se_mezclan(tmp_path):

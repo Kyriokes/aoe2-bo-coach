@@ -21,7 +21,7 @@ import duckdb
 import numpy as np
 
 import validacion
-from cache import TablaInvalida, sumar
+from cache import TablaInvalida, _ruta, sumar
 from franjas import LIMITES_ELO, LIMITES_JUEGO_MIN, MAPAS
 from fuentes import aoe2guide
 from fuentes.aoe2guide import CivDesconocida, FuenteCaida, FuenteInvalida
@@ -46,7 +46,7 @@ def _bajar(args: argparse.Namespace) -> int:
     aoe2guide.normalizar(descargas, normalizadas, aoe2guide.claves_de_civs(REPO))
     nuevas = sumar(cache, normalizadas)
     total = duckdb.connect().execute(
-        f"SELECT count(*) FROM '{(cache / 'partidas.parquet').as_posix()}'").fetchone()[0]
+        f"SELECT count(*) FROM '{_ruta(cache / 'partidas.parquet')}'").fetchone()[0]
     fuente = {"name": aoe2guide.NOMBRE, "url": aoe2guide.URL, "patch_label": aoe2guide.etiqueta_de_parche(descargas)}
     (cache / "fuente.json").write_text(json.dumps(fuente, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"{nuevas} partidas nuevas, {total} en total")

@@ -487,3 +487,7 @@ $RECYCLE.BIN/
 # Estadísticas de cruces (tools/stats): venv y caché de partidas bajadas
 tools/stats/.venv/
 tools/stats/.cache/
+
+# Copias de trabajo de las sesiones de Claude y sus notas locales
+.claude/worktrees/
+.superpowers/

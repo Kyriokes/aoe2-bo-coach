@@ -6,6 +6,8 @@ Se corre una vez por parche:
 
     python extract.py [--dat RUTA_AL_DAT] [--out RUTA_DE_SALIDA] [--eventos RUTA_DE_EVENTOS]
 
+Sin --dat lee el del juego: la carpeta de la variable de entorno AOE2DE_PATH o la biblioteca de Steam que lo tenga.
+
 Todo se mapea por ID del .dat, nunca por nombre interno (los nombres están
 desfasados: el tech 101 "Middle Age" es el paso a Feudal).
 """
@@ -22,7 +24,8 @@ from pathlib import Path
 
 from genieutils.datfile import DatFile
 
-DAT_POR_DEFECTO = Path(r"H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2_x2_p1.dat")
+from juego import ubicar_dat
+
 REPO = Path(__file__).resolve().parents[2]
 
 RECURSOS = {0: "food", 1: "wood", 2: "stone", 3: "gold"}
@@ -1036,10 +1039,11 @@ def nombre_de_archivo(version: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dat", type=Path, default=DAT_POR_DEFECTO, help="ruta a empires2_x2_p1.dat")
+    parser.add_argument("--dat", type=Path, help="ruta a empires2_x2_p1.dat (por defecto, el del juego)")
     parser.add_argument("--out", type=Path, help="archivo de salida (por defecto data/game_data/v<versión>.json)")
     parser.add_argument("--eventos", type=Path, default=REPO / "data" / "events.json", help="frases del log")
     args = parser.parse_args()
+    args.dat = ubicar_dat(parser, args.dat)
 
     # El .dat está en resources/_common/dat; los textos en inglés, en resources/en/strings/key-value.
     textos = cargar_textos(args.dat.parents[2] / "en" / "strings" / "key-value")

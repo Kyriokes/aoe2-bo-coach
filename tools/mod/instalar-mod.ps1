@@ -12,9 +12,30 @@
 #   - worldtimerpanel.json: el reloj más grande con un rectángulo negro liso detrás.
 # Si el mod ya existe, parte de sus propios paneles (así no cambian las posiciones ni la calibración aunque se
 # hayan apagado los mods de los que salió). Con -Regenerar vuelve a partir de los mods activos.
-param([string]$Juego = 'H:\Steam\steamapps\common\AoE2DE', [switch]$Regenerar)
+param([string]$Juego = '', [switch]$Regenerar)
 $ErrorActionPreference = 'Stop'
 $nombre = 'BoCoach HUD'
+
+# La carpeta del juego si no se pasa -Juego: la variable de entorno AOE2DE_PATH o la biblioteca de Steam que lo tenga
+# (SteamPath en el registro y libraryfolders.vdf, como la app en Overlay/GameIcons.cs).
+function Buscar-Juego {
+    if ($env:AOE2DE_PATH) { return $env:AOE2DE_PATH }
+    $steam = (Get-ItemProperty 'HKCU:\Software\Valve\Steam' -ErrorAction SilentlyContinue).SteamPath
+    if (-not $steam) { return $null }
+    $steam = $steam -replace '/', '\'
+    $bibliotecas = @($steam)
+    $vdf = Join-Path $steam 'steamapps\libraryfolders.vdf'
+    if (Test-Path -LiteralPath $vdf) {
+        $bibliotecas += [regex]::Matches([IO.File]::ReadAllText($vdf), '"path"\s+"([^"]+)"') | ForEach-Object { $_.Groups[1].Value -replace '\\\\', '\' }
+    }
+    foreach ($biblioteca in $bibliotecas) {
+        $carpeta = Join-Path $biblioteca 'steamapps\common\AoE2DE'
+        if (Test-Path -LiteralPath (Join-Path $carpeta 'widgetui\textures\ingame')) { return $carpeta }
+    }
+    return $null
+}
+if (-not $Juego) { $Juego = Buscar-Juego }
+if (-not $Juego) { throw 'No encontré el juego en las bibliotecas de Steam: pasá la carpeta con -Juego o ponela en la variable AOE2DE_PATH.' }
 
 function Panel-Activo([string]$mods, $activos, [string]$archivo) {
     foreach ($m in $activos) {

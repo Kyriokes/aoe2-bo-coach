@@ -140,4 +140,8 @@ Por defecto lee `H:\Steam\steamapps\common\AoE2DE\resources\_common\dat\empires2
 
 ## Licencia
 
-[MIT](LICENSE), salvo los íconos de `web/public/icons`, que son © Microsoft y se usan bajo sus Game Content Usage Rules.
+El código es [MIT](LICENSE). Lo que sigue no es parte de esa licencia:
+
+- **Lo que sale del juego:** los íconos de `web/public/icons` y `data/icons`, las letras de `data/fonts`, las frases de `data/events*.json`, los datos de `data/game_data` y las capturas de `tests/fixtures`. Age of Empires II © Microsoft Corporation. AoE2 BO Coach se hizo bajo las [Game Content Usage Rules](https://www.xbox.com/en-US/developers/rules) de Microsoft con contenido de Age of Empires II, y no está respaldado por Microsoft ni afiliado a Microsoft.
+- **Las guías de otros:** las de `tests/fixtures/buildorderguide` y `tests/fixtures/rts-overlay`, y las BO que salen de ellas en `build_orders`, son de sus autores (cada archivo dice de quién es).
+- **Lo que viene adentro de la versión portable:** .NET, WPF y los demás componentes, cada uno con su licencia, en [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

@@ -8,7 +8,9 @@ Los íconos son de Microsoft: se usan bajo las "Game Content Usage Rules" (proye
 no son parte de la licencia MIT del repo (ver web/public/icons/LEEME.md).
 
 Uso:
-    tools/extractor/.venv/Scripts/python.exe tools/extractor/icons.py [--dat ...] [--juego H:/Steam/.../AoE2DE]
+    tools/extractor/.venv/Scripts/python.exe tools/extractor/icons.py [--dat ...] [--juego RUTA_AL_JUEGO]
+
+Sin --juego usa la carpeta de la variable de entorno AOE2DE_PATH o la biblioteca de Steam que tenga el juego.
 """
 
 from __future__ import annotations
@@ -22,8 +24,9 @@ from pathlib import Path
 
 from genieutils.datfile import DatFile
 
+from juego import ubicar_dat, ubicar_juego
+
 REPO = Path(__file__).resolve().parents[2]
-JUEGO_POR_DEFECTO = Path(r"H:\Steam\steamapps\common\AoE2DE")
 LADO = 64
 
 # Íconos de las fuentes de los aldeanos (unidades y objetos del .dat): oveja, ciervo, arbusto de bayas, pez,
@@ -134,10 +137,12 @@ def buscar(carpeta: Path, icono: int) -> Path | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dat", type=Path, default=JUEGO_POR_DEFECTO / "resources" / "_common" / "dat" / "empires2_x2_p1.dat")
-    parser.add_argument("--juego", type=Path, default=JUEGO_POR_DEFECTO)
+    parser.add_argument("--dat", type=Path)
+    parser.add_argument("--juego", type=Path)
     parser.add_argument("--salida", type=Path, default=REPO / "web" / "public" / "icons")
     args = parser.parse_args()
+    args.juego = args.juego or ubicar_juego(parser)
+    args.dat = ubicar_dat(parser, args.dat, args.juego)
 
     datos = sorted((REPO / "data" / "game_data").glob("v*.json"), key=lambda p: [int(n) for n in p.stem[1:].split(".")])[-1]
     entidades = json.loads(datos.read_text(encoding="utf-8"))["entities"]

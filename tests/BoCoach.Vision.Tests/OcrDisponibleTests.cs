@@ -14,6 +14,17 @@ public class OcrDisponibleTests
         Assert.True(OcrEngine.MaxImageDimension > 0);
     }
 
+    // Los tests del log y de la pantalla de carga no prueban nada si la máquina no tiene el OCR en inglés (salen en verde
+    // sin leer). En una PC puede pasar; si le pasa al runner del CI, este test lo dice.
+    [Fact]
+    public void En_el_CI_esta_el_OCR_en_ingles()
+    {
+        if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != "true")
+            return;
+
+        Assert.NotNull(OcrReader.TryCreate());
+    }
+
     [Fact]
     public async Task Lee_numeros_claros_sobre_fondo_oscuro()
     {

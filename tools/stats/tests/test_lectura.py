@@ -66,6 +66,17 @@ def test_leer_equipos_descarta_tres_equipos(tmp_path):
     assert d.gana_1.tolist() == [0.0]
 
 
+def test_una_ruta_con_apostrofe_se_lee_igual(tmp_path):
+    escribir_tablas(tmp_path / "nuevas", [partida(1), partida(2, ladder="team")],
+                    [jugador(1, "franks", 1, True), jugador(1, "britons", 2, False),
+                     jugador(2, "franks", 1, True), jugador(2, "celts", 2, False)])
+    cache = tmp_path / "de O'Higgins" / "cache"
+    sumar(cache, tmp_path / "nuevas")
+
+    assert len(leer_1v1(cache).gana_a) == 1
+    assert len(leer_equipos(cache).gana_1) == 1
+
+
 def test_parche_nuevo_con_pocas_semanas_suma_el_anterior():
     inicio = np.array([0, 10, 15, 35]) * DIA + T0
     parche = np.array([1, 1, 2, 2])
