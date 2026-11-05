@@ -129,6 +129,65 @@ public class GameSignalsTests
             At(504, null, new PlayerScore(1, 732, true))));
     }
 
+    // Auditoría del 2026-11-05: un clic del rival cerca del propio lo marcaba como "yo" para siempre, aunque la pantalla
+    // de carga dijera el número: no se avisaban más sus clics ni disparaban sus ramas.
+    [Fact]
+    public void Con_el_jugador_conocido_el_clic_del_rival_cerca_del_propio_se_avisa()
+    {
+        var (signals, state) = New();
+        signals.PlayerSlot = 1;
+        signals.OwnAgeClick(502);
+        PlayerScore[] Rows(int me, int rival) => [new(1, me, true), new(2, rival, true)];
+
+        var found = Feed(signals, state,
+            At(498, null, Rows(778, 828)),
+            At(500, null, Rows(779, 831)),
+            At(502, null, Rows(730, 797)),
+            At(504, null, Rows(732, 799)));
+
+        Assert.Equal(["rival_feudal_click"], found.Select(s => s.Kind));
+        Assert.Equal(2, found[0].Slot);
+
+        // Y sigue siendo el rival: su clic siguiente también se avisa.
+        found = Feed(signals, state,
+            At(1000, null, Rows(1800, 2000)),
+            At(1002, null, Rows(1801, 2001)),
+            At(1004, null, Rows(1802, 1901)),
+            At(1006, null, Rows(1803, 1903)));
+        Assert.Equal(["rival_castle_click"], found.Select(s => s.Kind));
+    }
+
+    [Fact]
+    public void Si_el_numero_conocido_no_esta_en_el_panel_vale_la_coincidencia_con_el_clic_propio()
+    {
+        // Un color que el panel lee distinto del de la pantalla de carga no puede hacer pasar el clic propio por el del rival.
+        var (signals, state) = New();
+        signals.PlayerSlot = 5;
+        signals.OwnAgeClick(502);
+
+        Assert.Empty(Feed(signals, state,
+            At(498, null, new PlayerScore(1, 778, true)),
+            At(500, null, new PlayerScore(1, 779, true)),
+            At(502, null, new PlayerScore(1, 730, true)),
+            At(504, null, new PlayerScore(1, 732, true))));
+        Assert.Equal(5, signals.PlayerSlot);
+    }
+
+    [Fact]
+    public void Sin_saber_el_jugador_lo_que_cae_junto_al_clic_propio_no_se_avisa()
+    {
+        // Sin pantalla de carga no hay con qué separarlos: mejor callarse que avisar el clic propio como del rival.
+        var (signals, state) = New();
+        signals.OwnAgeClick(502);
+        PlayerScore[] Rows(int me, int rival) => [new(1, me, true), new(2, rival, true)];
+
+        Assert.Empty(Feed(signals, state,
+            At(498, null, Rows(778, 828)),
+            At(500, null, Rows(779, 831)),
+            At(502, null, Rows(730, 797)),
+            At(504, null, Rows(732, 799))));
+    }
+
     [Fact]
     public void Una_lectura_mala_del_icono_de_edad_no_hace_repetir_un_clic()
     {
