@@ -356,6 +356,7 @@ public static partial class RtsOverlayImporter
             HousesFor(_villagers + count);
             if (to == GatherSource.Farm)
             {
+                Require("farm");
                 // Cada uno hace su granja: los aldeanos nuevos a granjas y las granjas hechas por ellos, en un solo paso.
                 var group = $"granjas{++_groups}";
                 Add(new Step { Do = StepAction.Train, What = "villager", Count = _on[to] + count, Assign = to, Group = group });
@@ -388,6 +389,7 @@ public static partial class RtsOverlayImporter
                 return;
             if (to == GatherSource.Farm)
             {
+                Require("farm");
                 Add(new Step { Do = StepAction.Build, What = "farm", Count = count, From = from, Assign = GatherSource.Farm });
             }
             else
@@ -445,18 +447,41 @@ public static partial class RtsOverlayImporter
             if (what is "lumber_camp" or "mill" or "mining_camp")
                 _camps.Add(what);
             what = made;
-            // El que pide antes (la galería, el cuartel) si la guía no lo hizo: el juego no deja ponerlo sin él.
-            if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
-                Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
+            Require(what);
             if (what == "house")
                 _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + count * HousePop);
             if (what == "farm")
             {
-                Add(new Step { Do = StepAction.Build, What = "farm", Count = count, From = Builders(), Assign = GatherSource.Farm, Note = note });
+                Farms(count, note);
                 return;
             }
             var from = Builders();
             Add(new Step { Do = StepAction.Build, What = what, Count = count, From = from, Assign = from, Note = note });
+        }
+
+        /// <summary>El que pide antes (la galería, el cuartel, el molino de la granja) si la guía no lo hizo: el juego no deja ponerlo sin él.</summary>
+        private void Require(string what)
+        {
+            if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
+                Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
+        }
+
+        /// <summary>
+        /// Las granjas que una nota construye: cada una la hace un aldeano que se queda en ella, así que sale de donde estaba,
+        /// como en <see cref="Move"/>, y los totales que siguen lo cuentan. Uno que ya tiene su granja no hace otra, y lo que
+        /// no tiene quién lo haga esperaría para siempre: se hacen las que se puede y se avisa.
+        /// </summary>
+        private void Farms(int count, string? note)
+        {
+            var from = _on[GatherSource.Wood] > 0 ? GatherSource.Wood : _on.Where(o => o.Key != GatherSource.Farm).MaxBy(o => o.Value).Key;
+            var farms = Math.Min(count, _on[from]);
+            if (farms < count)
+                _warnings.Add($"La guía hace {count} granjas y hay {farms} aldeanos en {StepText.Source(from)} para hacerlas: quedaron {farms}.");
+            if (farms <= 0)
+                return;
+            Add(new Step { Do = StepAction.Build, What = "farm", Count = farms, From = from, Assign = GatherSource.Farm, Note = note });
+            _on[from] -= farms;
+            _on[GatherSource.Farm] += farms;
         }
 
         /// <summary>

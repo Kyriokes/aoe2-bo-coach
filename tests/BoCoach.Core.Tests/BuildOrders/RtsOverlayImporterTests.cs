@@ -242,6 +242,118 @@ public class RtsOverlayImporterTests
         Assert.Contains(expected, result.BuildOrder.Steps.Select(s => s.Note ?? "").First(n => n.Contains("50%")));
     }
 
+    // Una granja de una nota la hace un aldeano que se queda en ella: los pasos que siguen dicen el total en su recurso, y
+    // si no se cuenta que salió, la BO entrena aldeanos de más.
+    [Fact]
+    public void Una_granja_de_una_nota_saca_a_su_aldeano_de_donde_estaba()
+    {
+        const string json = """
+            { "name": "x", "build_order": [
+              { "villager_count": 9, "resources": { "food": 0, "wood": 9, "gold": 0, "stone": 0 },
+                "notes": [ "Create 6 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@" ] },
+              { "villager_count": 9, "resources": { "food": 2, "wood": 7, "gold": 0, "stone": 0 },
+                "notes": [ "@resource/Aoe2de_hammer.png@ 2 @mill/FarmDE.png@" ] },
+              { "villager_count": 12, "resources": { "food": 2, "wood": 10, "gold": 0, "stone": 0 },
+                "notes": [ "Create 3 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@" ] } ] }
+            """;
+
+        var result = Import(json);
+
+        Assert.Empty(result.Warnings);
+        var bo = result.BuildOrder;
+        var trained = bo.Steps.Select((s, i) => (s, n: LivePlan.Units(bo)[i])).Where(x => LivePlan.IsVillagerTarget(x.s)).Sum(x => x.n);
+        Assert.Equal(9, trained);
+        Assert.Equal(10, bo.Steps[^1].Count);
+        Assert.Equal(GatherSource.Wood, Assert.Single(bo.Steps, s => s.What == "farm").From);
+        Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
+    }
+
+    // Más granjas que aldeanos para hacerlas: la BO no se queda esperando para siempre y la guía se entera.
+    [Fact]
+    public void Una_nota_con_mas_granjas_que_constructores_hace_las_que_puede_y_avisa()
+    {
+        var result = Import(GuideWith(
+            "Create 3 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@",
+            OneOnWood,
+            "@resource/Aoe2de_hammer.png@ 3 @mill/FarmDE.png@"));
+
+        var farm = Assert.Single(result.BuildOrder.Steps, s => s.What == "farm");
+        Assert.Equal((1, GatherSource.Wood), (farm.Count, farm.From!.Value));
+        Assert.Contains(result.Warnings, w => w.Contains("3 granjas"));
+        Assert.True(new Planner(TestData.GameData).Simulate(result.BuildOrder).Completed);
+    }
+
+    // Uno que ya tiene su granja no hace otra: el paso se quedaría esperando para siempre.
+    [Fact]
+    public void Si_todos_estan_en_granjas_una_nota_con_mas_granjas_no_agrega_un_paso_que_se_trabe()
+    {
+        var result = Import(GuideWith(
+            "Create 3 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@",
+            "@resource/Aoe2de_hammer.png@ 2 @mill/FarmDE.png@"));
+
+        Assert.Contains(result.Warnings, w => w.Contains("2 granjas"));
+        Assert.Equal(3, Assert.Single(result.BuildOrder.Steps, s => s.What == "farm").Count);
+    }
+
+    // La granja pide molino: sin él no arranca nunca, y todo lo que no es aldeanos espera detrás.
+    [Theory]
+    [InlineData("Create 3 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@")]
+    [InlineData("Move 2 @resource/MaleVillDE.jpg@ from @animal/Sheep_aoe2DE.png@ to @mill/FarmDE.png@")]
+    public void Ir_a_las_granjas_agrega_el_molino_que_piden(string note)
+    {
+        var bo = Import(GuideWith("Create 3 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@", "Create 4 @resource/MaleVillDE.jpg@ on @resource/Aoe2de_wood.png@", note, "Research loom")).BuildOrder;
+
+        var steps = bo.Steps.ToList();
+        Assert.InRange(steps.FindIndex(s => s.What == "mill"), 0, steps.FindIndex(s => s.What == "farm") - 1);
+        Assert.Single(bo.Steps, s => s.What == "mill");
+        Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData).Validate(bo).Warnings, w => w.Message.Contains("terminado"));
+        var plan = new Planner(TestData.GameData).Simulate(bo);
+        Assert.True(plan.Completed);
+        Assert.NotNull(plan.For(bo.Steps.First(s => s.What == "loom").Id)?.End);
+    }
+
+    [Theory]
+    [InlineData("Create 1 @resource/MaleVillDE.jpg@ on @resource/BerryBushDE.png@")]
+    [InlineData("@resource/Aoe2de_hammer.png@ 1 mill")]
+    public void Si_ya_esta_el_molino_ir_a_las_granjas_no_agrega_otro(string mill)
+    {
+        var bo = Import(GuideWith("Create 3 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@", mill, "Create 2 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@")).BuildOrder;
+
+        Assert.Single(bo.Steps, s => s.What == "mill");
+    }
+
+    [Fact]
+    public void Una_civ_que_hace_granjas_sin_molino_no_lo_agrega()
+    {
+        const string json = """
+            { "name": "x", "civilization": "Khmer", "build_order": [ { "notes": [
+                "Create 3 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@", "Create 2 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@" ] } ] }
+            """;
+
+        var bo = Import(json).BuildOrder;
+
+        Assert.Equal("khmer", bo.Civ);
+        Assert.DoesNotContain(bo.Steps, s => s.What == "mill");
+        Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
+    }
+
+    // Las civs que hacen el asentamiento: vale por el molino.
+    [Fact]
+    public void Una_civ_con_asentamiento_lo_hace_en_lugar_del_molino()
+    {
+        const string json = """
+            { "name": "x", "civilization": "Incas", "build_order": [ { "notes": [
+                "Create 3 @resource/MaleVillDE.jpg@ on @animal/Sheep_aoe2DE.png@", "Create 2 @resource/MaleVillDE.jpg@ on @mill/FarmDE.png@" ] } ] }
+            """;
+
+        var bo = Import(json).BuildOrder;
+
+        Assert.Equal("incas", bo.Civ);
+        Assert.DoesNotContain(bo.Steps, s => s.What == "mill");
+        var steps = bo.Steps.ToList();
+        Assert.InRange(steps.FindIndex(s => s.What == "settlement"), 0, steps.FindIndex(s => s.What == "farm") - 1);
+    }
+
     [Fact]
     public void Lo_que_no_entiende_queda_como_nota_y_avisa()
     {
