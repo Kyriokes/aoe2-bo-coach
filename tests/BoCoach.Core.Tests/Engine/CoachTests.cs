@@ -678,6 +678,31 @@ public class CoachTests
     }
 
     [Fact]
+    public void Un_clic_de_edad_no_vence_si_ya_se_llego_a_esa_edad()
+    {
+        // El log no leyó "Feudal Age Research Complete", pero ya hay una galería: volver a pedir el clic sería mentira.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", Assign = GatherSource.Wood },
+                new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(460, 200, 20, "archery_range_built"));
+
+        var feudal = TestData.GameData.Get("feudal_age").Time;
+        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+    }
+
+    [Fact]
     public void Un_clic_que_vencio_no_queda_en_el_informe()
     {
         var bo = new BuildOrder

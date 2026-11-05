@@ -473,17 +473,19 @@ public sealed class Coach
     /// <summary>
     /// Un clic visto en el stock que ni el log ni la cola confirman vence, igual que en <see cref="TechReminders"/>: dos
     /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
-    /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue.
+    /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue. El clic de
+    /// una edad a la que ya se llegó (el log no leyó el aviso, pero hay algo de esa edad) tampoco vence: no se puede volver a pedir.
     /// </summary>
     private bool ExpireClicks(GameSnapshot snapshot)
     {
         var civ = _data.Civ(Tracker.BuildOrder.Civ);
-        var age = LivePlan.Start(Tracker).Age;
+        var age = Tracker.Age;
         var expired = false;
         foreach (var step in Tracker.InProgress.ToList())
         {
             if (step.Step.What is not { } tech || !_data.TryGet(tech, out var entity) || step.StartedAt is not { } clicked
-                || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true)
+                || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true
+                || BuildOrderValidator.AgeOf(tech) <= age)
                 continue;
             if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
             {

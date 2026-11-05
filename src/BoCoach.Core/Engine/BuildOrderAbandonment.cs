@@ -53,6 +53,7 @@ public sealed class BuildOrderAbandonment
     private double _progressAt;
     private double _leastMissing = double.PositiveInfinity;
     private int _returned;
+    private HashSet<int> _started = [];
 
     /// <param name="data">Para saber qué cuenta como casa (el asentamiento de los incas); sin datos, solo la casa.</param>
     public BuildOrderAbandonment(BuildOrder bo, GameData? data = null)
@@ -89,10 +90,12 @@ public sealed class BuildOrderAbandonment
         if (!Abandoned)
             _returned = returned;
         // Solo cuenta lo nunca visto: lo hecho de un paso de aldeanos sale del HUD y baja y sube cuando un leñador va a
-        // hacer una casa y vuelve.
+        // hacer una casa y vuelve. Un paso que empieza también es avanzar, aunque antes se haya deshecho otro clic.
         var progress = Progress(steps);
-        if (_progress is null || progress > _progress)
-            (_progress, _progressAt, _leastMissing) = (progress, state.Time, double.PositiveInfinity);
+        var started = steps.Where(s => s.State == StepState.InProgress).Select(s => s.Index).ToHashSet();
+        if (_progress is null || progress > _progress || !started.IsSubsetOf(_started))
+            (_progress, _progressAt, _leastMissing) = (Math.Max(progress, _progress ?? 0), state.Time, double.PositiveInfinity);
+        _started = started;
         if (missing > 0 && missing < _leastMissing - SavingStep)
             (_leastMissing, _progressAt) = (missing, state.Time);
         if (Abandoned)
@@ -142,7 +145,6 @@ public sealed class BuildOrderAbandonment
     /// <summary>Un número que crece con cada avance de un paso: lo hecho de cada uno y su estado.</summary>
     private static int Progress(IReadOnlyList<StepProgress> steps) => steps.Sum(s => s.Completed * 4 + s.State switch
     {
-        StepState.InProgress => 1,
         StepState.Done => 2,
         StepState.Skipped => 3,
         _ => 0,

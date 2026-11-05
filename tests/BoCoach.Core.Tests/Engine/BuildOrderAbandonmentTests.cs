@@ -280,6 +280,33 @@ public class BuildOrderAbandonmentTests
     }
 
     [Fact]
+    public void Un_clic_que_empieza_es_avanzar_aunque_antes_haya_vencido_otro()
+    {
+        // Un clic falso que vence baja la cuenta; el de verdad, que llega después, no la supera pero es un paso que empieza.
+        var state = new PlayerState();
+        state.Apply(At(600));
+        var detector = new BuildOrderAbandonment(Archers);
+        detector.Update(state, Steps);
+        var clicked = WithStep("s15", s => s with { State = StepState.InProgress });
+
+        state.Apply(At(650));
+        detector.Update(state, clicked);
+        state.Apply(At(700));
+        detector.Update(state, Steps);
+        state.Apply(At(790));
+        detector.Update(state, clicked);
+        state.Apply(At(900));
+        detector.Update(state, clicked);
+
+        Assert.False(detector.Abandoned);
+
+        // Sigue en curso: no vuelve a contar.
+        state.Apply(At(970));
+        detector.Update(state, clicked);
+        Assert.True(detector.Abandoned);
+    }
+
+    [Fact]
     public void Atras_vuelve_a_contar_los_tres_minutos()
     {
         // "Atrás" deshace un paso: rehacerlo no supera lo que ya se había hecho, pero el jugador sigue en la BO.
