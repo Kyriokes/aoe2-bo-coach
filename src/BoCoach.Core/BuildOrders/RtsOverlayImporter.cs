@@ -138,7 +138,7 @@ public static partial class RtsOverlayImporter
         /// <summary>Una nota del autor para el paso siguiente; con <paramref name="warning"/>, también un aviso.</summary>
         internal void Remark(string note, string? warning = null)
         {
-            _pendingNote = _pendingNote is null ? note : $"{_pendingNote}. {note}";
+            _pendingNote = Joined(_pendingNote, note);
             if (warning is not null)
                 _warnings.Add(warning);
         }
@@ -257,7 +257,7 @@ public static partial class RtsOverlayImporter
             // nota anterior y leídas como acciones duplicaban edificios.
             if (note.TrimStart().StartsWith('('))
             {
-                _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
+                _pendingNote = Joined(_pendingNote, Clean(note));
                 return;
             }
 
@@ -340,7 +340,7 @@ public static partial class RtsOverlayImporter
             if ((words.Contains("before") || words.Contains("in")) && tokens.Count(t => t.Text.Length > 0) <= 2)
                 return;
 
-            _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
+            _pendingNote = Joined(_pendingNote, Clean(note));
             if (!LooksLikeAdvice(words) && !note.Contains('→')) // "FC → Boom": un título, no una acción
                 _warnings.Add($"Paso {guideStep} de la guía: no entendí \"{Clean(note)}\" (quedó como nota).");
         }
@@ -449,7 +449,7 @@ public static partial class RtsOverlayImporter
             if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
                 Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
             if (what == "house")
-                _cap += count * HousePop;
+                _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + count * HousePop);
             if (what == "farm")
             {
                 Add(new Step { Do = StepAction.Build, What = "farm", Count = count, From = Builders(), Assign = GatherSource.Farm, Note = note });
@@ -503,8 +503,16 @@ public static partial class RtsOverlayImporter
             return step;
         }
 
-        private static void AppendNote(Step step, string note) =>
-            step.Note = string.IsNullOrEmpty(step.Note) ? note : $"{step.Note}. {note}";
+        private static void AppendNote(Step step, string note) => step.Note = Joined(step.Note, note);
+
+        /// <summary>
+        /// Las notas juntas, hasta un largo que ninguna guía de verdad alcanza (la más larga del repo tiene 316 caracteres):
+        /// sumarlas de a una sin tope tarda el cuadrado del total.
+        /// </summary>
+        private static string Joined(string? note, string more) =>
+            string.IsNullOrEmpty(note) ? more : note.Length >= MaxJoinedNote ? note : $"{note}. {more}";
+
+        private const int MaxJoinedNote = 2000;
 
         /// <summary>Si los aldeanos convertidos no coinciden con los de la guía en ese paso, se avisa.</summary>
         private void Check(int guideStep, int? villagerCount, JsonObject? resources)
@@ -563,12 +571,18 @@ public static partial class RtsOverlayImporter
             if (m.Groups["icon"].Success)
                 tokens.Add(new Token(m.Value, Icon: IconName(m.Groups["icon"].Value)));
             else if (int.TryParse(m.Groups["number"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && m.Groups["number"].Success)
-                tokens.Add(new Token(m.Value, Number: n));
+                tokens.Add(new Token(m.Value, Number: Quantity(n)));
             else
                 tokens.Add(new Token(m.Value));
         }
         return tokens;
     }
+
+    /// <summary>
+    /// Una cantidad leída de una guía, con el tope del validador: nada se hace de a más. Sin tope, las cuentas se dan vuelta
+    /// ("500000000 house" dejaba el tope de población negativo y el aldeano siguiente agregaba casas hasta agotar la memoria).
+    /// </summary>
+    private static int Quantity(int value) => Math.Clamp(value, 0, BuildOrderValidator.MaxCount);
 
     [GeneratedRegex(@"@(?<icon>[^@]+)@|\d+%|(?<number>\d+)|-->|[\p{L}_]+")]
     private static partial Regex TokenPattern();
@@ -588,9 +602,12 @@ public static partial class RtsOverlayImporter
     {
         var name = Path.GetFileNameWithoutExtension(path.Replace('\\', '/').Split('/')[^1]);
         name = AoePrefix().Replace(name, "");
-        name = IconSuffix().Replace(name, "");
-        return name;
+        // Con un nombre largo no vale la pena: la expresión tarda el cuadrado del largo si no termina en lo que busca.
+        return name.Length <= MaxIconName ? IconSuffix().Replace(name, "") : name;
     }
+
+    /// <summary>Más largo que cualquier archivo de ícono de las guías.</summary>
+    private const int MaxIconName = 100;
 
     [GeneratedRegex(@"^aoe2de_", RegexOptions.IgnoreCase)]
     private static partial Regex AoePrefix();
@@ -674,18 +691,20 @@ public static partial class RtsOverlayImporter
     [GeneratedRegex(@"\bLure\b", RegexOptions.IgnoreCase)]
     private static partial Regex LureWord();
 
-    // "jabalí 50% --> atraé jabalí" y "50% Feudal --> cuartel".
-    [GeneratedRegex(@"^(?<what>[^%]+?)\s+(?<pct>\d+%)\s*-->\s*(?<then>.+)$")]
+    // "jabalí 50% --> atraé jabalí" y "50% Feudal --> cuartel". Lo de adelante termina en algo que no es un espacio y lo de
+    // atrás llega hasta el final (también los saltos de línea): si no, una nota con muchos espacios, o con muchas flechas y
+    // un salto de línea, tarda el cuadrado de su largo.
+    [GeneratedRegex(@"^(?<what>[^%]*?\S)\s+(?<pct>\d+%)\s*-->\s*(?<then>.+)$", RegexOptions.Singleline)]
     private static partial Regex HalfWay();
 
-    [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.+?)\s*-->\s*(?<then>.+)$")]
+    [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.*?\S)\s*-->\s*(?<then>.+)$", RegexOptions.Singleline)]
     private static partial Regex HalfWayFirst();
 
     internal static int? Number(JsonNode? node)
     {
         try
         {
-            return node?.GetValue<int>();
+            return node?.GetValue<int>() is { } value ? Quantity(value) : null;
         }
         catch (Exception e) when (e is FormatException or InvalidOperationException)
         {

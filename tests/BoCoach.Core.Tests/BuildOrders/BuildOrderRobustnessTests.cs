@@ -77,7 +77,7 @@ public class BuildOrderRobustnessTests
 
     private static readonly string[] WeirdValues =
     [
-        "null", "true", "0", "-1", "1.5", "1e400", "2147483648", "\"\"", "\"x\"", "\"\\ud800\"", "[]", "[null]", "[[]]", "[5]", "{}", """{"a":null}""",
+        "null", "true", "0", "-1", "1.5", "1e400", "2147483647", "2147483648", "-2147483648", "\"\"", "\"x\"", "\"\\ud800\"", "[]", "[null]", "[[]]", "[5]", "{}", """{"a":null}""",
     ];
 
     /// <summary>Cada lugar del JSON donde hay un valor, en orden: cómo cambiarlo.</summary>
