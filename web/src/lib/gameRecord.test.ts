@@ -1,6 +1,16 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { isAppVersion, isGameId, MAX_RECORD_BYTES, recordIdentity, recordProblem } from "./gameRecord";
+import { inBatches, isAppVersion, isGameId, MAX_RECORD_BYTES, recordIdentity, recordProblem } from "./gameRecord";
+
+describe("borrar de a tandas", () => {
+  it("Storage no acepta más de 1000 por pedido: nada se pierde ni se repite", () => {
+    const paths = Array.from({ length: 2500 }, (_, i) => `p${i}`);
+    const batches = inBatches(paths, 1000);
+    expect(batches.map((b) => b.length)).toEqual([1000, 1000, 500]);
+    expect(batches.flat()).toEqual(paths);
+    expect(inBatches([], 1000)).toEqual([]);
+  });
+});
 
 const game = "c".repeat(32);
 const zipped = (text: string) => gzipSync(Buffer.from(text));

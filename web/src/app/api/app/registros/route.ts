@@ -1,5 +1,5 @@
 import { dbErrorMessage, dbErrorStatus } from "@/lib/dbErrors";
-import { isAppVersion, isGameId, MAX_RECORD_BYTES, recordIdentity, recordProblem } from "@/lib/gameRecord";
+import { inBatches, isAppVersion, isGameId, MAX_RECORD_BYTES, recordIdentity, recordProblem, STORAGE_REMOVE_MAX } from "@/lib/gameRecord";
 import { publicClient } from "@/lib/supabase/server";
 import { error } from "../../bo/appApi";
 
@@ -8,7 +8,8 @@ const BUCKET = "registros";
 /**
  * POST /api/app/registros: el registro de una partida, en gzip, con la identidad de la instalación en las cabeceras
  * (X-BoCoach-Install, -Secret, -Game y -Version; sin cuenta). 201 { duplicate: false }, o 200 { duplicate: true } si ya
- * estaba: reenviar no duplica. La app reintenta más tarde ante un 429 o un 5xx, y descarta el registro ante un 400, 401 o 413.
+ * estaba: reenviar no duplica. La app reintenta más tarde ante un 429 o un 5xx; descarta el registro ante un 400, 413 o 422,
+ * y ante un 401 o 403 corta la tanda y lo descarta recién a las 5 negativas (el código puede venir de un proxy, no de acá).
  */
 export async function POST(request: Request) {
   const identity = recordIdentity(request.headers);
@@ -57,8 +58,8 @@ export async function DELETE(request: Request) {
   const forgotten = await db.rpc("app_record_forget", { p_install: identity.install, p_secret: identity.secret });
   if (forgotten.error) return error(dbErrorStatus(forgotten.error), dbErrorMessage(forgotten.error));
   const paths = (forgotten.data ?? []) as string[];
-  if (paths.length > 0) {
-    const removed = await db.storage.from(BUCKET).remove(paths);
+  for (const batch of inBatches(paths, STORAGE_REMOVE_MAX)) {
+    const removed = await db.storage.from(BUCKET).remove(batch);
     if (removed.error) return error(502, "No se pudieron borrar los registros. Probá de nuevo en un rato.");
   }
   return Response.json({ forgotten: paths.length });

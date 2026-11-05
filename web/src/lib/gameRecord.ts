@@ -24,6 +24,15 @@ export function recordIdentity(headers: Headers): RecordIdentity | null {
   return INSTALL.test(install) && SECRET.test(secret) ? { install, secret } : null;
 }
 
+/** Lo que Storage acepta borrar en un pedido. Una instalación suma hasta 30 registros por día. */
+export const STORAGE_REMOVE_MAX = 1000;
+
+export function inBatches<T>(items: readonly T[], size: number): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += size) batches.push(items.slice(i, i + size));
+  return batches;
+}
+
 export function isGameId(value: string | null): value is string {
   return value !== null && INSTALL.test(value);
 }
