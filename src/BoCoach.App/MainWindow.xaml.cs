@@ -33,8 +33,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     private bool _calibrating;
     private readonly CoachData _data;
 
-    // Una BO de la web pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
-    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+    private static readonly HttpClient SharedHttp = WebAccount.NewHttpClient();
 
     /// <param name="settingsPath">Dónde están los ajustes; las capturas de prueba usan unos temporales para no tocar los del usuario.</param>
     /// <param name="userDir">Dónde están la cuenta de la web (web.json) y la caché de BO; por defecto %APPDATA%\BoCoach.</param>

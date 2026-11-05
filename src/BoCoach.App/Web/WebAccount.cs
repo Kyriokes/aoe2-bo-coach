@@ -38,6 +38,17 @@ public sealed class WebAccount(HttpClient http, string? path = null)
 {
     public static string DefaultPath => Path.Combine(CoachData.UserDir, "web.json");
 
+    /// <summary>
+    /// El cliente para hablar con la web. No sigue redirecciones: al ir a otro host HttpClient borra Authorization, pero no
+    /// las cabeceras propias, y X-BoCoach-Secret (la identidad de esta instalación) llegaría a ese host. Una BO de la web
+    /// pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
+    /// </summary>
+    public static HttpClient NewHttpClient(TimeSpan? timeout = null) => new(new HttpClientHandler { AllowAutoRedirect = false })
+    {
+        Timeout = timeout ?? TimeSpan.FromSeconds(20),
+        MaxResponseContentBufferSize = 8 * 1024 * 1024,
+    };
+
     private static readonly byte[] Entropy = "BoCoach.WebToken"u8.ToArray();
 
     public string FilePath { get; } = path ?? DefaultPath;

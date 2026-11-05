@@ -164,7 +164,7 @@ public partial class App : Application
         try
         {
             var data = CoachData.Load();
-            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+            using var http = WebAccount.NewHttpClient(TimeSpan.FromSeconds(30));
             // Task.Run: sin el contexto de WPF, esperar acá el resultado no traba las respuestas de la web.
             return Task.Run(() => BulkPublish.RunAsync(data, new WebAccount(http), source, dryRun, output)).GetAwaiter().GetResult();
         }

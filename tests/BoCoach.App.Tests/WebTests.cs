@@ -1,8 +1,10 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
 using BoCoach.App.Web;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Web;
 using Microsoft.Win32;
 
 namespace BoCoach.App.Tests;
@@ -182,6 +184,44 @@ public sealed class WebTests : IDisposable
         Assert.Equal(2, result);
         Assert.Empty(web.Requests);
         Assert.Contains("Cuenta de la web", output.ToString());
+    }
+
+    // AP-31: HttpClient borra Authorization al redirigir a otro host, pero no X-BoCoach-Secret. El cliente de la web no sigue
+    // redirecciones, y una redirección es un error que se entiende, no una excepción sin manejar.
+    [Fact]
+    public async Task El_cliente_de_la_web_no_sigue_redirecciones_y_lo_dice()
+    {
+        var other = new TcpListener(IPAddress.Loopback, 0);
+        var web = new TcpListener(IPAddress.Loopback, 0);
+        other.Start();
+        web.Start();
+        try
+        {
+            var otherPort = ((IPEndPoint)other.LocalEndpoint).Port;
+            var server = Task.Run(async () =>
+            {
+                using var connection = await web.AcceptTcpClientAsync();
+                var stream = connection.GetStream();
+                Assert.True(await stream.ReadAsync(new byte[8192]) > 0);
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(
+                    $"HTTP/1.1 308 Permanent Redirect\r\nLocation: http://127.0.0.1:{otherPort}/robar\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"));
+            });
+            using var http = WebAccount.NewHttpClient();
+            var client = new WebLibraryClient(http, new Uri($"http://127.0.0.1:{((IPEndPoint)web.LocalEndpoint).Port}/"));
+
+            var error = await Assert.ThrowsAsync<WebLibraryException>(() =>
+                client.ForgetRecordsAsync(new Core.Record.InstallIdentity(new string('a', 32), new string('b', 64))));
+
+            await server;
+            Assert.Equal(HttpStatusCode.PermanentRedirect, error.Status);
+            Assert.Contains("redirección", error.Message);
+            Assert.False(other.Pending());
+        }
+        finally
+        {
+            other.Stop();
+            web.Stop();
+        }
     }
 
     [Fact]
