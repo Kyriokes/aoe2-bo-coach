@@ -108,7 +108,6 @@ describe("carácter nulo", () => {
   it("una barra y una u escritas de verdad no son un carácter nulo", () => {
     expect(errorOf(bo({ note: "C:\\u0000" }))).toBeNull();
     expect(errorOf(JSON.stringify(bo({ note: "C:\\u0000" })))).toBeNull();
-    });
   });
 });
 
