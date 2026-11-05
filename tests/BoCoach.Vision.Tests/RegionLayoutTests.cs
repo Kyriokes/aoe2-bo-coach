@@ -63,6 +63,51 @@ public sealed class RegionLayoutTests : IDisposable
         Assert.Contains("\"event_log\"", File.ReadAllText(_path));
     }
 
+    // regions.json se reescribe seguido (cada calibración sola). File.WriteAllText trunca primero: un corte de luz en el
+    // medio dejaba el archivo vacío y la app no abría.
+    [Fact]
+    public void Guardar_no_toca_el_archivo_anterior_hasta_tener_el_nuevo_entero()
+    {
+        RegionLayout.Default.Save(_path);
+        var before = File.ReadAllText(_path);
+
+        using (var open = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        {
+            // Si este Windows no deja reemplazar un archivo abierto, tira: igual el anterior tiene que quedar entero.
+            Record.Exception(() => RegionLayout.Default.WithHudScale(1.5).Save(_path));
+            using var reader = new StreamReader(open);
+            Assert.Equal(before, reader.ReadToEnd());
+        }
+        Assert.Empty(Leftovers());
+    }
+
+    [Fact]
+    public void Si_no_se_puede_reemplazar_queda_el_anterior_y_no_quedan_temporales()
+    {
+        RegionLayout.Default.Save(_path);
+        var before = File.ReadAllText(_path);
+
+        using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.NotNull(Record.Exception(() => RegionLayout.Default.WithHudScale(1.5).Save(_path)));
+
+        Assert.Equal(before, File.ReadAllText(_path));
+        Assert.Empty(Leftovers());
+    }
+
+    [Fact]
+    public void Guardar_encima_reemplaza_el_archivo_y_no_deja_temporales()
+    {
+        RegionLayout.Default.Save(_path);
+
+        RegionLayout.Default.WithHudScale(1.5).Save(_path);
+
+        Assert.Equal(1.5, RegionLayout.LoadOrDefault(_path).HudScale);
+        Assert.Empty(Leftovers());
+    }
+
+    private IEnumerable<string> Leftovers() =>
+        Directory.GetFiles(Path.GetDirectoryName(_path)!, Path.GetFileName(_path) + "*").Where(p => p != _path);
+
     [Fact]
     public void Si_no_hay_archivo_usa_el_default_y_completa_regiones_faltantes()
     {

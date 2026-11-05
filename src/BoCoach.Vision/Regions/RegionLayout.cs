@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
@@ -209,7 +210,40 @@ public sealed class RegionLayout
             Regions.ToDictionary(r => r.Key, r => new[] { Round(r.Value.X), Round(r.Value.Y), Round(r.Value.Width), Round(r.Value.Height) }),
             Math.Round(HudScale, 4),
             Hud is null ? null : JsonSerializer.Deserialize<JsonElement>(Hud.ToJson()));
-        File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOptions) + "\n");
+        // Se escribe al lado y se reemplaza de una: un corte a mitad de camino deja el archivo de antes, no uno vacío
+        // (File.WriteAllText trunca primero).
+        var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write))
+            {
+                file.Write(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(dto, JsonOptions) + "\n"));
+                file.Flush(flushToDisk: true);
+            }
+            Replace(temporary, path);
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
+    }
+
+    /// <summary>Un antivirus puede tener abierto el archivo recién escrito un instante: se reintenta antes de dar el error.</summary>
+    private static void Replace(string temporary, string path)
+    {
+        const int attempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temporary, path, overwrite: true);
+                return;
+            }
+            catch (Exception e) when (attempt < attempts && e is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(50);
+            }
+        }
     }
 
     private static double Round(double v) => Math.Round(v, 5);
