@@ -341,6 +341,21 @@ public class EventLogTests(ITestOutputHelper output)
         Assert.Equal(2, reader.OcrCalls);
     }
 
+    // Reconocer es lo caro (casi 1200 frases por renglón) y el texto del log se queda quieto varios segundos.
+    [Fact]
+    public void Si_los_renglones_no_cambiaron_no_los_vuelve_a_reconocer()
+    {
+        var reader = new EventLogReader(null, Catalog);
+
+        Assert.Empty(reader.Process(["--Villager Created--"]));
+        Assert.Equal(["villager_created"], reader.Process(["--Villager Created--"]));
+        Assert.Equal(1, reader.Recognitions);
+
+        Assert.Empty(reader.Process(["--Villager Created--", "--House Built--"]));
+        Assert.Equal(["house_built"], reader.Process(["--Villager Created--", "--House Built--"]));
+        Assert.Equal(2, reader.Recognitions);
+    }
+
     [Theory]
     [InlineData("rec-20261015-205040", 317, new[] { "dock_built", "feudal_age_researched" })]
     [InlineData("rec-20261015-205040", 556, new[] { "fishing_ship_created", "villager_created", "man_at_arms_created", "blacksmith_built" })]

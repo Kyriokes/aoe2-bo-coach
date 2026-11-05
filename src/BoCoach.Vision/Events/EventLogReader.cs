@@ -17,6 +17,8 @@ public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double 
     private readonly EventLogTracker _tracker = new() { EmptyFrames = EventLogTracker.EmptyFramesFor(captureIntervalMs) };
     private CapturedImage? _lastMask;
     private IReadOnlyList<string> _lastLines = [];
+    private IReadOnlyList<string>? _recognizedLines;
+    private (IReadOnlyList<string> EventIds, int Unrecognized) _recognized;
 
     /// <summary>Mensajes reconocidos que se ven ahora (estabilizados).</summary>
     public IReadOnlyList<string> Visible => _tracker.Visible;
@@ -26,6 +28,9 @@ public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double 
 
     /// <summary>Cuántas veces se pasó el OCR (para medir cuánto se ahorra).</summary>
     public int OcrCalls { get; private set; }
+
+    /// <summary>Cuántas veces se reconocieron los renglones contra el catálogo (para medir cuánto se ahorra).</summary>
+    public int Recognitions { get; private set; }
 
     /// <summary>
     /// Lee una captura y devuelve los eventos nuevos. El OCR solo se pasa si hay texto y si cambió desde la captura
@@ -51,7 +56,7 @@ public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double 
             lines = (await ocr.ReadPreparedLinesAsync(LogImage.PrepareMask(mask), LogImage.Scale, LogImage.Margin)).Select(l => l.Text).ToList();
         }
         // Solo si cambiaron: reconocer cuesta, y el texto suele quedarse quieto varios segundos.
-        if (!ReferenceEquals(lines, _lastLines))
+        if (!lines.SequenceEqual(_lastLines))
             LastLines = _matcher.Scrub(lines);
         (_lastMask, _lastLines) = (mask, lines);
         return Process(lines);
@@ -67,7 +72,17 @@ public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double 
             : [];
 
     /// <summary>Procesa renglones ya leídos (de arriba hacia abajo). Sirve también para transcripciones guardadas.</summary>
-    public IReadOnlyList<string> Process(IReadOnlyList<string> lines) => Process(_matcher, _tracker, lines);
+    public IReadOnlyList<string> Process(IReadOnlyList<string> lines)
+    {
+        // Los mismos renglones de la captura anterior dan lo mismo: el texto suele quedarse quieto varios segundos.
+        if (_recognizedLines is null || !lines.SequenceEqual(_recognizedLines))
+        {
+            _recognized = _matcher.MatchAll(lines);
+            _recognizedLines = lines;
+            Recognitions++;
+        }
+        return _tracker.Update(_recognized.EventIds, _recognized.Unrecognized > 0);
+    }
 
     public static IReadOnlyList<string> Process(EventMatcher matcher, EventLogTracker tracker, IReadOnlyList<string> lines)
     {
