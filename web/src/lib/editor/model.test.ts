@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "../coach/types";
-import { allIds, blockOf, fromAnalysis, groupNames, initialState, insertBlock, isBoundary, nextId, reduce, splitBlock, toJson, type EditorStep } from "./model";
+import { allIds, blockOf, boxSource, fromAnalysis, groupNames, initialState, insertBlock, isBoundary, nextId, reduce, splitBlock, toJson, type EditorStep } from "./model";
 
 /** Un análisis del Core armado a mano: la BO normalizada (schema 2, totales) y las unidades por paso. */
 function analysis(steps: Record<string, unknown>[], units: number[], extra: Record<string, unknown> = {}): Analysis {
@@ -93,6 +93,13 @@ describe("cadenas e ids", () => {
     expect(blockOf(steps, "s3")).toEqual({ from: 2, to: 4 });
     expect(blockOf(steps, "x")).toBeNull();
     expect([0, 1, 2, 3, 4, 5].map((i) => isBoundary(steps, i))).toEqual([true, false, true, false, false, true]);
+  });
+
+  // Antes se elegía siempre el primero: en "Molino + aldeanos" no se llegaba al segundo para sacarle "Junto con el anterior".
+  it("tocar una caja arrastra la cadena entera y elige el paso tocado", () => {
+    expect(boxSource(steps, "s2", true)).toEqual({ kind: "box", from: 0, to: 1, stepId: "s2", countStepId: "s2" });
+    expect(boxSource(steps, "s5", false)).toEqual({ kind: "box", from: 2, to: 4, stepId: "s5", countStepId: undefined });
+    expect(boxSource(steps, "x", true)).toBeNull();
   });
 
   it("splitBlock e insertBlock mueven la cadena sin partir otra", () => {

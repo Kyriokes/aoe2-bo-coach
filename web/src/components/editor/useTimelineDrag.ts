@@ -9,7 +9,7 @@ import { allowedRange, clampCandidate, indexFromTime, snapToBoundary, type GameD
 import { waitReason } from "@/lib/editor/explain";
 import { neverStartsReason } from "@/lib/editor/guard";
 import { ORDINAL_W, type Scale } from "@/lib/editor/layout";
-import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
+import { insertBlock, splitBlock, toJson, type BoxSource, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { neverStartsText, notBeforeText } from "@/lib/editor/text";
 import { guideLabels, type Inserted } from "@/lib/editor/villagers";
 import { formatClock } from "@/lib/buildOrder";
@@ -22,8 +22,8 @@ const DRAG_THRESHOLD_PX = 4;
 export const COUNT_STEP_PX = 18;
 const MAX_COUNT = 200;
 
-/** Una caja de la línea (`countStepId`: el paso cuya cantidad cambia deslizando en vertical) o una de la paleta. */
-export type DragSource = { kind: "box"; from: number; to: number; countStepId?: string } | { kind: "palette"; step: EditorStep };
+/** Una caja de la línea o una de la paleta. */
+export type DragSource = BoxSource | { kind: "palette"; step: EditorStep };
 
 export interface DragState {
   source: DragSource;
@@ -338,7 +338,7 @@ export function useTimelineDrag(options: Options) {
     if (pending && !session) {
       // Un toque sin arrastre: elegir la caja, o agregar el paso de la paleta.
       if (pending.source.kind === "palette") onPaletteClick(pending.source.step);
-      else onBoxClick(optionsRef.current.state.steps[pending.source.from].id);
+      else onBoxClick(pending.source.stepId);
     } else if (session && pending && session.count) {
       // La cantidad elegida deslizando (el editor la rechaza y explica si deja la BO rota).
       if (session.count.value !== session.count.base) dispatch({ type: "setCount", id: session.count.id, count: session.count.value });
@@ -424,7 +424,7 @@ export function useTimelineDrag(options: Options) {
     attach();
   }, [attach]);
 
-  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, from: number, to: number, countStepId?: string) => start(e, { kind: "box", from, to, countStepId }), [start]);
+  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, source: BoxSource) => start(e, source), [start]);
   const startPaletteDrag = useCallback((e: ReactPointerEvent<HTMLElement>, step: EditorStep) => start(e, { kind: "palette", step }), [start]);
 
   return { drag, startBoxDrag, startPaletteDrag };

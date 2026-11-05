@@ -232,6 +232,21 @@ export function blockOf(steps: EditorStep[], id: string): { from: number; to: nu
   return { from, to };
 }
 
+/** Una caja de la línea que se tocó: se arrastra la cadena `from..to`; tocarla elige `stepId`; deslizarla en vertical cambia la cantidad de `countStepId`. */
+export interface BoxSource {
+  kind: "box";
+  from: number;
+  to: number;
+  stepId: string;
+  countStepId?: string;
+}
+
+/** La caja del paso (en una cadena, tocar el segundo elige el segundo). `countable`: se le puede cambiar la cantidad. */
+export function boxSource(steps: EditorStep[], stepId: string, countable: boolean): BoxSource | null {
+  const chain = blockOf(steps, stepId);
+  return chain ? { kind: "box", ...chain, stepId, countStepId: countable ? stepId : undefined } : null;
+}
+
 /** Si en ese índice de inserción se puede meter algo sin partir una cadena. */
 export function isBoundary(steps: EditorStep[], index: number) {
   return index <= 0 || index >= steps.length || !steps[index].withPrevious;

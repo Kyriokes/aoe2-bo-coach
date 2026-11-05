@@ -17,7 +17,7 @@ import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } 
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
-import { blockOf, initialState, isDirty, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
+import { blockOf, boxSource, initialState, isDirty, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, openingForCiv, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
@@ -722,8 +722,8 @@ export function BuildOrderEditor({
         timelineRef={attachTimeline}
         data={data}
         onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => {
-          const chain = blockOf(state.steps, item.stepId);
-          if (chain) startBoxDrag(e, chain.from, chain.to, countEditable(item.stepId) && !item.construction ? item.stepId : undefined);
+          const source = boxSource(state.steps, item.stepId, countEditable(item.stepId) && !item.construction);
+          if (source) startBoxDrag(e, source);
         }}
         onNudge={nudge}
         onRemove={removeStep}
