@@ -63,12 +63,17 @@ export interface EditorState {
   /** Sube con cada edición; cuando supera a `analyzedRevision`, hay que volver a analizar. */
   revision: number;
   analyzedRevision: number;
+  /** La revisión de lo último que se cargó, se empezó o se guardó: si `revision` es otra, hay cambios sin guardar. */
+  cleanRevision: number;
   loadError: string | null;
 }
 
 export type EditorAction =
-  | { type: "load"; analysis: Analysis }
+  /** `restored`: es un borrador recuperado, que sigue teniendo cambios sin guardar. */
+  | { type: "load"; analysis: Analysis; restored?: boolean }
   | { type: "new"; id: string }
+  /** Lo que hay quedó guardado en la web. */
+  | { type: "saved" }
   | { type: "setField"; field: "name" | "civ" | "map" | "author" | "description"; value: string }
   | { type: "setTags"; tags: string[] }
   | { type: "insert"; step: EditorStep; index: number }
@@ -97,8 +102,14 @@ export function initialState(): EditorState {
     analysis: null,
     revision: 0,
     analyzedRevision: 0,
+    cleanRevision: 0,
     loadError: null,
   };
+}
+
+/** Si hay cambios sin guardar: `select`, `analyzed` y `generated` no suben la revisión. */
+export function isDirty(state: Pick<EditorState, "revision" | "cleanRevision">) {
+  return state.revision !== state.cleanRevision;
 }
 
 export function isVillagerTarget(step: { do: string; what?: unknown; assign?: unknown }) {
@@ -280,7 +291,7 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
     case "load": {
       const { bo, steps } = fromAnalysis(action.analysis);
       const revision = state.revision + 1;
-      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, loadError: null };
+      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, cleanRevision: action.restored ? state.cleanRevision : revision, loadError: null };
     }
     case "new":
       // Una BO nueva arranca con la apertura de siempre: los 3 iniciales hacen 2 casas y van a las ovejas (si no,
@@ -290,8 +301,11 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
         steps: [{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }],
         selected: null,
         analysis: null,
+        cleanRevision: state.revision + 1,
         loadError: null,
       });
+    case "saved":
+      return { ...state, cleanRevision: state.revision };
     case "setSteps":
       return edited(state, { steps: action.steps, selected: action.selected === undefined ? state.selected : action.selected });
     case "setField":

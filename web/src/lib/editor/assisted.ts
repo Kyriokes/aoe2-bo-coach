@@ -3,7 +3,7 @@ import type { Locale } from "@/i18n/locales";
 import { formatClock } from "../buildOrder";
 import type { Analysis } from "../coach/types";
 import { entityName } from "../stepText";
-import { fromAnalysis, type EditorBo, type EditorStep } from "./model";
+import { fromAnalysis, reduce, type EditorBo, type EditorState, type EditorStep } from "./model";
 
 /**
  * El modo asistido del editor (D12, pantalla A de la spec): el campo `assisted` de la BO con sus objetivos, las
@@ -51,6 +51,12 @@ export function defaultPlan(): AssistedPlan {
     eco_upgrades: false,
     goals: [{ age: "feudal_age" }, { age: "castle_age" }],
   };
+}
+
+/** Una BO nueva en Asistido: la apertura de siempre y los objetivos de ejemplo, todavía sin cambios para guardar. */
+export function newAssisted(state: EditorState, id: string): EditorState {
+  const next = reduce(reduce(state, { type: "new", id }), { type: "setAssisted", assisted: defaultPlan() });
+  return { ...next, cleanRevision: next.revision };
 }
 
 const clamp = (value: number, [min, max]: readonly [number, number]) => Math.min(max, Math.max(min, Math.round(value)));

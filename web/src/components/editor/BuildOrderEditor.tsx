@@ -10,13 +10,14 @@ import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
-import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, newAssisted, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
+import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
-import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
+import { blockOf, initialState, isDirty, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
@@ -52,11 +53,6 @@ import { useTimelineDrag } from "./useTimelineDrag";
 /** Un id de BO como los de la app (10 caracteres de un GUID). */
 function newBoId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 10);
-}
-
-/** Una BO nueva en Asistido (D12): la apertura de siempre y los objetivos de ejemplo. */
-function newAssisted(state: EditorState): EditorState {
-  return reduce(reduce(state, { type: "new", id: newBoId() }), { type: "setAssisted", assisted: defaultPlan() });
 }
 
 /** Las acciones después de las cuales los edificios que hace el próximo aldeano vuelven a esperar a su aldeano. */
@@ -102,6 +98,8 @@ export function BuildOrderEditor({
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  /** Lo que se ve es un borrador recuperado: se avisa, con la opción de descartarlo. */
+  const [restored, setRestored] = useState(false);
   const [pending, startTransition] = useTransition();
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(960);
@@ -155,26 +153,48 @@ export function BuildOrderEditor({
     [coach, locale, showNotice, t.noCan],
   );
 
-  // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva. Next recrea este efecto
-  // cada vez que la ruta vuelve a mostrarse (Activity): lo que ya se cargó no se carga de nuevo.
+  /** Lo que manda la página: la BO que se edita o una nueva. */
+  const loadInitial = useCallback(
+    (runtime: CoachRuntime) => {
+      setStrip(null);
+      lastPlanRef.current = null;
+      if (!initialJson) {
+        const next = newAssisted(stateRef.current, newBoId());
+        stateRef.current = next;
+        setState(next);
+        return;
+      }
+      const result = runtime.analyze(initialJson, locale);
+      if (result.ok) {
+        const next = reduce(stateRef.current, { type: "load", analysis: result });
+        stateRef.current = next;
+        setState(next);
+        if (result.assisted?.regenerated) showNotice(t.regenerated);
+      } else showNotice(fill(t.readFailed, { error: result.error }));
+    },
+    [initialJson, locale, showNotice, t.readFailed, t.regenerated],
+  );
+
+  // El motor, los datos del juego y los mapas; con el motor, el borrador, la BO que se edita o una nueva. Next recrea este
+  // efecto cada vez que la ruta vuelve a mostrarse (Activity): lo que ya se cargó no se carga de nuevo.
+  const draftName = draftKey(editCode);
   const loadedJson = useRef<string | null>(null);
   useEffect(() => {
     loadCoach()
       .then((runtime) => {
         setCoach(runtime);
-        if (whatToLoad(loadedJson.current, initialJson) === "nothing") return;
+        const draft = loadedJson.current === null ? readDraft(draftStorage(), draftName) : null;
+        const what = whatToLoad(loadedJson.current, initialJson, isDirty(stateRef.current), draft !== null);
         loadedJson.current = initialJson;
-        if (!initialJson) {
-          setState((prev) => newAssisted(prev));
-          return;
-        }
-        const result = runtime.analyze(initialJson, locale);
-        if (result.ok) {
-          setStrip(null);
-          lastPlanRef.current = null;
-          setState((prev) => reduce(prev, { type: "load", analysis: result }));
-          if (result.assisted?.regenerated) showNotice(t.regenerated);
-        } else showNotice(fill(t.readFailed, { error: result.error }));
+        if (what === "nothing") return;
+        const fromDraft = what === "draft" && draft ? runtime.analyze(draft.json, locale) : null;
+        if (draft && fromDraft?.ok) {
+          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, restored: true });
+          stateRef.current = next;
+          setState(next);
+          setVisibility(draft.visibility);
+          setRestored(true);
+        } else loadInitial(runtime);
       })
       .catch((error: unknown) => setRuntimeError(error instanceof Error ? error.message : String(error)));
     loadGameData()
@@ -183,7 +203,38 @@ export function BuildOrderEditor({
     loadMaps(locale)
       .then(setMaps)
       .catch(() => setMaps([]));
-  }, [initialJson, locale, showNotice, t.readFailed, t.regenerated]);
+  }, [draftName, initialJson, loadInitial, locale]);
+
+  // Lo que no se guardó queda en el borrador de esta pestaña: sobrevive a recargar, a iniciar sesión y a cambiar de idioma.
+  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar.
+  const dirty = isDirty(state);
+  useEffect(() => {
+    if (loadedJson.current === null) return;
+    if (dirty) writeDraft(draftStorage(), draftName, { json: draftJson({ bo: state.bo, steps: state.steps }), visibility });
+    else clearDraft(draftStorage(), draftName);
+  }, [dirty, draftName, state.bo, state.steps, visibility]);
+
+  // Cerrar la pestaña sí se lleva el borrador: el navegador pregunta antes.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // los navegadores viejos miran esto
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  /** Antes de reemplazar lo que se está armando: si hay cambios sin guardar, pregunta. */
+  const canReplace = useCallback(() => !isDirty(stateRef.current) || window.confirm(t.replaceConfirm), [t.replaceConfirm]);
+
+  const discardDraft = useCallback(() => {
+    if (!coach || !canReplace()) return;
+    clearDraft(draftStorage(), draftName);
+    setRestored(false);
+    setVisibility(initialVisibility);
+    loadInitial(coach);
+  }, [canReplace, coach, draftName, initialVisibility, loadInitial]);
 
   // El ancho de la línea de tiempo (la escala se calcula acá, así el arrastre y la línea usan la misma).
   useEffect(() => {
@@ -197,20 +248,22 @@ export function BuildOrderEditor({
     return () => observer.disconnect();
   }, []);
 
+  /** Carga una BO o una guía en lugar de lo que hay. Dice si la cargó (lo que no se entiende no reemplaza nada). */
   const load = useCallback(
     (json: string) => {
-      if (!coach) return;
+      if (!coach) return false;
       // Una guía de buildorderguide.com o de RTS Overlay se convierte primero; una BO de la app se analiza tal cual.
       const imported = coach.importBuildOrder(json);
       if (!imported.ok) {
         showNotice(fill(t.readFailed, { error: imported.error }));
-        return;
+        return false;
       }
       const result = coach.analyze(imported.source === "bocoach" ? json : JSON.stringify(imported.build_order), locale);
       if (!result.ok) {
         showNotice(fill(t.readFailed, { error: result.error }));
-        return;
+        return false;
       }
+      if (!canReplace()) return false;
       if (imported.source !== "bocoach") {
         const from = imported.source === "buildorderguide" ? "buildorderguide.com" : "RTS Overlay";
         const warnings = imported.warnings.slice(0, 3).join(" · ");
@@ -219,10 +272,12 @@ export function BuildOrderEditor({
       }
       setStrip(null);
       lastPlanRef.current = null;
+      setRestored(false);
       dispatch({ type: "load", analysis: result });
       if (result.assisted?.regenerated) showNotice(t.regenerated);
+      return true;
     },
-    [coach, dispatch, locale, showNotice, t],
+    [canReplace, coach, dispatch, locale, showNotice, t],
   );
 
   // D12: el modo asistido. Cada cambio genera la BO de nuevo en el worker, juntando los toques seguidos; la franja
@@ -460,8 +515,13 @@ export function BuildOrderEditor({
         setPublishError(result.error);
         return;
       }
-      // Ya se guardó: si se vuelve a esta ruta arranca de nuevo (con lo publicado a la vista, publicar otra vez la duplicaría).
+      // Ya se guardó: sin borrador y, si se vuelve a esta ruta, arranca de nuevo (con lo publicado a la vista, publicar otra
+      // vez la duplicaría).
+      clearDraft(draftStorage(), draftName);
+      setRestored(false);
       loadedJson.current = null;
+      stateRef.current = reduce(stateRef.current, { type: "saved" });
+      setState(stateRef.current);
       router.push(href(`/bo/${editCode ?? (result.value as string)}`));
     });
   }
@@ -545,13 +605,23 @@ export function BuildOrderEditor({
         editCode={editCode}
         onLoad={load}
         onNew={() => {
-          const next = newAssisted(stateRef.current);
+          if (!canReplace()) return;
+          const next = newAssisted(stateRef.current, newBoId());
           stateRef.current = next;
           setState(next);
           setStrip(null);
           lastPlanRef.current = null;
+          setRestored(false);
         }}
       />
+      {restored ? (
+        <p role="status" className="flex flex-wrap items-center gap-2 rounded-md border border-amber bg-panel px-3 py-2 text-sm">
+          {t.draftRestored}
+          <button type="button" className="button ml-auto" onClick={discardDraft}>
+            {t.draftDiscard}
+          </button>
+        </p>
+      ) : null}
       {!coach || !data ? (
         <p role="status" className="text-sm text-faint">
           {t.loadingEngine}

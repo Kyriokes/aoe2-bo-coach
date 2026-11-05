@@ -12,9 +12,9 @@ interface Example {
 /**
  * Cómo entra una BO al editor: un ejemplo de los que trae la app, un archivo .json, el JSON pegado, o una nueva de
  * cero. El archivo y lo pegado pueden ser una guía de buildorderguide.com o de RTS Overlay: el editor la convierte con
- * el Core. Todo termina en `onLoad(json)`.
+ * el Core. Todo termina en `onLoad(json)`, que dice si la cargó (puede no entenderla, o el usuario no querer perder lo que hay).
  */
-export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoad: (json: string) => void; onNew: () => void }) {
+export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoad: (json: string) => boolean; onNew: () => void }) {
   const { t: dict } = useI18n();
   const t = dict.editor.load;
   const [examples, setExamples] = useState<Example[]>([]);
@@ -81,8 +81,7 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
               className="button"
               disabled={!pasted.trim()}
               onClick={() => {
-                onLoad(pasted);
-                setPasteOpen(false);
+                if (onLoad(pasted)) setPasteOpen(false);
               }}
             >
               {t.pasteLoad}

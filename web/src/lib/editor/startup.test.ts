@@ -17,4 +17,15 @@ describe("qué carga el editor al arrancar", () => {
     expect(whatToLoad(null, "")).toBe("initial");
     expect(whatToLoad('{"name":"x"}', '{"name":"y"}')).toBe("initial");
   });
+
+  it("al abrir, un borrador le gana a lo que manda la página", () => {
+    expect(whatToLoad(null, "", false, true)).toBe("draft");
+    expect(whatToLoad(null, '{"name":"x"}', false, true)).toBe("draft");
+  });
+
+  it("una versión nueva del servidor no pisa los cambios sin guardar", () => {
+    expect(whatToLoad('{"name":"x"}', '{"name":"y"}', true)).toBe("nothing");
+    // Ni el borrador: ya se cargó, lo que hay en el editor es más nuevo.
+    expect(whatToLoad('{"name":"x"}', '{"name":"x"}', true, true)).toBe("nothing");
+  });
 });
