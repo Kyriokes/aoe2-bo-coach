@@ -32,6 +32,7 @@ public partial class TextsTests
         parameter.ParameterType == typeof(int) || parameter.ParameterType == typeof(int?) ? 3
         : parameter.ParameterType == typeof(bool) ? true
         : parameter.ParameterType == typeof(DateTime) ? new DateTime(2026, 11, 3)
+        : parameter.ParameterType.IsEnum ? Enum.GetValues(parameter.ParameterType).GetValue(0)
         : "X";
 
     [Fact]
@@ -85,6 +86,19 @@ public partial class TextsTests
         {
             File.Delete(path);
         }
+    }
+
+    // IN-04: dice de quién es lo del juego, con el mismo sentido que el pie de la web, y no usa a Microsoft como respaldo.
+    [Fact]
+    public void El_aviso_del_contenido_del_juego_dice_de_quien_es_y_que_no_hay_respaldo()
+    {
+        Assert.Contains("son de Microsoft", Texts.GameContentNotice);
+        Assert.Contains("Game Content Usage Rules", Texts.GameContentNotice);
+        Assert.Contains("no está respaldado por Microsoft ni afiliado a Microsoft", Texts.GameContentNotice);
+        using var english = Lang.Use(Lang.English);
+        Assert.Contains("belong to Microsoft", Texts.GameContentNotice);
+        Assert.Contains("Game Content Usage Rules", Texts.GameContentNotice);
+        Assert.Contains("not endorsed by or affiliated with Microsoft", Texts.GameContentNotice);
     }
 
     [Fact]

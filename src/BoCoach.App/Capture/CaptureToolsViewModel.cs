@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using BoCoach.App.Overlay;
+using BoCoach.App.Web;
 using BoCoach.Core;
 using BoCoach.Core.Data;
 using BoCoach.Vision.Capture;
@@ -23,6 +24,9 @@ public interface ICaptureHost
 
     /// <summary>Un mensaje con aceptar (por ejemplo, cómo quedó la instalación del mod).</summary>
     void ShowMessage(string title, string text, bool warning);
+
+    /// <summary>Una pregunta de sí o no.</summary>
+    bool Confirm(string message);
 }
 
 /// <summary>Calibrar la pantalla, grabar partidas (RecordSession) e instalar el mod del HUD.</summary>
@@ -40,13 +44,15 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
     private readonly Func<GameData?> _gameData;
     private readonly Func<string?> _playerName;
     private readonly string _diagnosticsFolder;
+    private readonly LinkProtocol _links;
     private SessionRecorder? _recorder;
 
     public CaptureToolsViewModel(IScreenSource screen, ICaptureHost host, string? regionsPath = null, string? recordingsRoot = null,
         Func<string?>? findGame = null, string? gameProfiles = null,
         Func<HudFonts>? fonts = null, Func<GameLanguage>? language = null, string? diagnosticsFolder = null,
-        Func<GameData?>? gameData = null, Func<string?>? playerName = null, Func<HudLayout>? layout = null)
+        Func<GameData?>? gameData = null, Func<string?>? playerName = null, Func<HudLayout>? layout = null, LinkProtocol? links = null)
     {
+        _links = links ?? new LinkProtocol();
         _screen = screen;
         _host = host;
         _regionsPath = regionsPath ?? RegionLayout.DefaultPath;
@@ -86,7 +92,48 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     public bool IsCalibrated => File.Exists(_regionsPath);
 
-    public RegionLayout Layout => RegionLayout.LoadOrDefault(_regionsPath);
+    /// <summary>
+    /// Las regiones guardadas, o las de siempre. Un regions.json roto no puede impedir abrir la app: se aparta en
+    /// <see cref="BrokenRegionsPath"/> y hay que volver a calibrar. Si solo no se puede leer ahora (lo tiene abierto otro
+    /// programa), puede estar bien: no se toca.
+    /// </summary>
+    public RegionLayout Layout
+    {
+        get
+        {
+            try
+            {
+                return RegionLayout.LoadOrDefault(_regionsPath);
+            }
+            catch (Exception e) when (e is InvalidDataException or JsonException)
+            {
+                SetAsideBrokenRegions();
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Sigue con las de siempre: la próxima lectura lo vuelve a probar.
+            }
+            return RegionLayout.Default;
+        }
+    }
+
+    /// <summary>Adónde va un regions.json roto, para poder mirarlo.</summary>
+    public string BrokenRegionsPath => Path.ChangeExtension(_regionsPath, ".roto.json");
+
+    private bool _regionsSetAside;
+
+    private void SetAsideBrokenRegions()
+    {
+        try
+        {
+            File.Move(_regionsPath, BrokenRegionsPath, overwrite: true);
+            _regionsSetAside = true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Queda donde está: se vuelve a probar en la próxima lectura.
+        }
+    }
 
     [RelayCommand]
     private void Calibrate()
@@ -160,6 +207,27 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         _host.ShowMessage(title, ModText(result), !result.Ok || result.Warnings.Count > 0);
     }
 
+    /// <summary>
+    /// Lo que la app dejó afuera de su carpeta: el mod en los perfiles del juego y la clave de los enlaces bocoach:// en el
+    /// registro de Windows. Pregunta antes; lo demás del jugador no se toca.
+    /// </summary>
+    [RelayCommand]
+    private void Uninstall()
+    {
+        if (!_host.Confirm(Texts.UninstallConfirm(HudMod.Name)))
+            return;
+        try
+        {
+            var profiles = HudMod.Uninstall(_gameProfiles);
+            _links.Unregister();
+            _host.ShowMessage(Texts.UninstallLabel, Texts.UninstallDone(profiles.Count), false);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            _host.ShowMessage(Texts.UninstallLabel, Texts.UninstallFailed(e.Message), true);
+        }
+    }
+
     internal static string ModText(HudModResult result)
     {
         var lines = new List<string>();
@@ -224,8 +292,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         {
             screen = _screen.Capture(area);
         }
-        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
         {
+            // ArgumentException: con el juego minimizado, el rectángulo está vacío.
             CalibrationStatus = Texts.CalibrateCaptureFailed(e.Message);
             return false;
         }
@@ -236,15 +305,41 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
                 : Texts.HudNotFoundDefault;
             return false;
         }
-        if (IsCalibrated)
-            File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
-        found.Layout.Save(_regionsPath);
+        try
+        {
+            SaveIfChanged(found.Layout);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            CalibrationStatus = Texts.CalibrateNotSaved(e.Message);
+            return false;
+        }
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = (found.Hud is { } hud
                 ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)
                 : Texts.CalibratedAuto(area.Width, area.Height, found.Squares.Count))
             + (CapturedImage.NeedsResample(found.Scale) ? Texts.CalibratedScale($"{found.Scale:0.00}") : "") + ".";
         return true;
+    }
+
+    /// <summary>
+    /// Guarda lo que encontró la calibración sola, si cambió algo. El coach la llama cada 5 s mientras no lee el reloj: sin
+    /// esto, la copia de la calibración manual (<see cref="PreviousRegionsPath"/>) quedaba pisada con la automática.
+    /// </summary>
+    private void SaveIfChanged(RegionLayout layout)
+    {
+        var fresh = _regionsPath + ".nuevo";
+        layout.Save(fresh);
+        if (IsCalibrated)
+        {
+            if (File.ReadAllText(fresh) == File.ReadAllText(_regionsPath))
+            {
+                File.Delete(fresh);
+                return;
+            }
+            File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
+        }
+        File.Move(fresh, _regionsPath, overwrite: true);
     }
 
     /// <summary>El diseño del mod (data/hud_layout.json), o null si falta o está roto: la calibración sigue con el mod viejo.</summary>
@@ -277,12 +372,13 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     private void UpdateCalibrationStatus()
     {
+        // Primero se lee: si está roto, se aparta y ya no hay calibración.
+        var layout = Layout;
         if (!IsCalibrated)
         {
-            CalibrationStatus = Texts.NotCalibrated;
+            CalibrationStatus = _regionsSetAside ? Texts.RegionsSetAside(Path.GetFileName(BrokenRegionsPath)) : Texts.NotCalibrated;
             return;
         }
-        var layout = Layout;
         CalibrationStatus = Texts.Calibrated(layout.ReferenceWidth, layout.ReferenceHeight, File.GetLastWriteTime(_regionsPath));
     }
 }

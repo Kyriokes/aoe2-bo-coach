@@ -14,8 +14,9 @@ cambies en esos segundos no se guarda, así que esperá a que se vuelva a abrir.
 en Avast, menú > Configuración > General > Excepciones > Agregar excepción, y escribí la carpeta
 de la app terminada en \* (por ejemplo C:\Juegos\BoCoach\*).
 
-Lo que la app guarda (BO guardadas, calibración, cuenta de la web) queda en %APPDATA%\BoCoach,
-así que se conserva aunque reemplaces la carpeta por una versión nueva.
+Lo que la app guarda (ajustes, calibración, cuenta de la web y las build orders que usaste) queda en
+%APPDATA%\BoCoach, y los informes y registros de tus partidas en %LOCALAPPDATA%\BoCoach, así que se
+conservan aunque reemplaces la carpeta por una versión nueva.
 
 La primera vez se abre "Primeros pasos", que te lleva por lo mismo que sigue (cuenta, idioma, mod y
 una partida rápida contra 7 IA para leer tu nombre y calibrar). Se vuelve a abrir desde Ajustes, en
@@ -23,10 +24,11 @@ la pestaña "Juego y HUD".
 
 Para usar el coach:
   1. Conectá tu cuenta de la web con "Conectar cuenta": ahí se arman y se eligen las build orders.
-  2. En Ajustes, pestaña "Juego y HUD", tocá "Instalar mod del HUD" (una sola vez) y abrí el juego en
-     "Full screen" o "Windowed". En Mods > Mods instalados tiene que figurar "BoCoach HUD" activo. Si
-     venís de una versión anterior, volvé a tocarlo: el diseño del HUD cambia entre versiones y la
-     app lee el nuevo. Ahí mismo elegí el idioma del juego.
+  2. En Ajustes, pestaña "Juego y HUD", con el juego cerrado, tocá "Instalar mod del HUD" (una sola
+     vez) y abrí el juego en "Full screen" o "Windowed". En Mods > Mods instalados tiene que figurar
+     "BoCoach HUD" activo. Por defecto es el mod mínimo; sin marcar "Mod mínimo" se instala el completo,
+     que también corre el log y la cola. Si venís de una versión anterior, volvé a tocarlo: el diseño
+     del HUD cambia entre versiones y la app lee el nuevo. Ahí mismo elegí el idioma del juego.
   3. En Ajustes, pestaña "Partida", escribí tu nombre como sale en el juego. Con el coach andando
      antes de la partida, en la pantalla de carga toma tu civ solo.
   4. Jugá. El cuadro grande de la ventana dice en qué momento estás: con "Automática" el coach
@@ -40,6 +42,11 @@ terminar contá en el informe qué pasó. Con eso alcanza si dejaste prendido "C
 Si no se lee nada (no ve el reloj, los números no coinciden): hacé 5 clics sobre la versión
 (arriba) para prender el modo desarrollador y, en plena partida, tocá Ctrl+Alt+X (o "Captura de
 diagnóstico" en Ajustes): a los 2 segundos guarda la pantalla y lo que encontró la app en %LOCALAPPDATA%\BoCoach\diagnostico. Mandá esa carpeta.
+
+Para sacar BO Coach del todo: en Ajustes, pestaña "Avanzado", tocá "Sacar..." (borra solo el mod
+"BoCoach HUD" de tus perfiles del juego y los enlaces bocoach:// de Windows). Después cerrá la app y
+borrá esta carpeta y, si querés, %APPDATA%\BoCoach y %LOCALAPPDATA%\BoCoach (ajustes, informes y
+registros de tus partidas).
 
 Para comprobar que el .zip no cambió en el camino: en la página de la versión, en Releases, al lado del
 .zip está su huella (BoCoach-v<versión>-win-x64.zip.sha256, se abre con el Bloc de notas). En PowerShell,

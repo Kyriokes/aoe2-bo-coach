@@ -101,52 +101,68 @@ public sealed class CoachSettings
 
     public static int Clamp(int value) => Math.Clamp(value, MinVillagers, MaxVillagersLimit);
 
+    /// <summary>
+    /// El archivo estaba pero no se pudo leer (vacío, cortado, sin permiso). No se sabe lo que había elegido el jugador:
+    /// quedan los valores por defecto, con <see cref="ShareGames"/> apagado.
+    /// </summary>
+    public bool WasBroken { get; private init; }
+
+    /// <summary>
+    /// Lo guardado. Sin archivo es un usuario nuevo. Con un archivo que no se puede leer, los valores por defecto pero sin
+    /// compartir: nunca se prende "Compartir" porque un archivo se rompió, contra lo que eligió el jugador; el archivo queda
+    /// copiado en <c>.roto</c>. Un valor raro en un campo vale lo de fábrica para ese campo y no pierde los demás (también en
+    /// <c>share_games</c>: si no es un booleano, queda prendido como en un usuario nuevo, y no apaga nada).
+    /// </summary>
     public static CoachSettings Load(string path)
     {
+        if (!File.Exists(path))
+            return new CoachSettings();
         try
         {
-            if (File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject json)
-            {
-                return new CoachSettings
-                {
-                    MaxVillagers = json["max_villagers"]?.GetValue<int>() is { } max ? Clamp(max) : DefaultMaxVillagers,
-                    CursorReminders = json["cursor_reminders"]?.GetValue<bool>() ?? true,
-                    GameCiv = json["civ"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "",
-                    AppLanguage = json["app_language"] is JsonValue app && app.TryGetValue<string>(out var language) && Lang.All.Contains(language) ? language : "",
-                    GameLanguage = Vision.Ocr.GameLanguage.FromCode(json["game_language"]?.GetValue<string>()).Code,
-                    PlayerName = json["player_name"]?.GetValue<string>()?.Trim() ?? "",
-                    FirstRunDone = json["first_run_done"]?.GetValue<bool>() ?? false,
-                    AutoStart = json["auto_start"]?.GetValue<bool>() ?? true,
-                    LastBuildOrder = json["last_build_order"]?.GetValue<string>()?.Trim() ?? "",
-                    BoMode = json["bo_mode"] is JsonValue mode && mode.TryGetValue<string>(out var text) && text == "manual"
-                        ? BuildOrderMode.Manual
-                        : BuildOrderMode.Auto,
-                    Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= MaxElo ? (int)elo1v1 : null,
-                    EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
-                    ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
-                    Hotkeys = Strings(json["hotkeys"]),
-                    DevMode = Flag(json["dev_mode"]),
-                    AutoRecord = json["auto_record"] is JsonValue record && record.TryGetValue<bool>(out var auto) ? auto : true,
-                    HudMinimal = json["hud_minimo"] is JsonValue minimal && minimal.TryGetValue<bool>(out var chosen)
-                        ? chosen
-                        : !Flag(json["first_run_done"]) && string.IsNullOrWhiteSpace(json["player_name"]?.GetValue<string>()),
-                    ShareGames = json["share_games"] is JsonValue share && share.TryGetValue<bool>(out var shared) ? shared : true,
-                    CaptureIntervalMs = json["capture_interval_ms"] is JsonValue interval && interval.TryGetValue<int>(out var ms) && ms is >= 200 and <= 1000 ? ms : DefaultCaptureIntervalMs,
-                };
-            }
+            if (JsonNode.Parse(File.ReadAllText(path)) is JsonObject json)
+                return FromJson(json);
         }
-        catch (Exception e) when (e is IOException or JsonException or InvalidOperationException or FormatException or ArgumentException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or ArgumentException)
         {
-            // Un archivo roto no tiene que impedir abrir la app: quedan los valores por defecto.
+            // Una clave repetida da ArgumentException al leer el objeto. Sigue abajo, como un archivo roto.
         }
-        return new CoachSettings();
+        SettingsFile.KeepBrokenCopy(path);
+        return new CoachSettings { ShareGames = false, WasBroken = true };
     }
+
+    private static CoachSettings FromJson(JsonObject json) => new()
+    {
+        MaxVillagers = Number(json["max_villagers"]) is { } max ? (int)Math.Clamp(max, MinVillagers, MaxVillagersLimit) : DefaultMaxVillagers,
+        CursorReminders = Flag(json["cursor_reminders"], true),
+        GameCiv = Text(json["civ"]).ToLowerInvariant(),
+        AppLanguage = Lang.All.Contains(Text(json["app_language"])) ? Text(json["app_language"]) : "",
+        GameLanguage = Vision.Ocr.GameLanguage.FromCode(Text(json["game_language"])).Code,
+        PlayerName = Text(json["player_name"]),
+        FirstRunDone = Flag(json["first_run_done"]),
+        AutoStart = Flag(json["auto_start"], true),
+        LastBuildOrder = Text(json["last_build_order"]),
+        BoMode = Text(json["bo_mode"]) == "manual" ? BuildOrderMode.Manual : BuildOrderMode.Auto,
+        Elo1v1 = Number(json["elo_1v1"]) is { } elo1v1 and > 0 and <= MaxElo ? (int)elo1v1 : null,
+        EloTeam = Number(json["elo_team"]) is { } eloTeam and > 0 and <= MaxElo ? (int)eloTeam : null,
+        ProfileId = Number(json["profile_id"]) is { } profile and > 0 ? profile : null,
+        Hotkeys = Strings(json["hotkeys"]),
+        DevMode = Flag(json["dev_mode"]),
+        AutoRecord = Flag(json["auto_record"], true),
+        HudMinimal = json["hud_minimo"] is JsonValue minimal && minimal.TryGetValue<bool>(out var chosen)
+            ? chosen
+            : !Flag(json["first_run_done"]) && Text(json["player_name"]).Length == 0,
+        ShareGames = Flag(json["share_games"], true),
+        CaptureIntervalMs = json["capture_interval_ms"] is JsonValue interval && interval.TryGetValue<int>(out var ms) && ms is >= 200 and <= 1000 ? ms : DefaultCaptureIntervalMs,
+    };
 
     /// <summary>Un número entero, o null si falta o es de otro tipo (un valor raro no tiene que tirar abajo los ajustes).</summary>
     private static long? Number(JsonNode? node) => node is JsonValue value && value.TryGetValue<long>(out var number) ? number : null;
 
-    /// <summary>True solo si es un booleano true: otro tipo ("sí", 1) no tiene que tirar abajo los ajustes.</summary>
-    private static bool Flag(JsonNode? node) => node is JsonValue value && value.TryGetValue<bool>(out var flag) && flag;
+    /// <summary>Un booleano; si falta o es de otro tipo ("sí", 1), <paramref name="fallback"/>.</summary>
+    private static bool Flag(JsonNode? node, bool fallback = false) => node is JsonValue value && value.TryGetValue<bool>(out var flag) ? flag : fallback;
+
+    /// <summary>Un texto sin espacios de más; si falta o es de otro tipo, vacío.</summary>
+    private static string Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text.Trim() : "";
 
     /// <summary>Los valores de texto de un objeto; lo que no es objeto o no es texto se ignora.</summary>
     private static Dictionary<string, string> Strings(JsonNode? node)
@@ -166,7 +182,6 @@ public sealed class CoachSettings
 
     public void Save(string path)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var json = new JsonObject { ["max_villagers"] = MaxVillagers, ["cursor_reminders"] = CursorReminders, ["civ"] = GameCiv, ["game_language"] = GameLanguage, ["player_name"] = PlayerName,
             ["first_run_done"] = FirstRunDone, ["auto_start"] = AutoStart, ["last_build_order"] = LastBuildOrder,
             ["bo_mode"] = BoMode == BuildOrderMode.Manual ? "manual" : "auto",
@@ -183,6 +198,6 @@ public sealed class CoachSettings
             json["profile_id"] = profile;
         if (Hotkeys.Count > 0)
             json["hotkeys"] = new JsonObject(Hotkeys.Select(h => KeyValuePair.Create(h.Key, (JsonNode?)h.Value)));
-        File.WriteAllText(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        SettingsFile.WriteAtomically(path, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
     }
 }

@@ -37,7 +37,7 @@ public static class GameRecordNote
             ["schema"] = GameRecordKeys.Schema,
             ["game_id"] = noteId,
             ["note_for"] = gameId,
-            ["started"] = now.ToString("O"),
+            ["started"] = GameRecorder.Day(now),
             ["app"] = app,
         };
         using var writer = GameRecordWriter.Create(path, meta);

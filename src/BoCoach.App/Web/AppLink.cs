@@ -16,6 +16,16 @@ public abstract partial record AppLink
     [GeneratedRegex(@"^bocoach://conectar/(bocoach_[0-9a-f]{64})/?$", RegexOptions.IgnoreCase)]
     private static partial Regex ConnectPattern();
 
+    [GeneratedRegex(@"^(?:bocoach://conectar/)?(bocoach_[0-9a-f]{64})/?$", RegexOptions.IgnoreCase)]
+    private static partial Regex TokenPattern();
+
+    /// <summary>El token de la app en lo que pegó el jugador, solo o en su enlace, o null.</summary>
+    public static string? TokenIn(string? text) =>
+        TokenPattern().Match((text ?? "").Trim()) is { Success: true } token ? token.Groups[1].Value.ToLowerInvariant() : null;
+
+    /// <summary>Si parece un token, aunque esté incompleto: es un secreto y no se repite en ningún mensaje.</summary>
+    public static bool LooksLikeToken(string? text) => (text ?? "").Contains("bocoach_", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>El enlace, o null si no es ninguno de los dos (un token mal formado tampoco).</summary>
     public static AppLink? Parse(string? text)
     {

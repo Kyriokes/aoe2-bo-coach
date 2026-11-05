@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http;
 using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
@@ -206,6 +207,7 @@ public sealed class HomeScreenTests : IDisposable
     {
         public List<string> Opened { get; } = [];
         public bool Confirm(string message) => true;
+        public bool ConfirmNoByDefault(string message) => true;
         public string? AskText(string title, string message, string initial = "") => null;
         public WebSettings? EditWebAccount(WebSettings current) => null;
         public void OpenUrl(string url) => Opened.Add(url);
@@ -335,6 +337,54 @@ public sealed class HomeScreenTests : IDisposable
             coach.Apply(Frame(inGame: true, time: 10));
             Assert.False(coach.ReportPending);
             Assert.Equal(HomeState.InGame, home.Screen.State);
+        }
+    }
+
+    // AP-14: el nombre del archivo salía con el calendario del sistema: con fa-IR dice 1405 y, entre los de antes, el
+    // informe nuevo no era el último.
+    [Fact]
+    public void Con_otro_calendario_el_informe_nuevo_sigue_siendo_el_ultimo()
+    {
+        var (_, coach, _, _, _) = Build();
+        using (coach)
+        {
+            Directory.CreateDirectory(ReportsFolder);
+            File.WriteAllText(Path.Combine(ReportsFolder, "20261101-100000.html"), "");
+            var culture = CultureInfo.CurrentCulture;
+            try
+            {
+                CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+                coach.Finished(FinishedGame(1530));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = culture;
+            }
+
+            var latest = CoachSessionViewModel.LatestReportIn(ReportsFolder);
+            Assert.Equal(coach.LastReport?.Path, latest?.Path);
+            Assert.Equal(DateTime.Now.Year, latest?.Date.Year);
+        }
+    }
+
+    // AP-28: el panel "En la partida" se avisaba solo cuando cambiaba el tablero, y con la partida anterior terminada el
+    // tablero es el mismo con el coach andando o no.
+    [Fact]
+    public void El_panel_de_la_partida_aparece_aunque_el_tablero_no_cambie()
+    {
+        var (home, coach, _, _, _) = Build();
+        using (coach)
+        {
+            coach.Finished(FinishedGame(1530));
+            var before = home.Screen;
+            var told = new List<string?>();
+            home.PropertyChanged += (_, e) => told.Add(e.PropertyName);
+
+            coach.Start(Scouts, new SilentFrames());
+
+            Assert.Equal(before, home.Screen);
+            Assert.True(home.ShowLive);
+            Assert.Contains(nameof(HomeViewModel.ShowLive), told);
         }
     }
 

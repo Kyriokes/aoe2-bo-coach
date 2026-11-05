@@ -24,7 +24,7 @@ public sealed class GameRecorderTests : IDisposable
         var builder = new SnapshotBuilder(TestData.GameData);
         var coach = new Coach(Scouts, TestData.GameData, TestData.Events);
         var meta = GameRecorder.Meta(gameId: "abc", started: DateTimeOffset.Now, app: "test", gameData: TestData.GameData.DatVersion, hud: null, hudScale: 1,
-            civ: Scouts.Civ, bo: Scouts.Id, boName: Scouts.Name, map: null, rivalCiv: null, slot: null, language: "en", intervalMs: 500);
+            civ: Scouts.Civ, map: null, rivalCiv: null, slot: null, language: "en", intervalMs: 500);
         using (var writer = GameRecordWriter.Create(path, meta))
         {
             var recorder = new GameRecorder(writer, TestData.GameData);
@@ -45,6 +45,42 @@ public sealed class GameRecorderTests : IDisposable
     }
 
     private IEnumerable<JsonObject> Of(string type) => _record.Value.Lines.Where(l => l["t"]?.GetValue<string>() == type);
+
+    private static JsonObject MetaOf(BuildOrder bo, DateTimeOffset started) => GameRecorder.Meta(gameId: "abc", started: started, app: "test", gameData: "v", hud: null, hudScale: 1,
+        civ: "franks", map: "arabia", rivalCiv: "britons", slot: 1, language: "en", intervalMs: 500, buildOrder: bo);
+
+    // AP-27: el código de una BO privada lleva a una sola cuenta, y la hora con el huso ayuda a reidentificar la partida.
+    [Fact]
+    public void La_meta_no_ata_el_registro_a_una_cuenta()
+    {
+        var meta = MetaOf(Scouts with { Id = "k7m2xq", Author = "Fulano" }, new DateTimeOffset(2026, 11, 5, 22, 30, 15, TimeSpan.FromHours(-3)));
+
+        Assert.False(meta.ContainsKey("bo"));
+        Assert.False(meta.ContainsKey("bo_name"));
+        Assert.Equal("2026-11-06", meta["started"]!.GetValue<string>()); // en UTC y solo el día
+        Assert.Equal("abc", meta["game_id"]!.GetValue<string>());
+        var played = meta["build_order"]!.AsObject();
+        Assert.False(played.ContainsKey("id"));
+        Assert.False(played.ContainsKey("author"));
+        Assert.DoesNotContain("k7m2xq", meta.ToJsonString());
+    }
+
+    // Lo que no viaja no hace falta para reproducir la partida (ReplaySession coach usa GameRecordReader.BuildOrder).
+    [Fact]
+    public void Un_registro_sin_el_codigo_de_la_BO_se_puede_reproducir()
+    {
+        var path = Path.Combine(_dir, "sin-codigo.jsonl.gz");
+        using (var writer = GameRecordWriter.Create(path, MetaOf(Scouts with { Id = "k7m2xq" }, DateTimeOffset.Now)))
+            writer.End("fin", 60);
+
+        var played = GameRecordReader.Load(path).BuildOrder;
+
+        Assert.NotNull(played);
+        Assert.Equal("", played.Id);
+        Assert.Equal(Scouts.Steps.Count, played.Steps.Count);
+        Assert.DoesNotContain(new BuildOrderValidator(TestData.GameData, TestData.Events).Validate(played).Issues, i => i.Severity == Severity.Error);
+        Assert.Equal(Scouts.Steps.Count, new Coach(played, TestData.GameData, TestData.Events).Tracker.Steps.Count);
+    }
 
     [Fact]
     public void Show_se_escribe_solo_cuando_cambia_lo_mostrado()

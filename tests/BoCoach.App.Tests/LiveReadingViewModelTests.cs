@@ -43,6 +43,29 @@ public sealed class LiveReadingViewModelTests : IDisposable
         Assert.Equal("36:30", panel.Clock);
     }
 
+    // AP-29: con la app en castellano el panel decía "(Ready)".
+    [Fact]
+    public void El_panel_dice_el_estado_del_paso_en_el_idioma_de_la_app()
+    {
+        var view = new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(30, PlanStart.Standard.Stock, 4, 5));
+        var hud = new HudState(RealTime: 1, Clock: 30, 200, 200, 100, 200, 3, 0, Age.Dark, [], []);
+        var panel = new LiveReadingViewModel();
+
+        panel.Apply(Frame(view, hud));
+
+        var state = view.Current!.State;
+        Assert.EndsWith($"({Texts.StepStateName(state)})", panel.Step);
+        Assert.DoesNotContain(state.ToString(), panel.Step);
+    }
+
+    [Fact]
+    public void Cada_estado_de_un_paso_tiene_su_nombre()
+    {
+        var names = Enum.GetValues<StepState>().Select(Texts.StepStateName).ToList();
+        Assert.Equal(names.Count, names.Distinct().Count());
+        Assert.DoesNotContain(names, name => Enum.GetNames<StepState>().Contains(name));
+    }
+
     // Spec 2026-10-30: el panel muestra los mismos renglones que el overlay.
     [Fact]
     public void El_panel_muestra_las_lineas()

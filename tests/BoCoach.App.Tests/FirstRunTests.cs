@@ -37,6 +37,37 @@ public sealed class FirstRunTests : IDisposable
         }
     }
 
+    /// <summary>El juego en otro lugar del escritorio (otro monitor, en ventana): Capture usa coordenadas absolutas.</summary>
+    private sealed class ScreenAt(int x, int y, string name) : IScreenSource
+    {
+        private readonly CapturedImage _game = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", name));
+
+        public PixelRect CaptureArea => new(x, y, _game.Width, _game.Height);
+        public bool GameFound => true;
+
+        public CapturedImage Capture(PixelRect rect)
+        {
+            // Lo que no es el juego es otra parte del escritorio, no un pedazo de esta imagen.
+            if (rect.X < x || rect.Y < y)
+                throw new ArgumentException($"{rect} está fuera del juego.");
+            return _game.Crop(rect with { X = rect.X - x, Y = rect.Y - y });
+        }
+    }
+
+    // AP-05: el panel de jugadores se pedía en coordenadas relativas al juego, y solo daba bien con el juego en (0, 0).
+    [Fact]
+    public async Task Con_el_juego_en_otro_monitor_lee_la_pantalla_de_carga()
+    {
+        if (OcrReader.TryCreate() is null)
+            return;
+        var tutorial = Tutorial(new ScreenAt(1920, 40, "carga-ia-en-1080p.png"));
+        tutorial.ToggleWatchingCommand.Execute(null);
+
+        await tutorial.TickAsync();
+
+        Assert.Equal(8, tutorial.Players.Count);
+    }
+
     private FirstRunViewModel Tutorial(IScreenSource screen, Func<bool>? calibrate = null, Action<string>? save = null, string current = "") =>
         new(screen, _data.GameData, () => GameLanguage.English, calibrate ?? (() => false), save ?? (_ => { }), current);
 

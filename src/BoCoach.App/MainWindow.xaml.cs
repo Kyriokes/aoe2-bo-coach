@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -32,8 +33,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     private bool _calibrating;
     private readonly CoachData _data;
 
-    // Una BO de la web pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
-    private static readonly HttpClient SharedHttp = new() { Timeout = TimeSpan.FromSeconds(20), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+    private static readonly HttpClient SharedHttp = WebAccount.NewHttpClient();
 
     /// <param name="settingsPath">Dónde están los ajustes; las capturas de prueba usan unos temporales para no tocar los del usuario.</param>
     /// <param name="userDir">Dónde están la cuenta de la web (web.json) y la caché de BO; por defecto %APPDATA%\BoCoach.</param>
@@ -66,7 +66,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         Coach.Stopped += autoRecorder.OnCoachStopped;
         // Modo desarrollador: el consumo de cada partida, para comparar.
         var usage = new GameUsageLog(() => DevMode.Instance.IsOn,
-            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "uso", $"{DateTime.Now:yyyyMMdd-HHmmss}-{Coach.LiveCoach?.Frames.CaptureIntervalMs:0}ms.csv"));
+            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "uso", $"{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}-{Coach.LiveCoach?.Frames.CaptureIntervalMs:0}ms.csv"));
         Coach.FrameApplied += frame => usage.OnFrame(frame, frame.InGame && Coach.IsLive);
         Coach.Stopped += usage.OnCoachStopped;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
@@ -95,13 +95,21 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
 
         _tick.Tick += (_, _) =>
         {
-            Tools.Tick();
-            var gameRunning = GameWindow.IsRunning();
-            Home.GameOpen = gameRunning;
-            // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
-            Coach.Tick(gameRunning && _firstRun is null);
-            if (Tools.IsRecording)
-                _indicator.SetText($"● {Tools.RecordingStatus}");
+            // Una excepción acá apaga el temporizador para siempre: un DispatcherTimer no se vuelve a armar.
+            try
+            {
+                Tools.Tick();
+                var gameRunning = GameWindow.IsRunning();
+                Home.GameOpen = gameRunning;
+                // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
+                Coach.Tick(gameRunning, canStart: _firstRun is null);
+                if (Tools.IsRecording)
+                    _indicator.SetText($"● {Tools.RecordingStatus}");
+            }
+            catch (Exception e)
+            {
+                BuildOrders.Status = Texts.WatchingGameFailed(e.Message);
+            }
         };
         _tick.Start();
         Tools.PropertyChanged += (_, e) =>
@@ -364,6 +372,8 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     // ---- Diálogos ----
 
     public bool Confirm(string message) => AppDialog.Confirm(this, message);
+
+    public bool ConfirmNoByDefault(string message) => AppDialog.Confirm(this, message, noByDefault: true);
 
     private bool _restarting;
 

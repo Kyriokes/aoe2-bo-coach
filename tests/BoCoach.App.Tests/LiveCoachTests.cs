@@ -1,9 +1,13 @@
+using System.Globalization;
 using BoCoach.App.Coaching;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
+using BoCoach.Vision.Regions;
 
 namespace BoCoach.App.Tests;
 
@@ -86,6 +90,61 @@ public sealed class LiveCoachTests : IDisposable
         for (var i = 0; i < 15; i++)
             await live.StepAsync(); // hasta 12 s
         Assert.Equal(2, frames.Recalibrations);
+    }
+
+    /// <summary>El log a la vista con el reloj sin leerse (algo lo tapa): la calibración sola encuentra el HUD cada vez.</summary>
+    private sealed class CoveredClockFrames(CapturedImage log, HudLayout? hudAfterRecalibrating = null) : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+        public HudLayout? Hud { get; private set; }
+        public Frame? Next() => new(region => region == RegionNames.EventLog ? log : null, ++_served * 0.5, Area);
+
+        public bool Recalibrate()
+        {
+            Hud = hudAfterRecalibrating;
+            return true;
+        }
+    }
+
+    private static CapturedImage LogWithFiveMessages => RecordedSession.Load(Fixture).Image(1399, RegionNames.EventLog);
+
+    private async Task<List<string>> EventsReadIn12Seconds(IFrameSource frames, OcrReader ocr)
+    {
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, frames);
+        var events = new List<string>();
+        live.Updated += frame => events.AddRange(frame.Hud?.NewEvents ?? []);
+        for (var i = 0; i < 24; i++)
+            await live.StepAsync();
+        return events;
+    }
+
+    // AP-16: cada 5 s sin reloj con el HUD a la vista se volvía a armar el lector, y uno nuevo da por nuevos todos los
+    // renglones del log: las casas y las unidades se sumaban otra vez, y podían cerrar pasos en falso.
+    [Fact]
+    public async Task Volver_a_calibrar_con_el_mismo_diseno_no_cuenta_de_nuevo_el_log()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return; // sin el OCR en inglés (puede pasar en CI)
+
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages), ocr);
+
+        Assert.Contains("house_built", events);
+        Assert.Equal(events.Distinct(), events);
+    }
+
+    // Otro diseño del HUD sí es otro lector: cada campo se recorta según él.
+    [Fact]
+    public async Task Volver_a_calibrar_con_otro_diseno_arma_otro_lector()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return;
+
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.FileName));
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages, layout), ocr);
+
+        Assert.Equal(2, events.Count(e => e == "house_built"));
     }
 
     /// <summary>
@@ -217,6 +276,80 @@ public sealed class LiveCoachTests : IDisposable
 
         live.Stop();
         Assert.Single(finished); // detener después no vuelve a cerrar nada
+    }
+
+    // AP-20: un coach reiniciado con otra BO en la misma partida ya no ve la pantalla de carga: se la pasa la sesión.
+    [Fact]
+    public async Task Con_la_pantalla_de_carga_ya_leida_corre_con_tu_civ_y_el_registro_tiene_el_mapa_y_el_rival()
+    {
+        var reading = new LoadingReading(
+            [new LoadingPlayer(1, "Ana", "", "franks", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, new RecordedFrames(RecordedSession.Load(Fixture)), playerName: "Ana", loading: reading)
+        {
+            MinReportSeconds = 1,
+            RecordsFolder = Path.Combine(_library.FullName, "registros"),
+            KnownMaps = _data.Maps,
+        };
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        Assert.Equal("franks", live.Civ);
+        Assert.False(live.Waiting);
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        live.Stop();
+
+        Assert.Equal(reading, last!.Loading);
+        Assert.Equal(1, last.Me?.Slot);
+        var meta = GameRecordReader.Load(Assert.Single(finished).Path).Meta!;
+        Assert.Equal("franks", meta["civ"]!.GetValue<string>());
+        Assert.Equal("britons", meta["rival_civ"]!.GetValue<string>());
+        Assert.Equal("arabia", meta["map"]!.GetValue<string>());
+        Assert.Equal(1, meta["slot"]!.GetValue<int>());
+        Assert.Equal("any", live.BuildOrder.Civ); // la BO con que se empezó no cambia
+    }
+
+    // AP-27: lo que lee el OCR es texto libre; al registro solo va un mapa que la app conoce, por su clave.
+    [Theory]
+    [InlineData("Arabia", "arabia")]
+    [InlineData("ARABIA", "arabia")]
+    [InlineData("Black Forest", "black_forest")]
+    [InlineData("Bosque Negro", "black_forest")]
+    [InlineData("Nómada", "nomad")]
+    [InlineData("El Mapa De Fulano", null)]
+    [InlineData("Cualquiera", null)]
+    [InlineData("---", null)]
+    [InlineData(null, null)]
+    public void Al_registro_solo_va_un_mapa_conocido(string? read, string? expected)
+    {
+        Assert.Equal(expected, LiveCoach.KnownMap(read, _data.Maps));
+        Assert.Null(LiveCoach.KnownMap(read, null));
+    }
+
+    // AP-14: el nombre del archivo es la fecha del calendario común, sea cual sea el de Windows.
+    [Fact]
+    public async Task El_nombre_del_registro_no_depende_del_calendario_del_sistema()
+    {
+        var folder = Path.Combine(_library.FullName, "registros");
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+            using var live = Recording(new RecordedFrames(RecordedSession.Load(Fixture)), folder);
+            var finished = new List<GameRecordInfo>();
+            live.RecordFinished += finished.Add;
+            for (var i = 0; i < 13; i++)
+                await live.StepAsync();
+            live.Stop();
+
+            Assert.StartsWith(DateTime.Now.Year.ToString(CultureInfo.InvariantCulture), Path.GetFileName(Assert.Single(finished).Path));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 
     // Reproducir una grabación más rápido no es mirar la pantalla más seguido: el registro dice lo segundo, y con eso se
@@ -410,6 +543,73 @@ public sealed class LiveCoachTests : IDisposable
         Assert.NotNull(live.TakePendingReport()); // lecturas nuevas desde el informe
     }
 
+    /// <summary>La grabación de scouts, con el reloj tapado desde la captura 13 y el tiempo real que le diga el test.</summary>
+    private sealed class PausedFrames(RecordedSession session) : IFrameSource
+    {
+        private int _served;
+        private double _extra;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => GameWindow.PrimaryScreen;
+        public bool GameInFront { get; set; } = true;
+        public void Wait(double seconds) => _extra += seconds;
+
+        public Frame? Next()
+        {
+            var frame = session.Frames[Math.Min(_served, session.Frames.Count - 1)];
+            var clock = _served++ < 13;
+            return new Frame(region => clock && session.Has(frame.Index, region) ? session.Image(frame.Index, region) : null, frame.TimeMs / 1000.0 + _extra, Area);
+        }
+    }
+
+    // AP-24: el tiempo en pausa contaba como tiempo sin reloj: al salir de una pausa de más de 30 s, una sola captura sin
+    // reloj daba la partida por terminada.
+    [Fact]
+    public async Task Salir_de_una_pausa_larga_con_una_captura_sin_reloj_no_termina_la_partida()
+    {
+        var frames = new PausedFrames(RecordedSession.Load(Fixture));
+        using var live = Live(frames);
+        var reports = 0;
+        live.GameFinished += _ => reports++;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        Assert.True(last!.InGame);
+
+        live.Paused = true;
+        await live.StepAsync();
+        frames.Wait(120);
+        await live.StepAsync();
+        Assert.True(last!.Paused);
+        live.Paused = false;
+        await live.StepAsync();
+
+        Assert.Equal(0, reports);
+        Assert.True(last!.InGame);
+        Assert.False(last.Waiting);
+        Assert.True(last.SecondsWithoutClock < 30, $"sin reloj {last.SecondsWithoutClock} s");
+    }
+
+    // AP-24: en pausa no se captura nada, pero el overlay no tiene que quedar encima de otra ventana.
+    [Fact]
+    public async Task En_pausa_el_coach_sigue_mirando_si_el_juego_esta_al_frente()
+    {
+        var frames = new PausedFrames(RecordedSession.Load(Fixture));
+        using var live = Live(frames);
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+        await live.StepAsync();
+
+        live.Paused = true;
+        frames.GameInFront = false;
+        await live.StepAsync();
+        Assert.False(last!.InFront);
+
+        frames.GameInFront = true;
+        await live.StepAsync();
+        Assert.True(last!.InFront);
+    }
+
     // El panel del coach bajaba en plena partida con 2 s sin leer el reloj y tapaba el minimapa (pedido del usuario,
     // 2026-10-26: "esto jamás debería ocurrir durante el juego"). Un hueco sin reloj de menos de 30 s sigue siendo la
     // partida; recién al terminar deja de serlo.
@@ -462,6 +662,33 @@ public sealed class LiveCoachTests : IDisposable
         Assert.True(last!.View.Time < time, $"tiempo {last.View.Time}");
         Assert.False(last.Waiting);
         Assert.Equal("any", live.Civ);
+    }
+
+    // AP-15: al empezar otra partida sin pantalla de carga, la captura se volvía a pasar por el armado nuevo con el reloj
+    // de la partida anterior: el armado la tomaba como la hora de empezar a jugar y el tiempo quedaba en 0 toda la partida.
+    [Fact]
+    public async Task Despues_de_un_reloj_que_vuelve_a_empezar_el_tiempo_de_la_partida_nueva_corre()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new GapFrames(session, before: 13, gap: 0, gapInFront: true, restart: true), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 13 + 13; i++)
+            await live.StepAsync();
+
+        Assert.Equal(0, last!.StartOffset);
+        Assert.True(last.View.Time > 60, $"tiempo {last.View.Time}");
+
+        // La partida nueva deja su informe y su registro, con su duración.
+        Assert.True(live.Report().Length > 60, $"largo {live.Report().Length}");
+        Assert.NotNull(live.TakePendingReport());
+        live.Stop();
+        Assert.Equal(["nueva", "detenido"], finished.Select(f => f.Reason));
+        Assert.True(finished[1].Length > 60, $"largo {finished[1].Length}");
     }
 
     private string? WarningOf(CoachFrame frame)

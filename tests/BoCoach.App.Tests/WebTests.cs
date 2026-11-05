@@ -1,8 +1,10 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json.Nodes;
 using BoCoach.App.Web;
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Web;
 using Microsoft.Win32;
 
 namespace BoCoach.App.Tests;
@@ -61,6 +63,57 @@ public sealed class WebTests : IDisposable
 
         Assert.Equal(WebSettings.DefaultUrl, settings.WebUrl);
         Assert.False(settings.HasToken);
+        Assert.Equal("{ esto no es json", File.ReadAllText(SettingsPath + ".roto"));
+    }
+
+    // AP-04: un solo campo de otro tipo perdía toda la cuenta, y un archivo que no se podía leer cortaba el arranque.
+    [Fact]
+    public void Un_valor_raro_en_un_campo_de_la_cuenta_no_pierde_los_demas()
+    {
+        new WebAccount(new HttpClient(), SettingsPath).Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+        var json = JsonNode.Parse(File.ReadAllText(SettingsPath))!.AsObject();
+        json["published"] = new JsonObject { ["scouts"] = "k7m2xq", ["rara"] = 5 };
+        File.WriteAllText(SettingsPath, json.ToJsonString());
+
+        var settings = new WebAccount(new HttpClient(), SettingsPath).Settings;
+
+        Assert.Equal("https://bo.example", settings.WebUrl);
+        Assert.Equal(Token, settings.Token);
+        Assert.Equal("k7m2xq", Assert.Single(settings.Published).Value);
+    }
+
+    [Fact]
+    public void Un_token_de_otro_usuario_de_Windows_no_pierde_la_direccion_ni_los_codigos()
+    {
+        File.WriteAllText(SettingsPath, """{ "web_url": "https://bo.example", "token": "bm8gZXMgdW4gdG9rZW4=", "published": { "scouts": "k7m2xq" } }""");
+
+        var settings = new WebAccount(new HttpClient(), SettingsPath).Settings;
+
+        Assert.False(settings.HasToken);
+        Assert.Equal("https://bo.example", settings.WebUrl);
+        Assert.Equal("k7m2xq", settings.Published["scouts"]);
+    }
+
+    [Fact]
+    public void Un_archivo_de_la_cuenta_que_no_se_puede_leer_no_corta_el_arranque()
+    {
+        File.WriteAllText(SettingsPath, "{}");
+
+        using var locked = new FileStream(SettingsPath, FileMode.Open, FileAccess.Read, FileShare.None);
+
+        Assert.False(new WebAccount(new HttpClient(), SettingsPath).Settings.HasToken);
+    }
+
+    [Fact]
+    public void Guardar_la_cuenta_escribe_por_un_temporal_y_si_falla_queda_lo_anterior()
+    {
+        var account = new WebAccount(new HttpClient(), SettingsPath);
+        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+        Directory.CreateDirectory(SettingsPath + ".tmp"); // no se puede escribir el temporal
+
+        Assert.ThrowsAny<Exception>(() => account.Save(new WebSettings { WebUrl = "https://otra.example", Token = Token }));
+
+        Assert.Equal("https://bo.example", new WebAccount(new HttpClient(), SettingsPath).Settings.WebUrl);
     }
 
     [Fact]
@@ -133,6 +186,44 @@ public sealed class WebTests : IDisposable
         Assert.Contains("Cuenta de la web", output.ToString());
     }
 
+    // AP-31: HttpClient borra Authorization al redirigir a otro host, pero no X-BoCoach-Secret. El cliente de la web no sigue
+    // redirecciones, y una redirección es un error que se entiende, no una excepción sin manejar.
+    [Fact]
+    public async Task El_cliente_de_la_web_no_sigue_redirecciones_y_lo_dice()
+    {
+        var other = new TcpListener(IPAddress.Loopback, 0);
+        var web = new TcpListener(IPAddress.Loopback, 0);
+        other.Start();
+        web.Start();
+        try
+        {
+            var otherPort = ((IPEndPoint)other.LocalEndpoint).Port;
+            var server = Task.Run(async () =>
+            {
+                using var connection = await web.AcceptTcpClientAsync();
+                var stream = connection.GetStream();
+                Assert.True(await stream.ReadAsync(new byte[8192]) > 0);
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(
+                    $"HTTP/1.1 308 Permanent Redirect\r\nLocation: http://127.0.0.1:{otherPort}/robar\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"));
+            });
+            using var http = WebAccount.NewHttpClient();
+            var client = new WebLibraryClient(http, new Uri($"http://127.0.0.1:{((IPEndPoint)web.LocalEndpoint).Port}/"));
+
+            var error = await Assert.ThrowsAsync<WebLibraryException>(() =>
+                client.ForgetRecordsAsync(new Core.Record.InstallIdentity(new string('a', 32), new string('b', 64))));
+
+            await server;
+            Assert.Equal(HttpStatusCode.PermanentRedirect, error.Status);
+            Assert.Contains("redirección", error.Message);
+            Assert.False(other.Pending());
+        }
+        finally
+        {
+            other.Stop();
+            web.Stop();
+        }
+    }
+
     [Fact]
     public void Un_enlace_con_comillas_no_cuela_otros_argumentos()
     {
@@ -158,6 +249,31 @@ public sealed class WebTests : IDisposable
             Assert.False(links.IsRegisteredTo(@"D:\otra\BoCoach.exe"));
             using var root = Registry.CurrentUser.OpenSubKey($@"{key}\bocoach");
             Assert.Equal("", root!.GetValue("URL Protocol"));
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(key.Split('\\')[0] + "\\" + key.Split('\\')[1], throwOnMissingSubKey: false);
+        }
+    }
+
+    // AP-06: con una versión nueva en otra carpeta, los enlaces seguían abriendo la vieja.
+    [Fact]
+    public void Los_enlaces_registrados_pasan_a_esta_copia_y_los_que_no_estaban_no_se_registran()
+    {
+        var key = $@"Software\BoCoachTests-{Guid.NewGuid():N}\Classes";
+        var links = new LinkProtocol(key);
+        try
+        {
+            links.RefreshIfRegistered(@"D:\nueva\BoCoach.exe");
+            Assert.False(links.IsRegisteredTo(@"D:\nueva\BoCoach.exe"));
+            using (var none = Registry.CurrentUser.OpenSubKey($@"{key}\bocoach"))
+                Assert.Null(none);
+
+            links.Register(@"C:\vieja\BoCoach.exe");
+            links.RefreshIfRegistered(@"D:\nueva\BoCoach.exe");
+
+            Assert.True(links.IsRegisteredTo(@"D:\nueva\BoCoach.exe"));
+            Assert.False(links.IsRegisteredTo(@"C:\vieja\BoCoach.exe"));
         }
         finally
         {

@@ -60,6 +60,15 @@ public sealed class BuildOrdersViewModelTests : IDisposable
             return ConfirmAnswer;
         }
 
+        /// <summary>Las que se hicieron con "no" por defecto.</summary>
+        public List<string> RiskyConfirmations { get; } = [];
+
+        public bool ConfirmNoByDefault(string message)
+        {
+            RiskyConfirmations.Add(message);
+            return ConfirmAnswer;
+        }
+
         public string? AskText(string title, string message, string initial = "") => Answer;
         public WebSettings? EditWebAccount(WebSettings current) => null;
         public void OpenUrl(string url) => Opened.Add(url);
@@ -148,6 +157,47 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.False(vm.Connected);
     }
 
+    // AP-07: la pregunta no decía que reemplazaba la cuenta actual, y Enter decía que sí: una página podía pasar la app a
+    // otra cuenta con el mismo nombre a la vista.
+    [Fact]
+    public async Task Reemplazar_la_cuenta_conectada_nombra_las_dos_y_por_defecto_es_no()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        const string other = "bocoach_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        _web.Routes["GET /api/app/mis-bo"] = (HttpStatusCode.OK, new JsonObject { ["account"] = "Beto", ["items"] = new JsonArray() }.ToJsonString());
+        _dialogs.ConfirmAnswer = false;
+
+        await vm.HandleLinkAsync($"bocoach://conectar/{other}");
+
+        var question = Assert.Single(_dialogs.RiskyConfirmations);
+        Assert.Contains("Ana", question);
+        Assert.Contains("Beto", question);
+        Assert.Empty(_dialogs.Confirmations);
+        Assert.Equal(Token, _account.Settings.Token);
+
+        _dialogs.ConfirmAnswer = true;
+        await vm.HandleLinkAsync($"bocoach://conectar/{other}");
+        Assert.Equal(other, _account.Settings.Token);
+    }
+
+    [Fact]
+    public async Task Otra_conexion_con_el_mismo_nombre_tambien_pregunta_con_no_por_defecto()
+    {
+        _account.Save(_account.Settings with { Token = Token });
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var vm = ViewModel();
+        await vm.RefreshAsync();
+        _dialogs.ConfirmAnswer = false;
+
+        await vm.HandleLinkAsync("bocoach://conectar/bocoach_ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+        Assert.Contains("puede ser de otra cuenta", Assert.Single(_dialogs.RiskyConfirmations));
+        Assert.Equal(Token, _account.Settings.Token);
+    }
+
     [Fact]
     public async Task Actualizar_la_lista_no_pierde_la_elegida_ni_la_baja_de_nuevo()
     {
@@ -182,6 +232,33 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.Empty(_dialogs.Confirmations);
     }
 
+    // AP-08: pegar el token en "Pegar código" lo mostraba entero en la barra de estado.
+    [Fact]
+    public async Task Pegar_el_token_conecta_con_el_y_no_lo_repite()
+    {
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        _dialogs.Answer = Token;
+        var vm = ViewModel();
+
+        await vm.PasteCodeAsync();
+
+        Assert.Contains("Ana", Assert.Single(_dialogs.Confirmations));
+        Assert.Equal(Token, _account.Settings.Token);
+        Assert.DoesNotContain(Token, vm.Status);
+    }
+
+    [Fact]
+    public async Task Pegar_un_token_incompleto_no_lo_repite()
+    {
+        _dialogs.Answer = "bocoach_0123456789abcdef";
+        var vm = ViewModel();
+
+        await vm.PasteCodeAsync();
+
+        Assert.Equal(Texts.NotAWholeToken, vm.Status);
+        Assert.False(_account.Settings.HasToken);
+    }
+
     [Fact]
     public async Task Un_enlace_de_la_web_pide_confirmacion_con_nombre_y_autor()
     {
@@ -198,6 +275,21 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.Contains("Suscripta", question);
         Assert.Contains("Ana", question);
         Assert.DoesNotContain("POST /api/app/suscripciones/abcdef", _web.Requests);
+    }
+
+    // AP-10: al abrir la app nadie espera el resultado del enlace: un error se perdía en silencio.
+    [Fact]
+    public async Task Un_error_al_manejar_un_enlace_se_dice_en_el_estado()
+    {
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var folder = Directory.CreateDirectory(Path.Combine(_dir.FullName, "web-carpeta")).FullName; // no se puede guardar ahí
+        var account = new WebAccount(new HttpClient(_web), folder);
+        var vm = new BuildOrdersViewModel(_cache, account, _dialogs, Data);
+
+        await vm.HandleLinkAsync($"bocoach://conectar/{Token}");
+
+        Assert.StartsWith("No se pudo abrir el enlace", vm.Status);
+        Assert.DoesNotContain(Token, vm.Status);
     }
 
     [Fact]

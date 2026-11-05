@@ -1,7 +1,9 @@
 using System.Text.Json;
 using BoCoach.App.Capture;
+using BoCoach.App.Web;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Regions;
+using Microsoft.Win32;
 
 namespace BoCoach.App.Tests;
 
@@ -9,7 +11,16 @@ public sealed class CaptureToolsTests : IDisposable
 {
     private readonly DirectoryInfo _dir = Directory.CreateTempSubdirectory("bocoach-tools-");
 
-    public void Dispose() => _dir.Delete(recursive: true);
+    /// <summary>Una clave de prueba propia: "Sacar" no tiene que tocar la de verdad (HKCU\Software\Classes).</summary>
+    private readonly string _testKey = $"BoCoachTests-{Guid.NewGuid():N}";
+
+    private LinkProtocol Links => new($@"Software\{_testKey}\Classes");
+
+    public void Dispose()
+    {
+        Registry.CurrentUser.DeleteSubKeyTree($@"Software\{_testKey}", throwOnMissingSubKey: false);
+        _dir.Delete(recursive: true);
+    }
 
     private string RegionsPath => Path.Combine(_dir.FullName, "regions.json");
     private string RecordingsRoot => Path.Combine(_dir.FullName, "recordings");
@@ -33,13 +44,22 @@ public sealed class CaptureToolsTests : IDisposable
         public RegionLayout? Calibrate(RegionLayout current) => OnCalibrate(current);
         public void OpenFolder(string path) => OpenedFolder = path;
         public void ShowMessage(string title, string text, bool warning) => Message = (text, warning);
+
+        public bool ConfirmAnswer { get; set; } = true;
+        public string? Asked { get; private set; }
+
+        public bool Confirm(string message)
+        {
+            Asked = message;
+            return ConfirmAnswer;
+        }
     }
 
     private string DiagnosticsFolder => Path.Combine(_dir.FullName, "diagnostico");
 
     private CaptureToolsViewModel Tools(FakeHost host, Func<string?>? findGame = null, IScreenSource? screen = null) =>
         new(screen ?? new FakeScreen(), host, RegionsPath, RecordingsRoot, findGame ?? (() => null), Path.Combine(_dir.FullName, "perfiles"),
-            diagnosticsFolder: DiagnosticsFolder) { DiagnosticDelay = TimeSpan.Zero };
+            diagnosticsFolder: DiagnosticsFolder, links: Links) { DiagnosticDelay = TimeSpan.Zero };
 
     private static readonly string HudFixture = Path.Combine(AppContext.BaseDirectory, "fixtures", "hud-20261018-132830");
 
@@ -176,6 +196,28 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.Contains("8  equipo 2", report);
     }
 
+    // AP-16: el coach recalibra cada 5 s mientras no lee el reloj. Si no cambió nada, no se toca el archivo: la copia de
+    // la calibración manual ("anterior") se pisaba con la automática a partir de la segunda vez.
+    [Fact]
+    public void Volver_a_calibrar_sin_cambios_no_pisa_la_copia_de_la_calibracion_manual()
+    {
+        var manual = RegionLayout.Default.With(RegionNames.Clock, new RegionRect(0.5, 0.5, 0.05, 0.02));
+        manual.Save(RegionsPath);
+        var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+        Assert.True(tools.TryAutoCalibrate());
+        Assert.Equal(manual.Regions[RegionNames.Clock], RegionLayout.LoadOrDefault(tools.PreviousRegionsPath).Regions[RegionNames.Clock]);
+        var written = File.GetLastWriteTimeUtc(RegionsPath);
+        File.SetLastWriteTimeUtc(RegionsPath, written.AddHours(-1));
+
+        for (var i = 0; i < 3; i++)
+            Assert.True(tools.TryAutoCalibrate());
+
+        Assert.Equal(written.AddHours(-1), File.GetLastWriteTimeUtc(RegionsPath));
+        Assert.Equal(manual.Regions[RegionNames.Clock], RegionLayout.LoadOrDefault(tools.PreviousRegionsPath).Regions[RegionNames.Clock]);
+        Assert.False(File.Exists(RegionsPath + ".nuevo"));
+    }
+
     [Fact]
     public void Sin_el_mod_en_pantalla_queda_la_calibracion_que_habia()
     {
@@ -187,6 +229,44 @@ public sealed class CaptureToolsTests : IDisposable
 
         Assert.Equal(manual.Regions[RegionNames.Clock], tools.Layout.Regions[RegionNames.Clock]);
         Assert.Contains("No encontré", tools.CalibrationStatus);
+    }
+
+    private sealed class EmptyAreaScreen : IScreenSource
+    {
+        public PixelRect CaptureArea => new(0, 0, 0, 0);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => throw new ArgumentException("El rectángulo está vacío.");
+    }
+
+    // AP-03: estos errores salían del temporizador de la ventana y lo apagaban para siempre. Pasa con el juego minimizado.
+    [Fact]
+    public void Si_no_se_puede_capturar_la_calibracion_sola_lo_dice_y_no_tira()
+    {
+        var tools = Tools(new FakeHost(), screen: new EmptyAreaScreen());
+
+        Assert.False(tools.TryAutoCalibrate());
+
+        Assert.Contains("El rectángulo está vacío", tools.CalibrationStatus);
+    }
+
+    [Fact]
+    public void Si_no_se_puede_guardar_la_calibracion_sola_lo_dice_y_no_tira()
+    {
+        RegionLayout.Default.Save(RegionsPath);
+        File.SetAttributes(RegionsPath, FileAttributes.ReadOnly);
+        try
+        {
+            var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+            Assert.False(tools.TryAutoCalibrate());
+
+            Assert.Contains("No se pudo guardar", tools.CalibrationStatus);
+        }
+        finally
+        {
+            foreach (var file in _dir.GetFiles())
+                file.Attributes = FileAttributes.Normal;
+        }
     }
 
     [Fact]
@@ -212,6 +292,99 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.False(host.Message?.Warning, host.Message?.Text);
         Assert.Contains("quedó instalado", host.Message?.Text);
         Assert.Contains("Perfil 76561198000000000: diseño bocoach-2026-10", host.Message?.Text);
+    }
+
+    // AP-01: un regions.json roto tiraba en el constructor de la ventana: la app no abría nunca más, y no se arreglaba sola.
+    [Theory]
+    [InlineData("{ esto no es json")]
+    [InlineData("")]
+    [InlineData("""{ "regions": { "wood": [1, 2] } }""")]
+    public void Un_regions_json_roto_se_aparta_y_se_abre_con_las_posiciones_de_siempre(string content)
+    {
+        File.WriteAllText(RegionsPath, content);
+
+        var tools = Tools(new FakeHost());
+
+        Assert.Same(RegionLayout.Default, tools.Layout);
+        Assert.False(tools.IsCalibrated);
+        Assert.Equal(content, File.ReadAllText(Path.Combine(_dir.FullName, "regions.roto.json")));
+        Assert.Contains("regions.roto.json", tools.CalibrationStatus);
+    }
+
+    // Que no se pueda leer ahora (el antivirus lo tiene abierto) no quiere decir que esté roto.
+    [Fact]
+    public void Un_regions_json_que_no_se_puede_leer_ahora_no_se_aparta()
+    {
+        var manual = RegionLayout.Default.With(RegionNames.Clock, new RegionRect(0.5, 0.5, 0.05, 0.02));
+        manual.Save(RegionsPath);
+
+        using (new FileStream(RegionsPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.Same(RegionLayout.Default, Tools(new FakeHost()).Layout);
+
+        Assert.Equal(manual.Regions[RegionNames.Clock], Tools(new FakeHost()).Layout.Regions[RegionNames.Clock]);
+        Assert.False(File.Exists(Path.Combine(_dir.FullName, "regions.roto.json")));
+    }
+
+    // AP-13: sacar lo que la app dejó afuera de su carpeta: el mod y la clave de los enlaces.
+    [Fact]
+    public void Sacar_pregunta_antes_y_borra_el_mod_y_los_enlaces()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        var mods = Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "111", "mods")).FullName;
+        var host = new FakeHost();
+        var tools = Tools(host, () => game);
+        tools.InstallModCommand.Execute(null);
+        Links.Register(@"C:\BoCoach\BoCoach.exe");
+        var mod = Path.Combine(mods, "local", HudMod.Name);
+
+        host.ConfirmAnswer = false;
+        tools.UninstallCommand.Execute(null);
+
+        Assert.Contains(HudMod.Name, host.Asked);
+        Assert.True(Directory.Exists(mod));
+        Assert.True(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
+
+        host.ConfirmAnswer = true;
+        tools.UninstallCommand.Execute(null);
+
+        Assert.False(Directory.Exists(mod));
+        Assert.False(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
+        Assert.False(host.Message?.Warning);
+        Assert.Contains("1 perfil", host.Message?.Text);
+    }
+
+    [Fact]
+    public void Si_no_se_puede_sacar_el_mod_lo_dice_y_los_enlaces_quedan()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "111", "mods"));
+        var host = new FakeHost();
+        var tools = Tools(host, () => game);
+        tools.InstallModCommand.Execute(null);
+        Links.Register(@"C:\BoCoach\BoCoach.exe");
+        var info = Path.Combine(_dir.FullName, "perfiles", "111", "mods", "local", HudMod.Name, "info.json");
+
+        using (new FileStream(info, FileMode.Open, FileAccess.Read, FileShare.None))
+            tools.UninstallCommand.Execute(null);
+
+        Assert.True(host.Message?.Warning);
+        Assert.Contains("No se pudo sacar todo", host.Message?.Text);
+        Assert.True(Links.IsRegisteredTo(@"C:\BoCoach\BoCoach.exe"));
+    }
+
+    // AP-11: un panel que cambió de forma daba excepciones que el botón no atrapaba.
+    [Fact]
+    public void Instalar_el_mod_con_un_panel_que_cambio_lo_explica()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        File.WriteAllText(Path.Combine(game, "widgetui", "worldtimerpanel.json"), """{ "Collection": { "Widgets": [] } }""");
+        Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "76561198000000000", "mods"));
+        var host = new FakeHost();
+
+        Tools(host, () => game).InstallModCommand.Execute(null);
+
+        Assert.True(host.Message?.Warning);
+        Assert.Contains("un panel del juego no tiene la forma", host.Message?.Text);
     }
 
     [Fact]

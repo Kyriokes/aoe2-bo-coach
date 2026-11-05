@@ -85,6 +85,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         FirstRunDone = settings.FirstRunDone;
         AutoStart = settings.AutoStart;
         ShareGames = settings.ShareGames;
+        if (settings.WasBroken)
+            ShareStatus = Texts.SettingsWereBroken;
         LastBuildOrderId = settings.LastBuildOrder;
         BoMode = settings.BoMode;
         Hotkeys = settings.Hotkeys;
@@ -323,9 +325,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             ShareStatus = Texts.ShareNotWritten(e.Message);
             return;
         }
-        LastRecord = info;
+        (LastRecord, _lastRecordReported) = (info, false);
         await SendPendingRecordsAsync();
     }
+
+    /// <summary>El informe de <see cref="LastRecord"/> ya salió: el registro de una partida llega antes que su informe.</summary>
+    private bool _lastRecordReported;
 
     /// <summary>Manda lo que esté vencido en la cola (al terminar una partida y al abrir la app, nunca jugando). Nunca tira error.</summary>
     public async Task SendPendingRecordsAsync()
@@ -397,6 +402,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         OnPropertyChanged(nameof(IsAutoMode));
         OnPropertyChanged(nameof(IsManualMode));
+        // Al pasar a "Elegir de mi lista", la que está elegida manda (ver FollowSelection).
+        _followedSelection = null;
         SaveSettings();
     }
 
@@ -485,7 +492,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 ShareGames = ShareGames,
             }.Save(_settingsPath);
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // Si no se puede guardar, vale para esta sesión.
         }
@@ -522,55 +529,83 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>
-    /// D6: la ventana lo llama cada segundo con si corre el proceso del juego (y no está abierto el tutorial). Con
-    /// "Coach automático", arranca solo con la última BO usada y se detiene (con el informe) cuando el juego se cierra.
+    /// D6: la ventana lo llama cada segundo con si corre el proceso del juego. Con "Coach automático", arranca solo con la
+    /// última BO usada y se detiene (con el informe) cuando el juego se cierra.
+    /// Un error no sale de acá: apagaría el temporizador de la ventana para siempre (un DispatcherTimer no se vuelve a
+    /// armar), y el coach dejaría de seguir al juego. Se dice en el estado y no se insiste hasta que el juego se vuelva a abrir.
     /// </summary>
-    public void Tick(bool gameRunning)
+    /// <param name="canStart">False mientras el tutorial mira la pantalla: no arranca, y si ya corre, sigue.</param>
+    public void Tick(bool gameRunning, bool canStart = true)
     {
-        if (!gameRunning)
+        try
         {
-            _autoBlocked = false;
-            if (IsRunning && _startedAutomatically)
+            if (!gameRunning)
             {
-                Stop();
-                Status = Texts.GameClosedStopped;
+                _autoBlocked = false;
+                if (IsRunning && _startedAutomatically)
+                {
+                    Stop();
+                    Status = Texts.GameClosedStopped;
+                }
             }
-            return;
+            FollowSelection();
+            if (!gameRunning || !canStart || !AutoStart || IsRunning || _autoBlocked)
+                return;
+            if (AutoBuildOrder() is not { } bo)
+            {
+                if (!_autoNoBoWarned)
+                {
+                    _autoNoBoWarned = true;
+                    Status = Texts.AutoNeedsBuildOrder;
+                }
+                return;
+            }
+            _autoNoBoWarned = false;
+            _previousBuildOrder = null;
+            _declined.Clear();
+            // La BO tiene errores: no se insiste cada segundo.
+            if (!Start(bo, _liveFrames(), automatic: true))
+                _autoBlocked = true;
         }
-        if (!AutoStart || IsRunning || _autoBlocked)
-            return;
-        if (AutoBuildOrder() is not { } bo)
+        catch (Exception e)
         {
-            if (!_autoNoBoWarned)
-            {
-                _autoNoBoWarned = true;
-                Status = Texts.AutoNeedsBuildOrder;
-            }
-            return;
-        }
-        _autoNoBoWarned = false;
-        _previousBuildOrder = null;
-        _declined.Clear();
-        Start(bo, _liveFrames(), automatic: true);
-        // La BO tiene errores: no se insiste cada segundo.
-        if (!IsRunning)
             _autoBlocked = true;
+            Status = Texts.AutoFailed(e.Message);
+        }
     }
 
     /// <summary>
-    /// La última BO usada (si está guardada), o la elegida; en automática, si no hay ninguna, sin BO: la elige la
-    /// pantalla de carga.
+    /// Con qué BO arranca solo. A mano, la elegida (si todavía se está bajando, la última usada); en automática, la última
+    /// usada si está guardada, o la elegida y, si no hay ninguna, sin BO: la elige la pantalla de carga.
     /// </summary>
-    private BuildOrder? AutoBuildOrder() =>
-        ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? (BoMode == BuildOrderMode.Auto ? BuildOrder.None : null);
+    private BuildOrder? AutoBuildOrder() => BoMode == BuildOrderMode.Manual
+        ? _selected() ?? ActivePicker.Current(LastBuildOrderId)
+        : ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? BuildOrder.None;
+
+    /// <summary>La elegida de la lista la última vez que se miró, para reaccionar cuando el jugador elige otra.</summary>
+    private string? _followedSelection;
+
+    /// <summary>
+    /// A mano, la elegida manda: si el coach está esperando la partida con otra (arrancó solo con el juego), se reinicia con
+    /// ella. En plena partida no se toca y vale para la siguiente. Lo que se aceptó con el atajo de la sugerida no se deshace:
+    /// recién cuenta si el jugador elige otra en la lista.
+    /// </summary>
+    private void FollowSelection()
+    {
+        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || _lastInGame || _selected() is not { } selected || selected.Id == _followedSelection)
+            return;
+        _followedSelection = selected.Id;
+        if (_coach?.BuildOrder.Id == selected.Id)
+            return;
+        _previousBuildOrder = null;
+        Start(selected, _liveFrames(), _startedAutomatically, _loading);
+    }
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
-    public void Start(BuildOrder bo, IFrameSource frames, bool automatic = false)
+    /// <param name="loading">La pantalla de carga de esta partida, si ya se leyó y es otra BO para la misma partida.</param>
+    /// <returns>False si la BO tiene errores: el coach que corre sigue con la suya y el estado dice qué pasó.</returns>
+    public bool Start(BuildOrder bo, IFrameSource frames, bool automatic = false, Vision.Loading.LoadingReading? loading = null)
     {
-        // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
-        StopCoach(notify: false);
-        IsLive = frames is not RecordedFrames;
-        _startedAutomatically = automatic;
         // Una BO con errores no se simula: el editor y la web validan antes, pero un .json importado a mano no pasa
         // por ahí, y un count enorme agota la memoria del Planner (encola una entrada por unidad). Se valida con su
         // propia civ: jugar con otra civ una BO que pide algo que esa civ no tiene no frena al coach.
@@ -578,20 +613,25 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (!bo.IsNone && _data.Validator.Validate(bo).Issues.FirstOrDefault(i => i.Severity == Severity.Error) is { } error)
         {
             Status = Texts.HasErrors(bo.Name, error.Message);
-            return;
+            return false;
         }
+        // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
+        StopCoach(notify: false);
+        IsLive = frames is not RecordedFrames;
+        _startedAutomatically = automatic;
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
         bo = bo with { Civ = CivFor(bo) };
         Overlay = new OverlayViewModel(_data.GameData, bo.Name) { ShowDebug = Overlay?.ShowDebug ?? false, CursorReminders = CursorReminders };
         // El log y la edad se leen con el OCR y las frases del idioma del juego (si Windows no tiene ese OCR, el inglés).
         var ocr = Language.CreateOcr();
         var coach = _coach = new LiveCoach(bo, _data.GameData, _data.EventsFor(Language), _data.Fonts, ocr, frames,
-            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code)
+            new EconomySettings { MaxVillagers = MaxVillagers }, PlayerName, Language.Code, loading)
         {
             RecordsFolder = RecordsFolder,
             AppVersion = BoCoach.App.AppVersion.Text,
+            KnownMaps = _data.Maps,
         };
-        _loading = null;
+        (_loading, _restartedOn) = (null, loading);
         // Una captura que el loop termina después de detenerlo no tiene que llegar al overlay de otra sesión.
         coach.GameFinished += report => _host.RunOnUi(() => Finished(report));
         coach.RecordFinished += info => _host.RunOnUi(() => _ = RecordDoneAsync(info));
@@ -615,7 +655,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (!ManualSteps)
             _coach.Start();
         IsRunning = true;
-        Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
+        _followedSelection = _selected()?.Id;
+        Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(CivLabel(bo.Civ)) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
+        return true;
     }
 
     /// <summary>
@@ -625,6 +667,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// </summary>
     internal static string DefaultReportsFolder { get; set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "informes");
+
+    /// <summary>La pantalla de carga con que se reinició este coach (otra BO para la misma partida), o null.</summary>
+    private Vision.Loading.LoadingReading? _restartedOn;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -706,6 +751,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>Guarda el informe de una partida terminada y muestra el resumen.</summary>
     internal void Finished(GameReport report)
     {
+        // Esta partida no dejó registro (no se pudo escribir, se apagó el interruptor): la nota de su informe caía en la anterior.
+        if (_lastRecordReported)
+            LastRecord = null;
+        _lastRecordReported = true;
         // D10: el cruce de la pantalla de carga de esta partida, con la duración que tuvo; se usa una sola vez.
         if (_matchupQuery is { } query)
         {
@@ -719,7 +768,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             Directory.CreateDirectory(ReportsFolder);
             var now = DateTime.Now;
-            var path = Path.Combine(ReportsFolder, $"{now:yyyyMMdd-HHmmss}.html");
+            // Con el calendario común, sea cual sea el de Windows: es lo que después se ordena en LatestReportIn.
+            var path = Path.Combine(ReportsFolder, $"{now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.html");
             File.WriteAllText(path, GameReportText.Html(report, now));
             LastReport = new ReportInfo(path, now, ReportLine(report), report.Length);
             ReportPending = true;
@@ -789,6 +839,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.BoSuggestion = Texts.Suggested(suggestion.Summary.Name, suggestion.Reason, Key("accept_suggestion"));
     }
 
+    private void ForgetMatchChoices()
+    {
+        _declined.Clear();
+        (_suggestion, _previousBuildOrder, _lastSwitchBest) = (null, null, null);
+        if (Overlay is not null)
+            Overlay.BoSuggestion = null;
+    }
+
     /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
     private async Task RefreshRunningAsync(BuildOrderPicker picker, BuildOrder running)
     {
@@ -802,10 +860,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             return; // sin internet: sigue con la guardada
         }
+        // Si no se pudo bajar, GetAsync da la guardada sin tirar error: reiniciar con la misma daba otra vuelta sin fin.
+        if (!picker.IsFresh(running.Id))
+            return;
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
-        Start(bo, _liveFrames(), _startedAutomatically);
-        Status = Texts.NewVersionRunning(bo.Name);
+        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+            Status = Texts.NewVersionRunning(bo.Name);
     }
 
     /// <summary>
@@ -845,9 +906,19 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             }
             return;
         }
+        if (!Start(bo, _liveFrames(), automatic: true, _loading))
+        {
+            // Con errores: el coach sigue con la que tiene y en esta partida no se vuelve a probar. Antes el coach moría,
+            // volvía a arrancar solo, leía la pantalla de carga y se repetía todo.
+            _declined.Add(bo.Id);
+            if (best is not null)
+                _declined.Add(best.Summary.Key);
+            if (Overlay is not null)
+                Overlay.BoSuggestion = null;
+            return;
+        }
         _previousBuildOrder = running.IsNone ? null : running;
         _lastSwitchBest = best?.Summary.Key;
-        Start(bo, _liveFrames(), automatic: true);
         var why = best is not null && best.Summary.Key == bo.Id ? Texts.SwitchReason(best.Reason) : "";
         var back = running.IsNone ? "" : Texts.SwitchBack(Key("accept_suggestion"), running.Name);
         if (Overlay is not null)
@@ -877,6 +948,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void AcceptSuggestion()
     {
+        // Ya empezada la partida no hace nada: un coach nuevo tiraría todo lo que lleva (reiniciaba a los 25 minutos).
+        if (!BuildOrderPicker.CanSwitchAt(_lastGameTime))
+            return;
         if (_suggestion is { } suggestion)
         {
             _suggestion = null;
@@ -891,8 +965,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_lastSwitchBest is not null)
             _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
-        Start(previous, _liveFrames(), automatic: true);
-        Status = Texts.BackToBuildOrder(previous.Name);
+        if (Start(previous, _liveFrames(), automatic: true, _loading))
+            Status = Texts.BackToBuildOrder(previous.Name);
     }
 
     /// <summary>Baja la sugerida (si no está guardada) y empieza el coach con ella.</summary>
@@ -911,8 +985,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_coach != session)
             return;
-        Start(bo, _liveFrames(), _startedAutomatically);
-        Status = Texts.SuggestedRunning(bo.Name);
+        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+            Status = Texts.SuggestedRunning(bo.Name);
     }
 
     /// <summary>Lo que se entendió de la pantalla de carga, para la barra de estado.</summary>
@@ -923,13 +997,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (frame.Me is not { } me)
         {
             return PlayerName.Trim().Length == 0
-                ? Texts.LoadingNoPlayerName(frame.Civ)
-                : Texts.LoadingPlayerNotFound(PlayerName.Trim(), string.Join(", ", loading.Players.Select(p => p.Name)), frame.Civ);
+                ? Texts.LoadingNoPlayerName(CivLabel(frame.Civ))
+                : Texts.LoadingPlayerNotFound(PlayerName.Trim(), string.Join(", ", loading.Players.Select(p => p.Name)), CivLabel(frame.Civ));
         }
-        var rivals = loading.Opponents(me).Select(p => p.Civ ?? "?").ToList();
-        var civ = me.Civ is null ? Texts.LoadingCivUnknown(me.CivText, frame.Civ) : Texts.LoadingPlayingWith(me.Civ);
+        var rivals = loading.Opponents(me).Select(p => p.Civ is { } rival ? CivName(rival) : "?").ToList();
+        var civ = me.Civ is null ? Texts.LoadingCivUnknown(me.CivText, CivLabel(frame.Civ)) : Texts.LoadingPlayingWith(CivName(me.Civ));
         return Texts.LoadingNote(civ, rivals.Count > 0 ? Texts.LoadingVs(string.Join(", ", rivals)) : "", loading.Map is { } map ? Texts.LoadingOnMap(map) : "");
     }
+
+    /// <summary>Una clave de civ para mostrar: su nombre, o "cualquier civ" si no es una civ ("any").</summary>
+    private string CivLabel(string civ) => _data.GameData.IsKnownCiv(civ) ? CivName(civ) : Texts.CivAny;
 
     /// <summary>Qué idioma lee, si no es el inglés, y si falta el OCR de ese idioma en este Windows.</summary>
     private string LanguageNote(OcrReader? ocr)
@@ -1053,14 +1130,22 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)
         {
+            // Otra pantalla de carga en el mismo coach es otra partida: lo que se rechazó o se sugirió en la anterior ya no
+            // vale. Con un coach reiniciado (_loading en null) sigue siendo la misma partida.
+            if (_loading is not null)
+                ForgetMatchChoices();
             _loading = loading;
             ReportPending = false;
-            Status = LoadingNote(frame);
+            // Un coach reiniciado con esta misma pantalla ya dijo con qué BO siguió.
+            if (loading != _restartedOn)
+                Status = LoadingNote(frame);
             Suggest(frame);
         }
-        // La sugerencia vale durante la carga y el primer minuto de partida.
-        if ((_suggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null) && frame.View.Time > SuggestionSeconds)
-            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null);
+        // La sugerencia, el aviso de que cambió de BO y el atajo que vuelve a la anterior valen durante la carga y el primer
+        // minuto de partida.
+        if (frame.View.Time > SuggestionSeconds
+            && (_suggestion is not null || _previousBuildOrder is not null || Overlay.BoSuggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null))
+            (_suggestion, _previousBuildOrder, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null, null);
         // El panel no se mueve nunca: siempre arriba a la derecha, también en la pantalla de carga. Abajo tapaba el
         // mapa y el minimapa cuando en plena partida se perdía el reloj; mejor que moleste en la carga que en el juego
         // (pedido del usuario, 2026-10-29).

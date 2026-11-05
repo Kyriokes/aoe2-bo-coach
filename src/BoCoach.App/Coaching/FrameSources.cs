@@ -32,6 +32,9 @@ public interface IFrameSource
     /// <summary>La próxima captura, o null si no hay más (terminó la grabación).</summary>
     Frame? Next();
 
+    /// <summary>Si el juego está al frente, sin capturar nada (en pausa). Una grabación siempre lo está.</summary>
+    bool GameInFront => true;
+
     /// <summary>
     /// Tamaño del HUD respecto de 1080p. Las capturas ya llegan llevadas a 1080p; lo que se mide en ellas (las franjas
     /// del mod) hay que multiplicarlo por esto para dibujarlo en la pantalla.
@@ -72,6 +75,8 @@ public sealed class ScreenFrames(IScreenSource screen, RegionLayout layout, Func
     public TimeSpan Interval { get; init; } = TimeSpan.FromMilliseconds(500);
 
     public PixelRect Area => screen.CaptureArea;
+
+    public bool GameInFront => screen.GameInFront;
 
     public double HudScale => _layout.HudScale;
 

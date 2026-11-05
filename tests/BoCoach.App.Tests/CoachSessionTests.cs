@@ -63,6 +63,29 @@ public sealed class CoachSessionTests : IDisposable
     private CoachFrame Frame(CoachView view, double withoutClock = 0, bool ended = false, HudState? hud = null) =>
         new(view, hud, withoutClock, 30, new ProcessUsage(1.5, 80), false, ended, null, new PixelRect(0, 0, 1920, 1080));
 
+    /// <summary>Una partida contra uno de otra civ, como la lee la pantalla de carga.</summary>
+    private static LoadingReading TwoPlayers(string me, string civ) =>
+        new([new LoadingPlayer(1, me, "", civ, null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+
+    private CoachView ViewAt(double time) => new Coach(Scouts, _data.GameData, _data.Events).Update(new GameSnapshot(time, PlanStart.Standard.Stock, 4, 5));
+
+    /// <summary>Lo guardado de otra fuente, y lo que se baja es siempre la misma BO; cuenta las bajadas.</summary>
+    private sealed class FixedDownload(IBuildOrderSource inner, BuildOrder download) : IBuildOrderSource
+    {
+        public int Downloads { get; private set; }
+        public bool Fresh { get; init; } = true;
+        public WebBuildOrderList List => inner.List;
+        public BuildOrder? Saved(string code) => inner.Saved(code);
+        public IEnumerable<BuildOrder> AllSaved() => inner.AllSaved();
+        public bool IsFresh(string code) => Fresh;
+
+        public Task<BuildOrder> GetAsync(string code, CancellationToken cancel = default)
+        {
+            Downloads++;
+            return Task.FromResult(download);
+        }
+    }
+
     [Fact]
     public void Recordatorio_de_casa_junto_al_mouse_salvo_que_este_apagado_o_no_se_vea_el_reloj()
     {
@@ -173,6 +196,69 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(session.IsLive);
         session.Start(Scouts, new StillScreen("carga-ia-en-1080p.png"));
         Assert.True(session.IsLive);
+    }
+
+    // AP-04: un solo campo de otro tipo tiraba todos los ajustes, y "Compartir" volvía a prenderse.
+    [Fact]
+    public void Un_valor_raro_en_un_campo_no_pierde_los_demas()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        File.WriteAllText(path, """
+            {
+              "max_villagers": "muchos", "cursor_reminders": 1, "civ": 5, "game_language": [], "player_name": 7, "auto_start": "no",
+              "last_build_order": {}, "share_games": false, "hud_minimo": true, "elo_1v1": 1200, "app_language": "en", "bo_mode": "manual"
+            }
+            """);
+
+        var settings = CoachSettings.Load(path);
+
+        Assert.False(settings.WasBroken);
+        Assert.False(settings.ShareGames);
+        Assert.True(settings.HudMinimal);
+        Assert.Equal(1200, settings.Elo1v1);
+        Assert.Equal("en", settings.AppLanguage);
+        Assert.Equal(BuildOrderMode.Manual, settings.BoMode);
+        Assert.Equal(CoachSettings.DefaultMaxVillagers, settings.MaxVillagers);
+        Assert.True(settings.CursorReminders);
+        Assert.True(settings.AutoStart);
+        Assert.Equal("", settings.GameCiv);
+        Assert.Equal("", settings.PlayerName);
+        Assert.Equal("", settings.LastBuildOrder);
+        Assert.Equal("en", settings.GameLanguage);
+        Assert.False(File.Exists(path + ".roto"));
+    }
+
+    [Fact]
+    public void Guardar_los_ajustes_escribe_por_un_temporal_y_si_falla_queda_lo_anterior()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { PlayerName = "Ana" }.Save(path);
+        Directory.CreateDirectory(path + ".tmp"); // no se puede escribir el temporal
+
+        Assert.ThrowsAny<Exception>(() => new CoachSettings { PlayerName = "Beto" }.Save(path));
+
+        Assert.Equal("Ana", CoachSettings.Load(path).PlayerName);
+    }
+
+    [Fact]
+    public void Sin_permiso_para_guardar_los_ajustes_valen_para_esta_sesion()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { PlayerName = "Ana" }.Save(path);
+        File.SetAttributes(path, FileAttributes.ReadOnly);
+        try
+        {
+            using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => throw new InvalidOperationException(), path);
+
+            session.PlayerName = "Beto";
+
+            Assert.Equal("Beto", session.PlayerName);
+            Assert.Equal("Ana", CoachSettings.Load(path).PlayerName);
+        }
+        finally
+        {
+            File.SetAttributes(path, FileAttributes.Normal);
+        }
     }
 
     // Parte 4: cómo se elige la BO (automática por defecto, o a mano) queda en settings.json.
@@ -439,6 +525,59 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(session.LiveCoach!.BuildOrder.IsNone);
     }
 
+    // AP-20: aceptar la sugerida ya empezada la partida armaba un coach que no sabía nada de la pantalla de carga: ya no la
+    // iba a ver, así que corría sin tu civ ni tu número y el registro salía sin mapa ni rival.
+    [Fact]
+    public async Task Aceptar_la_sugerida_ya_empezada_la_partida_conserva_lo_de_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(30)) with { InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Equal(reading, last?.Loading);
+        Assert.Equal("Ana", last?.Me?.Name);
+        Assert.Equal("japanese", last?.Civ);
+        Assert.Contains("la sugerida", session.Status); // lo que se dijo al cambiar sigue ahí
+        Assert.NotNull(session.Overlay!.MatchupLine); // y el overlay nuevo tiene el cruce de la pantalla de carga
+    }
+
+    // AP-21: si la versión nueva no se pudo bajar, GetAsync devuelve la guardada sin tirar error: el coach se reiniciaba con
+    // la vieja, volvía a ver que estaba vieja y repetía.
+    [Fact]
+    public void Si_la_version_nueva_no_se_pudo_bajar_el_coach_sigue_con_la_que_tiene()
+    {
+        var running = RepoBuildOrders.Get("bog-japanese");
+        var source = new FixedDownload(new RepoBuildOrders(), running) { Fresh = false };
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(source, _data.CivStyles),
+        };
+        session.Start(running, new HiddenFrames());
+        var coach = session.LiveCoach;
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        Assert.Same(coach, session.LiveCoach);
+        Assert.Equal(1, source.Downloads);
+    }
+
     // Revisión de la parte 4: sin internet la mejor de la lista no se baja y el coach toma una guardada; Ctrl+Alt+B
     // vuelve a la anterior y no se deshace solo.
     [Fact]
@@ -456,6 +595,59 @@ public sealed class CoachSessionTests : IDisposable
             await session.LiveCoach!.StepAsync();
 
         Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
+    }
+
+    /// <summary>En Automática, el coach ya cambió solo a la mejor de la lista en la pantalla de carga.</summary>
+    private CoachSessionViewModel SwitchedAtLoadingScreen()
+    {
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Cambié a", session.Overlay!.BoSuggestion);
+        return session;
+    }
+
+    // AP-19: el atajo que vuelve a la BO anterior seguía activo toda la partida: a los 25 minutos reiniciaba el coach.
+    [Fact]
+    public void Pasado_el_primer_minuto_el_atajo_de_la_sugerida_no_reinicia_el_coach()
+    {
+        using var session = SwitchedAtLoadingScreen();
+        var switched = session.LiveCoach;
+
+        session.Apply(Frame(ViewAt(1500)) with { InGame = true });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Same(switched, session.LiveCoach);
+    }
+
+    [Fact]
+    public void En_el_primer_minuto_el_atajo_todavia_vuelve_a_la_anterior()
+    {
+        using var session = SwitchedAtLoadingScreen();
+
+        session.Apply(Frame(ViewAt(50)) with { InGame = true });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // AP-22: el "Cambié a X; Ctrl+Alt+B vuelve..." podía quedar toda la partida.
+    [Fact]
+    public void Pasado_el_primer_minuto_el_aviso_de_que_cambio_de_BO_se_saca()
+    {
+        using var session = SwitchedAtLoadingScreen();
+
+        session.Apply(Frame(ViewAt(50)) with { InGame = true });
+        Assert.NotNull(session.Overlay!.BoSuggestion);
+
+        session.Apply(Frame(ViewAt(61)) with { InGame = true });
+        Assert.Null(session.Overlay!.BoSuggestion);
     }
 
     // Con la BO terminada el panel queda en la tarjeta chica, y sin nada que hacer no se ve (pedido del usuario,
@@ -485,6 +677,48 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(overlay.ShowPanel);
     }
 
+    // AP-26: lo que se rechazó con el atajo vale para esa partida: seguía en la siguiente si el coach no se reiniciaba.
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_olvida_lo_que_se_rechazo_en_la_partida_anterior()
+    {
+        using var session = SwitchedAtLoadingScreen();
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        var first = TwoPlayers("Ana", "japanese");
+
+        // La misma partida (otra lectura de la misma pantalla, o la del coach reiniciado): no vuelve a cambiar.
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+
+        var second = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = second.Players[0] });
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_saca_la_sugerida_de_la_partida_anterior()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var first = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.StartsWith("Sugerida", session.Overlay!.BoSuggestion);
+
+        // Otra partida en la que no se encuentra tu nombre: no hay nada que sugerir, y lo de antes no vale.
+        var second = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = null });
+        Assert.Null(session.Overlay!.BoSuggestion);
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
     // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
     [Theory]
     [InlineData("", "por equipos (sin tu Elo)")]
@@ -506,6 +740,30 @@ public sealed class CoachSessionTests : IDisposable
 
         Assert.StartsWith("Japoneses en ", session.Overlay!.MatchupLine);
         Assert.Contains(esperado, session.Overlay.MatchupLine);
+    }
+
+    // AP-29: la barra de estado mostraba las claves de game_data ("jugás con japanese").
+    [Fact]
+    public void La_barra_de_estado_nombra_las_civs_como_el_juego()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames()) { ManualSteps = true, PlayerName = "Ana" };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Pantalla de carga: jugás con japoneses contra britanos en Arabia", session.Status);
+
+        using (Core.Lang.Use(Core.Lang.English))
+        {
+            var again = TwoPlayers("Ana", "japanese");
+            session.Apply(Frame(ViewAt(0)) with { Loading = again, Me = again.Players[0] });
+            Assert.StartsWith("Loading screen: you play Japanese vs Britons on Arabia", session.Status);
+        }
+
+        // Sin civ todavía: no dice "any".
+        var other = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = other, Me = null });
+        Assert.Contains("Sigue con cualquier civ", session.Status);
     }
 
     // D10 (revisión de c): una pantalla de carga nueva donde no se encuentra tu nombre dejaba el cruce de la partida
@@ -737,6 +995,48 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Contains("count", session.Status);
     }
 
+    // AP-17: Start detenía al coach antes de validar la BO nueva: se quedaba sin coach y el estado decía que corría.
+    [Fact]
+    public void Una_BO_con_errores_no_detiene_al_coach_que_corre()
+    {
+        var broken = Scouts with { Steps = Scouts.Steps.Select(s => s.What == "villager" ? s with { Count = 2_000_000_000 } : s).ToList() };
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames()) { ManualSteps = true };
+        session.Start(Scouts, new HiddenFrames());
+        var running = session.LiveCoach;
+
+        session.Start(broken, new HiddenFrames());
+
+        Assert.True(session.IsRunning);
+        Assert.Same(running, session.LiveCoach);
+        Assert.Contains("tiene errores", session.Status);
+    }
+
+    // AP-17: en Automática, con la mejor de la lista con errores, el coach moría, volvía a arrancar solo, leía la pantalla
+    // de carga y se repetía todo. Y el estado decía que corría con esa BO.
+    [Fact]
+    public void En_automatica_una_BO_con_errores_no_para_al_coach_y_no_se_vuelve_a_intentar()
+    {
+        var broken = Scouts with { Id = "rota", Name = "Rota", Steps = Scouts.Steps.Select(s => s.What == "villager" ? s with { Count = 2_000_000_000 } : s).ToList() };
+        var source = new FixedDownload(new RepoBuildOrders(), broken);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(source, _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var running = session.LiveCoach;
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        Assert.True(session.IsRunning);
+        Assert.Same(running, session.LiveCoach);
+        Assert.Contains("tiene errores", session.Status);
+        Assert.Null(session.Overlay!.BoSuggestion);
+        Assert.Equal(1, source.Downloads);
+    }
+
     // D6 (2026-10-21): el coach arranca solo cuando corre el juego, con la última BO usada, y se detiene cuando se cierra.
     [Fact]
     public void Arranca_solo_con_el_juego_y_se_detiene_cuando_se_cierra()
@@ -759,6 +1059,39 @@ public sealed class CoachSessionTests : IDisposable
         session.Tick(gameRunning: false);
         Assert.False(session.IsRunning);
         Assert.Contains("se cerró", session.Status);
+    }
+
+    // AP-12: abrir "Primeros pasos" en plena partida contaba como que el juego se cerró: detenía el coach, guardaba un
+    // informe parcial y borraba que lo habías detenido a mano.
+    [Fact]
+    public void Con_el_tutorial_abierto_el_coach_no_arranca_y_si_ya_corre_sigue()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames()) { ManualSteps = true };
+
+        session.Tick(gameRunning: true, canStart: false);
+        Assert.False(session.IsRunning);
+
+        session.Tick(gameRunning: true);
+        var running = session.LiveCoach;
+        Assert.NotNull(running);
+
+        session.Tick(gameRunning: true, canStart: false);
+        Assert.Same(running, session.LiveCoach);
+        Assert.True(session.IsRunning);
+        Assert.DoesNotContain("se cerró", session.Status);
+    }
+
+    [Fact]
+    public void Con_el_tutorial_abierto_no_se_olvida_que_lo_detuviste_a_mano()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames()) { ManualSteps = true };
+        session.Tick(gameRunning: true);
+        session.StartStopCommand.Execute(null);
+
+        session.Tick(gameRunning: true, canStart: false);
+        session.Tick(gameRunning: true);
+
+        Assert.False(session.IsRunning);
     }
 
     [Fact]
@@ -786,6 +1119,30 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(session.IsRunning);
     }
 
+    // AP-03: una excepción en el temporizador de la ventana lo apaga para siempre (el coach ya no se cierra con el juego), y
+    // pasa con algo tan común como el juego minimizado justo al arrancar. Se dice en el estado y no se insiste.
+    [Fact]
+    public void Si_falla_el_arranque_automatico_lo_dice_y_no_insiste_hasta_que_el_juego_se_vuelva_a_abrir()
+    {
+        var tries = 0;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () =>
+        {
+            tries++;
+            throw new ArgumentException("El rectángulo está vacío.");
+        }) { ManualSteps = true };
+
+        session.Tick(gameRunning: true);
+        session.Tick(gameRunning: true);
+
+        Assert.Equal(1, tries);
+        Assert.False(session.IsRunning);
+        Assert.Contains("El rectángulo está vacío", session.Status);
+
+        session.Tick(gameRunning: false);
+        session.Tick(gameRunning: true);
+        Assert.Equal(2, tries);
+    }
+
     [Fact]
     public void Arrancado_a_mano_no_se_detiene_con_el_juego_y_el_coach_automatico_queda_en_los_ajustes()
     {
@@ -809,6 +1166,96 @@ public sealed class CoachSessionTests : IDisposable
         public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
         public PixelRect Area => new(0, 0, 1920, 1080);
         public Frame? Next() => new(_ => null, ++_served * 0.5, Area, InFront: false);
+    }
+
+    // AP-18: en "Elegir de mi lista" el arranque solo usaba la última BO con que corrió, y la elegida quedaba sin efecto.
+    [Fact]
+    public void A_mano_el_arranque_solo_usa_la_elegida_y_no_la_ultima()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { LastBuildOrder = "bog-huns", BoMode = BuildOrderMode.Manual }.Save(path);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames(), path)
+        {
+            ManualSteps = true,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+
+        session.Tick(gameRunning: true);
+
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void A_mano_sin_elegida_el_arranque_solo_usa_la_ultima()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { LastBuildOrder = "bog-huns", BoMode = BuildOrderMode.Manual }.Save(path);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames(), path)
+        {
+            ManualSteps = true,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // AP-18: el coach arrancó con el juego y el jugador elige otra antes de la partida.
+    [Fact]
+    public void A_mano_elegir_otra_con_el_coach_esperando_la_partida_lo_reinicia_con_ella()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames()) { ManualSteps = true, BoMode = BuildOrderMode.Manual };
+        session.Tick(gameRunning: true);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void A_mano_elegir_otra_en_plena_partida_vale_recien_para_la_siguiente()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames()) { ManualSteps = true, BoMode = BuildOrderMode.Manual };
+        session.Tick(gameRunning: true);
+        session.Apply(Frame(ViewAt(300)) with { InGame = true });
+        var running = session.LiveCoach;
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        Assert.Same(running, session.LiveCoach);
+
+        session.Apply(Frame(ViewAt(900)) with { InGame = false });
+        session.Tick(gameRunning: true);
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.
+    [Fact]
+    public async Task A_mano_la_sugerida_que_aceptaste_no_se_deshace_sola()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Tick(gameRunning: true);
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        var accepted = session.LiveCoach;
+        await accepted!.StepAsync();
+        session.Tick(gameRunning: true);
+
+        Assert.Same(accepted, session.LiveCoach);
     }
 
     [Fact]

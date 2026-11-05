@@ -118,6 +118,7 @@ public static class Texts
     public static string AddBuildOrderTitle => L("Sumar una BO", "Add a BO");
     public static string AddBuildOrderPrompt => L("El código de la BO (6 letras y números) o el enlace de su página en la web:", "The BO's code (6 letters and numbers) or the link to its page on the website:");
     public static string ForeignLink => L("Ese enlace no es de BO Coach.", "That link isn't from BO Coach.");
+    public static string NotAWholeToken => L("Eso parece un token de la app, pero no está completo: copialo de nuevo de Mi cuenta en la web.", "That looks like an app token, but it isn't complete: copy it again from My account on the website.");
     public static string NoAccountName => L("(sin nombre)", "(no name)");
     public static string ConnectToAdd => L("Conectá tu cuenta para sumar BO.", "Connect your account to add BOs.");
     public static string ConnectInWeb => L("En la web, tocá \"Conectar la app\" en Mi cuenta.", "On the website, press \"Connect the app\" in My account.");
@@ -129,7 +130,13 @@ public static class Texts
     public static string ListCount(int count) => L($"{count} BO en tu lista.", $"{count} BOs in your list.");
     public static string NotACode(string text) => L($"\"{text}\" no es un código de la web (son 6 letras y números).", $"\"{text}\" isn't a website code (they're 6 letters and numbers).");
     public static string ConnectFailed(string error) => L($"No se pudo conectar la cuenta: {error}", $"Couldn't connect the account: {error}");
+    public static string LinkFailed(string error) => L($"No se pudo abrir el enlace: {error}", $"Couldn't open the link: {error}");
     public static string ConfirmConnect(string account) => L($"¿Conectar BO Coach con la cuenta {account} de la web?", $"Connect BO Coach to the website account {account}?");
+    public static string ConfirmReplaceAccount(string current, string next) => current == next
+        ? L($"BO Coach ya está conectado a la cuenta {current}. Este enlace trae otra conexión con ese mismo nombre, que puede ser de otra cuenta. ¿Usarla? Si no tocaste vos «Conectar la app» en Mi cuenta de la web, decí que no.",
+            $"BO Coach is already connected to the account {current}. This link brings another connection with that same name, which may belong to another account. Use it? If you didn't press \"Connect the app\" in My account on the website yourself, say no.")
+        : L($"BO Coach ya está conectado a la cuenta {current}. Este enlace la reemplaza por la cuenta {next}. ¿Cambiar de cuenta? Si no tocaste vos «Conectar la app» en Mi cuenta de la web, decí que no.",
+            $"BO Coach is already connected to the account {current}. This link replaces it with the account {next}. Switch accounts? If you didn't press \"Connect the app\" in My account on the website yourself, say no.");
     public static string ConfirmAdd(string name, string author) => L($"¿Sumar \"{name}\" (subida por {author}) a tus BO?", $"Add \"{name}\" (uploaded by {author}) to your BOs?");
     public static string Added(string name) => L($"Sumada \"{name}\" a tus BO.", $"Added \"{name}\" to your BOs.");
     public static string AddFailed(string code, string error) => L($"No se pudo sumar {code}: {error}", $"Couldn't add {code}: {error}");
@@ -174,6 +181,14 @@ public static class Texts
     public static string FoodFloor(int floor) => L($"mínimo en comida para no parar el centro urbano: {floor}", $"minimum on food to keep the town center going: {floor}");
     public static string Abandoned(string reason) => L($"BO abandonada: {reason} (\"◀ Atrás\" la retoma)", $"BO abandoned: {reason} (\"◀ Back\" resumes it)");
     public static string StepLine(int number, int total, string text, string state) => L($"Paso {number}/{total}: {text} ({state})", $"Step {number}/{total}: {text} ({state})");
+    public static string StepStateName(Core.Engine.StepState state) => state switch
+    {
+        Core.Engine.StepState.Ready => L("se puede hacer", "ready"),
+        Core.Engine.StepState.InProgress => L("en curso", "in progress"),
+        Core.Engine.StepState.Done => L("hecho", "done"),
+        Core.Engine.StepState.Skipped => L("salteado", "skipped"),
+        _ => L("falta", "pending"),
+    };
     public static string BuildOrderDoneWith(string posture, bool derived) => L($"BO terminada. {posture}{(derived ? " (deducida de la BO)" : "")}", $"BO finished. {posture}{(derived ? " (deduced from the BO)" : "")}");
     public static string Clipped(string regions) => L($"Números cortados en: {regions}", $"Numbers cut off in: {regions}");
     public static string LiveError(string error) => $"Error: {error}";
@@ -189,6 +204,8 @@ public static class Texts
     public static string GameClosedStopped => L("El juego se cerró: coach detenido.", "The game closed: coach stopped.");
     public static string AutoNeedsBuildOrder => L("Coach automático: elegí una BO de tu lista (o pasá a Automática) para que arranque solo con el juego.", "Automatic coach: choose a BO from your list (or switch to Automatic) so it starts on its own with the game.");
     public static string CoachStopped => L("Coach detenido.", "Coach stopped.");
+    public static string AutoFailed(string error) => L($"El coach automático no pudo arrancar: {error} Vuelve a probar cuando abras el juego de nuevo; también podés empezarlo a mano.", $"The automatic coach couldn't start: {error} It tries again when you reopen the game; you can also start it by hand.");
+    public static string WatchingGameFailed(string error) => L($"No se pudo mirar si el juego está abierto: {error}", $"Couldn't check whether the game is open: {error}");
     public static string InvalidElo => L("Elo no válido: un número de 1 a 4000.", "Invalid Elo: a number from 1 to 4000.");
     public static string EloNeedsName => L("Poné tu nombre primero.", "Enter your name first.");
     public static string EloSearching => L("Buscando...", "Searching...");
@@ -222,6 +239,7 @@ public static class Texts
     public static string GameInLanguageNoOcr(string language) => L($", juego en {language} (Windows no tiene el OCR en castellano: lee con el inglés)", $", game in {language} (Windows doesn't have Spanish OCR: reading with the English one)");
 
     // ---- El registro de la partida ----
+    public static string SettingsWereBroken => L("No se pudieron leer tus ajustes (quedó una copia en settings.json.roto): volvieron los de fábrica y Compartir mis partidas quedó apagado hasta que lo prendas.", "Your settings couldn't be read (a copy was left in settings.json.roto): they went back to the defaults and Share my games stays off until you turn it on.");
     public static string ShareNotWritten(string error) => L($"No se pudo anotar el registro para enviarlo: {error}", $"Couldn't queue the record for sending: {error}");
     public static string SharePending(int pending) => L($"Registro guardado para enviar después ({pending} en espera).", $"Record saved to send later ({pending} waiting).");
     public static string FlagButton => L("Algo anduvo mal", "Something went wrong");
@@ -313,6 +331,15 @@ public static class Texts
     public static string ReportsLabel => L("Informes de las partidas", "Match reports");
     public static string ReportsHint => L("Cada partida deja una página con los pasos contra la BO, el centro urbano parado y los recursos acumulados.", "Each match leaves a page with the steps against the BO, the idle town center and the floating resources.");
     public static string ReportsButton => L("Abrir la carpeta", "Open the folder");
+    public static string GameContentNotice => L("Age of Empires II © Microsoft Corporation. Los íconos, las letras y los textos del juego son de Microsoft. AoE2 BO Coach los usa bajo las Game Content Usage Rules de Microsoft, y no está respaldado por Microsoft ni afiliado a Microsoft.", "Age of Empires II © Microsoft Corporation. The game's icons, fonts and text belong to Microsoft. AoE2 BO Coach uses them under Microsoft's Game Content Usage Rules, and it is not endorsed by or affiliated with Microsoft.");
+    public static string UninstallLabel => L("Sacar el mod y los enlaces", "Remove the mod and the links");
+    public static string UninstallHint => L("Si dejás de usar la app: borra el mod «BoCoach HUD» de tus perfiles del juego y los enlaces bocoach:// de Windows. Tus otros mods y tu cuenta no se tocan.", "If you stop using the app: it deletes the \"BoCoach HUD\" mod from your game profiles and the bocoach:// links from Windows. Your other mods and your account aren't touched.");
+    public static string UninstallButton => L("Sacar…", "Remove…");
+    public static string UninstallConfirm(string name) => L($"¿Borrar el mod «{name}» de tus perfiles del juego y los enlaces bocoach:// de Windows? Se puede volver a instalar cuando quieras.", $"Delete the \"{name}\" mod from your game profiles and the bocoach:// links from Windows? You can install it again whenever you want.");
+    public static string UninstallDone(int profiles) => profiles == 0
+        ? L("El mod no estaba en ningún perfil del juego. Los enlaces bocoach:// ya no están.", "The mod wasn't in any game profile. The bocoach:// links are gone.")
+        : L($"Listo: se sacó el mod de {(profiles == 1 ? "1 perfil" : $"{profiles} perfiles")} del juego, y los enlaces bocoach://. Si el juego está abierto, cerralo y volvé a abrirlo.", $"Done: the mod was removed from {(profiles == 1 ? "1 game profile" : $"{profiles} game profiles")}, and the bocoach:// links too. If the game is open, close it and open it again.");
+    public static string UninstallFailed(string error) => L($"No se pudo sacar todo: {error} Si el juego está abierto, cerralo y volvé a probar.", $"Not everything could be removed: {error} If the game is open, close it and try again.");
     public static string ShareGamesLabel => L("Compartir mis partidas para mejorar el coach", "Share my games to improve the coach");
     public static string ShareExplanation => Coaching.RecordSharing.Explanation;
     public static string ForgetSharedButton => L("Borrar lo compartido…", "Delete what I shared…");
@@ -427,6 +454,7 @@ public static class Texts
     public static string GameClosed => L("Juego cerrado o minimizado.", "Game closed or minimized.");
     public static string NotCalibrated => L("Pantalla sin calibrar: se usan posiciones aproximadas.", "Screen not calibrated: using approximate positions.");
     public static string HudNotFoundDefault => L("No encontré el HUD del mod en la pantalla: se usan posiciones aproximadas (instalá el mod o calibrá a mano).", "I couldn't find the mod's HUD on screen: using approximate positions (install the mod or calibrate by hand).");
+    public static string RegionsSetAside(string file) => L($"La calibración guardada estaba rota: quedó aparte en {file} y se usan posiciones aproximadas hasta volver a calibrar.", $"The saved calibration was broken: it was set aside in {file} and approximate positions are used until you calibrate again.");
     public static string ModTitle => L("Mod del HUD", "HUD mod");
     public static string ModGameNotFound => L("No encontré Age of Empires II: DE en las bibliotecas de Steam. Abrí el juego y volvé a probar.", "I couldn't find Age of Empires II: DE in your Steam libraries. Open the game and try again.");
     public static string ModRestart => L("Si el juego está abierto, cerralo y volvé a abrirlo. En Mods → Mods instalados tiene que figurar activo. Después calibrá la pantalla de nuevo: los cuadrados de los recursos cambian de aspecto.", "If the game is open, close it and open it again. In Mods → Installed mods it must show as active. Then calibrate the screen again: the resource squares change appearance.");
@@ -449,12 +477,14 @@ public static class Texts
     public static string GameOpen(int width, int height, int x, int y) => L($"Juego abierto: {width}×{height} en ({x}, {y}).", $"Game open: {width}×{height} at ({x}, {y}).");
     public static string Calibrated(int width, int height, DateTime date) => L($"Calibrada para {width}×{height} ({date:d/M HH:mm}).", $"Calibrated for {width}×{height} ({date:d/M HH:mm}).");
     public static string CalibrateCaptureFailed(string error) => L($"No se pudo capturar la pantalla para calibrar sola: {error}", $"Couldn't capture the screen to calibrate automatically: {error}");
+    public static string CalibrateNotSaved(string error) => L($"No se pudo guardar la calibración sola: {error}", $"Couldn't save the automatic calibration: {error}");
     public static string HudNotFoundManual(DateTime date) => L($"No encontré el HUD del mod en la pantalla: sigue la calibración manual ({date:d/M HH:mm}).", $"I couldn't find the mod's HUD on screen: keeping the manual calibration ({date:d/M HH:mm}).");
     public static string CalibratedWithLayout(string layout, int width, int height, int squares) => L($"Calibrada sola con el diseño {layout} para {width}×{height}: {squares} casilleros y el reloj", $"Calibrated automatically with the {layout} layout for {width}×{height}: {squares} boxes and the clock");
     public static string CalibratedAuto(int width, int height, int squares) => L($"Calibrada sola para {width}×{height}: {squares} cuadrados y el reloj", $"Calibrated automatically for {width}×{height}: {squares} squares and the clock");
     public static string CalibratedScale(string scale) => L($", HUD a escala {scale}", $", HUD at scale {scale}");
     public static string ModFailed(string error) => L($"No se pudo instalar el mod.\n\n{error}", $"The mod couldn't be installed.\n\n{error}");
     public static string ModInstalled(string name) => L($"Listo: el mod \"{name}\" quedó instalado.", $"Done: the mod \"{name}\" is installed.");
+    public static string ModPanelsChanged(string error) => L($"No pude armar el mod: un panel del juego no tiene la forma que espera la app ({error}). Si el juego se actualizó hace poco, puede hacer falta una versión nueva de la app. El mod que había quedó como estaba.", $"I couldn't build the mod: a game panel doesn't have the shape the app expects ({error}). If the game updated recently, a new version of the app may be needed. The mod you had stays as it was.");
     public static string ModWarning(string warning) => $"• {warning}";
     public static string DiagnosticWaiting(string seconds) => L($"Captura de diagnóstico en {seconds} s: volvé al juego…", $"Diagnostic capture in {seconds} s: go back to the game…");
     public static string DiagnosticSaved(string? folder, string name) => L($"Captura de diagnóstico guardada en {folder} ({name}): mandá esa carpeta.", $"Diagnostic capture saved in {folder} ({name}): send that folder.");

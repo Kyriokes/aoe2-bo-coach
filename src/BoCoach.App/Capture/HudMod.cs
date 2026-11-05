@@ -85,6 +85,19 @@ public static class HudMod
             return new HudModResult(installed, warnings);
         }
 
+        // Todos los paneles se arman antes de escribir nada: si un parche del juego le cambió la forma a uno, el mod que
+        // había queda como estaba en vez de a medias, y no sale un error sin explicar.
+        List<(string File, string? Json)> panels;
+        try
+        {
+            panels = BuildPanels(originals, layout);
+        }
+        catch (Exception e)
+        {
+            warnings.Add(Texts.ModPanelsChanged(e.Message));
+            return new HudModResult(installed, warnings);
+        }
+
         foreach (var profile in Directory.EnumerateDirectories(profilesRoot).Order())
         {
             var mods = Path.Combine(profile, "mods");
@@ -95,18 +108,11 @@ public static class HudMod
 
             var target = Path.Combine(mods, "local", Name);
             var own = Path.Combine(target, "widgetui");
-            var resources = ResourcePanel(Read(Path.Combine(originals, ResourcePanelFile)), layout);
-            var clock = ClockPanel(Read(Path.Combine(originals, ClockPanelFile)), layout);
             Directory.CreateDirectory(own);
-            Write(Path.Combine(own, ResourcePanelFile), resources);
-            Write(Path.Combine(own, ClockPanelFile), clock);
-            // El log y la cola, solo si el diseño los ubica y el juego trae el panel; si no, se borra la copia de antes.
-            foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel), (TopPanelFile, TopPanel), (MenuPanelFile, MenuPanel) })
+            foreach (var (file, json) in panels)
             {
-                var original = Path.Combine(originals, file);
-                var panel = File.Exists(original) ? build(Read(original), layout) : null;
-                if (panel is not null)
-                    Write(Path.Combine(own, file), panel);
+                if (json is not null)
+                    File.WriteAllText(Path.Combine(own, file), json, new UTF8Encoding(false));
                 else if (File.Exists(Path.Combine(own, file)))
                     File.Delete(Path.Combine(own, file));
             }
@@ -135,6 +141,46 @@ public static class HudMod
         if (installed.Count == 0)
             warnings.Add(Texts.ModNoModsFolder);
         return new HudModResult(installed, warnings);
+    }
+
+    /// <summary>
+    /// Saca el mod del juego: borra solo <c>mods\local\BoCoach HUD</c> de cada perfil, nada más de la carpeta de mods (el
+    /// juego se entera solo la próxima vez que abre). Devuelve los perfiles de donde lo sacó.
+    /// </summary>
+    public static IReadOnlyList<string> Uninstall(string? profilesRoot = null)
+    {
+        profilesRoot ??= DefaultProfilesRoot;
+        var removed = new List<string>();
+        if (!Directory.Exists(profilesRoot))
+            return removed;
+        foreach (var profile in Directory.EnumerateDirectories(profilesRoot).Order())
+        {
+            var target = Path.Combine(profile, "mods", "local", Name);
+            if (!Directory.Exists(target))
+                continue;
+            Directory.Delete(target, recursive: true);
+            removed.Add(Path.GetFileName(profile));
+        }
+        return removed;
+    }
+
+    /// <summary>
+    /// Los paneles del mod ya armados, en texto. Null: el diseño no lo ubica o el juego no lo trae, y se borra la copia de
+    /// antes (el log, la cola, la franja de arriba y el menú; el de recursos y el del reloj están siempre).
+    /// </summary>
+    private static List<(string File, string? Json)> BuildPanels(string originals, HudLayout layout)
+    {
+        var panels = new List<(string File, string? Json)>
+        {
+            (ResourcePanelFile, ResourcePanel(Read(Path.Combine(originals, ResourcePanelFile)), layout).ToJsonString(WriteOptions)),
+            (ClockPanelFile, ClockPanel(Read(Path.Combine(originals, ClockPanelFile)), layout).ToJsonString(WriteOptions)),
+        };
+        foreach (var (file, build) in new (string, Func<JsonObject, HudLayout, JsonObject?>)[] { (LogPanelFile, LogPanel), (QueuePanelFile, QueuePanel), (TopPanelFile, TopPanel), (MenuPanelFile, MenuPanel) })
+        {
+            var original = Path.Combine(originals, file);
+            panels.Add((file, File.Exists(original) ? build(Read(original), layout)?.ToJsonString(WriteOptions) : null));
+        }
+        return panels;
     }
 
     /// <summary>El panel de recursos armado según el diseño a partir del original del juego (se modifica y se devuelve).</summary>

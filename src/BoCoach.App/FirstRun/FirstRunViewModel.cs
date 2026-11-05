@@ -136,7 +136,9 @@ public sealed partial class FirstRunViewModel : ObservableObject
             (_reader, _readerLanguage) = (new LoadingScreenReader(ocr, _data, language.Code), language);
         }
         var area = _screen.CaptureArea;
-        if (await _reader.ReadPanelAsync(_screen.Capture(LoadingScreen.Panel(area.Width, area.Height))) is not { } reading)
+        // El panel es relativo al juego y Capture usa coordenadas de la pantalla.
+        var panel = LoadingScreen.Panel(area.Width, area.Height);
+        if (await _reader.ReadPanelAsync(_screen.Capture(panel with { X = area.X + panel.X, Y = area.Y + panel.Y })) is not { } reading)
             return;
         foreach (var player in reading.Players)
             Players.Add(player);

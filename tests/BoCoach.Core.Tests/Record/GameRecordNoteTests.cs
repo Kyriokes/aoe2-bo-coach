@@ -47,6 +47,7 @@ public sealed class GameRecordNoteTests : IDisposable
         Assert.Equal(noteId, record.Meta["game_id"]!.GetValue<string>());
         Assert.Equal(gameId, record.Meta["note_for"]!.GetValue<string>());
         Assert.Equal("v9.9", record.Meta["app"]!.GetValue<string>());
+        Assert.Equal("2026-11-04", record.Meta["started"]!.GetValue<string>()); // como en el registro de la partida: el día en UTC
         var note = Assert.Single(record.Lines, l => l["t"]?.GetValue<string>() == GameRecordKeys.Note);
         Assert.Equal("el coach pidió una casa de más", note["text"]!.GetValue<string>());
     }

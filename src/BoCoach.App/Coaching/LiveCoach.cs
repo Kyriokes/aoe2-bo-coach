@@ -1,5 +1,6 @@
 using BoCoach.Core.Economy;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using BoCoach.Core.BuildOrders;
@@ -196,8 +197,12 @@ public sealed class LiveCoach : IDisposable
 
     /// <param name="playerName">El nombre del jugador en el juego, para encontrar su renglón en la pantalla de carga.</param>
     /// <param name="language">Idioma del juego (<see cref="GameLanguage.Code"/>), para los nombres de las civs.</param>
+    /// <param name="loading">
+    /// La pantalla de carga de esta partida, si ya se leyó: el coach se reinició con otra BO y puede que ya no la vea. Sin
+    /// esto corría sin la civ del jugador, sin su número, y el registro salía sin mapa ni rival.
+    /// </param>
     public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames,
-        EconomySettings? economy = null, string? playerName = null, string language = "en")
+        EconomySettings? economy = null, string? playerName = null, string language = "en", LoadingReading? loading = null)
     {
         BuildOrder = bo;
         Frames = frames;
@@ -209,8 +214,15 @@ public sealed class LiveCoach : IDisposable
         _economy = economy;
         _language = language;
         _loading = ocr is null ? null : new LoadingScreenReader(ocr, data, language);
-        Civ = bo.Civ;
-        (_coach, _builder, _reader) = NewGame(bo);
+        var me = loading?.Find(playerName);
+        var game = bo with { Civ = me?.Civ ?? bo.Civ };
+        Civ = game.Civ;
+        (_coach, _builder, _reader) = NewGame(game);
+        if (loading is not null)
+        {
+            KnowPlayers(_coach, _builder, me, loading);
+            (_loadingReading, _me, _loadingDone, _waiting) = (loading, me, true, false);
+        }
     }
 
     /// <summary>La BO con que se empezó (con la civ elegida en la ventana).</summary>
@@ -236,6 +248,9 @@ public sealed class LiveCoach : IDisposable
 
     /// <summary>La versión de la app, para el registro.</summary>
     public string AppVersion { get; init; } = "";
+
+    /// <summary>Los mapas que conoce la app: al registro solo va un mapa que esté acá (<see cref="KnownMap"/>).</summary>
+    public Maps? KnownMaps { get; init; }
 
     /// <summary>Se cerró el registro de una partida de <see cref="MinReportSeconds"/> o más (las más cortas se borran).</summary>
     public event Action<GameRecordInfo>? RecordFinished;
@@ -263,11 +278,15 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     public GameReport? TakePendingReport()
     {
-        if (!_reportPending)
-            return null;
-        _reportPending = false;
-        var report = Report();
-        return report.Length >= MinReportSeconds ? report : null;
+        // Adentro del lock: lo piden el loop (fin de partida) y la ventana (detener), y los dos podían llevarse el mismo informe.
+        lock (_gate)
+        {
+            if (!_reportPending)
+                return null;
+            _reportPending = false;
+            var report = _coach.Report();
+            return report.Length >= MinReportSeconds ? report : null;
+        }
     }
 
     public void Start()
@@ -293,7 +312,8 @@ public sealed class LiveCoach : IDisposable
     public GameRecordInfo? StopAndTakeRecord()
     {
         _cancel?.Cancel();
-        _recordingStopped = true;
+        lock (_gate)
+            _recordingStopped = true;
         return TakeClosedRecord("detenido");
     }
 
@@ -331,6 +351,15 @@ public sealed class LiveCoach : IDisposable
         var watch = Stopwatch.StartNew();
         try
         {
+            if (Paused)
+            {
+                // En pausa no se captura nada, pero el overlay no tiene que quedar encima de otra ventana.
+                (_resuming, _inFront) = (true, Frames.GameInFront);
+                _frameMs = watch.Elapsed.TotalMilliseconds;
+                Publish();
+                return true;
+            }
+
             if (Frames.Next() is not { } frame)
             {
                 _ended = true;
@@ -342,21 +371,19 @@ public sealed class LiveCoach : IDisposable
             {
                 // Alt-tab (D6): el juego está abierto pero no al frente. No se lee nada y el tiempo sin reloj no
                 // corre: lo que había sigue igual cuando el jugador vuelve.
-                var elapsed = frame.RealTime - _now;
-                if (_lastClockAt is { } clockAt)
-                    _lastClockAt = clockAt + elapsed;
-                if (_noClockSince is { } since)
-                    _noClockSince = since + elapsed;
-                if (_lastLoadingTry is { } tried)
-                    _lastLoadingTry = tried + elapsed;
-                if (_lastRecalibrate is { } recalibrated)
-                    _lastRecalibrate = recalibrated + elapsed;
-                (_now, _inFront, _error) = (frame.RealTime, false, null);
+                SkipTime(frame.RealTime);
+                (_inFront, _error) = (false, null);
                 _frameMs = watch.Elapsed.TotalMilliseconds;
                 Publish();
                 return true;
             }
             _inFront = true;
+            // Lo mismo con la pausa: si no, después de 30 s en pausa una sola captura sin reloj daba la partida por terminada.
+            if (_resuming)
+            {
+                _resuming = false;
+                SkipTime(frame.RealTime);
+            }
             if (await LoadingScreenAsync(frame) is { } reading)
                 StartGame(reading);
             var hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
@@ -364,13 +391,12 @@ public sealed class LiveCoach : IDisposable
             if (!hud.ClockRead)
             {
                 // Sin reloj: el coach arrancó en el menú (sin HUD que calibrar) o la calibración que había no es la del
-                // panel de ahora. Se vuelve a calibrar cada tanto; con regiones nuevas el lector arranca con su diseño.
+                // panel de ahora. Se vuelve a calibrar cada tanto.
                 _lastRecalibrate ??= frame.RealTime;
                 if (frame.RealTime - _lastRecalibrate >= RecalibrateEverySeconds)
                 {
                     _lastRecalibrate = frame.RealTime;
-                    if (Frames.Recalibrate())
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
+                    Recalibrate();
                 }
             }
             else
@@ -378,13 +404,11 @@ public sealed class LiveCoach : IDisposable
                 _lastRecalibrate = null;
                 // Con reloj pero sin calibrar en esta sesión (el coach automático arrancó en el menú): la calibración
                 // vieja lee el reloj pero puede tener otras cajas corridas (en la 20261025-230041, la cola). Se prueba
-                // apenas se ve el reloj y después cada tanto; el lector sigue igual si el diseño del HUD no cambió.
+                // apenas se ve el reloj y después cada tanto.
                 if (!Frames.Calibrated && (_lastInGameRecalibrate is not { } tried || frame.RealTime - tried >= RecalibrateInGameSeconds))
                 {
                     _lastInGameRecalibrate = frame.RealTime;
-                    var before = Frames.Hud?.Name;
-                    if (Frames.Recalibrate() && Frames.Hud?.Name != before)
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
+                    Recalibrate();
                 }
             }
             if (hud.ClockRead)
@@ -393,7 +417,13 @@ public sealed class LiveCoach : IDisposable
                 // Un reloj que vuelve a empezar sin pantalla de carga leída: otra partida con la misma BO. Se mira
                 // la lectura cruda: el suavizado nunca deja que el reloj vuelva para atrás.
                 if (_newGame.Check(hud.ClockReading, hud.Clock))
+                {
                     StartGame(null);
+                    // Se vuelve a leer con el lector nuevo: en esta lectura el reloj suavizado es el de la partida anterior,
+                    // y el armado nuevo lo tomaría como la hora de empezar a jugar (el tiempo quedaba en 0 toda la partida).
+                    hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
+                    raw = _reader.LastRaw;
+                }
             }
             RecordCapture(raw, hud, frame.RealTime);
             var snapshot = _builder.Build(hud.ToReading());
@@ -436,6 +466,35 @@ public sealed class LiveCoach : IDisposable
         return true;
     }
 
+    /// <summary>Hubo una pausa desde la última captura leída.</summary>
+    private bool _resuming;
+
+    /// <summary>El tiempo que pasó sin mirar la pantalla (alt-tab, pausa) no cuenta como tiempo sin reloj ni para las esperas.</summary>
+    private void SkipTime(double realTime)
+    {
+        var elapsed = realTime - _now;
+        if (_lastClockAt is { } clockAt)
+            _lastClockAt = clockAt + elapsed;
+        if (_noClockSince is { } since)
+            _noClockSince = since + elapsed;
+        if (_lastLoadingTry is { } tried)
+            _lastLoadingTry = tried + elapsed;
+        if (_lastRecalibrate is { } recalibrated)
+            _lastRecalibrate = recalibrated + elapsed;
+        _now = realTime;
+    }
+
+    /// <summary>
+    /// Vuelve a calibrar. El lector sigue igual si el diseño del HUD no cambió: uno nuevo da por nuevos todos los renglones
+    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj.
+    /// </summary>
+    private void Recalibrate()
+    {
+        var before = Frames.Hud?.Name;
+        if (Frames.Recalibrate() && Frames.Hud?.Name != before)
+            _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
+    }
+
     /// <summary>
     /// La pantalla de carga, si está: sin reloj en la captura anterior, se lee el panel de jugadores cada
     /// <see cref="LoadingInterval"/> (una pasada del OCR). Una vez leída no se vuelve a leer hasta que aparezca el
@@ -474,10 +533,7 @@ public sealed class LiveCoach : IDisposable
             GameFinished?.Invoke(finished);
         var (coach, builder, reader) = NewGame(bo);
         var loading = reading ?? _loadingReading;
-        // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
-        coach.Signals.PlayerSlot = me?.Slot;
-        builder.PlayerSlot = me?.Slot;
-        coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
+        KnowPlayers(coach, builder, me, loading);
         lock (_gate)
         {
             (_coach, _builder, _reader) = (coach, builder, reader);
@@ -487,6 +543,14 @@ public sealed class LiveCoach : IDisposable
         _loadingDone = reading is not null;
         (_waiting, _clockSeenInGame) = (false, false);
         _newGame.Reset();
+    }
+
+    /// <summary>D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).</summary>
+    private static void KnowPlayers(Coach coach, SnapshotBuilder builder, LoadingPlayer? me, LoadingReading? loading)
+    {
+        coach.Signals.PlayerSlot = me?.Slot;
+        builder.PlayerSlot = me?.Slot;
+        coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
     }
 
     private readonly NewGameDetector _newGame = new();
@@ -511,10 +575,13 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     private void RecordCapture(RawCapture? raw, HudState hud, double realTime)
     {
-        if (raw is null || RecordsFolder is null || _recordingStopped)
+        if (raw is null || RecordsFolder is null)
             return;
         lock (_gate)
         {
+            // Adentro del lock: detener el coach justo antes de esto dejaba abierto un registro que nadie iba a cerrar.
+            if (_recordingStopped)
+                return;
             if (_recordWriter is null && hud.ClockRead)
                 OpenRecord(realTime);
             Record(r => r.Capture(raw, RecordMs(realTime)));
@@ -531,13 +598,14 @@ public sealed class LiveCoach : IDisposable
         try
         {
             var started = DateTimeOffset.Now;
-            var path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}.jsonl.gz");
+            var name = started.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var path = Path.Combine(RecordsFolder!, $"{name}.jsonl.gz");
             for (var i = 2; File.Exists(path); i++)
-                path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}-{i}.jsonl.gz");
+                path = Path.Combine(RecordsFolder!, $"{name}-{i}.jsonl.gz");
             _recordGameId = Guid.NewGuid().ToString("N");
             var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
-            var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,
-                _loadingReading?.Map, rival, _me?.Slot, _language, (int)Frames.CaptureIntervalMs, BuildOrder with { Civ = Civ });
+            var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ,
+                KnownMap(_loadingReading?.Map, KnownMaps), rival, _me?.Slot, _language, (int)Frames.CaptureIntervalMs, BuildOrder with { Civ = Civ });
             _recordWriter = GameRecordWriter.Create(path, meta);
             _recorder = new GameRecorder(_recordWriter, _data);
             (_recordStart, _recordFlushedAt, _recordNotice, _flags) = (realTime, realTime, null, 0);
@@ -546,6 +614,18 @@ public sealed class LiveCoach : IDisposable
         {
             RecordFailed(e);
         }
+    }
+
+    /// <summary>
+    /// El mapa para el registro: su clave en data/maps.json (por la clave o por el nombre en cualquier idioma), o null. Lo que
+    /// lee el OCR es texto libre: un mapa personalizado puede llamarse de cualquier forma, y hasta identificar la partida.
+    /// </summary>
+    internal static string? KnownMap(string? read, Maps? maps)
+    {
+        if (read is null || maps is null || LoadingScreen.NormalizeName(read) is not { Length: > 0 } wanted)
+            return null;
+        return maps.All.FirstOrDefault(m => !Maps.IsAny(m.Key)
+            && new[] { m.Key, m.Name, m.NameEn ?? m.Name }.Any(name => LoadingScreen.NormalizeName(name) == wanted))?.Key;
     }
 
     /// <summary>Un error del registro (disco lleno, carpeta sin permiso) lo apaga para esta sesión y lo dice, sin tocar al coach.</summary>
@@ -625,11 +705,6 @@ public sealed class LiveCoach : IDisposable
         {
             do
             {
-                if (Paused)
-                {
-                    Publish();
-                    continue;
-                }
                 if (!await StepAsync())
                     return;
             }

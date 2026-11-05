@@ -655,4 +655,68 @@ public sealed class HudModTests : IDisposable
         Assert.False(result.Ok);
         Assert.Contains("abrí el juego", Assert.Single(result.Warnings));
     }
+
+    // AP-13: no había forma de sacar el mod desde la app. Se borra solo su carpeta: lo demás de los mods es del jugador.
+    [Fact]
+    public void Desinstalar_borra_solo_la_carpeta_del_mod_en_cada_perfil()
+    {
+        var game = FakeGame(_dir.FullName);
+        var mods = Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods")).FullName;
+        var other = Directory.CreateDirectory(Path.Combine(mods, "local", "Otro mod")).FullName;
+        File.WriteAllText(Path.Combine(other, "info.json"), "{}");
+        var subscribed = Directory.CreateDirectory(Path.Combine(mods, "subscribed", "17306_Otro panel")).FullName;
+        File.WriteAllText(Path.Combine(mods, "mod-status.json"), """{ "Mods": [] }""");
+        Directory.CreateDirectory(Path.Combine(Profiles, "222", "mods"));
+        Directory.CreateDirectory(Path.Combine(Profiles, "logs"));
+        HudMod.Install(game, Layout(), Profiles);
+
+        Assert.Equal(["111", "222"], HudMod.Uninstall(Profiles));
+
+        Assert.False(Directory.Exists(Path.Combine(mods, "local", HudMod.Name)));
+        Assert.False(Directory.Exists(Path.Combine(Profiles, "222", "mods", "local", HudMod.Name)));
+        Assert.True(File.Exists(Path.Combine(other, "info.json")));
+        Assert.True(Directory.Exists(subscribed));
+        Assert.True(File.Exists(Path.Combine(mods, "mod-status.json")));
+        Assert.Empty(HudMod.Uninstall(Profiles));
+    }
+
+    [Fact]
+    public void Sin_perfiles_no_hay_nada_que_desinstalar() => Assert.Empty(HudMod.Uninstall(Profiles));
+
+    /// <summary>Un panel del juego que cambió de forma (un parche): el menú sin el tamaño de su fondo.</summary>
+    private static void BreakMenuPanel(string game) => File.WriteAllText(Path.Combine(game, "widgetui", "menupanel.json"),
+        """{ "Collection": { "Widgets": [ { "Widget": { "Name": "Background", "ViewPort": { "xorigin": 0 } } } ] } }""");
+
+    // AP-11: el panel se armaba en plena escritura: el mod quedaba a medias y salía un error sin explicar.
+    [Fact]
+    public void Si_un_panel_del_juego_cambio_no_escribe_nada_y_lo_dice()
+    {
+        var game = FakeGame(_dir.FullName);
+        BreakMenuPanel(game);
+        Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
+
+        var result = HudMod.Install(game, Layout(), Profiles);
+
+        Assert.False(result.Ok);
+        Assert.Contains("un panel del juego no tiene la forma", Assert.Single(result.Warnings));
+        Assert.False(Directory.Exists(Path.Combine(Profiles, "111", "mods", "local", HudMod.Name)));
+    }
+
+    [Fact]
+    public void Si_un_panel_del_juego_cambio_el_mod_que_habia_queda_como_estaba()
+    {
+        var game = FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
+        HudMod.Install(game, Layout(), Profiles);
+        var mod = Path.Combine(Profiles, "111", "mods", "local", HudMod.Name, "widgetui");
+        var before = Directory.GetFiles(mod).ToDictionary(file => file, File.ReadAllBytes);
+
+        BreakMenuPanel(game);
+        File.WriteAllText(Path.Combine(game, "widgetui", "resourcepanel.json"), ResourcePanel().ToJsonString().Replace("ResourceWood", "OtraTextura"));
+        Assert.False(HudMod.Install(game, Layout(), Profiles).Ok);
+
+        Assert.Equal(before.Keys.Order(), Directory.GetFiles(mod).Order());
+        foreach (var (file, bytes) in before)
+            Assert.Equal(bytes, File.ReadAllBytes(file));
+    }
 }

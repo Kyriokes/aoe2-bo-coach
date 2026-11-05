@@ -794,7 +794,7 @@ static async Task<int> CoachReplay(string recording, string? boPath, string[] ar
     // --record salida.jsonl.gz: escribe el registro de partida mientras corre, como la app en vivo.
     using var recordWriter = args.Contains("--record")
         ? BoCoach.Core.Record.GameRecordWriter.Create(Text(args, "--record", "registro.jsonl.gz"), BoCoach.Core.Record.GameRecorder.Meta(
-            Guid.NewGuid().ToString("N"), DateTimeOffset.Now, "ReplaySession", data.DatVersion, RecordingHud(recording), 1, bo.Civ, bo.Id, bo.Name, null, null,
+            Guid.NewGuid().ToString("N"), DateTimeOffset.Now, "ReplaySession", data.DatVersion, RecordingHud(recording), 1, bo.Civ, null, null,
             args.Contains("--slot") ? Option(args, "--slot", 0) : null, Text(args, "--idioma", "en"), 500, bo))
         : null;
     var recorder = recordWriter is null ? null : new BoCoach.Core.Record.GameRecorder(recordWriter, data);

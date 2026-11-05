@@ -23,6 +23,18 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnUnhandledException;
+        try
+        {
+            Begin(e);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
+    }
+
+    private void Begin(StartupEventArgs e)
+    {
         Themes.DarkTitleBar.ApplyToAllWindows();
 
         var args = Web.LinkProtocol.StartupArguments(e.Args);
@@ -98,6 +110,7 @@ public partial class App : Application
         if (screenshot is null)
         {
             window.Show();
+            RefreshLinks();
             if (Argument(args, "--replay") is { } replay)
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             if (importLink is not null)
@@ -144,6 +157,20 @@ public partial class App : Application
         CaptureAndExit(window, screenshot, Argument(args, "--state") is null or "sin-cuenta" ? null : Texts.HotkeysReady("Ctrl+Alt+S", "Ctrl+Alt+→"));
     }
 
+    /// <summary>Los enlaces bocoach:// siguen a esta copia de la app, si ya estaban registrados. Sin permiso, quedan como estaban.</summary>
+    private static void RefreshLinks()
+    {
+        if (Environment.ProcessPath is not { } exe)
+            return;
+        try
+        {
+            new LinkProtocol().RefreshIfRegistered(exe);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+        }
+    }
+
     /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>
     private static int PublishFolder(string source, bool dryRun)
     {
@@ -152,7 +179,7 @@ public partial class App : Application
         try
         {
             var data = CoachData.Load();
-            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 8 * 1024 * 1024 };
+            using var http = WebAccount.NewHttpClient(TimeSpan.FromSeconds(30));
             // Task.Run: sin el contexto de WPF, esperar acá el resultado no traba las respuestas de la web.
             return Task.Run(() => BulkPublish.RunAsync(data, new WebAccount(http), source, dryRun, output)).GetAwaiter().GetResult();
         }
@@ -489,8 +516,31 @@ public partial class App : Application
 
     private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show(Texts.UnexpectedError(e.Exception.Message), Texts.AppName,
-            MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
+        ShowError(e.Exception);
+    }
+
+    private bool _showingError;
+
+    /// <summary>
+    /// El cartel de un error inesperado, uno por vez: mientras está abierto el despachador sigue andando, y un error que se
+    /// repite no abre otro encima. Sin una ventana a la vista la app se cierra: seguía abierta sin ventana y con la
+    /// instancia única tomada, así que cada apertura siguiente esperaba 10 s y se cerraba sin decir nada.
+    /// </summary>
+    private void ShowError(Exception error)
+    {
+        if (_showingError)
+            return;
+        _showingError = true;
+        try
+        {
+            MessageBox.Show(Texts.UnexpectedError(error.Message), Texts.AppName, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _showingError = false;
+        }
+        if (MainWindow is not { IsLoaded: true })
+            Shutdown(1);
     }
 }

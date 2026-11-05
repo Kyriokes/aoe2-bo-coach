@@ -15,6 +15,9 @@ public interface IBuildOrderDialogs
 {
     bool Confirm(string message);
 
+    /// <summary>Una pregunta donde equivocarse sale caro: Enter responde que no.</summary>
+    bool ConfirmNoByDefault(string message);
+
     /// <summary>Pide un texto (el código de una BO). null = cancelado.</summary>
     string? AskText(string title, string message, string initial = "");
 
@@ -179,32 +182,51 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
     {
         if (_dialogs.AskText(Texts.AddBuildOrderTitle, Texts.AddBuildOrderPrompt) is not { } text)
             return;
+        // El token de la app es un secreto: si eso es lo que se pegó, se conecta con él y no se repite en la barra de estado.
+        if (AppLink.TokenIn(text) is { } token)
+        {
+            await ConnectWithTokenAsync(token);
+            return;
+        }
         if (WebCode.Parse(text) is not { } code)
         {
-            Status = Texts.NotACode(text.Trim());
+            Status = AppLink.LooksLikeToken(text) ? Texts.NotAWholeToken : Texts.NotACode(text.Trim());
             return;
         }
         await ImportAsync(code, confirm: false);
     }
 
-    /// <summary>Un enlace bocoach:// de la web: conectar la cuenta o sumar una BO (con confirmación).</summary>
-    public Task HandleLinkAsync(string text)
+    /// <summary>
+    /// Un enlace bocoach:// de la web: conectar la cuenta o sumar una BO (con confirmación). Al abrir la app nadie espera
+    /// el resultado, así que un error (no se pudo guardar la cuenta, por ejemplo) se dice acá o se pierde.
+    /// </summary>
+    public async Task HandleLinkAsync(string text)
     {
-        switch (AppLink.Parse(text))
+        try
         {
-            case AppLink.Connect connect:
-                return ConnectWithTokenAsync(connect.Token);
-            case AppLink.Import import:
-                return ImportAsync(import.Code, confirm: true);
-            default:
-                Status = Texts.ForeignLink;
-                return Task.CompletedTask;
+            switch (AppLink.Parse(text))
+            {
+                case AppLink.Connect connect:
+                    await ConnectWithTokenAsync(connect.Token);
+                    break;
+                case AppLink.Import import:
+                    await ImportAsync(import.Code, confirm: true);
+                    break;
+                default:
+                    Status = Texts.ForeignLink;
+                    break;
+            }
+        }
+        catch (Exception e)
+        {
+            Status = Texts.LinkFailed(e.Message);
         }
     }
 
     /// <summary>
     /// El token que manda la web ("Conectar la app"): pregunta con el nombre de la cuenta antes de guardarlo (cualquier
-    /// página puede abrir un enlace bocoach://conectar con el token de otra cuenta) y pide la lista.
+    /// página puede abrir un enlace bocoach://conectar con el token de otra cuenta) y pide la lista. Si ya hay una cuenta
+    /// conectada nombra las dos, y por defecto la respuesta es no: otra cuenta puede llamarse igual que la tuya.
     /// </summary>
     public async Task ConnectWithTokenAsync(string token)
     {
@@ -222,7 +244,11 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
                 return;
             }
             var account = list.Account.Length > 0 ? list.Account : Texts.NoAccountName;
-            if (!_dialogs.Confirm(Texts.ConfirmConnect(account)))
+            var replaces = _web.Settings.HasToken && _web.Settings.Token != token;
+            var accepted = replaces
+                ? _dialogs.ConfirmNoByDefault(Texts.ConfirmReplaceAccount(_cache.List.Account.Length > 0 ? _cache.List.Account : Texts.NoAccountName, account))
+                : _dialogs.Confirm(Texts.ConfirmConnect(account));
+            if (!accepted)
                 return;
             _web.Save(_web.Settings with { Token = token });
         }

@@ -38,6 +38,17 @@ public sealed class WebAccount(HttpClient http, string? path = null)
 {
     public static string DefaultPath => Path.Combine(CoachData.UserDir, "web.json");
 
+    /// <summary>
+    /// El cliente para hablar con la web. No sigue redirecciones: al ir a otro host HttpClient borra Authorization, pero no
+    /// las cabeceras propias, y X-BoCoach-Secret (la identidad de esta instalación) llegaría a ese host. Una BO de la web
+    /// pesa unos 20 KB: una respuesta de más de 8 MB no es una BO y no se carga entera en memoria.
+    /// </summary>
+    public static HttpClient NewHttpClient(TimeSpan? timeout = null) => new(new HttpClientHandler { AllowAutoRedirect = false })
+    {
+        Timeout = timeout ?? TimeSpan.FromSeconds(20),
+        MaxResponseContentBufferSize = 8 * 1024 * 1024,
+    };
+
     private static readonly byte[] Entropy = "BoCoach.WebToken"u8.ToArray();
 
     public string FilePath { get; } = path ?? DefaultPath;
@@ -78,8 +89,7 @@ public sealed class WebAccount(HttpClient http, string? path = null)
             ["token"] = settings.HasToken ? Protect(settings.Token) : null,
             ["published"] = new JsonObject(settings.Published.Select(p => KeyValuePair.Create(p.Key, (JsonNode?)p.Value))),
         };
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        File.WriteAllText(FilePath, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        SettingsFile.WriteAtomically(FilePath, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
         (_loadedWrite, _settings) = (Version(FilePath), settings);
     }
 
@@ -118,29 +128,53 @@ public sealed class WebAccount(HttpClient http, string? path = null)
             Save(Settings with { Published = published });
     }
 
+    /// <summary>
+    /// Lo guardado. Un archivo que no se puede leer (vacío, cortado, sin permiso) queda copiado en <c>.roto</c> y se empieza
+    /// de cero: hay que volver a conectar la cuenta. Un valor raro en un campo no pierde los demás.
+    /// </summary>
     private static WebSettings Load(string path)
     {
         if (!File.Exists(path))
             return new WebSettings();
         try
         {
-            var json = JsonNode.Parse(File.ReadAllText(path)) as JsonObject ?? [];
-            return new WebSettings
+            if (JsonNode.Parse(File.ReadAllText(path)) is JsonObject json)
             {
-                // Una dirección que no sirve (web.json editado a mano) haría fallar BaseUri al publicar o bajar.
-                WebUrl = json["web_url"]?.GetValue<string>() is { Length: > 0 } url && Uri.TryCreate(url, UriKind.Absolute, out _)
-                    ? url
-                    : WebSettings.DefaultUrl,
-                Token = json["token"]?.GetValue<string>() is { Length: > 0 } token ? Unprotect(token) : "",
-                Published = (json["published"] as JsonObject ?? [])
-                    .Where(p => p.Value is not null)
-                    .ToDictionary(p => p.Key, p => p.Value!.GetValue<string>()),
-            };
+                return new WebSettings
+                {
+                    // Una dirección que no sirve (web.json editado a mano) haría fallar BaseUri al publicar o bajar.
+                    WebUrl = Text(json["web_url"]) is { Length: > 0 } url && Uri.TryCreate(url, UriKind.Absolute, out _)
+                        ? url
+                        : WebSettings.DefaultUrl,
+                    Token = ReadToken(json["token"]),
+                    Published = (json["published"] as JsonObject ?? [])
+                        .Where(p => Text(p.Value) is not null)
+                        .ToDictionary(p => p.Key, p => Text(p.Value)!),
+                };
+            }
         }
-        catch (Exception e) when (e is JsonException or InvalidOperationException or FormatException or CryptographicException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or ArgumentException)
         {
-            // Archivo roto o token de otro usuario de Windows: se empieza de cero (hay que volver a pegar el token).
-            return new WebSettings();
+            // Una clave repetida da ArgumentException al leer el objeto. Sigue abajo, como un archivo roto.
+        }
+        SettingsFile.KeepBrokenCopy(path);
+        return new WebSettings();
+    }
+
+    private static string? Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+
+    /// <summary>El token de otro usuario de Windows no se puede descifrar: hay que volver a pegarlo, y lo demás sigue valiendo.</summary>
+    private static string ReadToken(JsonNode? node)
+    {
+        if (Text(node) is not { Length: > 0 } token)
+            return "";
+        try
+        {
+            return Unprotect(token);
+        }
+        catch (Exception e) when (e is CryptographicException or FormatException)
+        {
+            return "";
         }
     }
 
