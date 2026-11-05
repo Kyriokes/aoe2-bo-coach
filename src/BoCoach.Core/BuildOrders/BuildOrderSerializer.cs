@@ -8,6 +8,18 @@ public sealed class BuildOrderFormatException(string message, Exception? inner =
 /// <summary>Lee y escribe build orders en JSON. Solo revisa el formato; las reglas las revisa <see cref="BuildOrderValidator"/>.</summary>
 public static class BuildOrderSerializer
 {
+    /// <summary>Cómo se lee el JSON de una BO o de una guía: se puede escribir a mano, pero una clave repetida es un error.</summary>
+    internal static readonly JsonDocumentOptions DocumentOptions = new()
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        AllowDuplicateProperties = false,
+    };
+
+    /// <summary>El error de un JSON que no se pudo leer. Una clave repetida no trae el número de línea.</summary>
+    internal static BuildOrderFormatException Invalid(JsonException e) =>
+        new(e.LineNumber is { } line ? $"JSON inválido (línea {line + 1}): {e.Message}" : $"JSON inválido: {e.Message}", e);
+
     public static BuildOrder Load(string path)
     {
         try
@@ -25,15 +37,11 @@ public static class BuildOrderSerializer
         JsonNode? root;
         try
         {
-            root = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions
-            {
-                CommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true,
-            });
+            root = JsonNode.Parse(json, documentOptions: DocumentOptions);
         }
         catch (JsonException e)
         {
-            throw new BuildOrderFormatException($"JSON inválido (línea {e.LineNumber + 1}): {e.Message}", e);
+            throw Invalid(e);
         }
 
         if (root is not JsonObject obj)

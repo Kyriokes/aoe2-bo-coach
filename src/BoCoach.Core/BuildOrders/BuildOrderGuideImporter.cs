@@ -21,7 +21,7 @@ public static class BuildOrderGuideImporter
     {
         try
         {
-            return JsonNode.Parse(json, documentOptions: Options) is JsonObject obj && obj["build"] is JsonArray && obj["civilization"] is JsonValue;
+            return JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) is JsonObject obj && obj["build"] is JsonArray && obj["civilization"] is JsonValue;
         }
         catch (JsonException)
         {
@@ -36,19 +36,17 @@ public static class BuildOrderGuideImporter
         JsonObject root;
         try
         {
-            root = JsonNode.Parse(json, documentOptions: Options) as JsonObject
+            root = JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) as JsonObject
                 ?? throw new BuildOrderFormatException("La build order tiene que ser un objeto JSON.");
         }
         catch (JsonException e)
         {
-            throw new BuildOrderFormatException($"JSON inválido (línea {e.LineNumber + 1}): {e.Message}", e);
+            throw BuildOrderSerializer.Invalid(e);
         }
         if (root["build"] is not JsonArray guide || guide.Count == 0)
             throw new BuildOrderFormatException("No tiene pasos ('build').");
         return Convert(root, guide, data, civ);
     }
-
-    private static readonly JsonDocumentOptions Options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     /// <summary>Los grupos de civs de la página ("Meso", "South American") no son una civ: quedan para cualquiera.</summary>
     private static readonly HashSet<string> CivGroups = new(StringComparer.OrdinalIgnoreCase) { "Generic", "Meso", "South American" };

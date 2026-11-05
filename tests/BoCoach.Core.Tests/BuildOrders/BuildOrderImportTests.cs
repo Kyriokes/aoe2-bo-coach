@@ -59,6 +59,24 @@ public class BuildOrderImportTests
         Assert.NotNull(json["ok"]);
     }
 
+    // Una clave repetida tiraba ArgumentException al tocar el objeto, y nadie la esperaba (CR-12).
+    [Theory]
+    [InlineData("""{"build_order":[],"build_order":[]}""")]
+    [InlineData("""{"build_order":[{"notes":[],"notes":[]}]}""")]
+    [InlineData("""{"build":[],"build":[],"civilization":"x"}""")]
+    [InlineData("""{"build":[{"type":"build","type":"lure"}],"civilization":"Franks"}""")]
+    [InlineData("""{"schema_version":2,"schema_version":2,"name":"x"}""")]
+    [InlineData("""{"schema_version":2,"name":"x","steps":[{"id":"a","id":"b"}]}""")]
+    [InlineData("""{"a":1,"a":2}""")]
+    public void ReadJson_ClavesRepetidas_DevuelveError(string json)
+    {
+        var result = JsonNode.Parse(BuildOrderImport.ReadJson(json, TestData.GameData))!;
+
+        Assert.False(result["ok"]!.GetValue<bool>());
+        Assert.Contains("JSON inválido", result["error"]!.GetValue<string>());
+        Assert.DoesNotContain("línea )", result["error"]!.GetValue<string>());
+    }
+
     [Fact]
     public void ReadJson_Guia_TraeLaBoYLosAvisos()
     {

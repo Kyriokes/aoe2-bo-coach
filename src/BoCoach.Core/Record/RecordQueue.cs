@@ -115,7 +115,7 @@ public sealed class RecordQueue
     {
         try
         {
-            if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path)) is not JsonArray array)
+            if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path), documentOptions: CoreJson.NoDuplicates) is not JsonArray array)
                 return [];
             var items = new List<QueuedRecord>();
             foreach (var node in array.OfType<JsonObject>())

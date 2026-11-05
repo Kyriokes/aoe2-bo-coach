@@ -86,7 +86,7 @@ public sealed class GameRecordReader
                 JsonObject? json;
                 try
                 {
-                    json = JsonNode.Parse(text) as JsonObject;
+                    json = JsonNode.Parse(text, documentOptions: CoreJson.NoDuplicates) as JsonObject;
                 }
                 catch (JsonException)
                 {

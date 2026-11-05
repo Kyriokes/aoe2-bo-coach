@@ -41,6 +41,19 @@ public sealed class BuildOrderCacheTests : IDisposable
         Assert.Equal(["k7m2xq"], offline.List.Items.Select(i => i.Code));
     }
 
+    [Fact]
+    public void Lo_guardado_con_claves_repetidas_se_ignora()
+    {
+        File.WriteAllText(Path.Combine(_dir, "mis-bo.json"), """{"account":"a","account":"b"}""");
+        Directory.CreateDirectory(Path.Combine(_dir, "bo"));
+        File.WriteAllText(Path.Combine(_dir, "bo", "k7m2xq.json"), """{"build_order":{},"build_order":{}}""");
+
+        var cache = Cache();
+
+        Assert.Equal(WebBuildOrderList.Empty, cache.List);
+        Assert.Null(cache.Saved("k7m2xq"));
+    }
+
     // Partida 20261102-212823: las BO republicadas (--publish) no se volvían a bajar y el coach jugó con la vieja.
     [Fact]
     public async Task Una_republicada_en_la_web_no_esta_al_dia_y_se_vuelve_a_bajar()

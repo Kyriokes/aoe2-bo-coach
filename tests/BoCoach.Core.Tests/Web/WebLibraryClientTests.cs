@@ -118,6 +118,16 @@ public class WebLibraryClientTests
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.OK, """{"build_order":{},"build_order":{}}""")]
+    [InlineData(HttpStatusCode.InternalServerError, """{"error":"a","error":"b"}""")]
+    public async Task Una_respuesta_con_claves_repetidas_es_un_error_explicado(HttpStatusCode status, string body)
+    {
+        var (client, _) = Client(status, body);
+
+        await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+    }
+
+    [Theory]
     [InlineData("http://bo.example/", false)]
     [InlineData("http://localhost:3000/", true)]
     [InlineData("http://127.0.0.1:3000/", true)]

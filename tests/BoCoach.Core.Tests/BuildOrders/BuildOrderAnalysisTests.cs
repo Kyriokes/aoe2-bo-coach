@@ -133,6 +133,15 @@ public class BuildOrderAnalysisTests
         Assert.StartsWith("JSON inválido", r.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public void Un_JSON_con_claves_repetidas_devuelve_el_error()
+    {
+        var r = Analyze("""{ "schema_version": 2, "name": "x", "name": "y", "steps": [] }""");
+
+        Assert.False(r.GetProperty("ok").GetBoolean());
+        Assert.StartsWith("JSON inválido", r.GetProperty("error").GetString());
+    }
+
     private static string AssistedJson(int until, string steps = "[]") =>
         "{ \"schema_version\": 2, \"id\": \"asis\", \"name\": \"Asistida\", \"civ\": \"franks\", \"steps\": " + steps +
         ", \"assisted\": { \"villagers\": { \"until\": " + until + " }, \"goals\": [ { \"age\": \"feudal_age\" } ] } }";

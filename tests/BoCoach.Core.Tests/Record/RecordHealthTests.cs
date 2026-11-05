@@ -153,6 +153,33 @@ public sealed class RecordHealthTests : IDisposable
         Assert.Equal(1, report.Unreadable);
     }
 
+    private void WriteText(string name, string text)
+    {
+        using var gzip = new GZipStream(File.Create(PathOf(name)), CompressionMode.Compress);
+        gzip.Write(Encoding.UTF8.GetBytes(text));
+    }
+
+    // Una clave repetida tiraba ArgumentException, que el resumen no esperaba: un solo archivo lo cortaba entero.
+    [Fact]
+    public void Una_clave_repetida_no_corta_el_resumen()
+    {
+        WriteGame("partida.jsonl.gz");
+        WriteText("sin-meta.jsonl.gz", """{"t":"meta","t":"meta"}""" + "\n");
+        WriteText("una-linea.jsonl.gz", """
+            {"t":"meta","game_id":"otra"}
+            {"t":"cap","clock":1,"clock":2}
+            {"t":"cap","clock":3}
+            {"t":"end","reason":"fin","length":3}
+            """);
+
+        var report = RecordHealthReport.Scan(_dir);
+
+        Assert.Equal(2, report.Games.Count);
+        Assert.Equal(1, report.Unreadable);
+        // La línea con la clave repetida se saltea, como cualquiera que no es JSON.
+        Assert.Equal(1, Assert.Single(report.Games, g => g.GameId == "otra").Captures);
+    }
+
     [Fact]
     public void Un_registro_que_no_empieza_con_su_meta_se_cuenta_como_roto()
     {

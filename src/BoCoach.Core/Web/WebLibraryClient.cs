@@ -261,7 +261,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     {
         try
         {
-            return JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel)) as JsonObject
+            return JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel), documentOptions: CoreJson.NoDuplicates) as JsonObject
                 ?? throw new WebLibraryException(Lang.L("La web respondió algo que no es un objeto JSON.", "The web answered something that isn't a JSON object."));
         }
         catch (JsonException e)
@@ -280,7 +280,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     {
         try
         {
-            if (JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel)) is JsonObject { } obj
+            if (JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel), documentOptions: CoreJson.NoDuplicates) is JsonObject { } obj
                 && obj["error"]?.GetValue<string>() is { Length: > 0 } error)
                 return error;
         }

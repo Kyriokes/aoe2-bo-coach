@@ -32,6 +32,12 @@ public static class CoreJson
         TypeInfoResolver = CoreJsonContext.Default,
     };
 
+    /// <summary>
+    /// Para leer con JsonNode lo que escribió otro (un registro, una respuesta de la web): una clave repetida es JSON
+    /// inválido. Sin esto, JsonNode tira ArgumentException recién al tocar ese objeto, donde nadie la espera.
+    /// </summary>
+    public static readonly JsonDocumentOptions NoDuplicates = new() { AllowDuplicateProperties = false };
+
     /// <summary>Metadatos de un tipo con estas opciones (las sobrecargas que los usan son seguras al recortar).</summary>
     public static JsonTypeInfo<T> Info<T>() => (JsonTypeInfo<T>)Options.GetTypeInfo(typeof(T));
 

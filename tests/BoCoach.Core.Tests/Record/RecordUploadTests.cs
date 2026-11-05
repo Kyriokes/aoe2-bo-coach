@@ -225,10 +225,12 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Equal([GameId('b')], queue.Pending.Select(r => r.GameId));
     }
 
-    [Fact]
-    public void Una_cola_rota_arranca_vacia()
+    [Theory]
+    [InlineData("{ esto no es")]
+    [InlineData("""[{"file":"a","file":"b"}]""")]
+    public void Una_cola_rota_arranca_vacia(string contents)
     {
-        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName), "{ esto no es");
+        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName), contents);
         Assert.Empty(new RecordQueue(_dir).Pending);
     }
 

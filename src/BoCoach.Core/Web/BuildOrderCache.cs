@@ -148,7 +148,7 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
     {
         try
         {
-            return File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : null;
+            return File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: CoreJson.NoDuplicates) as JsonObject : null;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {
