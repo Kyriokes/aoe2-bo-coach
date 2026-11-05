@@ -46,10 +46,12 @@ describe("ramas", () => {
 });
 
 describe("tamaño de la BO", () => {
-  it("rechaza una BO de más de 512 KB, como texto o como objeto", () => {
-    const heavy = bo({ notes: "x".repeat(600_000) });
-    expect(errorOf(heavy)).toContain("pesa");
-    expect(errorOf(JSON.stringify(heavy))).toContain("pesa");
+  it("rechaza una BO de más de 128 KB, como texto o como objeto", () => {
+    const sized = (chars: number) => bo({ notes: "x".repeat(chars - JSON.stringify(bo({ notes: "" })).length) });
+    expect(errorOf(sized(128_000))).toBeNull();
+    expect(errorOf(JSON.stringify(sized(128_000)))).toBeNull();
+    expect(errorOf(sized(128_001))).toContain("128 KB");
+    expect(errorOf(JSON.stringify(sized(128_001)))).toContain("128 KB");
   });
 
   it("acepta una BO con notas largas pero razonables", () => {

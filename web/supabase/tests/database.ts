@@ -77,6 +77,9 @@ export const scouts = {
   steps: [{ id: "s1", do: "train", what: "villager", count: 6 }],
 };
 
+/** Las BO como guardadas hace un rato: la base no deja cambiar el JSON de una BO dos veces en 5 segundos. */
+export const settle = (db: Db) => db.exec("update public.build_orders set updated_at = now() - interval '1 minute'");
+
 /** Inserta con ese nombre (la base deriva las columnas del JSON, así que el nombre va en el body). */
 export const insertBo = `insert into public.build_orders (name, civ, tags, schema_version, body)
                   values ($1, 'any', '{scouts}', 1, jsonb_set($2, '{name}', to_jsonb($1::text))) returning code, owner_id, votes`;

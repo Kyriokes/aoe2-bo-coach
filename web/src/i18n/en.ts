@@ -428,11 +428,12 @@ export const en: Dictionary = {
   },
   dbErrors: {
     author: "A BO's author can be up to 60 characters.",
-    limits: "The BO doesn't fit the library's limits: up to 512 KB, 1 to 300 steps, count and builders from 1 to 200 and tags up to 30 characters.",
+    limits: "The BO doesn't fit the library's limits: up to 128 KB (and 20 MB per account), 1 to 300 steps, count and builders from 1 to 200 and tags up to 30 characters.",
     forbidden: "You don't have permission to do that.",
     generic: "Database error. Try again in a while.",
     badToken: "That token doesn't work: create another one in My account.",
     dailyLimit: "You reached the daily limit of records: it will retry tomorrow.",
+    tooFast: "You saved this build order a few seconds ago: wait a moment and try again.",
     notPublic: "That build order doesn't exist or isn't public.",
   },
   serverErrors: {

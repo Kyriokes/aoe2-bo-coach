@@ -9,10 +9,11 @@ export const CURRENT_SCHEMA_VERSION = 2;
 export const MAX_COUNT = 200;
 
 /**
- * Tope del JSON de una BO, en caracteres. Una BO real ocupa unos 20 KB; sin tope, los pasos admiten notas y campos
- * de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la app de quien la importe.
+ * Tope del JSON de una BO, en caracteres (la base controla lo mismo). La más grande del repo pesa 12 KB; sin tope, los
+ * pasos admiten notas y campos de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la
+ * app de quien la importe.
  */
-export const MAX_BODY_CHARS = 512_000;
+export const MAX_BODY_CHARS = 128_000;
 
 // count y builders con tope: sin él, un número enorme agota la memoria del Planner (encola una entrada por unidad)
 // en el navegador de cualquiera que abra la página de la BO y en la app de quien la importe.

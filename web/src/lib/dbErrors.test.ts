@@ -29,6 +29,16 @@ describe("errores de la base", () => {
   });
 });
 
+describe("cambios muy seguidos", () => {
+  const error = { code: "BC430", message: "Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo." };
+
+  it("dan 429 y el mensaje de la base, explicado en cada idioma", () => {
+    expect(dbErrorStatus(error)).toBe(429);
+    expect(dbErrorMessage(error)).toBe(error.message);
+    expect(dbErrorMessage(error, "en")).toMatch(/seconds/);
+  });
+});
+
 describe("BO que no existe o no es pública", () => {
   it("se muestra el mensaje de la base y da 404", () => {
     const error = { code: "P0002", message: "No hay ninguna build order pública con el código abcdef." };

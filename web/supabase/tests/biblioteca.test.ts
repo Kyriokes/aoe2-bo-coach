@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ana, as, beto, database, type Db, insertBo, scouts, signUp, signUpWith } from "./database";
+import { ana, as, beto, database, type Db, insertBo, scouts, settle, signUp, signUpWith } from "./database";
 
 
 describe("biblioteca", () => {
@@ -48,6 +48,7 @@ describe("biblioteca", () => {
     expect(deleted.rows).toEqual([]);
     await expect(as(db, ana, "update public.build_orders set votes = 1000")).rejects.toThrow(/permission/);
 
+    await settle(db);
     const byAna = await as<{ name: string }>(db, ana, `update public.build_orders set body = body || '{"name": "Scouts 2"}' returning name`);
     expect(byAna.rows).toEqual([{ name: "Scouts 2" }]);
   });
@@ -133,6 +134,7 @@ describe("biblioteca", () => {
 
       await expect(as(db, null, update, [betoToken, { ...scouts, name: "Robada" }, code])).rejects.toThrow(/código/);
 
+      await settle(db);
       await as(db, null, update, [anaToken, { ...scouts, name: "Scouts v2" }, code]);
       const name = await db.query<{ name: string }>("select name from public.build_orders where code = $1", [code]);
       expect(name.rows[0].name).toBe("Scouts v2");
@@ -177,13 +179,68 @@ describe("biblioteca", () => {
       await bad({ ...scouts, branches: "no" });
     });
 
-    it("hasta 300 pasos y 512 KB", async () => {
+    it("hasta 300 pasos", async () => {
       const many = (n: number) => ({ ...scouts, steps: Array.from({ length: n }, (_, i) => ({ id: `s${i}`, do: "train", what: "villager" })) });
       await as(db, ana, insertBo, ["300 pasos", many(300)]);
       await bad(many(301));
-      await bad({ ...scouts, description: "x".repeat(600_000) });
       await bad({ ...scouts, steps: ["no es un paso"] });
     });
+
+    it("hasta 128 KB por BO", async () => {
+      // El JSON como lo escribe la base mide esto sin relleno.
+      const empty = (await db.query<{ n: number }>("select octet_length($1::jsonb::text) as n", [{ ...scouts, pad: "" }])).rows[0].n;
+      const sized = (bytes: number) => ({ ...scouts, pad: "x".repeat(bytes - empty) });
+      await as(db, ana, insertBo, ["Scouts Feudal", sized(128_000)]);
+      await expect(as(db, ana, insertBo, ["Scouts Feudal", sized(128_001)])).rejects.toThrow(/check/);
+    });
+
+    it("una BO no se puede volver a cambiar antes de 5 segundos, salvo lo que no es su JSON", async () => {
+      await as(db, ana, insertBo, ["Scouts", scouts]);
+      const change = (name: string) => as(db, ana, "update public.build_orders set body = jsonb_set(body, '{name}', to_jsonb($1::text))", [name]);
+
+      await expect(change("Otra")).rejects.toMatchObject({ code: "BC430" });
+      await as(db, ana, "update public.build_orders set visibility = 'private'");
+      await as(db, ana, "update public.build_orders set body = body");
+
+      await settle(db);
+      await change("Otra");
+      await expect(change("Y otra")).rejects.toMatchObject({ code: "BC430" });
+    });
+
+    it("con el token tampoco se cambia dos veces seguidas", async () => {
+      const t = (await as<{ token: string }>(db, ana, "select public.create_app_token('PC') as token")).rows[0].token;
+      const publish = (code: string | null, name: string) =>
+        as<{ code: string }>(db, null, "select public.app_publish($1, $2, null, null, $3) as code", [t, { ...scouts, name }, code]);
+      const code = (await publish(null, "Primera")).rows[0].code;
+
+      await expect(publish(code, "Segunda")).rejects.toMatchObject({ code: "BC430" });
+      await publish(code, "Primera"); // el mismo JSON no es un cambio
+      await settle(db);
+      await publish(code, "Segunda");
+    });
+
+    it("hasta 20 MB por cuenta, también al reemplazar", async () => {
+      // Texto que la base no comprime: cada BO ocupa de verdad unos 118 KB, y con fecha de otro día para no chocar con
+      // el tope de BO nuevas por día.
+      const fill = (n: number) =>
+        db.query(
+          `with pad as (select string_agg(md5(j::text), '') as text from generate_series(1, 3700) j)
+           insert into public.build_orders (owner_id, name, schema_version, body, created_at)
+           select $1, 'x', 1, $2::jsonb || jsonb_build_object('pad', pad.text), now() - interval '2 days'
+             from pad, generate_series(1, $3::int)`,
+          [ana, scouts, n],
+        );
+      await fill(160); // unos 19 MB
+      await as(db, ana, insertBo, ["Chica", scouts]);
+      await expect(fill(20)).rejects.toThrow(/20 MB/);
+      await as(db, beto, insertBo, ["De Beto", scouts]); // es por cuenta
+
+      await fill(16); // queda menos de lo que pesa una más
+      await settle(db);
+      const big = "update public.build_orders set body = body || jsonb_build_object('pad', $1::text) where name = 'Chica'";
+      await expect(as(db, ana, big, ["x".repeat(127_000)])).rejects.toThrow(/20 MB/);
+      await as(db, ana, big, ["x".repeat(1000)]);
+    }, 120_000);
 
     it("etiquetas cortas, versión del formato y clics de edad razonables", async () => {
       await bad({ ...scouts, tags: ["x".repeat(31)] });
@@ -294,6 +351,7 @@ describe("privadas y suscripciones", () => {
       (await db.query<{ map: string | null; style: string | null }>("select map, style from public.build_orders where id = $1", [bo.id])).rows[0];
     expect(await read()).toEqual({ map: "arabia", style: "scouts" });
 
+    await settle(db);
     await as(db, ana, "update public.build_orders set body = $1", [scouts]);
     expect(await read()).toEqual({ map: null, style: null });
   });
@@ -363,6 +421,7 @@ describe("privadas y suscripciones", () => {
     it("reemplazar desde la app no cambia la visibilidad", async () => {
       const t = await token(ana);
       const privada = await publishAs(ana, "Privada", "private");
+      await settle(db);
       await as(db, null, "select public.app_publish($1, $2, null, null, $3)", [t, { ...scouts, name: "Nueva" }, privada.code]);
 
       expect((await db.query<{ visibility: string }>("select visibility from public.build_orders")).rows).toEqual([{ visibility: "private" }]);

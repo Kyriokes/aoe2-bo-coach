@@ -430,11 +430,12 @@ export const es = {
   },
   dbErrors: {
     author: "El autor de la BO tiene hasta 60 caracteres.",
-    limits: "La BO no entra en los topes de la biblioteca: hasta 512 KB, de 1 a 300 pasos, count y builders de 1 a 200 y etiquetas de hasta 30 caracteres.",
+    limits: "La BO no entra en los topes de la biblioteca: hasta 128 KB (y 20 MB por cuenta), de 1 a 300 pasos, count y builders de 1 a 200 y etiquetas de hasta 30 caracteres.",
     forbidden: "No tenés permiso para hacer eso.",
     generic: "Error de la base de datos. Probá de nuevo en un rato.",
     badToken: "El token no sirve: creá otro en Mi cuenta.",
     dailyLimit: "Llegaste al límite de registros por día: se reintenta mañana.",
+    tooFast: "Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo.",
     notPublic: "Esa build order no existe o no es pública.",
   },
   serverErrors: {

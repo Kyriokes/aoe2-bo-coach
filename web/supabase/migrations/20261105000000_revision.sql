@@ -178,3 +178,62 @@ create trigger build_orders_touch
   for each row
   when (old.body is distinct from new.body)
   execute function public.touch_updated_at();
+
+-- BD-05: una sola cuenta llenaba la base (150 BO de 512 KB por día, y reemplazar en loop dejaba 512 KB muertos cada
+-- vez). Ahora: hasta 128 KB por BO (la más grande del repo pesa 12 KB), 20 MB por cuenta (lo que de verdad ocupa cada
+-- BO, ya comprimida) y una BO no se reemplaza dos veces en 5 segundos.
+create or replace function public.build_order_body_ok(body jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select octet_length(body::text) <= 128000
+     and public.steps_ok(body -> 'steps')
+     and case
+           when body -> 'branches' is null or jsonb_typeof(body -> 'branches') = 'null' then true
+           when jsonb_typeof(body -> 'branches') <> 'array' or jsonb_array_length(body -> 'branches') > 20 then false
+           else not exists (
+             select 1
+               from jsonb_array_elements(body -> 'branches') as b(branch)
+              where jsonb_typeof(branch) <> 'object' or not public.steps_ok(branch -> 'steps'))
+         end
+$$;
+
+-- Error si con ese JSON las BO de la cuenta pasan los 20 MB (sin contar lo que ocupa hoy esa misma BO).
+create or replace function public.check_build_order_space(p_owner uuid, p_id uuid, p_body jsonb) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if (select coalesce(sum(pg_column_size(body)), 0) from public.build_orders where owner_id = p_owner and id <> p_id)
+     + pg_column_size(p_body) > 20 * 1024 * 1024 then
+    raise exception 'Tus build orders ocupan más de 20 MB: borrá alguna antes de guardar otra.' using errcode = '23514';
+  end if;
+end $$;
+
+create or replace function public.limit_new_build_orders() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if (select count(*) from public.build_orders
+       where owner_id = new.owner_id and created_at > now() - interval '24 hours') >= 150 then
+    raise exception 'Publicaste muchas build orders en las últimas 24 horas: probá de nuevo mañana.' using errcode = '23514';
+  end if;
+  perform public.check_build_order_space(new.owner_id, new.id, new.body);
+  return new;
+end $$;
+
+-- Solo si cambia el JSON (votar, cambiar la visibilidad o reemplazar por lo mismo no cuentan).
+create or replace function public.limit_build_order_changes() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if old.updated_at > now() - interval '5 seconds' then
+    raise exception 'Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo.' using errcode = 'BC430';
+  end if;
+  perform public.check_build_order_space(new.owner_id, new.id, new.body);
+  return new;
+end $$;
+
+drop trigger if exists build_orders_limit_changes on public.build_orders;
+create trigger build_orders_limit_changes
+  before update on public.build_orders
+  for each row
+  when (old.body is distinct from new.body)
+  execute function public.limit_build_order_changes();
+
+revoke execute on function public.check_build_order_space(uuid, uuid, jsonb) from public, anon, authenticated;
+revoke execute on function public.limit_build_order_changes() from public, anon, authenticated;
