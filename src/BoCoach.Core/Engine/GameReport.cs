@@ -156,7 +156,7 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
             Unannounced = s.Step.Do == StepAction.Move || (EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id)),
         }).ToList();
         var clicks = new List<AgeClick>();
-        foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", "Castillos", bo.Targets?.CastleClickTime) })
+        foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", L("Castillos", "Castle"), bo.Targets?.CastleClickTime) })
         {
             var step = _steps.FirstOrDefault(s => s.Step is { Do: StepAction.Research } && s.Step.What == tech);
             if (step is null)

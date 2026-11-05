@@ -56,7 +56,7 @@ public sealed class Branches(BuildOrder bo, GameData data, EventCatalog? events)
             return null;
         var steps = run.Tracker.Steps;
         return new BranchView(
-            Branch.Signals.GetValueOrDefault(run.Branch.On, run.Branch.On),
+            Branch.SignalText(run.Branch.On),
             run.Branch.Note,
             // La rama se muestra entera aunque su Tracker no sepa la edad ni los edificios (solo ve lo de después de
             // dispararse): no pasa por la elegibilidad de las líneas.

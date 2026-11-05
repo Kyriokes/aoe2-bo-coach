@@ -8,7 +8,7 @@ namespace BoCoach.Core.Tests;
 public partial class LangTests
 {
     /// <summary>Lo que delata un texto que quedó en castellano: tildes, signos de apertura y palabras comunes del overlay.</summary>
-    [GeneratedRegex(@"[áéíóúñ¿¡]|\b(de|los|las|aldeanos?|madera|comida|oro|piedra|hacé|faltan|curso|paso|parado|casa|lugares|ahora|después|edad|terminad[oa]|objetivo)\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"[áéíóúñ¿¡]|\b(de|los|las|aldeanos?|madera|comida|oro|piedra|hacé|faltan|curso|paso|parado|casa|lugares|ahora|después|edad|terminad[oa]|objetivo|castillos)\b", RegexOptions.IgnoreCase)]
     private static partial Regex Spanish();
 
     [Fact]
@@ -66,6 +66,32 @@ public partial class LangTests
 
         Assert.True(seen.Count > 50, $"Se vieron pocos textos: {seen.Count}");
         var spanish = seen.Where(line => Spanish().IsMatch(line.Replace(bo.Name, ""))).ToList();
+        Assert.Empty(spanish);
+    }
+
+    // Auditoría del 2026-11-05: con la app en inglés, el título de la rama salía "Si el rival hace clic en Feudal" y el
+    // informe "Castillos click at...". La partida de arriba no tiene ni ramas ni Castillos.
+    [Fact]
+    public void El_titulo_de_la_rama_y_Castillos_en_el_informe_salen_en_ingles()
+    {
+        using var english = Lang.Use(Lang.English);
+        var bo = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "archers_feudal.json")) with
+        {
+            Branches = [new Branch { On = "rival_feudal_click", Steps = [new Step { Id = "r1", Do = StepAction.Train, What = "spearman", Count = 3 }] }],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot At(double time, int score) =>
+            new(time, PlanStart.Standard.Stock, 20, 25) { Scores = [new PlayerScore(2, score, true)] };
+
+        coach.Update(At(498, 828));
+        coach.Update(At(500, 831));
+        coach.Update(At(502, 797));
+        var view = coach.Update(At(504, 799));
+
+        Assert.Equal("If the rival clicks up to Feudal", view.Branch!.Title);
+        var report = coach.Report();
+        Assert.Contains(report.AgeClicks, c => c.Age == "Castle");
+        var spanish = GameReportText.Summary(report).Where(line => Spanish().IsMatch(line.Replace(bo.Name, ""))).ToList();
         Assert.Empty(spanish);
     }
 
