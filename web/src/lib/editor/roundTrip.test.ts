@@ -9,7 +9,7 @@ import { allowedRange, type GameDataLite } from "./constraints";
 import { draftJson } from "./draft";
 import { paletteItems } from "./gameData";
 import { blockOf, fromAnalysis, initialState, insertBlock, isDirty, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
-import { placeNew, withOpening } from "./opening";
+import { openingForCiv, placeNew, STANDARD_START, withOpening } from "./opening";
 import { brokenBy } from "./guard";
 
 /**
@@ -220,6 +220,23 @@ describe("ninguna edición deja la BO rota", () => {
   it("una civ que no tiene lo que la BO usa no se puede elegir, y dice por qué", () => {
     const state = { ...initialState(), ...scouts() };
     expect(attempt(state, { type: "setField", field: "civ", value: "mapuche" })).toMatch(/^La civ Mapuches no tiene /);
+  });
+
+  // Antes eran dos ediciones: la de la civ se rechazaba por la casa de la apertura y la de la apertura se aplicaba igual
+  // (hunos sin elegir, y los aldeanos iniciales sin hacer las casas).
+  it("elegir hunos con la apertura de casas: civ y apertura cambian juntas, o ninguna", () => {
+    const state = reduce(initialState(), { type: "new", id: "n1" });
+    expect(attempt(state, { type: "setField", field: "civ", value: "huns" })).toMatch(/^La civ Hunos no tiene /);
+
+    const steps = openingForCiv(state.steps, STANDARD_START, false, nextId(state));
+    const action = { type: "setCiv" as const, civ: "huns", steps };
+    expect(attempt(state, action)).toBeNull();
+    expect(reduce(state, action)).toMatchObject({ bo: { civ: "huns" }, steps: [{ do: "move", count: 3, assign: "sheep" }] });
+
+    // Otra casa más adelante no se arregla sola: se rechaza todo junto y se dice por qué.
+    const house = { id: "x1", do: "build" as const, what: "house", count: 1, after: [], withPrevious: false };
+    const withHouse = { ...state, steps: [...state.steps, house] };
+    expect(attempt(withHouse, { type: "setCiv", civ: "huns", steps: openingForCiv(withHouse.steps, STANDARD_START, false, nextId(withHouse)) })).toMatch(/^La civ Hunos no tiene /);
   });
 
   it("arqueros sin galería en la BO no se pueden agregar", () => {

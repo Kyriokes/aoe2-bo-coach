@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { GameStart } from "../coach/types";
 import type { EditorStep } from "./model";
-import { detectOpening, placeNew, STANDARD_START, villagersAfter, withOpening } from "./opening";
+import { detectOpening, openingForCiv, placeNew, STANDARD_START, villagersAfter, withOpening } from "./opening";
 
 const step = (id: string, extra: Partial<EditorStep>): EditorStep => ({ id, do: "train", count: 1, after: [], withPrevious: false, ...extra });
 const houses = step("s1", { do: "build", what: "house", count: 2, builders: 3, assign: "sheep" });
@@ -33,6 +33,13 @@ describe("la apertura (los aldeanos iniciales)", () => {
 
   it("una civ sin casas manda directo aunque se pida casas", () => {
     expect(withOpening([], { kind: "houses", source: "sheep" }, huns, "s1")).toEqual([step("s1", { do: "move", count: 3, assign: "sheep" })]);
+  });
+
+  it("cambiar a una civ sin casas con la apertura de casas manda a los iniciales directo; si no, no toca los pasos", () => {
+    const rest = [villagers("s2", 3, "sheep")];
+    expect(openingForCiv([houses, ...rest], STANDARD_START, false, "s9")).toEqual([step("s1", { do: "move", count: 3, assign: "sheep" }), ...rest]);
+    expect(openingForCiv([houses, ...rest], STANDARD_START, true, "s9")).toBeUndefined();
+    expect(openingForCiv([step("a", { do: "move", count: 3, assign: "wood" }), ...rest], STANDARD_START, false, "s9")).toBeUndefined();
   });
 });
 

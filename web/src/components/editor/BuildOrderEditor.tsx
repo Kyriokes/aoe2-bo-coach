@@ -19,7 +19,7 @@ import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteIt
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
 import { blockOf, initialState, isDirty, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
-import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
+import { detectOpening, openingForCiv, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
 import { safeAction } from "@/lib/safeAction";
 import { whatToLoad } from "@/lib/editor/startup";
@@ -56,7 +56,7 @@ function newBoId() {
 }
 
 /** Las acciones después de las cuales los edificios que hace el próximo aldeano vuelven a esperar a su aldeano. */
-const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField"]);
+const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField", "setCiv"]);
 
 /** Cambia los pasos (y pide simular de nuevo) solo si son otros. */
 function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
@@ -432,14 +432,14 @@ export function BuildOrderEditor({
     (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
     [dispatch, start, state],
   );
-  /** Cambiar la civ: si la nueva no hace casas (hunos) y la apertura era de casas, los iniciales van directo. */
+  /**
+   * Cambiar la civ: si la nueva no hace casas (hunos) y la apertura era de casas, los iniciales van directo. Va todo en una
+   * sola edición: el control mira el resultado, y si no se puede (otra casa más adelante) no cambia nada.
+   */
   const changeCiv = useCallback(
     (civ: string) => {
-      dispatch({ type: "setField", field: "civ", value: civ });
-      if (data && opening.kind === "houses" && !canMake(data, civ, "house")) {
-        dispatch({ type: "setSteps", steps: withOpening(state.steps, { kind: "direct", source: opening.source }, { ...start, houses: false }, nextId(state)) });
-        showNotice(fill(t.noHouses, { place: opening.source === "sheep" ? t.noHousesSheep : t.noHousesSource }));
-      }
+      const steps = data ? openingForCiv(state.steps, start, canMake(data, civ, "house"), nextId(state)) : undefined;
+      if (dispatch({ type: "setCiv", civ, steps }) && steps) showNotice(fill(t.noHouses, { place: opening.source === "sheep" ? t.noHousesSheep : t.noHousesSource }));
     },
     [data, dispatch, opening, showNotice, start, state, t.noHouses, t.noHousesSheep, t.noHousesSource],
   );

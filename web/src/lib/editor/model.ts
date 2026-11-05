@@ -75,6 +75,8 @@ export type EditorAction =
   /** Lo que hay quedó guardado en la web. */
   | { type: "saved" }
   | { type: "setField"; field: "name" | "civ" | "map" | "author" | "description"; value: string }
+  /** Otra civ y, en la misma edición, los pasos que cambian con ella (`openingForCiv`). */
+  | { type: "setCiv"; civ: string; steps?: EditorStep[] }
   | { type: "setTags"; tags: string[] }
   | { type: "insert"; step: EditorStep; index: number }
   | { type: "move"; blockFrom: number; blockTo: number; index: number }
@@ -310,6 +312,8 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
       return edited(state, { steps: action.steps, selected: action.selected === undefined ? state.selected : action.selected });
     case "setField":
       return edited(state, { bo: { ...state.bo, [action.field]: action.value } });
+    case "setCiv":
+      return edited(state, { bo: { ...state.bo, civ: action.civ }, steps: action.steps ?? state.steps });
     case "setTags":
       return edited(state, { bo: { ...state.bo, tags: action.tags } });
     case "insert": {

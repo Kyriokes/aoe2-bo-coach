@@ -64,6 +64,16 @@ export function withOpening(steps: EditorStep[], opening: Opening, start: GameSt
   return step ? [step, ...rest] : rest;
 }
 
+/**
+ * Los pasos para pasar a una civ: si no hace casas y la apertura era de casas, los iniciales van directo a su fuente.
+ * Undefined si los pasos quedan como están. Va en la misma edición que la civ: por separado, la casa hace rechazar la civ.
+ */
+export function openingForCiv(steps: EditorStep[], start: GameStart, houses: boolean, newId: string): EditorStep[] | undefined {
+  const current = detectOpening(steps, start);
+  if (houses || current.kind !== "houses") return undefined;
+  return withOpening(steps, { kind: "direct", source: current.source }, { ...start, houses: false }, newId);
+}
+
 /** Los aldeanos de cada fuente y los sin tarea después de los pasos dados (en unidades), como LivePlan.Layout. */
 export function villagersAfter(steps: EditorStep[], start: GameStart): { idle: number; on: Record<Source, number> } {
   const on = Object.fromEntries(SOURCES.map((s) => [s, 0])) as Record<Source, number>;
