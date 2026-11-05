@@ -226,7 +226,9 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var response = await Send(request, cancel);
         var json = await ReadJson(response, cancel);
-        return new PublishedBuildOrder(json["code"]!.GetValue<string>(), json["url"]!.GetValue<string>());
+        return Text(json["code"]) is { } published
+            ? new PublishedBuildOrder(published, Text(json["url"]) ?? "")
+            : throw new WebLibraryException(Lang.L("La web contestó sin el código de la BO publicada.", "The website replied without the code of the published BO."));
     }
 
     private async Task<HttpResponseMessage> Send(HttpRequestMessage request, CancellationToken cancel)

@@ -93,6 +93,18 @@ public class WebLibraryClientTests
         Assert.Equal(Scouts.Name, body["build_order"]!["name"]!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("""{ "url": "https://bo.example/bo/k7m2xq" }""")]
+    [InlineData("""{ "code": 5, "url": "https://bo.example/bo/k7m2xq" }""")]
+    public async Task Publicar_con_una_respuesta_sin_codigo_da_un_error_explicado(string body)
+    {
+        var (client, _) = Client(HttpStatusCode.Created, body);
+
+        var e = await Assert.ThrowsAsync<WebLibraryException>(() => client.PublishAsync(Scouts, "bocoach_x", null, null));
+
+        Assert.Contains("código", e.Message);
+    }
+
     [Fact]
     public async Task Con_codigo_reemplaza_la_BO()
     {
