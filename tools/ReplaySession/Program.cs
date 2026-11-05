@@ -773,6 +773,14 @@ static async Task<int> CoachReplay(string recording, string? boPath, string[] ar
     // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
     var bo = boPath is not null ? BuildOrderSerializer.Load(boPath) : recordedBo ?? BoCoach.Core.BuildOrders.BuildOrder.None;
     bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
+    // Un registro puede venir de cualquiera y un count enorme agota la memoria al simularla: se valida antes, como en la app.
+    if (!bo.IsNone && new BuildOrderValidator(data).Validate(bo) is { IsValid: false } validation)
+    {
+        Console.Error.WriteLine($"La BO \"{bo.Name}\" no es válida:");
+        foreach (var error in validation.Errors)
+            Console.Error.WriteLine($"  {error.Message}");
+        return 1;
+    }
     // --slot N: el número del jugador en el panel de puntajes (en vivo sale de la pantalla de carga; si no, se deduce).
     var builder = new SnapshotBuilder(data, data.Civ(bo.Civ)) { PlayerSlot = args.Contains("--slot") ? Option(args, "--slot", 0) : null };
     var allocator = Enum.Parse<BoCoach.Core.Economy.AllocatorKind>(Text(args, "--allocator", "exact"), ignoreCase: true);
