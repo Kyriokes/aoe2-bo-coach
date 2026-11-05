@@ -38,14 +38,19 @@ public sealed class ScreenCapture : IScreenSource
         if (rect.IsEmpty)
             throw new ArgumentException("El rectángulo está vacío.", nameof(rect));
 
+        // Un fallo de GDI no puede verse como una captura en negro: sería "sin reloj", y a los 30 s la partida terminada.
         var screen = Gdi.GetDC(IntPtr.Zero);
-        var memory = Gdi.CreateCompatibleDC(screen);
-        var bitmap = Gdi.CreateCompatibleBitmap(screen, rect.Width, rect.Height);
-        var previous = Gdi.SelectObject(memory, bitmap);
+        var memory = screen == IntPtr.Zero ? IntPtr.Zero : Gdi.CreateCompatibleDC(screen);
+        var bitmap = memory == IntPtr.Zero ? IntPtr.Zero : Gdi.CreateCompatibleBitmap(screen, rect.Width, rect.Height);
+        var previous = bitmap == IntPtr.Zero ? IntPtr.Zero : Gdi.SelectObject(memory, bitmap);
         try
         {
-            Gdi.BitBlt(memory, 0, 0, rect.Width, rect.Height, screen, rect.X, rect.Y, Gdi.SrcCopy);
+            if (previous == IntPtr.Zero)
+                throw new InvalidOperationException($"GDI no pudo preparar una captura de {rect.Width}×{rect.Height}.");
+            if (!Gdi.BitBlt(memory, 0, 0, rect.Width, rect.Height, screen, rect.X, rect.Y, Gdi.SrcCopy))
+                throw new InvalidOperationException($"GDI no pudo copiar la pantalla (error {System.Runtime.InteropServices.Marshal.GetLastPInvokeError()}).");
             Gdi.SelectObject(memory, previous);
+            previous = IntPtr.Zero;
 
             var info = new Gdi.BitmapInfo
             {
@@ -59,16 +64,22 @@ public sealed class ScreenCapture : IScreenSource
                 },
             };
             var pixels = new byte[rect.Width * rect.Height * 4];
-            Gdi.GetDIBits(memory, bitmap, 0, (uint)rect.Height, pixels, ref info, 0);
+            if (Gdi.GetDIBits(memory, bitmap, 0, (uint)rect.Height, pixels, ref info, 0) == 0)
+                throw new InvalidOperationException("GDI no pudo leer los píxeles de la captura.");
             for (var i = 3; i < pixels.Length; i += 4)
                 pixels[i] = 255; // GDI deja el alfa en 0
             return new CapturedImage(rect.Width, rect.Height, pixels);
         }
         finally
         {
-            Gdi.DeleteObject(bitmap);
-            Gdi.DeleteDC(memory);
-            Gdi.ReleaseDC(IntPtr.Zero, screen);
+            if (previous != IntPtr.Zero)
+                Gdi.SelectObject(memory, previous); // un bitmap seleccionado no se puede borrar
+            if (bitmap != IntPtr.Zero)
+                Gdi.DeleteObject(bitmap);
+            if (memory != IntPtr.Zero)
+                Gdi.DeleteDC(memory);
+            if (screen != IntPtr.Zero)
+                Gdi.ReleaseDC(IntPtr.Zero, screen);
         }
     }
 }
