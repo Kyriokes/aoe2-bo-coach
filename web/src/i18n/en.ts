@@ -198,7 +198,7 @@ export const en: Dictionary = {
     tokenUsed: "used {date}",
     tokenUnused: "unused",
     delete: "Delete",
-    revokeConfirm: "Delete this token? The app using it won't be able to publish anymore.",
+    revokeConfirm: "Delete this token? The app using it gets disconnected from your account.",
     remove: "Remove",
     visibilityLabel: "Who can see it",
     public: "Public",

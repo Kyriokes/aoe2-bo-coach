@@ -51,12 +51,12 @@
 //       o una genérica con la civ puesta), guarda la original en los fixtures y la convertida en build_orders/civs.
 //       --survey solo muestra la elección y los avisos.
 //   improve <carpeta> [--civ clave] [--food]
+//       Mejora con el simulador cada BO de la carpeta sin cambiar su estrategia (BuildOrderOptimizer) y guarda
+//       <civ>-mejorada.json con lo que cambió y los tiempos antes y después.
 //       --food: el simulador con la comida finita del mapa de la BO (ovejas, jabalíes, bayas y granjas, como el modo
 //       asistido); sin la opción, comida infinita (lo de siempre).
 //   simulate <bo.json> [--food]
 //       Simula la BO y muestra los clics de edad, el fin y el centro urbano parado, con comida infinita o finita (--food).
-//       Mejora con el simulador cada BO de la carpeta sin cambiar su estrategia (BuildOrderOptimizer) y guarda
-//       <civ>-mejorada.json con lo que cambió y los tiempos antes y después.
 //   reimport <civ> [--out build_orders/civs] [--fixtures tests/fixtures/buildorderguide]
 //       Vuelve a convertir la guía guardada de la civ con el importador de ahora (conserva nombre, descripción y
 //       etiquetas). Después, improve --civ arma la mejorada.

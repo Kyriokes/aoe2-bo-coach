@@ -200,7 +200,7 @@ export const es = {
     tokenUsed: "usado {date}",
     tokenUnused: "sin usar",
     delete: "Borrar",
-    revokeConfirm: "¿Borrar este token? La app que lo use va a dejar de poder publicar.",
+    revokeConfirm: "¿Borrar este token? La app que lo use se desconecta de tu cuenta.",
     remove: "Quitar",
     visibilityLabel: "Quién la ve",
     public: "Pública",

@@ -8,9 +8,9 @@ namespace BoCoach.Core.BuildOrders;
 
 /// <summary>
 /// Todo lo que la web muestra de una BO, en una sola pasada y como JSON (para pasarlo a JavaScript sin depender de
-/// tipos): la BO leída, los problemas de validación, cada paso descrito en el idioma pedido (<see cref="StepText"/>;
-/// los avisos del validador y del asistido siguen en castellano), la simulación del Planner (inicio y fin de cada
-/// paso, bloqueos y muestras del stock) y los clics de edad estimados. Es lo mismo que ve el editor de la app.
+/// tipos): la BO leída, los problemas de validación y cada paso descrito en el idioma pedido (<see cref="StepText"/>;
+/// el validador también, y los problemas del asistido siguen en castellano), la simulación del Planner (inicio y fin de
+/// cada paso, bloqueos y muestras del stock) y los clics de edad estimados.
 /// </summary>
 public static class BuildOrderAnalysis
 {

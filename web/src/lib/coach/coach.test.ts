@@ -97,7 +97,8 @@ describe.each(LOCALES.map((locale) => [locale] as [Locale]))("los pasos escritos
     expect(described(json)).toEqual(texts(json));
   });
 
-  it("con las BO que trae la app (ejemplos y una por civ)", () => {
+  // Analiza unas 130 BO con el intérprete de .NET: con la PC ocupada pasa de los 30 s de vitest.
+  it("con las BO que trae la app (ejemplos y una por civ)", { timeout: 180_000 }, () => {
     const folders = [join(repo, "build_orders"), join(repo, "build_orders", "civs"), join(repo, "tests", "fixtures", "build_orders")];
     for (const folder of folders) {
       for (const file of readdirSync(folder).filter((f) => f.endsWith(".json"))) {

@@ -146,7 +146,6 @@ function AnalysisView({ analysis }: { analysis: Analysis }) {
 
 /** Los problemas del validador, errores en rojo y avisos en ámbar (también los usa el editor). */
 export function IssuesList({ issues }: { issues: Issue[] }) {
-  const { t } = useI18n();
   if (issues.length === 0) return null;
   return (
     <ul className="flex flex-col gap-1 rounded-md border border-line bg-panel p-3 text-sm">

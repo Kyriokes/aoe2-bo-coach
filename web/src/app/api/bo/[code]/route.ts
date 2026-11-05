@@ -4,7 +4,7 @@ import { CODE_PATTERN, getBuildOrder } from "@/lib/data";
 import { appRpc, bearerToken, error, publishFromApp } from "../appApi";
 
 /**
- * GET /api/bo/<código>: una BO con su JSON, para "Importar desde la web" y los enlaces bocoach://import/<código>.
+ * GET /api/bo/<código>: una BO con su JSON, para "Pegar código" de la app y los enlaces bocoach://import/<código>.
  * Las públicas salen del caché; con el token de la app (Authorization: Bearer) también las privadas del dueño.
  */
 export async function GET(request: NextRequest, context: RouteContext<"/api/bo/[code]">) {
