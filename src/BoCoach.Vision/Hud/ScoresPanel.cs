@@ -146,8 +146,12 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
         return bottom - top + 1 >= MinBand ? top : null;
     }
 
-    /// <summary>Los renglones que lee el OCR, antes de reconocer los puntajes.</summary>
-    public Task<IReadOnlyList<OcrTextLine>> ReadRawAsync(CapturedImage panel) => ocr.ReadPreparedLinesAsync(Prepare(panel), Zoom, Margin);
+    /// <summary>
+    /// Los renglones que lee el OCR, antes de reconocer los puntajes, con su altura en píxeles del panel. El margen se
+    /// agrega después de agrandar: en píxeles del panel es <c>Margin / Zoom</c>. Con <see cref="Margin"/> entero, cada
+    /// renglón quedaba 6 px más arriba y el color y el ícono de edad se miraban en parte en el renglón de arriba.
+    /// </summary>
+    public Task<IReadOnlyList<OcrTextLine>> ReadRawAsync(CapturedImage panel) => ocr.ReadPreparedLinesAsync(Prepare(panel), Zoom, Margin / Zoom);
 
     /// <summary>
     /// "UKyriokes: 779/779" → 779. El segundo número es el puntaje más alto del equipo (en 1 contra 1, el mismo; en la

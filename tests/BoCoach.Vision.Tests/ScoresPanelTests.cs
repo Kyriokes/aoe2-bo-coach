@@ -58,6 +58,23 @@ public class ScoresPanelTests
         Assert.Equal(rival, Assert.Single(rows, r => r.Slot == 2).Score);
     }
 
+    // El margen se agrega después de agrandar ×2: con el margen entero, cada renglón quedaba 6 px arriba de su texto y el
+    // color y el ícono de edad se miraban en parte en el renglón de arriba. Las filas se miraron en cada captura.
+    [Theory]
+    [InlineData("20261101-125353", "001364", 185, 206)]
+    [InlineData("20261019-202635", "000900", 13, 34)]
+    public async Task Cada_renglon_cae_sobre_su_texto(string recording, string frame, int first, int second)
+    {
+        var ocr = OcrReader.TryCreate();
+        if (ocr is null)
+            return;
+        var lines = (await new ScoresPanelReader(ocr).ReadRawAsync(Panel(frame, recording))).Where(l => ScoresPanelReader.Parse(l.Text) is not null).ToList();
+
+        Assert.Equal(2, lines.Count);
+        Assert.InRange(lines[0].Top, first - 2, first + 2);
+        Assert.InRange(lines[1].Top, second - 2, second + 2);
+    }
+
     // Los colores del texto en resources/_common/dat/UiColors.txt. Todas las grabaciones son del usuario en azul contra
     // la IA en rojo: acá se pinta el renglón azul de cada color, con su cuadrado, para ver el resto de la lectura.
     [Theory]
