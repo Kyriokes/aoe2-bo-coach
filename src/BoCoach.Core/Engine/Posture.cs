@@ -125,7 +125,8 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
             }
             if (queue is null)
                 continue;
-            var working = queue.Count(i => !i.Waiting && data.TryGet(i.Key, out var e) && e.MadeIn == building);
+            // Una mejora sale del mismo edificio que su unidad: "pikeman" no está en game_data y el cuartel salía parado.
+            var working = queue.Count(i => !i.Waiting && (data.TryGet(i.Key, out var e) || data.TryGet(UnitLines.Base(i.Key), out e)) && e.MadeIn == building);
             if (working >= buildings)
             {
                 _idleSince.Remove(building);

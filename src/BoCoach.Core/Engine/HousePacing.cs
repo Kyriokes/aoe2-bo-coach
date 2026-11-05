@@ -21,7 +21,8 @@ public static class HousePacing
     /// <summary>
     /// Población por segundo que consume lo que está produciendo: por cada ícono de la cola que no espera, la población
     /// de la unidad sobre su tiempo de entrenamiento con la civ y la velocidad del edificio. Las tecnologías y las
-    /// edades no consumen. Sin cola (null) se cuenta solo el centro urbano sacando aldeanos.
+    /// edades no consumen. Una mejora cuenta como su unidad base (<see cref="UnitLines"/>): la cola las reconoce y
+    /// game_data no las tiene, o las tiene como tecnología. Sin cola (null) se cuenta solo el centro urbano sacando aldeanos.
     /// </summary>
     public static double ConsumptionRate(IReadOnlyList<QueueItem>? queue, GameData data, CivBonuses civ, Age age)
     {
@@ -38,7 +39,7 @@ public static class HousePacing
 
     private static double UnitRate(string key, GameData data, CivBonuses civ, Age age)
     {
-        if (!data.TryGet(key, out var entity) || entity.Kind != EntityKind.Unit || entity.Pop <= 0)
+        if (!data.TryGet(UnitLines.Base(key), out var entity) || entity.Kind != EntityKind.Unit || entity.Pop <= 0)
             return 0;
         var seconds = civ.Time(entity, age) / civ.WorkRate(entity.MadeIn, age);
         return seconds > 0 ? entity.Pop / seconds : 0;

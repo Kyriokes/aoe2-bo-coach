@@ -177,6 +177,28 @@ public class PostureTests
         Assert.Empty(coach.View(state, [new QueueItem("villager"), new QueueItem("scout_cavalry")], Age.Feudal, Data.Civ("any")).Gaps);
     }
 
+    // Auditoría del 2026-11-05: el cuartel sacando piqueros salía "parado": "pikeman" no está en game_data.
+    [Fact]
+    public void Un_edificio_que_saca_la_mejora_de_su_unidad_no_esta_parado()
+    {
+        var bo = Scouts with { Posture = new ClosingPosture { Queue = ["villager", "spearman"], NextAge = "imperial_age" } };
+        var coach = new PostureCoach(bo, Data) { IdleGrace = 0 };
+
+        var view = coach.View(State(1500, Poor, "barracks_built"), [new QueueItem("pikeman")], Age.Castle, Data.Civ("any"));
+
+        Assert.Empty(view.Gaps);
+    }
+
+    [Fact]
+    public void Un_edificio_investigando_no_esta_parado()
+    {
+        var coach = new PostureCoach(Scouts, Data) { IdleGrace = 0 };
+
+        var view = coach.View(State(700, Poor, "stable_built"), [new QueueItem("bloodlines")], Age.Feudal, Data.Civ("any"));
+
+        Assert.Empty(view.Gaps);
+    }
+
     [Fact]
     public void Con_dos_establos_cada_uno_tiene_que_producir()
     {
