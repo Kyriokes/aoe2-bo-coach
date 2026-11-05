@@ -647,6 +647,48 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(overlay.ShowPanel);
     }
 
+    // AP-26: lo que se rechazó con el atajo vale para esa partida: seguía en la siguiente si el coach no se reiniciaba.
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_olvida_lo_que_se_rechazo_en_la_partida_anterior()
+    {
+        using var session = SwitchedAtLoadingScreen();
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        var first = TwoPlayers("Ana", "japanese");
+
+        // La misma partida (otra lectura de la misma pantalla, o la del coach reiniciado): no vuelve a cambiar.
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+
+        var second = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = second.Players[0] });
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void Una_pantalla_de_carga_nueva_saca_la_sugerida_de_la_partida_anterior()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var first = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.StartsWith("Sugerida", session.Overlay!.BoSuggestion);
+
+        // Otra partida en la que no se encuentra tu nombre: no hay nada que sugerir, y lo de antes no vale.
+        var second = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = null });
+        Assert.Null(session.Overlay!.BoSuggestion);
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
     // D10: en la pantalla de carga, el renglón de las estadísticas reales de cruces (4 contra 4: tu civ por equipos).
     [Theory]
     [InlineData("", "por equipos (sin tu Elo)")]

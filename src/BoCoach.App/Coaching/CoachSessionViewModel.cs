@@ -827,6 +827,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.BoSuggestion = Texts.Suggested(suggestion.Summary.Name, suggestion.Reason, Key("accept_suggestion"));
     }
 
+    private void ForgetMatchChoices()
+    {
+        _declined.Clear();
+        (_suggestion, _previousBuildOrder, _lastSwitchBest) = (null, null, null);
+        if (Overlay is not null)
+            Overlay.BoSuggestion = null;
+    }
+
     /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
     private async Task RefreshRunningAsync(BuildOrderPicker picker, BuildOrder running)
     {
@@ -1107,6 +1115,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         UpdateOverlayShown();
         if (frame.Loading is { } loading && loading != _loading)
         {
+            // Otra pantalla de carga en el mismo coach es otra partida: lo que se rechazó o se sugirió en la anterior ya no
+            // vale. Con un coach reiniciado (_loading en null) sigue siendo la misma partida.
+            if (_loading is not null)
+                ForgetMatchChoices();
             _loading = loading;
             ReportPending = false;
             Status = LoadingNote(frame);
