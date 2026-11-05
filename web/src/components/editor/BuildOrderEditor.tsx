@@ -622,10 +622,13 @@ export function BuildOrderEditor({
   }
 
   return (
+    // Sin el motor no hay con qué cargar ni simular, y lo que se escriba lo pisa la BO inicial cuando arranca: todo desactivado.
+    <fieldset disabled={!coach} className="contents">
     <div className="flex flex-col gap-4">
       <LoadMenu
         editCode={editCode}
         onLoad={load}
+        onError={showNotice}
         onNew={() => {
           // Editando una BO publicada, "Guardar" la reemplaza: la nueva se arma en /subir (lo editado queda en su borrador).
           if (editCode) {
@@ -844,5 +847,6 @@ export function BuildOrderEditor({
         </p>
       ) : null}
     </div>
+    </fieldset>
   );
 }

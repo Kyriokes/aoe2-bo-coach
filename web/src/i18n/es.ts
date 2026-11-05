@@ -232,6 +232,7 @@ export const es = {
     downloadFailed: "No se pudo descargar: {error}",
     serverSaid: "la web respondió {status}",
     failed: "No se pudo completar: se cortó la conexión o la web se actualizó. Probá de nuevo y, si sigue, recargá la página.",
+    copyFailed: "No se pudo copiar: seleccionalo y copialo a mano.",
   },
   notFound: {
     title: "No encontramos esa página",

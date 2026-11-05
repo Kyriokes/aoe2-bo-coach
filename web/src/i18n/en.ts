@@ -230,6 +230,7 @@ export const en: Dictionary = {
     downloadFailed: "Couldn't download: {error}",
     serverSaid: "the server answered {status}",
     failed: "That didn't go through: the connection dropped or the site was updated. Try again and, if it keeps failing, reload the page.",
+    copyFailed: "Couldn't copy: select it and copy it by hand.",
   },
   notFound: {
     title: "We couldn't find that page",

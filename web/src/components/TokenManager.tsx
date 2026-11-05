@@ -6,6 +6,7 @@ import { createAppToken, revokeAppToken } from "@/app/actions";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { LANG_TAG } from "@/i18n/locales";
+import { copyText } from "@/lib/clipboard";
 import { safeAction } from "@/lib/safeAction";
 
 export interface TokenRow {
@@ -60,7 +61,7 @@ export function TokenManager({ tokens }: { tokens: TokenRow[] }) {
         <div className="rounded-md border border-amber bg-panel p-3 text-sm">
           <p className="text-amber">{t.copyNow}</p>
           <p className="mt-2 break-all font-mono text-xs">{created}</p>
-          <button type="button" className="button mt-2" onClick={() => navigator.clipboard.writeText(created)}>
+          <button type="button" className="button mt-2" onClick={async () => setError((await copyText(created)) ? null : dict.actions.copyFailed)}>
             {t.copy}
           </button>
         </div>
