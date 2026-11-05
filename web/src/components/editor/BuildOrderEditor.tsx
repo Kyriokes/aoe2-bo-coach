@@ -609,6 +609,11 @@ export function BuildOrderEditor({
         editCode={editCode}
         onLoad={load}
         onNew={() => {
+          // Editando una BO publicada, "Guardar" la reemplaza: la nueva se arma en /subir (lo editado queda en su borrador).
+          if (editCode) {
+            router.push(href("/subir"));
+            return;
+          }
           if (!canReplace()) return;
           const next = newAssisted(stateRef.current, newBoId());
           stateRef.current = next;
