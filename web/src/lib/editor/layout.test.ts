@@ -54,6 +54,11 @@ describe("escala", () => {
     expect(scale.x(60) - scale.x(0)).toBeCloseTo(MIN_PX_PER_MIN, 5);
   });
 
+  it("en una PC la línea entra en el lugar que hay aunque sea angosto: la columna de Asistido no es un celular", () => {
+    expect(timelineWidth(535, 58 * 60, NARROW_LABEL_W, false)).toBe(535);
+    expect(timelineWidth(535, 58 * 60, NARROW_LABEL_W, true)).toBe(NARROW_LABEL_W + 8 + 58 * MIN_PX_PER_MIN + 8);
+  });
+
   it("scaleFor pasa de segundos a píxeles y vuelve", () => {
     const scale = scaleFor(1016, 600);
     expect(scale.x(0)).toBe(PAD_L);

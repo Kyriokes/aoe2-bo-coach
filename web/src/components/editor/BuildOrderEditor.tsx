@@ -236,16 +236,20 @@ export function BuildOrderEditor({
     loadInitial(coach);
   }, [canReplace, coach, draftName, initialVisibility, loadInitial]);
 
-  // El ancho de la línea de tiempo (la escala se calcula acá, así el arrastre y la línea usan la misma).
-  useEffect(() => {
-    const element = timelineRef.current;
+  // La línea de tiempo: su elemento, para el arrastre, y su ancho (la escala se calcula acá, así el arrastre y la línea usan
+  // la misma). Cada pestaña tiene la suya: se mide la que aparece, no la del primer render.
+  const attachTimeline = useCallback((element: HTMLDivElement | null) => {
+    timelineRef.current = element;
     if (!element) return;
     const observer = new ResizeObserver((entries) => {
       const w = Math.round(entries[0].contentRect.width);
       if (w > 0) setWidth(w);
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      timelineRef.current = null;
+    };
   }, []);
 
   /** Carga una BO o una guía en lugar de lo que hay. Dice si la cargó (lo que no se entiende no reemplaza nada). */
@@ -338,11 +342,12 @@ export function BuildOrderEditor({
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
   // En el celular la columna de nombres es angosta y la línea se desplaza de costado si no entra.
+  const narrow = useNarrow();
   const scale = useMemo(() => {
     const span = timeSpan(state.analysis);
     const labelWidth = labelWidthFor(width);
-    return scaleFor(timelineWidth(width, span, labelWidth), span, labelWidth);
-  }, [width, state.analysis]);
+    return scaleFor(timelineWidth(width, span, labelWidth, narrow), span, labelWidth);
+  }, [narrow, width, state.analysis]);
 
   const newStep = useCallback((item: PaletteItem): EditorStep => ({ ...item.step, id: nextId(state), after: [], withPrevious: false }), [state]);
   /** Dónde entra un paso agregado sin arrastrar: después de la caja elegida, o al final. */
@@ -484,7 +489,6 @@ export function BuildOrderEditor({
     [data, state.steps, label, locale, showNotice, dispatch, t.noEarlier, t.noLater],
   );
 
-  const narrow = useNarrow();
   const [sheetOpen, setSheetOpen] = useState(false);
   const selectedStep = state.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIndex = selectedStep ? state.steps.indexOf(selectedStep) : -1;
@@ -689,7 +693,7 @@ export function BuildOrderEditor({
               viewportWidth={width}
               drag={null}
               selected={null}
-              timelineRef={timelineRef}
+              timelineRef={attachTimeline}
               data={data}
               extraMarkers={goalMarkers}
               onBoxPointerDown={() => {}}
@@ -715,7 +719,7 @@ export function BuildOrderEditor({
         viewportWidth={width}
         drag={drag}
         selected={state.selected}
-        timelineRef={timelineRef}
+        timelineRef={attachTimeline}
         data={data}
         onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => {
           const chain = blockOf(state.steps, item.stepId);

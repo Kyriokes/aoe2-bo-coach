@@ -62,11 +62,11 @@ export function labelWidthFor(viewport: number) {
 }
 
 /**
- * Lo que mide la línea: en PC, lo que hay (la BO entera a la vista); en el celular, más si un minuto no llega a
- * MIN_PX_PER_MIN (y entonces se desplaza de costado).
+ * Lo que mide la línea: en PC, lo que hay (la BO entera a la vista, también en la columna angosta de Asistido); en el
+ * celular, más si un minuto no llega a MIN_PX_PER_MIN (y entonces se desplaza de costado).
  */
-export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport)) {
-  if (viewport >= NARROW_WIDTH) return viewport;
+export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport), phone = viewport < NARROW_WIDTH) {
+  if (!phone) return viewport;
   return Math.max(viewport, labelWidth + 8 + (span / 60) * MIN_PX_PER_MIN + PAD_R);
 }
 

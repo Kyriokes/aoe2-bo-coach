@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useMemo, type PointerEvent as ReactPointerEvent, type Ref } from "react";
 import { useI18n } from "@/i18n/client";
 import type { Analysis, GameStart } from "@/lib/coach/types";
 import type { GameDataLite } from "@/lib/editor/constraints";
@@ -49,7 +49,7 @@ export function EditorTimeline({
   viewportWidth: number;
   drag: DragState | null;
   selected: string | null;
-  timelineRef: RefObject<HTMLDivElement | null>;
+  timelineRef: Ref<HTMLDivElement>;
   onBoxPointerDown: (e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => void;
   onNudge: (stepId: string, direction: -1 | 1) => void;
   onRemove: (stepId: string) => void;
