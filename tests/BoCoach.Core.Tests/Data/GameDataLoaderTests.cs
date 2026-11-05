@@ -98,6 +98,27 @@ public class GameDataLoaderTests
     }
 
     [Theory]
+    [InlineData]
+    [InlineData("otra-cosa.json", "vieja.json")]
+    public void Una_carpeta_sin_versiones_lo_dice(params string[] files)
+    {
+        var dir = Directory.CreateTempSubdirectory("bocoach-gamedata-");
+        try
+        {
+            foreach (var file in files)
+                File.WriteAllText(Path.Combine(dir.FullName, file), "{}");
+
+            var e = Assert.Throws<GameDataException>(() => GameDataLoader.LoadLatest(dir.FullName));
+
+            Assert.Contains(dir.FullName, e.Message);
+        }
+        finally
+        {
+            dir.Delete(recursive: true);
+        }
+    }
+
+    [Theory]
     [InlineData("archery_range", "barracks")]
     [InlineData("stable", "barracks")]
     [InlineData("siege_workshop", "blacksmith")]

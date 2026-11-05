@@ -23,10 +23,12 @@ public static partial class GameDataLoader
     /// <summary>Carga el archivo de versión más alta (v8.9.json, v8.10.json, ...) de una carpeta.</summary>
     public static GameData LoadLatest(string directory)
     {
+        // FirstOrDefault y no MaxBy: sobre una tupla, MaxBy de una lista vacía tira en vez de dar el valor por defecto.
         var latest = Directory.EnumerateFiles(directory, "v*.json")
             .Select(path => (path, version: ParseVersion(Path.GetFileNameWithoutExtension(path))))
             .Where(f => f.version is not null)
-            .MaxBy(f => f.version);
+            .OrderByDescending(f => f.version)
+            .FirstOrDefault();
 
         return latest.path is null
             ? throw new GameDataException($"No hay archivos v<versión>.json en {directory}.")
