@@ -236,6 +236,37 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.Contains("Perfil 76561198000000000: diseño bocoach-2026-10", host.Message?.Text);
     }
 
+    // AP-01: un regions.json roto tiraba en el constructor de la ventana: la app no abría nunca más, y no se arreglaba sola.
+    [Theory]
+    [InlineData("{ esto no es json")]
+    [InlineData("")]
+    [InlineData("""{ "regions": { "wood": [1, 2] } }""")]
+    public void Un_regions_json_roto_se_aparta_y_se_abre_con_las_posiciones_de_siempre(string content)
+    {
+        File.WriteAllText(RegionsPath, content);
+
+        var tools = Tools(new FakeHost());
+
+        Assert.Same(RegionLayout.Default, tools.Layout);
+        Assert.False(tools.IsCalibrated);
+        Assert.Equal(content, File.ReadAllText(Path.Combine(_dir.FullName, "regions.roto.json")));
+        Assert.Contains("regions.roto.json", tools.CalibrationStatus);
+    }
+
+    // Que no se pueda leer ahora (el antivirus lo tiene abierto) no quiere decir que esté roto.
+    [Fact]
+    public void Un_regions_json_que_no_se_puede_leer_ahora_no_se_aparta()
+    {
+        var manual = RegionLayout.Default.With(RegionNames.Clock, new RegionRect(0.5, 0.5, 0.05, 0.02));
+        manual.Save(RegionsPath);
+
+        using (new FileStream(RegionsPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.Same(RegionLayout.Default, Tools(new FakeHost()).Layout);
+
+        Assert.Equal(manual.Regions[RegionNames.Clock], Tools(new FakeHost()).Layout.Regions[RegionNames.Clock]);
+        Assert.False(File.Exists(Path.Combine(_dir.FullName, "regions.roto.json")));
+    }
+
     [Fact]
     public void Sin_calibrar_avisa_que_usa_posiciones_aproximadas()
     {

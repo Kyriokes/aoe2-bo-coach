@@ -86,7 +86,48 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     public bool IsCalibrated => File.Exists(_regionsPath);
 
-    public RegionLayout Layout => RegionLayout.LoadOrDefault(_regionsPath);
+    /// <summary>
+    /// Las regiones guardadas, o las de siempre. Un regions.json roto no puede impedir abrir la app: se aparta en
+    /// <see cref="BrokenRegionsPath"/> y hay que volver a calibrar. Si solo no se puede leer ahora (lo tiene abierto otro
+    /// programa), puede estar bien: no se toca.
+    /// </summary>
+    public RegionLayout Layout
+    {
+        get
+        {
+            try
+            {
+                return RegionLayout.LoadOrDefault(_regionsPath);
+            }
+            catch (Exception e) when (e is InvalidDataException or JsonException)
+            {
+                SetAsideBrokenRegions();
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Sigue con las de siempre: la próxima lectura lo vuelve a probar.
+            }
+            return RegionLayout.Default;
+        }
+    }
+
+    /// <summary>Adónde va un regions.json roto, para poder mirarlo.</summary>
+    public string BrokenRegionsPath => Path.ChangeExtension(_regionsPath, ".roto.json");
+
+    private bool _regionsSetAside;
+
+    private void SetAsideBrokenRegions()
+    {
+        try
+        {
+            File.Move(_regionsPath, BrokenRegionsPath, overwrite: true);
+            _regionsSetAside = true;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Queda donde está: se vuelve a probar en la próxima lectura.
+        }
+    }
 
     [RelayCommand]
     private void Calibrate()
@@ -295,12 +336,13 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     private void UpdateCalibrationStatus()
     {
+        // Primero se lee: si está roto, se aparta y ya no hay calibración.
+        var layout = Layout;
         if (!IsCalibrated)
         {
-            CalibrationStatus = Texts.NotCalibrated;
+            CalibrationStatus = _regionsSetAside ? Texts.RegionsSetAside(Path.GetFileName(BrokenRegionsPath)) : Texts.NotCalibrated;
             return;
         }
-        var layout = Layout;
         CalibrationStatus = Texts.Calibrated(layout.ReferenceWidth, layout.ReferenceHeight, File.GetLastWriteTime(_regionsPath));
     }
 }
