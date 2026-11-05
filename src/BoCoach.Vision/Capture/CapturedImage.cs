@@ -237,7 +237,7 @@ public sealed class CapturedImage
             output[i + 2] = (byte)Math.Min(255, Bgra[i + 2] * gain);
             output[i + 3] = 255;
         }
-        return new CapturedImage(Width, Height, output);
+        return new CapturedImage(Width, Height, output) { Rescaled = Rescaled };
     }
 
     /// <summary>Escala de grises invertida (texto claro del HUD → texto oscuro sobre fondo claro), en BGRA.</summary>

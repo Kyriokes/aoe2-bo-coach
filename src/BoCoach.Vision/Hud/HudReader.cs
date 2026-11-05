@@ -264,12 +264,15 @@ public sealed class HudReader(HudFonts fonts)
             }
             // En pausa el juego oscurece todo ×0,2: sobre el panel opaco del mod (24, 21, 18) o la textura no hay negro
             // puro y el blanco no llega a la tinta de ninguna letra. Sin reloj, a los 30 s el coach da la partida por
-            // terminada. Una imagen con blancos queda igual y ya se leyó. Primero la letra de siempre, que es la que lee
-            // estas cajas fuera de la pausa (la del mod a veces lee el cero de la hora como 9).
-            if (clockSeconds is null && clockImage.Stretched(PauseGain, tightText: true) is var bright && !ReferenceEquals(bright, clockImage))
+            // terminada. Primero la letra de siempre, que es la que lee estas cajas fuera de la pausa (la del mod a veces
+            // lee el cero de la hora como 9); una imagen con blancos queda igual y ya se leyó.
+            if (clockSeconds is null)
             {
-                if (_clock.Read(bright) is var usual && UsualTime(usual) is { } usualTime)
+                var bright = clockImage.Stretched(PauseGain, tightText: true);
+                if (!ReferenceEquals(bright, clockImage) && _clock.Read(bright) is var usual && UsualTime(usual) is { } usualTime)
                     (clockSeconds, confidence["clock"]) = (usualTime, usual.Confidence);
+                // Después la del mod, con cualquier fondo: agrandada desde 900p o 720p, la letra de siempre no entiende
+                // los trazos finos (su tinta arranca en 180) y la del mod sí (50).
                 else if (_modClock?.Read(bright) is { } mod && TimeAtStart(mod) is { } modTime)
                     (clockSeconds, confidence["clock"]) = (modTime, mod.Confidence);
             }
