@@ -4,6 +4,7 @@ using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
+using BoCoach.Vision.Loading;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
 using BoCoach.Vision.Regions;
@@ -275,6 +276,39 @@ public sealed class LiveCoachTests : IDisposable
 
         live.Stop();
         Assert.Single(finished); // detener después no vuelve a cerrar nada
+    }
+
+    // AP-20: un coach reiniciado con otra BO en la misma partida ya no ve la pantalla de carga: se la pasa la sesión.
+    [Fact]
+    public async Task Con_la_pantalla_de_carga_ya_leida_corre_con_tu_civ_y_el_registro_tiene_el_mapa_y_el_rival()
+    {
+        var reading = new LoadingReading(
+            [new LoadingPlayer(1, "Ana", "", "franks", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, new RecordedFrames(RecordedSession.Load(Fixture)), playerName: "Ana", loading: reading)
+        {
+            MinReportSeconds = 1,
+            RecordsFolder = Path.Combine(_library.FullName, "registros"),
+            KnownMaps = _data.Maps,
+        };
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        Assert.Equal("franks", live.Civ);
+        Assert.False(live.Waiting);
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        live.Stop();
+
+        Assert.Equal(reading, last!.Loading);
+        Assert.Equal(1, last.Me?.Slot);
+        var meta = GameRecordReader.Load(Assert.Single(finished).Path).Meta!;
+        Assert.Equal("franks", meta["civ"]!.GetValue<string>());
+        Assert.Equal("britons", meta["rival_civ"]!.GetValue<string>());
+        Assert.Equal("arabia", meta["map"]!.GetValue<string>());
+        Assert.Equal(1, meta["slot"]!.GetValue<int>());
+        Assert.Equal("any", live.BuildOrder.Civ); // la BO con que se empezó no cambia
     }
 
     // AP-27: lo que lee el OCR es texto libre; al registro solo va un mapa que la app conoce, por su clave.

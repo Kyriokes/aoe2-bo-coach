@@ -197,8 +197,12 @@ public sealed class LiveCoach : IDisposable
 
     /// <param name="playerName">El nombre del jugador en el juego, para encontrar su renglón en la pantalla de carga.</param>
     /// <param name="language">Idioma del juego (<see cref="GameLanguage.Code"/>), para los nombres de las civs.</param>
+    /// <param name="loading">
+    /// La pantalla de carga de esta partida, si ya se leyó: el coach se reinició con otra BO y puede que ya no la vea. Sin
+    /// esto corría sin la civ del jugador, sin su número, y el registro salía sin mapa ni rival.
+    /// </param>
     public LiveCoach(BuildOrder bo, GameData data, EventCatalog events, HudFonts fonts, OcrReader? ocr, IFrameSource frames,
-        EconomySettings? economy = null, string? playerName = null, string language = "en")
+        EconomySettings? economy = null, string? playerName = null, string language = "en", LoadingReading? loading = null)
     {
         BuildOrder = bo;
         Frames = frames;
@@ -210,8 +214,15 @@ public sealed class LiveCoach : IDisposable
         _economy = economy;
         _language = language;
         _loading = ocr is null ? null : new LoadingScreenReader(ocr, data, language);
-        Civ = bo.Civ;
-        (_coach, _builder, _reader) = NewGame(bo);
+        var me = loading?.Find(playerName);
+        var game = bo with { Civ = me?.Civ ?? bo.Civ };
+        Civ = game.Civ;
+        (_coach, _builder, _reader) = NewGame(game);
+        if (loading is not null)
+        {
+            KnowPlayers(_coach, _builder, me, loading);
+            (_loadingReading, _me, _loadingDone, _waiting) = (loading, me, true, false);
+        }
     }
 
     /// <summary>La BO con que se empezó (con la civ elegida en la ventana).</summary>
@@ -522,10 +533,7 @@ public sealed class LiveCoach : IDisposable
             GameFinished?.Invoke(finished);
         var (coach, builder, reader) = NewGame(bo);
         var loading = reading ?? _loadingReading;
-        // D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).
-        coach.Signals.PlayerSlot = me?.Slot;
-        builder.PlayerSlot = me?.Slot;
-        coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
+        KnowPlayers(coach, builder, me, loading);
         lock (_gate)
         {
             (_coach, _builder, _reader) = (coach, builder, reader);
@@ -535,6 +543,14 @@ public sealed class LiveCoach : IDisposable
         _loadingDone = reading is not null;
         (_waiting, _clockSeenInGame) = (false, false);
         _newGame.Reset();
+    }
+
+    /// <summary>D3: el renglón del jugador en el panel de puntajes es el de su color (su número en la pantalla de carga).</summary>
+    private static void KnowPlayers(Coach coach, SnapshotBuilder builder, LoadingPlayer? me, LoadingReading? loading)
+    {
+        coach.Signals.PlayerSlot = me?.Slot;
+        builder.PlayerSlot = me?.Slot;
+        coach.Signals.AllySlots = me is null || loading is null ? new HashSet<int>() : loading.Allies(me).Select(p => p.Slot).ToHashSet();
     }
 
     private readonly NewGameDetector _newGame = new();

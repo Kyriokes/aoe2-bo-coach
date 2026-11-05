@@ -525,6 +525,36 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(session.LiveCoach!.BuildOrder.IsNone);
     }
 
+    // AP-20: aceptar la sugerida ya empezada la partida armaba un coach que no sabía nada de la pantalla de carga: ya no la
+    // iba a ver, así que corría sin tu civ ni tu número y el registro salía sin mapa ni rival.
+    [Fact]
+    public async Task Aceptar_la_sugerida_ya_empezada_la_partida_conserva_lo_de_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(30)) with { InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Equal(reading, last?.Loading);
+        Assert.Equal("Ana", last?.Me?.Name);
+        Assert.Equal("japanese", last?.Civ);
+        Assert.Contains("la sugerida", session.Status); // lo que se dijo al cambiar sigue ahí
+        Assert.NotNull(session.Overlay!.MatchupLine); // y el overlay nuevo tiene el cruce de la pantalla de carga
+    }
+
     // AP-21: si la versión nueva no se pudo bajar, GetAsync devuelve la guardada sin tirar error: el coach se reiniciaba con
     // la vieja, volvía a ver que estaba vieja y repetía.
     [Fact]
