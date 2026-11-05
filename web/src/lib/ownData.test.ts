@@ -26,14 +26,20 @@ describe("lo propio con la base fallando", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it("las suscripciones se dan por desconocidas en vez de romper la página", async () => {
-    const { mySubscriptionIds, mySubscriptions } = await import("./ownData");
+  it("las suscripciones de los botones se dan por desconocidas en vez de romper la página", async () => {
+    const { mySubscriptionIds } = await import("./ownData");
     await expect(mySubscriptionIds()).resolves.toBeNull();
-    await expect(mySubscriptions()).resolves.toEqual([]);
   });
 
   it("una BO propia que no se pudo leer es como una que no existe", async () => {
     const { getOwnBuildOrder } = await import("./ownData");
     await expect(getOwnBuildOrder("abcdef")).resolves.toBeNull();
+  });
+
+  // Decir "todavía no publicaste ninguna" con la base caída hace creer que se perdió todo: se ve la página de error.
+  it("Mi cuenta tira el error en vez de decir que no hay nada", async () => {
+    const { myAccountLists, mySubscriptions } = await import("./ownData");
+    await expect(myAccountLists("11111111-1111-1111-1111-111111111111")).rejects.toThrow(/does not exist/);
+    await expect(mySubscriptions()).rejects.toThrow(/does not exist/);
   });
 });

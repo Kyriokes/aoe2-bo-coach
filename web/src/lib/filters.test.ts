@@ -1,5 +1,7 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { filterValue, libraryHref, MAX_PAGE, pageNumber } from "./filters";
+import { filterValue, knownCiv, knownTag, libraryHref, libraryPageFor, MAX_PAGE, pageNumber } from "./filters";
 
 // civ y tag van tal cual al filtro de PostgREST (eq.<civ>, cs.{<tag>}): una llave, una coma o comillas rompen la
 // sintaxis y la API respondía 500 (/api/bo?tag=a},b). Se acepta solo lo que puede tener un nombre de civ o una etiqueta.
@@ -25,6 +27,61 @@ describe("valores de los filtros civ y tag", () => {
     for (const bad of ["a},b", "a,b", '"feudal"', "x\u005Cy", "(a)", "a|b", "a;b", "{feudal}"]) {
       expect(filterValue(bad), bad).toBeUndefined();
     }
+  });
+});
+
+describe("civs y etiquetas conocidas", () => {
+  it("una civ del juego o any, sin importar las mayúsculas", () => {
+    expect(knownCiv("franks")).toBe("franks");
+    expect(knownCiv(" Franks ")).toBe("franks");
+    expect(knownCiv("any")).toBe("any");
+  });
+
+  it("lo inventado no es una civ, ni lo que heredan todos los objetos", () => {
+    for (const bad of ["casino online gratis", "atlantes", "constructor", "", "a,b", undefined]) {
+      expect(knownCiv(bad), String(bad)).toBeUndefined();
+    }
+  });
+
+  it("las etiquetas de la lista, sin importar las mayúsculas", () => {
+    expect(knownTag("Feudal")).toBe("feudal");
+    expect(knownTag("fast_castle")).toBe("fast_castle");
+    expect(knownTag("casino online gratis")).toBeUndefined();
+    expect(knownTag(undefined)).toBeUndefined();
+  });
+
+  it("se conocen todas las civs y las etiquetas de las BO del repo", () => {
+    const repo = join(process.cwd(), "..");
+    const folders = ["build_orders", join("build_orders", "civs")];
+    const files = folders.flatMap((dir) => readdirSync(join(repo, dir)).filter((f) => f.endsWith(".json")).map((f) => join(repo, dir, f)));
+    expect(files.length).toBeGreaterThan(100);
+    for (const file of files) {
+      const bo = JSON.parse(readFileSync(file, "utf8")) as { civ?: string; tags?: string[] };
+      expect(knownCiv(bo.civ ?? "any"), file).toBeDefined();
+      for (const tag of bo.tags ?? []) expect(knownTag(tag), `${file}: ${tag}`).toBeDefined();
+    }
+  });
+});
+
+describe("la biblioteca para los buscadores", () => {
+  it("una civ o una etiqueta conocida es una página, con su filtro en minúsculas", () => {
+    expect(libraryPageFor({})).toEqual({ noindex: false });
+    expect(libraryPageFor({ civ: "Franks" })).toEqual({ civ: "franks", noindex: false });
+    expect(libraryPageFor({ civ: "any" })).toEqual({ civ: "any", noindex: false });
+    expect(libraryPageFor({ tag: "Feudal" })).toEqual({ tag: "feudal", noindex: false });
+  });
+
+  it("lo inventado no se indexa y su texto no va a la página", () => {
+    expect(libraryPageFor({ civ: "casino online gratis" })).toEqual({ noindex: true });
+    expect(libraryPageFor({ tag: "casino online gratis" })).toEqual({ noindex: true });
+    expect(libraryPageFor({ civ: "franks", tag: "casino online gratis" })).toEqual({ civ: "franks", noindex: true });
+    expect(libraryPageFor({ civ: "casino online gratis", tag: "feudal" })).toEqual({ tag: "feudal", noindex: true });
+  });
+
+  it("las búsquedas y una civ con etiqueta tampoco", () => {
+    expect(libraryPageFor({ q: "scouts" })).toEqual({ noindex: true });
+    expect(libraryPageFor({ q: "scouts", civ: "franks" })).toEqual({ civ: "franks", noindex: true });
+    expect(libraryPageFor({ civ: "franks", tag: "feudal" })).toEqual({ civ: "franks", noindex: true });
   });
 });
 

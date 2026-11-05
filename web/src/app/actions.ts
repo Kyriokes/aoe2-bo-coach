@@ -127,11 +127,17 @@ export async function setVote(buildOrderId: string, code: string, vote: boolean,
   return { ok: true, value: null };
 }
 
-/** Crea un token para la app de escritorio. Se muestra una sola vez: en la base queda solo su hash. */
-export async function createAppToken(label: string, locale?: Locale): Promise<ActionResult<string>> {
+/**
+ * Crea un token para la app de escritorio. Se muestra una sola vez: en la base queda solo su hash. Con canPublish en
+ * false (el de "Conectar la app") sirve para usar la app, pero no para publicar.
+ */
+export async function createAppToken(label: string, locale?: Locale, canPublish = true): Promise<ActionResult<string>> {
   const supabase = await userClient();
   if (!supabase) return notLoggedIn(locale);
-  const { data, error } = await supabase.rpc("create_app_token", { p_label: label.trim().slice(0, 60) || "BO Coach" });
+  const p_label = label.trim().slice(0, 60) || "BO Coach";
+  let { data, error } = await supabase.rpc("create_app_token", canPublish ? { p_label } : { p_label, p_can_publish: false });
+  // Una base sin la migración 20261105000000 no conoce el parámetro.
+  if (error?.code === "PGRST202") ({ data, error } = await supabase.rpc("create_app_token", { p_label }));
   if (error) return failed(locale, (t) => t.createToken, error);
   return { ok: true, value: data as string };
 }

@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { en } from "./en";
 import { es } from "./es";
@@ -121,5 +123,23 @@ describe("el proxy", () => {
     expect(localeRouting("/no-existe")).toEqual({ kind: "notFound", to: "/es/404" });
     expect(localeRouting("/en/no-existe")).toEqual({ kind: "notFound", to: "/en/404" });
     expect(localeRouting("/fr/bo")).toEqual({ kind: "notFound", to: "/es/404" });
+  });
+
+  // Antes pasaban: Next los tomaba como el idioma ([locale]) y salía la portada con 200.
+  it("tampoco es una página lo que tiene un punto o un guion bajo y no existe", () => {
+    for (const path of ["/wp-login.php", "/.env", "/x.y", "/_x", "/.git/config", "/wp-admin/setup.php", "/_nextx", "/icons", "/sitemap.xml.bak", "/robots.txt/x", "/iconsx/a.png"]) {
+      expect(localeRouting(path), path).toEqual({ kind: "notFound", to: "/es/404" });
+    }
+    expect(localeRouting("/en/wp-login.php")).toEqual({ kind: "notFound", to: "/en/404" });
+  });
+
+  it("cada archivo de public/ y lo interno de Next y de Vercel pasan, con la cookie que sea", () => {
+    const files = readdirSync(join(process.cwd(), "public"), { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => `/${join(entry.parentPath, entry.name).slice(join(process.cwd(), "public").length + 1).replaceAll("\\", "/")}`);
+    expect(files.length).toBeGreaterThan(50);
+    for (const path of [...files, "/favicon.ico", "/_next/data/x.json", "/_vercel/insights/view"]) {
+      expect(localeRouting(path, "en"), path).toMatchObject({ kind: "pass" });
+    }
   });
 });

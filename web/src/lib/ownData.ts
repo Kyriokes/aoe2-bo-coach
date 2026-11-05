@@ -1,4 +1,5 @@
 import "server-only";
+import type { TokenRow } from "@/components/TokenManager";
 import type { Visibility } from "./buildOrder";
 import { CODE_PATTERN, summaryColumns, toSummary, type BuildOrderDetail, type BuildOrderSummary, type Row } from "./data";
 import { supabaseConfigured } from "./supabase/env";
@@ -7,8 +8,8 @@ import { sessionClient } from "./supabase/server";
 /**
  * Lo que depende de quién está logueado: sus BO (también las privadas) y sus suscripciones. Lee las cookies y no
  * pasa por el caché, así que se usa dentro de <Suspense>. Los permisos los pone la base: con la sesión de otro no se
- * ve nada ajeno que sea privado. Un error de la base no rompe la página: se anota y se sigue como si no hubiera nada
- * (lo propio solo alimenta botones y la cuenta; antes de correr la migración la base no tiene suscripciones).
+ * ve nada ajeno que sea privado. Lo que solo alimenta botones no rompe la página si la base falla: se anota y se sigue
+ * como si no hubiera nada. Mi cuenta sí: ahí, "no hay nada" haría creer que se perdió todo.
  */
 async function userClient() {
   if (!supabaseConfigured) return null;
@@ -44,7 +45,36 @@ export async function mySubscriptionIds(): Promise<Set<string> | null> {
   return new Set((data as { build_order_id: string }[]).map((r) => r.build_order_id));
 }
 
-/** Las BO a las que está suscripto el usuario y que siguen públicas, de la más reciente a la más vieja. */
+/** Una BO del usuario en Mi cuenta. */
+export interface OwnBuildOrderRow {
+  code: string;
+  name: string;
+  votes: number;
+  feudal_click: number | null;
+  updated_at: string;
+  visibility: Visibility;
+}
+
+/** Las BO y los tokens del usuario, para Mi cuenta. Si la base falla, tira el error: lo toma la página de error. */
+export async function myAccountLists(userId: string): Promise<{ own: OwnBuildOrderRow[]; tokens: TokenRow[] }> {
+  const supabase = await sessionClient();
+  const [own, tokens] = await Promise.all([
+    supabase
+      .from("build_orders")
+      .select("code, name, votes, feudal_click, updated_at, visibility")
+      .eq("owner_id", userId)
+      .order("updated_at", { ascending: false }),
+    supabase.from("app_tokens").select("id, label, created_at, last_used_at").order("created_at", { ascending: false }),
+  ]);
+  const error = own.error ?? tokens.error;
+  if (error) throw new Error(`No se pudo leer Mi cuenta: ${error.message}`);
+  return { own: own.data as OwnBuildOrderRow[], tokens: tokens.data as TokenRow[] };
+}
+
+/**
+ * Las BO a las que está suscripto el usuario y que siguen públicas, de la más reciente a la más vieja, para Mi cuenta. Si
+ * la base falla, tira el error.
+ */
 export async function mySubscriptions(): Promise<BuildOrderSummary[]> {
   const user = await userClient();
   if (!user) return [];
@@ -52,7 +82,7 @@ export async function mySubscriptions(): Promise<BuildOrderSummary[]> {
     .from("subscriptions")
     .select(`created_at, build_orders(${summaryColumns}, visibility)`)
     .order("created_at", { ascending: false });
-  if (error) return failed("las suscripciones", error.message, []);
+  if (error) throw new Error(`No se pudieron leer las suscripciones: ${error.message}`);
   // Una que pasó a privada no llega (la tapa la política de lectura) o llega privada si es del mismo usuario.
   return (data as unknown as { build_orders: (Row & { visibility: Visibility }) | null }[])
     .map((r) => r.build_orders)

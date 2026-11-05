@@ -29,6 +29,25 @@ describe("errores de la base", () => {
   });
 });
 
+describe("datos que la base no puede guardar (clase 22)", () => {
+  it.each(["22003", "22P02", "22P05", "22021"])("%s da 400, explicado con los topes y sin el detalle", (code) => {
+    const error = { code, message: 'value "10000000000" is out of range for type integer' };
+    expect(dbErrorStatus(error)).toBe(400);
+    expect(dbErrorMessage(error)).toBe(LIMITS_MESSAGE);
+    expect(dbErrorMessage(error, "en")).toMatch(/limits/);
+  });
+});
+
+describe("cambios muy seguidos", () => {
+  const error = { code: "BC430", message: "Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo." };
+
+  it("dan 429 y el mensaje de la base, explicado en cada idioma", () => {
+    expect(dbErrorStatus(error)).toBe(429);
+    expect(dbErrorMessage(error)).toBe(error.message);
+    expect(dbErrorMessage(error, "en")).toMatch(/seconds/);
+  });
+});
+
 describe("BO que no existe o no es pública", () => {
   it("se muestra el mensaje de la base y da 404", () => {
     const error = { code: "P0002", message: "No hay ninguna build order pública con el código abcdef." };

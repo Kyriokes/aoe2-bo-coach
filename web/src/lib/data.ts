@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { Visibility } from "./buildOrder";
-import { filterValue, pageNumber } from "./filters";
+import { filterValue, knownCiv, knownTag, pageNumber } from "./filters";
 import { publicClient } from "./supabase/server";
 
 /** Lo que se muestra de una BO en la biblioteca. */
@@ -85,8 +85,8 @@ export function listBuildOrders(query: LibraryQuery): Promise<LibraryPage> {
   // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
   return cachedBuildOrders(
     cleanSearch(query.q ?? "").toLowerCase(),
-    filterValue(query.civ) ?? "",
-    filterValue(query.tag) ?? "",
+    filterValue(query.civ)?.toLowerCase() ?? "",
+    filterValue(query.tag)?.toLowerCase() ?? "",
     query.sort === "recientes" ? "recientes" : "votos",
     pageNumber(String(query.page ?? 1)),
   );
@@ -118,7 +118,32 @@ async function cachedBuildOrders(search: string, civ: string, tag: string, sort:
   return { items: rows.slice(0, PAGE_SIZE), hasMore: rows.length > PAGE_SIZE };
 }
 
-/** Civs y tags que hay en la biblioteca, para los filtros. */
+/** Lo que PostgREST devuelve por pedido (max_rows, supabase/config.toml): pedir más con limit no sirve de nada. */
+const READ_PAGE = 1000;
+
+/** Hasta dónde se lee para los filtros y el sitemap, que admite 50.000 direcciones (cada BO da una por idioma). */
+const MAX_READ = 20_000;
+
+/** Todas las filas, de a páginas. Cada lectura tiene que ir ordenada por algo que no se repita: si no, se saltean filas. */
+async function readAll<T>(
+  what: string,
+  readPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  while (rows.length < MAX_READ) {
+    const { data, error } = await readPage(rows.length, rows.length + READ_PAGE - 1);
+    if (error) throw new Error(`${what}: ${error.message}`);
+    const page = data as T[];
+    rows.push(...page);
+    if (page.length < READ_PAGE) break;
+  }
+  return rows;
+}
+
+/**
+ * Civs y tags que hay en la biblioteca, para los filtros y el sitemap: solo las del juego y las conocidas, porque cada BO
+ * escribe lo que quiere y lo que va acá es una opción del desplegable y una página para los buscadores.
+ */
 export async function listFacets(): Promise<{ civs: string[]; tags: string[] }> {
   "use cache";
   cacheLife("minutes");
@@ -126,11 +151,13 @@ export async function listFacets(): Promise<{ civs: string[]; tags: string[] }> 
 
   const db = publicClient();
   if (!db) return { civs: [], tags: [] };
-  const { data, error } = await db.from("build_orders").select("civ, tags").limit(2000);
-  if (error) throw new Error(`No se pudieron leer los filtros: ${error.message}`);
-  const rows = data as { civ: string; tags: string[] }[];
+  const rows = await readAll<{ civ: string; tags: string[] }>("No se pudieron leer los filtros", (from, to) =>
+    db.from("build_orders").select("civ, tags").order("code").range(from, to),
+  );
   const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
-  return { civs: sorted(rows.map((r) => r.civ)), tags: sorted(rows.flatMap((r) => r.tags)) };
+  const known = (values: string[], isKnown: (value: string) => string | undefined) =>
+    sorted(values.map(isKnown).filter((value) => value !== undefined));
+  return { civs: known(rows.map((r) => r.civ), knownCiv), tags: known(rows.flatMap((r) => r.tags), knownTag) };
 }
 
 /** Código y última modificación de cada BO, para el sitemap. */
@@ -141,9 +168,9 @@ export async function listSitemapEntries(): Promise<{ code: string; updated_at: 
 
   const db = publicClient();
   if (!db) return [];
-  const { data, error } = await db.from("build_orders").select("code, updated_at").order("updated_at", { ascending: false }).limit(5000);
-  if (error) throw new Error(`No se pudo armar el sitemap: ${error.message}`);
-  return data as { code: string; updated_at: string }[];
+  return readAll<{ code: string; updated_at: string }>("No se pudo armar el sitemap", (from, to) =>
+    db.from("build_orders").select("code, updated_at").order("updated_at", { ascending: false }).order("code").range(from, to),
+  );
 }
 
 /** Los códigos de las BO: 6 letras y números, sin los que se confunden (como new_short_code en la base). */

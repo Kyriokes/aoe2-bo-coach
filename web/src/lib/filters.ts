@@ -1,3 +1,5 @@
+import { CIV_NAMES } from "./civNames";
+
 /**
  * Lo que puede valer un filtro de civ o de etiqueta: letras (con acentos), números, espacios y - _ . +, hasta 40
  * caracteres. Los valores van tal cual al filtro de PostgREST (eq.<civ>, cs.{<tag>}), donde una llave, una coma o
@@ -9,6 +11,54 @@ const FILTER_VALUE = /^[\p{L}\p{N} _.+-]{1,40}$/u;
 export function filterValue(value: string | undefined): string | undefined {
   const trimmed = value?.trim() ?? "";
   return FILTER_VALUE.test(trimmed) ? trimmed : undefined;
+}
+
+/** La civ en minúsculas, como la guarda la base, si es una del juego o "any"; undefined si es inventada. */
+export function knownCiv(value: string | undefined): string | undefined {
+  const civ = filterValue(value)?.toLowerCase();
+  return civ && (civ === "any" || Object.hasOwn(CIV_NAMES, civ)) ? civ : undefined;
+}
+
+/**
+ * Las etiquetas que tienen página propia y van en el desplegable: las de las BO del repo (un test lo controla). Cada BO
+ * escribe las que quiera y se puede filtrar por ellas desde su página, pero una inventada no se ofrece ni se indexa.
+ */
+const KNOWN_TAGS: ReadonlySet<string> = new Set([
+  "arabia",
+  "archers",
+  "boom",
+  "buildorderguide",
+  "castillos",
+  "castle",
+  "fast-castle",
+  "fast_castle",
+  "feudal",
+  "genérica",
+  "importada",
+  "maa",
+  "mejorada",
+  "scouts",
+]);
+
+/** La etiqueta en minúsculas, como la guarda la base, si es una de las conocidas; undefined si no. */
+export function knownTag(value: string | undefined): string | undefined {
+  const tag = filterValue(value)?.toLowerCase();
+  return tag && KNOWN_TAGS.has(tag) ? tag : undefined;
+}
+
+/**
+ * Qué página es la biblioteca con esos filtros para los buscadores: la civ o la etiqueta si tienen página propia (la
+ * civ gana), y noindex para las búsquedas, para civ con etiqueta y para lo inventado ("?civ=casino online gratis" no
+ * tiene que armar una página indexable con ese título).
+ */
+export function libraryPageFor(query: { q?: string; civ?: string; tag?: string }): { civ?: string; tag?: string; noindex: boolean } {
+  const civ = knownCiv(query.civ);
+  const tag = knownTag(query.tag);
+  const invented = (query.civ !== undefined && civ === undefined) || (query.tag !== undefined && tag === undefined);
+  return {
+    ...(civ ? { civ } : tag ? { tag } : {}),
+    noindex: Boolean(query.q) || (civ !== undefined && query.tag !== undefined) || invented,
+  };
 }
 
 /** Hasta qué página se puede pedir: más allá no hay nada y cada una ocuparía un lugar en el caché. */

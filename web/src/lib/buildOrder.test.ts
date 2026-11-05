@@ -46,14 +46,68 @@ describe("ramas", () => {
 });
 
 describe("tamaño de la BO", () => {
-  it("rechaza una BO de más de 512 KB, como texto o como objeto", () => {
-    const heavy = bo({ notes: "x".repeat(600_000) });
-    expect(errorOf(heavy)).toContain("pesa");
-    expect(errorOf(JSON.stringify(heavy))).toContain("pesa");
+  it("rechaza una BO de más de 128 KB, como texto o como objeto", () => {
+    const sized = (chars: number) => bo({ notes: "x".repeat(chars - JSON.stringify(bo({ notes: "" })).length) });
+    expect(errorOf(sized(128_000))).toBeNull();
+    expect(errorOf(JSON.stringify(sized(128_000)))).toBeNull();
+    expect(errorOf(sized(128_001))).toContain("128 KB");
+    expect(errorOf(JSON.stringify(sized(128_001)))).toContain("128 KB");
   });
 
   it("acepta una BO con notas largas pero razonables", () => {
     expect(errorOf(bo({ notes: "x".repeat(4000) }))).toBeNull();
+  });
+});
+
+// Sin tope, una BO pública con 90.000 after o 20.000 objetivos congela la pestaña de quien la abre, y el mapa viaja
+// entero en la lista de cada app.
+describe("topes de after, objetivos y mapa", () => {
+  const list = (n: number) => Array.from({ length: n }, (_, i) => `s${i}`);
+
+  it("hasta 50 after por paso", () => {
+    expect(errorOf(bo({ after: list(50) }))).toBeNull();
+    expect(errorOf(bo({ after: null }))).toBeNull();
+    expect(errorOf(bo({ after: list(51) }))).toMatch(/más de 50 pasos/);
+    expect(errorOf(bo({ after: "s1" }))).toContain("after");
+  });
+
+  it("también en las ramas", () => {
+    const branch = { on: "under_attack", steps: [{ id: "r1", do: "train", what: "archer", after: list(51) }] };
+    expect(errorOf({ ...bo({}), branches: [branch] })).toMatch(/más de 50 pasos/);
+  });
+
+  it("hasta 40 objetivos", () => {
+    const goals = (n: number) => Array.from({ length: n }, () => ({ age: "feudal_age" }));
+    expect(errorOf({ ...bo({}), assisted: { goals: goals(40) } })).toBeNull();
+    expect(errorOf({ ...bo({}), assisted: null })).toBeNull();
+    expect(errorOf({ ...bo({}), assisted: { goals: goals(41) } })).toMatch(/más de 40 objetivos/);
+  });
+
+  it("el mapa hasta 40 caracteres", () => {
+    expect(errorOf({ ...bo({}), map: "x".repeat(40) })).toBeNull();
+    expect(errorOf({ ...bo({}), map: null })).toBeNull();
+    expect(errorOf({ ...bo({}), map: "x".repeat(41) })).toMatch(/más de 40 caracteres/);
+  });
+
+  it("en el idioma de la página", () => {
+    const result = parseBuildOrder(bo({ after: list(51) }), "en");
+    expect(result.ok ? null : result.error).toMatch(/more than 50 steps/);
+  });
+});
+
+// Postgres no guarda ese carácter en un jsonb: terminaba en un error 500 de la base.
+describe("carácter nulo", () => {
+  it("se rechaza con un mensaje, como texto o como objeto, y también en una clave", () => {
+    expect(errorOf(bo({ note: "a\u0000b" }))).toMatch(/nulo/);
+    expect(errorOf(JSON.stringify(bo({ note: "a\u0000b" })))).toMatch(/nulo/);
+    expect(errorOf(bo({ note: "\\\u0000" }))).toMatch(/nulo/);
+    expect(errorOf(bo({ "a\u0000": 1 }))).toMatch(/nulo/);
+    expect(parseBuildOrder(bo({ note: "\u0000" }), "en")).toMatchObject({ ok: false, error: expect.stringMatching(/null character/) });
+  });
+
+  it("una barra y una u escritas de verdad no son un carácter nulo", () => {
+    expect(errorOf(bo({ note: "C:\\u0000" }))).toBeNull();
+    expect(errorOf(JSON.stringify(bo({ note: "C:\\u0000" })))).toBeNull();
   });
 });
 

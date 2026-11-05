@@ -31,7 +31,7 @@ export async function database(options: { storage?: boolean } = {}) {
       create table storage.buckets (id text primary key, name text not null, public boolean not null default false,
         file_size_limit bigint, allowed_mime_types text[]);
       create table storage.objects (bucket_id text not null references storage.buckets (id), name text not null,
-        primary key (bucket_id, name));
+        metadata jsonb, primary key (bucket_id, name));
       alter table storage.objects enable row level security;
       grant usage on schema storage to anon, authenticated;
       grant select, insert, delete on storage.objects to anon, authenticated;
@@ -76,6 +76,9 @@ export const scouts = {
   tags: ["feudal", "scouts"],
   steps: [{ id: "s1", do: "train", what: "villager", count: 6 }],
 };
+
+/** Las BO como guardadas hace un rato: la base no deja cambiar el JSON de una BO dos veces en 5 segundos. */
+export const settle = (db: Db) => db.exec("update public.build_orders set updated_at = now() - interval '1 minute'");
 
 /** Inserta con ese nombre (la base deriva las columnas del JSON, así que el nombre va en el body). */
 export const insertBo = `insert into public.build_orders (name, civ, tags, schema_version, body)

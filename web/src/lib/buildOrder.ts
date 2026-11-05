@@ -9,19 +9,40 @@ export const CURRENT_SCHEMA_VERSION = 2;
 export const MAX_COUNT = 200;
 
 /**
- * Tope del JSON de una BO, en caracteres. Una BO real ocupa unos 20 KB; sin tope, los pasos admiten notas y campos
- * de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la app de quien la importe.
+ * Tope del JSON de una BO, en caracteres (la base controla lo mismo). La más grande del repo pesa 12 KB; sin tope, los
+ * pasos admiten notas y campos de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la
+ * app de quien la importe.
  */
-export const MAX_BODY_CHARS = 512_000;
+export const MAX_BODY_CHARS = 128_000;
+
+/** Hasta dónde puede estimarse un clic de edad, en segundos (la base controla lo mismo). */
+export const MAX_CLICK_SECONDS = 86_400;
+
+/**
+ * Un carácter nulo en el JSON ya escrito: siempre va con su escape, y una barra de verdad va doble. Postgres no guarda ese
+ * carácter en un jsonb y sin esto terminaba en un error de la base.
+ */
+const NULL_CHARACTER = /(?:^|[^\\])(?:\\\\)*\\u0000/;
+
+/** Tope de los after de un paso, de los objetivos del modo asistido y del largo del mapa (el validador del Core y la base controlan lo mismo). */
+export const MAX_AFTER = 50;
+export const MAX_GOALS = 40;
+export const MAX_MAP_CHARS = 40;
+
+type ServerErrors = ReturnType<typeof getDictionary>["serverErrors"];
 
 // count y builders con tope: sin él, un número enorme agota la memoria del Planner (encola una entrada por unidad)
-// en el navegador de cualquiera que abra la página de la BO y en la app de quien la importe.
-const step = z.looseObject({
-  id: z.string().min(1).max(40),
-  do: z.enum(["train", "build", "research", "move"]),
-  count: z.number().int().min(1).max(MAX_COUNT).optional(),
-  builders: z.number().int().min(1).max(MAX_COUNT).nullish(),
-});
+// en el navegador de cualquiera que abra la página de la BO y en la app de quien la importe. Lo mismo after: el análisis
+// corre en el hilo de la página.
+function stepSchema(t: ServerErrors) {
+  return z.looseObject({
+    id: z.string().min(1).max(40),
+    do: z.enum(["train", "build", "research", "move"]),
+    count: z.number().int().min(1).max(MAX_COUNT).optional(),
+    builders: z.number().int().min(1).max(MAX_COUNT).nullish(),
+    after: z.array(z.string()).max(MAX_AFTER, fill(t.tooManyAfter, { n: MAX_AFTER })).nullish(),
+  });
+}
 
 /**
  * Lo mínimo que se revisa en el servidor antes de guardar una BO. La validación completa (entidades, edades,
@@ -29,6 +50,7 @@ const step = z.looseObject({
  */
 function schemaFor(locale: Locale) {
   const t = getDictionary(locale).serverErrors;
+  const step = stepSchema(t);
   return z.looseObject({
     schema_version: z
       .number()
@@ -45,6 +67,10 @@ function schemaFor(locale: Locale) {
     branches: z
       .array(z.looseObject({ steps: z.array(step).min(1).max(300) }))
       .max(20)
+      .nullish(),
+    map: z.string().max(MAX_MAP_CHARS, fill(t.mapTooLong, { n: MAX_MAP_CHARS })).nullish(),
+    assisted: z
+      .looseObject({ goals: z.array(z.unknown()).max(MAX_GOALS, fill(t.tooManyGoals, { n: MAX_GOALS })).nullish() })
       .nullish(),
   });
 }
@@ -70,6 +96,7 @@ export function parseBuildOrder(json: unknown, locale: Locale = "es"): { ok: tru
   } else if ((JSON.stringify(json) ?? "").length > MAX_BODY_CHARS) {
     return tooBig;
   }
+  if (NULL_CHARACTER.test(JSON.stringify(value) ?? "")) return { ok: false, error: t.nullCharacter };
   const result = SCHEMAS[locale].safeParse(value);
   if (!result.success) {
     const issue = result.error.issues[0];
