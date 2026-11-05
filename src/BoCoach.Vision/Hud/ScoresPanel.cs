@@ -63,7 +63,7 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
     {
         var top = PanelTop(panel);
         if (top is null)
-            return LoadingScreenReader.DarkOnLight(panel.Resample(Zoom)).Padded(Margin);
+            return LoadingScreenReader.DarkOnLight(panel.ScaleSmooth(Zoom)).Padded(Margin);
         // El fondo del panel (la mediana de los cuartiles bajos de sus filas) va a blanco y lo que lo supera en
         // TextContrast o más, a negro; el mapa a la izquierda del panel y arriba de la banda queda blanco.
         var levels = Enumerable.Range(top.Value, panel.Height - top.Value).Select(y => Background(panel, y)).OrderBy(v => v).ToList();
@@ -80,7 +80,8 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
                 (output[i], output[i + 1], output[i + 2], output[i + 3]) = (v, v, v, 255);
             }
         }
-        return new CapturedImage(panel.Width, panel.Height, output).Resample(Zoom).Padded(Margin);
+        // ScaleSmooth da lo mismo que Resample a ×2 sin el arreglo de doubles (4,3 MB en el montículo de objetos grandes cada 2 s).
+        return new CapturedImage(panel.Width, panel.Height, output).ScaleSmooth(Zoom).Padded(Margin);
     }
 
     /// <summary>Cuánto más claro que el fondo tiene que ser un píxel para ir a negro del todo.</summary>
