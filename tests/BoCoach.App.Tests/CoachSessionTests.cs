@@ -544,6 +544,59 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal(Scouts.Name, session.LiveCoach!.BuildOrder.Name);
     }
 
+    /// <summary>En Automática, el coach ya cambió solo a la mejor de la lista en la pantalla de carga.</summary>
+    private CoachSessionViewModel SwitchedAtLoadingScreen()
+    {
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Cambié a", session.Overlay!.BoSuggestion);
+        return session;
+    }
+
+    // AP-19: el atajo que vuelve a la BO anterior seguía activo toda la partida: a los 25 minutos reiniciaba el coach.
+    [Fact]
+    public void Pasado_el_primer_minuto_el_atajo_de_la_sugerida_no_reinicia_el_coach()
+    {
+        using var session = SwitchedAtLoadingScreen();
+        var switched = session.LiveCoach;
+
+        session.Apply(Frame(ViewAt(1500)) with { InGame = true });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Same(switched, session.LiveCoach);
+    }
+
+    [Fact]
+    public void En_el_primer_minuto_el_atajo_todavia_vuelve_a_la_anterior()
+    {
+        using var session = SwitchedAtLoadingScreen();
+
+        session.Apply(Frame(ViewAt(50)) with { InGame = true });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // AP-22: el "Cambié a X; Ctrl+Alt+B vuelve..." podía quedar toda la partida.
+    [Fact]
+    public void Pasado_el_primer_minuto_el_aviso_de_que_cambio_de_BO_se_saca()
+    {
+        using var session = SwitchedAtLoadingScreen();
+
+        session.Apply(Frame(ViewAt(50)) with { InGame = true });
+        Assert.NotNull(session.Overlay!.BoSuggestion);
+
+        session.Apply(Frame(ViewAt(61)) with { InGame = true });
+        Assert.Null(session.Overlay!.BoSuggestion);
+    }
+
     // Con la BO terminada el panel queda en la tarjeta chica, y sin nada que hacer no se ve (pedido del usuario,
     // 2026-10-26, opción A).
     [Fact]

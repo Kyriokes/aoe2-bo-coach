@@ -925,6 +925,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void AcceptSuggestion()
     {
+        // Ya empezada la partida no hace nada: un coach nuevo tiraría todo lo que lleva (reiniciaba a los 25 minutos).
+        if (!BuildOrderPicker.CanSwitchAt(_lastGameTime))
+            return;
         if (_suggestion is { } suggestion)
         {
             _suggestion = null;
@@ -1106,9 +1109,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             Status = LoadingNote(frame);
             Suggest(frame);
         }
-        // La sugerencia vale durante la carga y el primer minuto de partida.
-        if ((_suggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null) && frame.View.Time > SuggestionSeconds)
-            (_suggestion, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null);
+        // La sugerencia, el aviso de que cambió de BO y el atajo que vuelve a la anterior valen durante la carga y el primer
+        // minuto de partida.
+        if (frame.View.Time > SuggestionSeconds
+            && (_suggestion is not null || _previousBuildOrder is not null || Overlay.BoSuggestion is not null || Overlay.MatchAdvice is not null || Overlay.MatchupLine is not null))
+            (_suggestion, _previousBuildOrder, Overlay.BoSuggestion, Overlay.MatchAdvice, Overlay.MatchupLine) = (null, null, null, null, null);
         // El panel no se mueve nunca: siempre arriba a la derecha, también en la pantalla de carga. Abajo tapaba el
         // mapa y el minimapa cuando en plena partida se perdía el reloj; mejor que moleste en la carga que en el juego
         // (pedido del usuario, 2026-10-29).
