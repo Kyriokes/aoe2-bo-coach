@@ -721,7 +721,9 @@ public sealed class Coach
 
     private LaneView LaneViewOf(Lane lane) => (Tracker.LaneStep(lane) is { } step
         ? new LaneView(lane, step, MissingFor(step), _plan?.For(step.Step.Id)?.Start)
-        : new LaneView(lane, null, ResourceAmounts.Zero, null)) with { Behind = Tracker.LaneBehind(lane) };
+        : new LaneView(lane, null, ResourceAmounts.Zero, null))
+        // D1: en el gris (unidades ajenas a la par de las de la BO) sigue la BO, pero lo militar no queda atrasado.
+        with { Behind = lane == Lane.Produce && Abandonment.Gray ? [] : Tracker.LaneBehind(lane) };
 
     /// <summary>Lo que falta juntar para un paso: su costo con la civ en la edad del jugador menos el stock.</summary>
     private ResourceAmounts MissingFor(StepProgress step)

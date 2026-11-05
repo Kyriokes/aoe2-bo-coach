@@ -172,6 +172,72 @@ public class CoachLanesTests
         Assert.Equal(2, intended[GatherSource.Farm]);
     }
 
+    // D1 (valores aprobados por el usuario el 2026-10-20): en el gris (unidades ajenas a la par de las de la BO) sigue con la
+    // BO, pero no marca atrasado lo militar. BuildOrderAbandonment.Gray se calculaba y nadie lo leía.
+    [Fact]
+    public void En_el_gris_lo_militar_no_queda_sin_hacer()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "stable", Do = StepAction.Build, What = "stable", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 3 },
+                new Step { Id = "spearman", Do = StepAction.Train, What = "spearman", Count = 1 },
+                new Step { Id = "scouts", Do = StepAction.Train, What = "scout_cavalry", Count = 3 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(100, stock, "barracks_built", "stable_built", "feudal_age_researched"));
+        coach.Update(At(110, stock, "spearman_created"));
+        var view = coach.Update(At(111, stock));
+
+        // Sin el gris, la milicia que se salteó queda aparte.
+        Assert.False(coach.Abandonment.Gray);
+        Assert.Equal(["militia"], view.Lanes.Single(l => l.Lane == Lane.Produce).Behind.Select(s => s.Step.Id));
+
+        // 6 arqueros que la BO no tiene, con los lanceros de la BO saliendo: el gris.
+        for (var t = 115; t < 121; t++)
+            coach.Update(At(t, stock, "archer_created"));
+        coach.Update(At(125, stock, "spearman_created"));
+        view = coach.Update(At(126, stock));
+
+        Assert.True(coach.Abandonment.Gray);
+        Assert.Null(view.Abandoned);
+        Assert.Empty(view.Lanes.Single(l => l.Lane == Lane.Produce).Behind);
+        Assert.DoesNotContain(CoachText.Lines(view, TestData.GameData).Running, l => l.Contains("Quedó sin hacer"));
+    }
+
+    [Fact]
+    public void En_el_gris_lo_que_no_es_militar_sigue_quedando_sin_hacer()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 9 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(100, stock, "barracks_built"));
+        coach.Update(At(110, stock, "militia_created"));
+        for (var t = 115; t < 121; t++)
+            coach.Update(At(t, stock, "archer_created"));
+        coach.Update(At(125, stock, "militia_created"));
+        var view = coach.Update(At(126, stock));
+
+        Assert.True(coach.Abandonment.Gray);
+        Assert.Equal(["mill"], view.Lanes.Single(l => l.Lane == Lane.Build).Behind.Select(s => s.Step.Id));
+    }
+
     // Partida 20261030-203917: con todo lo demás hecho, el segundo molino que nunca se hizo volvía al renglón de
     // Construir y a los 3 minutos la BO quedaba "abandonada" en vez de terminada.
     [Fact]
