@@ -47,14 +47,15 @@ public sealed class BuildOrderOptimizer(GameData data, PlannerSettings? settings
     public OptimizeResult Improve(BuildOrder original)
     {
         var before = Summarize(original);
-        var current = ToUnits(original);
+        var extra = data.Civ(original.Civ).Start.ExtraVillagers;
+        var current = ToUnits(original, extra);
         var best = before;
         for (var accepted = 0; accepted < MaxChanges; accepted++)
         {
             (List<Step> Steps, PlanSummary Plan)? winner = null;
             foreach (var candidate in Moves(current))
             {
-                var bo = original with { Steps = ToTotals(candidate) };
+                var bo = original with { Steps = ToTotals(candidate, extra) };
                 if (!_validator.Validate(bo).IsValid)
                     continue;
                 var plan = _planner.Simulate(bo);
@@ -70,9 +71,9 @@ public sealed class BuildOrderOptimizer(GameData data, PlannerSettings? settings
         }
 
         current = Merge(current);
-        var improved = original with { Steps = Renumber(ToTotals(current)) };
+        var improved = original with { Steps = Renumber(ToTotals(current, extra)) };
         var after = Summarize(improved);
-        var changes = after.Score <= before.Score - MinTotalGain ? Describe(ToUnits(original), current) : [];
+        var changes = after.Score <= before.Score - MinTotalGain ? Describe(ToUnits(original, extra), current) : [];
         return changes.Count == 0
             ? new OptimizeResult(original, [], before, before)
             : new OptimizeResult(improved, changes, before, after);
@@ -95,16 +96,16 @@ public sealed class BuildOrderOptimizer(GameData data, PlannerSettings? settings
     /// Los pasos con la cantidad de aldeanos nuevos de cada paso (y no el total en la fuente): así un aldeano que cambia
     /// de recurso es un cambio en un solo paso y los totales de los pasos siguientes se rehacen solos.
     /// </summary>
-    private static List<Step> ToUnits(BuildOrder bo)
+    private static List<Step> ToUnits(BuildOrder bo, int extraVillagers)
     {
-        var units = LivePlan.Units(bo);
+        var units = LivePlan.Units(bo, extraVillagers);
         return bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? s with { Count = units[i], After = [.. s.After] } : s with { After = [.. s.After] }).ToList();
     }
 
-    private static List<Step> ToTotals(List<Step> units)
+    private static List<Step> ToTotals(List<Step> units, int extraVillagers)
     {
         var bo = new BuildOrder { Steps = units.Select(s => s with { }).ToList() };
-        LivePlan.CountsToTotals(bo);
+        LivePlan.CountsToTotals(bo, extraVillagers);
         return [.. bo.Steps];
     }
 

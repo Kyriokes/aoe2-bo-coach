@@ -445,6 +445,19 @@ public class PlannerTests
     }
 
     [Fact]
+    public void Un_edificio_que_Atras_descarto_no_cuenta_en_el_plan()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Build("b", "barracks")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Events("barracks_built", 2).State);
+        Assert.Equal(2, LivePlan.Start(tracker).Buildings["barracks"]);
+
+        tracker.Back();
+
+        Assert.Equal(1, LivePlan.Start(tracker).Buildings["barracks"]);
+    }
+
+    [Fact]
     public void Los_edificios_que_avisa_el_log_fuera_de_la_BO_cuentan_en_el_plan()
     {
         var bo = new BuildOrder { Name = "t", Steps = [Research("feudal", "feudal_age")] };

@@ -48,19 +48,21 @@ public static class LivePlan
         // También las que el log mostró fuera de la BO (una carretilla que no estaba en el plan).
         var state = tracker.State;
         var researched = layout.Researched;
+        var logged = new Dictionary<string, int> { [BuildOrderValidator.StartingBuilding] = 1 };
         foreach (var e in state.Events)
         {
-            if (!tracker.IsDiscarded(e) && EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
+            if (tracker.IsDiscarded(e) || EventConventions.Parse(e.EventId) is not { } done)
+                continue;
+            if (done.Action == StepAction.Research && !researched.Contains(done.What))
                 researched.Add(done.What);
+            else if (done.Action == StepAction.Build)
+                logged[done.What] = logged.GetValueOrDefault(done.What) + 1;
         }
         // Lo mismo con los edificios: lo que avisó el log fuera de la BO y lo que cuenta como otra cosa (el asentamiento
         // de los incas es también molino y campamentos). Sin eso, la Feudal no arrancaba nunca en el plan.
         var buildings = layout.Buildings;
         foreach (var building in tracker.BuiltBuildings)
-        {
-            var logged = state.Count($"{building}_built") + (building == BuildOrderValidator.StartingBuilding ? 1 : 0);
-            buildings[building] = Math.Max(buildings.GetValueOrDefault(building), Math.Max(1, logged));
-        }
+            buildings[building] = Math.Max(buildings.GetValueOrDefault(building), Math.Max(1, logged.GetValueOrDefault(building)));
         // La edad, la del jugador: sacándola solo de los pasos, sin BO quedaba en la Edad Oscura toda la partida, una BO
         // que termina en Feudal nunca pedía lo de Castillos y un clic salteado trababa todo lo de esa edad.
         return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, tracker.Age, layout.Villagers, layout.Idle, buildings)

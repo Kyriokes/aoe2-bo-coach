@@ -89,7 +89,7 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
         var dt = first ? 0 : Math.Clamp(now - _last, 0, 5); // un hueco sin capturas no suma de más
         _last = now;
         _steps = steps;
-        foreach (var s in steps.Where(s => s.Step.What is not null))
+        foreach (var s in steps.Where(s => s.Step is { Do: StepAction.Research, What: not null }))
         {
             if (s.State == StepState.InProgress && s.StartedAt is { } clicked)
                 _clicks[s.Step.What!] = clicked;
