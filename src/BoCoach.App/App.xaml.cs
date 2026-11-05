@@ -110,6 +110,7 @@ public partial class App : Application
         if (screenshot is null)
         {
             window.Show();
+            RefreshLinks();
             if (Argument(args, "--replay") is { } replay)
                 StartReplay(window, replay, Argument(args, "--bo"), Argument(args, "--speed"), Argument(args, "--stats"));
             if (importLink is not null)
@@ -154,6 +155,20 @@ public partial class App : Application
         }
         // Con un momento armado a mano, el mensaje de abajo es el de una cuenta conectada.
         CaptureAndExit(window, screenshot, Argument(args, "--state") is null or "sin-cuenta" ? null : Texts.HotkeysReady("Ctrl+Alt+S", "Ctrl+Alt+→"));
+    }
+
+    /// <summary>Los enlaces bocoach:// siguen a esta copia de la app, si ya estaban registrados. Sin permiso, quedan como estaban.</summary>
+    private static void RefreshLinks()
+    {
+        if (Environment.ProcessPath is not { } exe)
+            return;
+        try
+        {
+            new LinkProtocol().RefreshIfRegistered(exe);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+        }
     }
 
     /// <summary>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run] (ver <see cref="BulkPublish"/>).</summary>

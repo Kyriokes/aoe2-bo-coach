@@ -41,5 +41,17 @@ public sealed class LinkProtocol(string classesKey = @"Software\Classes")
         command.SetValue(null, CommandFor(exePath));
     }
 
+    /// <summary>
+    /// Si los enlaces abren otra copia de la app (se bajó una versión nueva en otra carpeta), pasan a abrir esta: si no,
+    /// seguían abriendo la vieja, o nada si ya se borró. Si nunca se registraron no hace nada: se registran recién cuando
+    /// el jugador lo pide.
+    /// </summary>
+    public void RefreshIfRegistered(string exePath)
+    {
+        using var command = Registry.CurrentUser.OpenSubKey($@"{Key}\shell\open\command");
+        if (command?.GetValue(null) is string && !IsRegisteredTo(exePath))
+            Register(exePath);
+    }
+
     public void Unregister() => Registry.CurrentUser.DeleteSubKeyTree(Key, throwOnMissingSubKey: false);
 }

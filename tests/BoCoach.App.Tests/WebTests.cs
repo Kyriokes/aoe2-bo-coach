@@ -256,6 +256,31 @@ public sealed class WebTests : IDisposable
         }
     }
 
+    // AP-06: con una versión nueva en otra carpeta, los enlaces seguían abriendo la vieja.
+    [Fact]
+    public void Los_enlaces_registrados_pasan_a_esta_copia_y_los_que_no_estaban_no_se_registran()
+    {
+        var key = $@"Software\BoCoachTests-{Guid.NewGuid():N}\Classes";
+        var links = new LinkProtocol(key);
+        try
+        {
+            links.RefreshIfRegistered(@"D:\nueva\BoCoach.exe");
+            Assert.False(links.IsRegisteredTo(@"D:\nueva\BoCoach.exe"));
+            using (var none = Registry.CurrentUser.OpenSubKey($@"{key}\bocoach"))
+                Assert.Null(none);
+
+            links.Register(@"C:\vieja\BoCoach.exe");
+            links.RefreshIfRegistered(@"D:\nueva\BoCoach.exe");
+
+            Assert.True(links.IsRegisteredTo(@"D:\nueva\BoCoach.exe"));
+            Assert.False(links.IsRegisteredTo(@"C:\vieja\BoCoach.exe"));
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(key.Split('\\')[0] + "\\" + key.Split('\\')[1], throwOnMissingSubKey: false);
+        }
+    }
+
     [Fact]
     public async Task Un_enlace_abierto_con_la_app_ya_abierta_le_llega_a_esa_ventana()
     {
