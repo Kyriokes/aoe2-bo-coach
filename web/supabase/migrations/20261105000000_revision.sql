@@ -57,11 +57,27 @@ begin
    where install_id = p_install and game_id = p_game and uploaded_at is null;
 end $$;
 
+-- BD-03: las reservas no vencían y contaban aunque no se subiera nada: 900 reservas de 1 MB agotaban el lugar para
+-- siempre, y 1000 identidades nuevas, el cupo de cada día. Ahora una reserva dura 24 horas, mientras tanto ocupa lo más
+-- que puede pesar (lo que dice p_size lo escribe el que llama) y las instalaciones de menos de un día tienen su propio
+-- cupo: un ataque con identidades nuevas no frena a las que ya estaban.
+create or replace function public.record_limit(what text) returns bigint
+language sql immutable as $$
+  select case what
+    when 'install_per_day' then 30
+    when 'total_per_day' then 1000
+    when 'new_install_per_day' then 300
+    when 'total_bytes' then 900 * 1024 * 1024
+  end::bigint
+$$;
+
 -- Reserva el lugar de un registro. { path, status }: "new" = hay que subirlo, "exists" = ya estaba (reenviar no duplica).
 create or replace function public.app_record_reserve(p_install text, p_secret text, p_game text, p_size int, p_version text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
   existing public.game_records;
+  reserved boolean;
+  recent boolean;
   new_path text;
 begin
   perform public.record_install(p_install, p_secret);
@@ -76,26 +92,40 @@ begin
   end if;
 
   select * into existing from public.game_records where install_id = p_install and game_id = p_game;
-  if found then
-    return jsonb_build_object('path', existing.path,
-      'status', case when existing.uploaded_at is null and existing.forgotten_at is null then 'new' else 'exists' end);
+  reserved := found;
+  if reserved and (existing.uploaded_at is not null or existing.forgotten_at is not null) then
+    return jsonb_build_object('path', existing.path, 'status', 'exists');
+  end if;
+  if reserved and existing.reserved_at > now() - interval '1 day' then
+    return jsonb_build_object('path', existing.path, 'status', 'new');
   end if;
 
   if (select count(*) from public.game_records where install_id = p_install and reserved_at > now() - interval '1 day') >= public.record_limit('install_per_day') then
     raise exception 'Demasiadas partidas de esta instalación hoy.' using errcode = 'BC429';
   end if;
-  if (select count(*) from public.game_records where reserved_at > now() - interval '1 day') >= public.record_limit('total_per_day') then
+  select i.created_at > now() - interval '1 day' into recent from public.record_installs i where i.id = p_install;
+  if (select count(*)
+        from public.game_records g
+        join public.record_installs i on i.id = g.install_id
+       where g.reserved_at > now() - interval '1 day' and (i.created_at > now() - interval '1 day') = recent)
+     >= public.record_limit(case when recent then 'new_install_per_day' else 'total_per_day' end) then
     raise exception 'Demasiadas partidas hoy.' using errcode = 'BC429';
   end if;
-  -- Lo que hay en Storage, más lo reservado que todavía no se subió.
+  -- Lo que hay en Storage, más 1 MB (el tope del bucket) por esta y por cada reserva vigente sin archivo.
   if (select coalesce(sum((o.metadata ->> 'size')::bigint), 0) from storage.objects o where o.bucket_id = 'registros')
-     + (select coalesce(sum(g.size), 0) from public.game_records g
-         where g.uploaded_at is null and g.forgotten_at is null
-           and not exists (select 1 from storage.objects o where o.bucket_id = 'registros' and o.name = g.path))
-     + p_size > public.record_limit('total_bytes') then
+     + 1048576 * (1 + (select count(*) from public.game_records g
+                        where g.uploaded_at is null and g.forgotten_at is null and g.reserved_at > now() - interval '1 day'
+                          and not exists (select 1 from storage.objects o where o.bucket_id = 'registros' and o.name = g.path)))
+     > public.record_limit('total_bytes') then
     raise exception 'No hay lugar para más registros.' using errcode = 'BC429';
   end if;
 
+  if reserved then
+    update public.game_records
+       set reserved_at = now(), size = p_size, app_version = p_version
+     where install_id = p_install and game_id = p_game;
+    return jsonb_build_object('path', existing.path, 'status', 'new');
+  end if;
   new_path := p_install || '/' || p_game || '.jsonl.gz';
   insert into public.game_records (install_id, game_id, path, size, app_version) values (p_install, p_game, new_path, p_size, p_version);
   return jsonb_build_object('path', new_path, 'status', 'new');
@@ -116,5 +146,12 @@ begin
   select coalesce(array_agg(path order by path), '{}') into paths from public.game_records where install_id = p_install and forgotten_at is not null;
   return paths;
 end $$;
+
+-- Lo que pregunta la política de Storage para subir: una reserva vigente.
+create or replace function public.record_is_reserved(p_path text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.game_records
+                  where path = p_path and uploaded_at is null and forgotten_at is null and reserved_at > now() - interval '1 day')
+$$;
 
 revoke execute on function public.record_install_known(text, text) from public, anon, authenticated;

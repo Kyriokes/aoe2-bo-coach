@@ -90,11 +90,79 @@ describe("registros de partida", () => {
     expect((await reserve(db, { game: gameId(30) })).status).toBe("new");
   });
 
-  it("hay un tope de lo guardado en total", async () => {
-    await db.exec(`insert into public.record_installs (id, secret_hash) values ('${"9".repeat(32)}', 'x');
-      insert into public.game_records (install_id, game_id, path, size, app_version, reserved_at)
-      select '${"9".repeat(32)}', lpad(to_hex(n), 32, '0'), 'x/' || n, 1048576, 'v', now() - interval '2 days' from generate_series(1, 900) n`);
-    await expect(reserve(db)).rejects.toMatchObject({ code: "BC429" });
+  describe("topes y vencimiento de las reservas", () => {
+    const stranger = "9".repeat(32);
+
+    /** Una instalación que existe hace días, con el secreto de siempre. */
+    const oldInstall = (id: string) =>
+      db.query("insert into public.record_installs (id, secret_hash, created_at) values ($1, public.hash_token($2), now() - interval '2 days')", [id, secret]);
+
+    /** Una instalación recién creada. */
+    const newInstall = (id: string) => db.query("insert into public.record_installs (id, secret_hash) values ($1, 'x')", [id]);
+
+    /** n reservas sin archivo de esa instalación, hechas hace ese tiempo. */
+    const reservations = (id: string, n: number, ago: string, size = 1_048_576) =>
+      db.query(
+        `insert into public.game_records (install_id, game_id, path, size, app_version, reserved_at)
+         select $1, lpad(to_hex(n), 32, '0'), $1 || '/' || n, $2, 'v', now() - $3::interval from generate_series(1, $4::int) n`,
+        [id, size, ago, n],
+      );
+
+    it("900 reservas viejas sin subir no agotan el lugar", async () => {
+      await oldInstall(stranger);
+      await reservations(stranger, 900, "2 days");
+      expect((await reserve(db)).status).toBe("new");
+    });
+
+    it("una reserva de las últimas 24 horas ocupa lo más que puede pesar, aunque diga 1 byte", async () => {
+      await oldInstall(stranger);
+      await reservations(stranger, 900, "1 hour", 1);
+      await expect(reserve(db)).rejects.toMatchObject({ code: "BC429" });
+      await db.exec("update public.game_records set reserved_at = now() - interval '25 hours'");
+      expect((await reserve(db)).status).toBe("new");
+    });
+
+    it("una reserva vencida no deja subir, y reservar de nuevo pasa por los topes", async () => {
+      const { path } = await reserve(db);
+      await db.exec("update public.game_records set reserved_at = now() - interval '2 days'");
+      await expect(upload(db, path)).rejects.toThrow(/row-level security/);
+
+      for (let i = 0; i < 30; i++) await reserve(db, { game: gameId(i) });
+      await expect(reserve(db)).rejects.toMatchObject({ code: "BC429" });
+
+      await db.exec("update public.game_records set reserved_at = now() - interval '2 days'");
+      expect(await reserve(db)).toEqual({ path, status: "new" });
+      await upload(db, path);
+      await markDone(db);
+      expect(await reserve(db)).toEqual({ path, status: "exists" });
+    });
+
+    it("un archivo subido sin avisar sigue contando aunque su reserva venza", async () => {
+      await oldInstall(stranger);
+      const { path } = await reserve(db, { size: 1 });
+      await upload(db, path, 1_048_576);
+      await db.exec(`update public.game_records set reserved_at = now() - interval '2 days';
+        insert into storage.objects (bucket_id, name, metadata)
+        select 'registros', 'x/' || n, jsonb_build_object('size', 1048576) from generate_series(1, 899) n`);
+      await expect(reserve(db, { install: stranger, game: other })).rejects.toMatchObject({ code: "BC429" });
+    });
+
+    it("las instalaciones de menos de un día tienen su cupo y no frenan a las viejas", async () => {
+      await newInstall(stranger);
+      await reservations(stranger, 300, "1 hour", 1);
+      await expect(reserve(db)).rejects.toMatchObject({ code: "BC429" });
+      await oldInstall(other);
+      expect((await reserve(db, { install: other })).status).toBe("new");
+    });
+
+    it("las viejas tampoco frenan a las nuevas", async () => {
+      await oldInstall(stranger);
+      await reservations(stranger, 1000, "1 hour");
+      await db.exec("update public.game_records set uploaded_at = now()"); // subidas: lo que pesan está en Storage, acá nada
+      await oldInstall(other);
+      await expect(reserve(db, { install: other })).rejects.toMatchObject({ code: "BC429" });
+      expect((await reserve(db)).status).toBe("new");
+    });
   });
 
   it("marcar subido exige el archivo y anota su tamaño real", async () => {
