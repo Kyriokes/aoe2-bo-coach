@@ -454,6 +454,7 @@ export const es = {
     noName: "Falta el nombre.",
     noSteps: "La BO no tiene pasos.",
     tooBig: "La BO pesa más de {n} KB: sacale notas o pasos.",
+    nullCharacter: "La BO tiene un carácter nulo (\\u0000) en algún texto: sacalo y probá de nuevo.",
     tooManyAfter: "Un paso espera a más de {n} pasos (after).",
     tooManyGoals: "La BO tiene más de {n} objetivos.",
     mapTooLong: "El mapa tiene más de {n} caracteres.",

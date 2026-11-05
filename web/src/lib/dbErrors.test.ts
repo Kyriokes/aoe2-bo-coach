@@ -29,6 +29,15 @@ describe("errores de la base", () => {
   });
 });
 
+describe("datos que la base no puede guardar (clase 22)", () => {
+  it.each(["22003", "22P02", "22P05", "22021"])("%s da 400, explicado con los topes y sin el detalle", (code) => {
+    const error = { code, message: 'value "10000000000" is out of range for type integer' };
+    expect(dbErrorStatus(error)).toBe(400);
+    expect(dbErrorMessage(error)).toBe(LIMITS_MESSAGE);
+    expect(dbErrorMessage(error, "en")).toMatch(/limits/);
+  });
+});
+
 describe("cambios muy seguidos", () => {
   const error = { code: "BC430", message: "Guardaste esta build order hace unos segundos: esperá un momento y probá de nuevo." };
 

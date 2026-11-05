@@ -95,6 +95,22 @@ describe("topes de after, objetivos y mapa", () => {
   });
 });
 
+// Postgres no guarda ese carácter en un jsonb: terminaba en un error 500 de la base.
+describe("carácter nulo", () => {
+  it("se rechaza con un mensaje, como texto o como objeto, y también en una clave", () => {
+    expect(errorOf(bo({ note: "a\u0000b" }))).toMatch(/nulo/);
+    expect(errorOf(JSON.stringify(bo({ note: "a\u0000b" })))).toMatch(/nulo/);
+    expect(errorOf(bo({ note: "\\\u0000" }))).toMatch(/nulo/);
+    expect(errorOf(bo({ "a\u0000": 1 }))).toMatch(/nulo/);
+    expect(parseBuildOrder(bo({ note: "\u0000" }), "en")).toMatchObject({ ok: false, error: expect.stringMatching(/null character/) });
+  });
+
+  it("una barra y una u escritas de verdad no son un carácter nulo", () => {
+    expect(errorOf(bo({ note: "C:\\u0000" }))).toBeNull();
+    expect(errorOf(JSON.stringify(bo({ note: "C:\\u0000" })))).toBeNull();
+  });
+});
+
 describe("visibilidad", () => {
   const body = parseBuildOrder({ schema_version: 1, name: "x", steps: [{ id: "a", do: "train", what: "villager" }] });
 

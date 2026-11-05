@@ -15,6 +15,15 @@ export const MAX_COUNT = 200;
  */
 export const MAX_BODY_CHARS = 128_000;
 
+/** Hasta dónde puede estimarse un clic de edad, en segundos (la base controla lo mismo). */
+export const MAX_CLICK_SECONDS = 86_400;
+
+/**
+ * Un carácter nulo en el JSON ya escrito: siempre va con su escape, y una barra de verdad va doble. Postgres no guarda ese
+ * carácter en un jsonb y sin esto terminaba en un error de la base.
+ */
+const NULL_CHARACTER = /(?:^|[^\\])(?:\\\\)*\\u0000/;
+
 /** Tope de los after de un paso, de los objetivos del modo asistido y del largo del mapa (el validador del Core y la base controlan lo mismo). */
 export const MAX_AFTER = 50;
 export const MAX_GOALS = 40;
@@ -87,6 +96,7 @@ export function parseBuildOrder(json: unknown, locale: Locale = "es"): { ok: tru
   } else if ((JSON.stringify(json) ?? "").length > MAX_BODY_CHARS) {
     return tooBig;
   }
+  if (NULL_CHARACTER.test(JSON.stringify(value) ?? "")) return { ok: false, error: t.nullCharacter };
   const result = SCHEMAS[locale].safeParse(value);
   if (!result.success) {
     const issue = result.error.issues[0];
