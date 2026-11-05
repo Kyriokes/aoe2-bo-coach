@@ -323,11 +323,11 @@ describe("biblioteca", () => {
     });
 
     it("las columnas salen del JSON, y el autor tiene hasta 60 caracteres", async () => {
-      const body = { ...scouts, civ: " Franks ", tags: [" fc ", ""], description: "  ", author: "Hera" };
+      const body = { ...scouts, civ: " Franks ", tags: [" FC ", ""], description: "  ", author: "Hera" };
       const direct = "insert into public.build_orders (name, civ, tags, schema_version, body) values ('Otra', 'britons', '{x}', 7, $1) returning code";
       const { rows } = await as<{ code: string }>(db, ana, direct, [body]);
       const columns = await db.query("select name, civ, tags, description, schema_version from public.build_orders where code = $1", [rows[0].code]);
-      expect(columns.rows[0]).toEqual({ name: "Scouts Feudal", civ: "Franks", tags: ["fc"], description: null, schema_version: 1 });
+      expect(columns.rows[0]).toEqual({ name: "Scouts Feudal", civ: "franks", tags: ["fc"], description: null, schema_version: 1 });
 
       await bad({ ...scouts, author: "x".repeat(61) });
       await expect(as(db, ana, direct, [{ ...scouts, name: "   " }])).rejects.toThrow(/nombre/);

@@ -60,6 +60,28 @@ beforeEach(() => {
   filters.length = 0;
 });
 
+describe("los filtros de la biblioteca", () => {
+  it("traen solo civs del juego y etiquetas conocidas, sin repetir por las mayúsculas", async () => {
+    const { listFacets } = await import("./data");
+    rows = [
+      { civ: "franks", tags: ["Feudal", "casino online gratis"] },
+      { civ: "Franks", tags: ["feudal", "scouts"] },
+      { civ: "casino online gratis", tags: [] },
+      { civ: "any", tags: [] },
+    ];
+    expect(await listFacets()).toEqual({ civs: ["any", "franks"], tags: ["feudal", "scouts"] });
+  });
+
+  it("la lista filtra en minúsculas, como guarda la base", async () => {
+    const { listBuildOrders } = await import("./data");
+    await listBuildOrders({ civ: " Franks ", tag: "Feudal" });
+    expect(filters).toEqual([
+      ["eq", "civ", "franks"],
+      ["contains", "tags", ["feudal"]],
+    ]);
+  });
+});
+
 describe("leer más de lo que PostgREST da de una vez", () => {
   it("los filtros ven también lo que está después de las primeras 1000 BO", async () => {
     const { listFacets } = await import("./data");

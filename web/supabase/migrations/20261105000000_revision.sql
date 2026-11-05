@@ -290,6 +290,50 @@ create trigger build_orders_limit_changes
 revoke execute on function public.check_build_order_space(uuid, uuid, jsonb) from public, anon, authenticated;
 revoke execute on function public.limit_build_order_changes() from public, anon, authenticated;
 
+-- BD-15: "Franks" salía separada de "franks" en los filtros. La civ y las etiquetas se guardan en minúsculas.
+create or replace function public.sync_build_order_columns() returns trigger
+language plpgsql set search_path = '' as $$
+declare
+  version numeric;
+begin
+  if jsonb_typeof(new.body -> 'schema_version') is distinct from 'number' then
+    raise exception 'La BO tiene que traer schema_version (un número entero).' using errcode = '23514';
+  end if;
+  version := (new.body ->> 'schema_version')::numeric;
+  if version <> trunc(version) then
+    raise exception 'La BO tiene que traer schema_version (un número entero).' using errcode = '23514';
+  end if;
+  if jsonb_typeof(new.body -> 'name') is distinct from 'string' or trim(new.body ->> 'name') = '' then
+    raise exception 'La BO tiene que traer un nombre.' using errcode = '23514';
+  end if;
+
+  new.schema_version := version::int;
+  new.name := trim(new.body ->> 'name');
+  new.civ := lower(coalesce(nullif(trim(new.body ->> 'civ'), ''), 'any'));
+  new.tags := case
+                when jsonb_typeof(new.body -> 'tags') = 'array' then
+                  coalesce(array(select lower(trim(t)) from jsonb_array_elements_text(new.body -> 'tags') as e(t) where trim(t) <> ''), '{}')
+                else '{}'
+              end;
+  new.description := nullif(trim(new.body ->> 'description'), '');
+  return new;
+end $$;
+
+-- Lo que ya estaba. "body = body" no cuenta como un cambio de la BO ni le toca la fecha. Una BO vieja que no entra en los
+-- topes de ahora no se puede guardar: queda como está hasta que su dueño la edite.
+do $do$
+declare
+  stale record;
+begin
+  for stale in select id from public.build_orders where civ <> lower(civ) or tags::text <> lower(tags::text) loop
+    begin
+      update public.build_orders set body = body where id = stale.id;
+    exception when check_violation then
+      null;
+    end;
+  end loop;
+end $do$;
+
 -- ---------------------------------------------------------------------------------------------------------------
 -- Cuentas y votos.
 -- ---------------------------------------------------------------------------------------------------------------

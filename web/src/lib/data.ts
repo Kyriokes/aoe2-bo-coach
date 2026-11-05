@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import type { Visibility } from "./buildOrder";
-import { filterValue, pageNumber } from "./filters";
+import { filterValue, knownCiv, knownTag, pageNumber } from "./filters";
 import { publicClient } from "./supabase/server";
 
 /** Lo que se muestra de una BO en la biblioteca. */
@@ -85,8 +85,8 @@ export function listBuildOrders(query: LibraryQuery): Promise<LibraryPage> {
   // Los valores van tal cual a la sintaxis del filtro: lo que no sirve (una llave, una coma) se ignora.
   return cachedBuildOrders(
     cleanSearch(query.q ?? "").toLowerCase(),
-    filterValue(query.civ) ?? "",
-    filterValue(query.tag) ?? "",
+    filterValue(query.civ)?.toLowerCase() ?? "",
+    filterValue(query.tag)?.toLowerCase() ?? "",
     query.sort === "recientes" ? "recientes" : "votos",
     pageNumber(String(query.page ?? 1)),
   );
@@ -140,7 +140,10 @@ async function readAll<T>(
   return rows;
 }
 
-/** Civs y tags que hay en la biblioteca, para los filtros. */
+/**
+ * Civs y tags que hay en la biblioteca, para los filtros y el sitemap: solo las del juego y las conocidas, porque cada BO
+ * escribe lo que quiere y lo que va acá es una opción del desplegable y una página para los buscadores.
+ */
 export async function listFacets(): Promise<{ civs: string[]; tags: string[] }> {
   "use cache";
   cacheLife("minutes");
@@ -152,7 +155,9 @@ export async function listFacets(): Promise<{ civs: string[]; tags: string[] }> 
     db.from("build_orders").select("civ, tags").order("code").range(from, to),
   );
   const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
-  return { civs: sorted(rows.map((r) => r.civ)), tags: sorted(rows.flatMap((r) => r.tags)) };
+  const known = (values: string[], isKnown: (value: string) => string | undefined) =>
+    sorted(values.map(isKnown).filter((value) => value !== undefined));
+  return { civs: known(rows.map((r) => r.civ), knownCiv), tags: known(rows.flatMap((r) => r.tags), knownTag) };
 }
 
 /** Código y última modificación de cada BO, para el sitemap. */

@@ -6,7 +6,7 @@ import Link from "@/i18n/Link";
 import { asLocale, localeAlternates, localePath, OG_LOCALE, type Locale } from "@/i18n/locales";
 import { i18n } from "@/i18n/server";
 import { listBuildOrders, listFacets, type LibraryQuery } from "@/lib/data";
-import { filterValue, libraryHref, pageNumber } from "@/lib/filters";
+import { knownCiv, knownTag, libraryHref, libraryPageFor, pageNumber } from "@/lib/filters";
 import { mySubscriptionIds } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
 import { civLabel, SITE_NAME } from "@/lib/share";
@@ -20,15 +20,14 @@ function civSubject(civ: string | undefined, locale: Locale) {
 }
 
 /**
- * Cada civ y cada etiqueta es una página para los buscadores ("Build orders de Britanos"); las búsquedas por texto
- * y el orden no: se pueden seguir, pero no se indexan, y la canónica es la de la civ o la etiqueta.
+ * Cada civ y cada etiqueta conocida es una página para los buscadores ("Build orders de Britanos"); las búsquedas por
+ * texto, el orden y lo inventado no: se pueden seguir, pero no se indexan, y la canónica es la de la civ o la etiqueta.
  */
 export async function generateMetadata({ params, searchParams }: PageProps<"/[locale]/biblioteca">): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = getDictionary(locale).library;
   const query = await readQuery(searchParams);
-  const civ = filterValue(query.civ);
-  const tag = civ ? undefined : filterValue(query.tag);
+  const { civ, tag, noindex } = libraryPageFor(query);
   const subject = civSubject(civ, locale);
   const title = subject ? fill(t.titleSubject, { subject }) : tag ? fill(t.titleTag, { tag }) : t.title;
   const description = subject ? fill(t.descriptionSubject, { subject }) : t.description;
@@ -38,7 +37,7 @@ export async function generateMetadata({ params, searchParams }: PageProps<"/[lo
     description,
     alternates: localeAlternates(locale, path),
     openGraph: { siteName: SITE_NAME, locale: OG_LOCALE[locale], type: "website", title, description, url: localePath(locale, path) },
-    robots: query.q || (civ && query.tag) ? { index: false, follow: true } : undefined,
+    robots: noindex ? { index: false, follow: true } : undefined,
   };
 }
 
@@ -90,7 +89,7 @@ export default async function LibraryPage({ searchParams }: PageProps<"/[locale]
 
 async function Title({ searchParams, locale }: { searchParams: SearchParams; locale: Locale }) {
   const t = getDictionary(locale).library;
-  const subject = civSubject(filterValue((await readQuery(searchParams)).civ), locale);
+  const subject = civSubject(knownCiv((await readQuery(searchParams)).civ), locale);
   return <h1 className="text-2xl font-semibold">{subject ? fill(t.titleSubject, { subject }) : t.title}</h1>;
 }
 
@@ -107,7 +106,7 @@ async function Filters({ searchParams, locale }: { searchParams: SearchParams; l
         aria-label={t.searchLabel}
         className="field min-w-56 flex-1"
       />
-      <select name="civ" defaultValue={query.civ ?? ""} className="field" aria-label={t.civLabel}>
+      <select name="civ" defaultValue={knownCiv(query.civ) ?? ""} className="field" aria-label={t.civLabel}>
         <option value="">{t.allCivs}</option>
         {[...facets.civs].sort((a, b) => civLabel(a, locale).localeCompare(civLabel(b, locale), locale)).map((civ) => (
           <option key={civ} value={civ}>
@@ -115,7 +114,7 @@ async function Filters({ searchParams, locale }: { searchParams: SearchParams; l
           </option>
         ))}
       </select>
-      <select name="tag" defaultValue={query.tag ?? ""} className="field" aria-label={t.tagLabel}>
+      <select name="tag" defaultValue={knownTag(query.tag) ?? ""} className="field" aria-label={t.tagLabel}>
         <option value="">{t.allTags}</option>
         {facets.tags.map((tag) => (
           <option key={tag} value={tag}>
