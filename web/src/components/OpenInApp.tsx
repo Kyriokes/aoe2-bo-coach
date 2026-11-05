@@ -7,7 +7,7 @@ import { copyText } from "@/lib/clipboard";
 
 /**
  * Llevar la BO a la app: el enlace bocoach://import/<código> la abre directo (si la app registró el enlace), y si
- * no, se puede pegar el código en "Importar desde la web" o descargar el .json.
+ * no, se puede pegar el código en "Pegar código" o descargar el .json.
  */
 export function OpenInApp({ code, fileName }: { code: string; fileName: string }) {
   const { t: dict } = useI18n();

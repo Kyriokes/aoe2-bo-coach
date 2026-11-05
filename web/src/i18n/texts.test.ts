@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { getDictionary } from "@/i18n";
 import { parseBuildOrder } from "@/lib/buildOrder";
 import { dbErrorMessage } from "@/lib/dbErrors";
 import { paletteLabel, blockReason, ageLabel, neverStartsText, notBeforeText } from "@/lib/editor/text";
@@ -15,6 +16,28 @@ import { chanceText, durationLabel, eloLabel, mapName, type MatchupData } from "
 import { matchupPageMeta, mapLine, selectionPlace } from "@/lib/matchupView";
 import { byline, civLabel, shareFacts } from "@/lib/share";
 import { parseSupport, formatAmount } from "@/lib/support";
+
+/** La web le dice al usuario qué tocar en la app: los nombres tienen que ser los de src/BoCoach.App/Texts.cs. */
+describe("los botones de la app, como se llaman en la app", () => {
+  const texts = readFileSync(join(__dirname, "..", "..", "..", "src", "BoCoach.App", "Texts.cs"), "utf8");
+  const label = (name: string, locale: "es" | "en") => {
+    const match = new RegExp(`\\b${name} => L\\("([^"]+)", "([^"]+)"\\)`).exec(texts);
+    if (!match) throw new Error(`${name} no está en Texts.cs`);
+    return match[locale === "es" ? 1 : 2];
+  };
+
+  it.each(["es", "en"] as const)("%s", (locale) => {
+    const t = getDictionary(locale);
+    expect(t.actions.openInAppHelp).toContain(`«${label("PasteCode", locale)}»`);
+    expect(t.account.connectText).toContain(label("WebAccountLabel", locale));
+    expect(t.account.connectNotice).toContain(label("WebAccountLabel", locale));
+  });
+
+  it("el botón de la página de error dice adónde lleva: la portada, no la biblioteca", () => {
+    expect(getDictionary("es").error.home).toBe("Ir a la portada");
+    expect(getDictionary("en").error.home).toBe("Go to the home page");
+  });
+});
 
 /** Las funciones puras que arman texto, en inglés. En castellano las controlan los tests de cada una. */
 describe("los textos armados en inglés", () => {

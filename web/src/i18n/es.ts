@@ -228,7 +228,7 @@ export const es = {
     copied: "· copiado",
     copyAction: "· copiar",
     downloadJson: "Descargar .json",
-    openInAppHelp: "Si el botón no abre la app: en BO Coach usá «Importar desde la web» y pegá el código.",
+    openInAppHelp: "Si el botón no abre la app: en BO Coach tocá «Pegar código» y pegá este código.",
     downloadFailed: "No se pudo descargar: {error}",
     serverSaid: "la web respondió {status}",
     failed: "No se pudo completar: se cortó la conexión o la web se actualizó. Probá de nuevo y, si sigue, recargá la página.",
@@ -244,7 +244,7 @@ export const es = {
     text: "No se pudo cargar esta página. Puede ser un problema momentáneo de la base de datos: probá de nuevo en un rato.",
     code: "Código del error: {digest}",
     retry: "Probar de nuevo",
-    home: "Ir a la biblioteca",
+    home: "Ir a la portada",
   },
   privacy: {
     title: "Privacidad",
