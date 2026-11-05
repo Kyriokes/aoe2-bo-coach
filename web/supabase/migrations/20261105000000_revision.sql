@@ -134,6 +134,10 @@ end $$;
 -- El pedido de borrado: marca lo de la instalación y devuelve todas sus rutas marcadas para borrar los archivos. Si
 -- algo falla a mitad de camino, otro pedido las vuelve a devolver. Las filas quedan (sin archivo) para no contar otra
 -- vez la misma partida. Una instalación que nunca reservó no tiene nada que borrar.
+--
+-- BD-08: lo marcado para borrar lo podía leer cualquiera hasta que se borrara y, si el borrado fallaba, para siempre.
+-- Storage pide poder ver un archivo para borrarlo, así que se ve solo 2 minutos desde el pedido; cada pedido abre otra
+-- vez ese rato para todo lo de la instalación.
 create or replace function public.app_record_forget(p_install text, p_secret text) returns text[]
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -142,10 +146,15 @@ begin
   if not public.record_install_known(p_install, p_secret) then
     return '{}';
   end if;
-  update public.game_records set forgotten_at = now() where install_id = p_install and forgotten_at is null;
-  select coalesce(array_agg(path order by path), '{}') into paths from public.game_records where install_id = p_install and forgotten_at is not null;
+  update public.game_records set forgotten_at = now() where install_id = p_install;
+  select coalesce(array_agg(path order by path), '{}') into paths from public.game_records where install_id = p_install;
   return paths;
 end $$;
+
+create or replace function public.record_is_forgotten(p_path text) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.game_records where path = p_path and forgotten_at > now() - interval '2 minutes')
+$$;
 
 -- Lo que pregunta la política de Storage para subir: una reserva vigente.
 create or replace function public.record_is_reserved(p_path text) returns boolean

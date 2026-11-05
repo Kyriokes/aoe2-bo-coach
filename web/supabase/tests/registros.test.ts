@@ -237,4 +237,22 @@ describe("registros de partida", () => {
     expect((await reserve(db)).status).toBe("exists");
     expect((await reserve(db, { game: gameId(1) })).status).toBe("new");
   });
+
+  it("lo que se pidió borrar se ve solo un rato, y otro pedido lo abre de nuevo", async () => {
+    const { path } = await reserve(db);
+    await upload(db, path);
+    await markDone(db);
+    await as(db, null, "select public.app_record_forget($1, $2)", [install, secret]);
+    expect((await as(db, null, "select name from storage.objects")).rows).toEqual([{ name: path }]);
+
+    // Si el borrado del archivo falló, a los 2 minutos deja de verse y nadie lo puede borrar.
+    await db.exec("update public.game_records set forgotten_at = now() - interval '3 minutes'");
+    expect((await as(db, null, "select name from storage.objects")).rows).toEqual([]);
+    expect((await as(db, null, "delete from storage.objects returning name")).rows).toEqual([]);
+
+    // El reintento vuelve a dar la ruta y deja borrarlo.
+    const again = await as<{ app_record_forget: string[] }>(db, null, "select public.app_record_forget($1, $2)", [install, secret]);
+    expect(again.rows[0].app_record_forget).toEqual([path]);
+    expect((await as(db, null, "delete from storage.objects returning name")).rows).toEqual([{ name: path }]);
+  });
 });
