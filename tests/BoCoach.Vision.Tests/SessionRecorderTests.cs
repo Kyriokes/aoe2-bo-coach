@@ -195,6 +195,72 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Null(recorder.LastError);
     }
 
+    /// <summary>Pantalla que falla en la primera captura y después anda.</summary>
+    private sealed class FailsOnce(Exception failure) : IScreenSource
+    {
+        private int _captures;
+        public PixelRect CaptureArea => new(0, 0, 1920, 1080);
+        public bool GameFound => true;
+
+        public CapturedImage Capture(PixelRect rect) =>
+            Interlocked.Increment(ref _captures) == 1 ? throw failure : PngTests.Gradient(rect.Width, rect.Height);
+    }
+
+    // Una carpeta sin permiso o GDI que falla (ScreenCapture tira InvalidOperationException) no cortan la grabación: la
+    // captura se pierde, se avisa y sigue.
+    public static TheoryData<Exception> ExpectedFailures =>
+    [
+        new UnauthorizedAccessException("sin permiso"),
+        new InvalidOperationException("sin GDI"),
+        new IOException("disco"),
+    ];
+
+    [Theory]
+    [MemberData(nameof(ExpectedFailures))]
+    public void Un_error_de_una_captura_se_avisa_y_la_grabacion_sigue(Exception failure)
+    {
+        using var recorder = new SessionRecorder(new FailsOnce(failure), RegionLayout.Default, _root.FullName);
+        recorder.Open();
+
+        recorder.CaptureFrame();
+        Assert.Equal(0, recorder.Frames);
+        Assert.Equal(failure.Message, recorder.LastError);
+
+        recorder.CaptureFrame();
+        Assert.Equal(1, recorder.Frames);
+    }
+
+    // Lo inesperado mataba el loop en silencio (el contador quedaba quieto) y después Stop también tiraba, sin cerrar
+    // frames.csv.
+    [Fact]
+    public async Task Un_error_inesperado_no_mata_la_grabacion_y_detenerla_no_tira()
+    {
+        var recorder = new SessionRecorder(new FailsOnce(new NotSupportedException("rarísimo")), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(20));
+
+        recorder.Start();
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (recorder.Frames < 1 && waited.Elapsed < TimeSpan.FromSeconds(10))
+            await Task.Delay(20);
+        var error = Record.Exception(recorder.Stop);
+
+        Assert.Null(error);
+        Assert.True(recorder.Frames >= 1);
+        Assert.False(recorder.IsRecording);
+        File.Delete(Path.Combine(recorder.Folder!, "frames.csv")); // quedó cerrado
+    }
+
+    [Fact]
+    public void Detener_dos_veces_no_tira()
+    {
+        var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
+        recorder.Start();
+
+        recorder.Stop();
+        recorder.Stop();
+
+        Assert.False(recorder.IsRecording);
+    }
+
     [Fact]
     public void session_json_lleva_el_diseno_del_HUD_y_la_grabacion_lo_devuelve()
     {
