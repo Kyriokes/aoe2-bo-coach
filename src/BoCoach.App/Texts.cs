@@ -475,6 +475,7 @@ public static class Texts
     public static string CalibratedScale(string scale) => L($", HUD a escala {scale}", $", HUD at scale {scale}");
     public static string ModFailed(string error) => L($"No se pudo instalar el mod.\n\n{error}", $"The mod couldn't be installed.\n\n{error}");
     public static string ModInstalled(string name) => L($"Listo: el mod \"{name}\" quedó instalado.", $"Done: the mod \"{name}\" is installed.");
+    public static string ModPanelsChanged(string error) => L($"No pude armar el mod: un panel del juego no tiene la forma que espera la app ({error}). Si el juego se actualizó hace poco, puede hacer falta una versión nueva de la app. El mod que había quedó como estaba.", $"I couldn't build the mod: a game panel doesn't have the shape the app expects ({error}). If the game updated recently, a new version of the app may be needed. The mod you had stays as it was.");
     public static string ModWarning(string warning) => $"• {warning}";
     public static string DiagnosticWaiting(string seconds) => L($"Captura de diagnóstico en {seconds} s: volvé al juego…", $"Diagnostic capture in {seconds} s: go back to the game…");
     public static string DiagnosticSaved(string? folder, string name) => L($"Captura de diagnóstico guardada en {folder} ({name}): mandá esa carpeta.", $"Diagnostic capture saved in {folder} ({name}): send that folder.");

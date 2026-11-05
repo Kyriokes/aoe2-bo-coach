@@ -305,6 +305,21 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_dir.FullName, "regions.roto.json")));
     }
 
+    // AP-11: un panel que cambió de forma daba excepciones que el botón no atrapaba.
+    [Fact]
+    public void Instalar_el_mod_con_un_panel_que_cambio_lo_explica()
+    {
+        var game = HudModTests.FakeGame(_dir.FullName);
+        File.WriteAllText(Path.Combine(game, "widgetui", "worldtimerpanel.json"), """{ "Collection": { "Widgets": [] } }""");
+        Directory.CreateDirectory(Path.Combine(_dir.FullName, "perfiles", "76561198000000000", "mods"));
+        var host = new FakeHost();
+
+        Tools(host, () => game).InstallModCommand.Execute(null);
+
+        Assert.True(host.Message?.Warning);
+        Assert.Contains("un panel del juego no tiene la forma", host.Message?.Text);
+    }
+
     [Fact]
     public void Sin_calibrar_avisa_que_usa_posiciones_aproximadas()
     {

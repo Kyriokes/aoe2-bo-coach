@@ -655,4 +655,41 @@ public sealed class HudModTests : IDisposable
         Assert.False(result.Ok);
         Assert.Contains("abrí el juego", Assert.Single(result.Warnings));
     }
+
+    /// <summary>Un panel del juego que cambió de forma (un parche): el menú sin el tamaño de su fondo.</summary>
+    private static void BreakMenuPanel(string game) => File.WriteAllText(Path.Combine(game, "widgetui", "menupanel.json"),
+        """{ "Collection": { "Widgets": [ { "Widget": { "Name": "Background", "ViewPort": { "xorigin": 0 } } } ] } }""");
+
+    // AP-11: el panel se armaba en plena escritura: el mod quedaba a medias y salía un error sin explicar.
+    [Fact]
+    public void Si_un_panel_del_juego_cambio_no_escribe_nada_y_lo_dice()
+    {
+        var game = FakeGame(_dir.FullName);
+        BreakMenuPanel(game);
+        Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
+
+        var result = HudMod.Install(game, Layout(), Profiles);
+
+        Assert.False(result.Ok);
+        Assert.Contains("un panel del juego no tiene la forma", Assert.Single(result.Warnings));
+        Assert.False(Directory.Exists(Path.Combine(Profiles, "111", "mods", "local", HudMod.Name)));
+    }
+
+    [Fact]
+    public void Si_un_panel_del_juego_cambio_el_mod_que_habia_queda_como_estaba()
+    {
+        var game = FakeGame(_dir.FullName);
+        Directory.CreateDirectory(Path.Combine(Profiles, "111", "mods"));
+        HudMod.Install(game, Layout(), Profiles);
+        var mod = Path.Combine(Profiles, "111", "mods", "local", HudMod.Name, "widgetui");
+        var before = Directory.GetFiles(mod).ToDictionary(file => file, File.ReadAllBytes);
+
+        BreakMenuPanel(game);
+        File.WriteAllText(Path.Combine(game, "widgetui", "resourcepanel.json"), ResourcePanel().ToJsonString().Replace("ResourceWood", "OtraTextura"));
+        Assert.False(HudMod.Install(game, Layout(), Profiles).Ok);
+
+        Assert.Equal(before.Keys.Order(), Directory.GetFiles(mod).Order());
+        foreach (var (file, bytes) in before)
+            Assert.Equal(bytes, File.ReadAllBytes(file));
+    }
 }
