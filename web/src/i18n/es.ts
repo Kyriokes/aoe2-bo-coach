@@ -297,6 +297,7 @@ export const es = {
     target: "objetivo {time}",
     coreLanguageNote: "",
     examplesLoading: "Cargando los ejemplos…",
+    examplesFailed: "No se pudieron cargar los ejemplos. Probá de nuevo en un rato.",
     examplesLabel: "Elegí una build order de ejemplo",
     loadingShort: "Cargando…",
     timelineLabel: "Línea de tiempo simulada de la build order",

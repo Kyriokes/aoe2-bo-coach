@@ -20,3 +20,9 @@ export async function loadExamples() {
 export async function loadExample(file: string) {
   return (await get(file)).text();
 }
+
+/** Qué ejemplo mostrar: el elegido si sigue en la lista; si no, el de scouts, que es el más corto de leer. "" si no hay ninguno. */
+export function pickExample(list: Example[], current: string) {
+  if (list.some((e) => e.file === current)) return current;
+  return (list.find((e) => e.name.toLowerCase().includes("scouts")) ?? list[0])?.file ?? "";
+}

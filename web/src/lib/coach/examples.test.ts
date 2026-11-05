@@ -1,5 +1,27 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadExample, loadExamples } from "./examples";
+import { loadExample, loadExamples, pickExample } from "./examples";
+
+describe("qué ejemplo se muestra", () => {
+  const list = [
+    { file: "arqueros.json", name: "Arqueros Feudal" },
+    { file: "scouts.json", name: "Scouts Feudal (22 pop)" },
+  ];
+
+  it("de entrada la de scouts, que es la más corta de leer; si no hay, la primera", () => {
+    expect(pickExample(list, "")).toBe("scouts.json");
+    expect(pickExample([list[0]], "")).toBe("arqueros.json");
+    expect(pickExample([], "")).toBe("");
+  });
+
+  // Next vuelve a mostrar la portada con sus efectos de nuevo (Activity): antes volvía siempre a la de scouts.
+  it("la que se eligió sigue elegida al volver", () => {
+    expect(pickExample(list, "arqueros.json")).toBe("arqueros.json");
+  });
+
+  it("si la elegida ya no está, vuelve a la de entrada", () => {
+    expect(pickExample(list, "otra.json")).toBe("scouts.json");
+  });
+});
 
 describe("los ejemplos de la app", () => {
   afterEach(() => {

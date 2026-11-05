@@ -295,6 +295,7 @@ export const en: Dictionary = {
     target: "target {time}",
     coreLanguageNote: "The assisted mode's explanations are in Spanish for now.",
     examplesLoading: "Loading the examples…",
+    examplesFailed: "Couldn't load the examples. Try again in a while.",
     examplesLabel: "Pick an example build order",
     loadingShort: "Loading…",
     timelineLabel: "Simulated timeline of the build order",

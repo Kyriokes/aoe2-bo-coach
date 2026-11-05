@@ -2,50 +2,46 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/i18n/client";
-import { COACH_BASE } from "@/lib/coach/browser";
+import { loadExample, loadExamples, pickExample, type Example } from "@/lib/coach/examples";
 import { BuildOrderView } from "./BuildOrderView";
-
-interface Example {
-  file: string;
-  name: string;
-}
 
 /** Las BO de ejemplo de la app, simuladas en el navegador con el mismo Core (no necesita la base de datos). */
 export function ExampleDemo() {
   const { t } = useI18n();
   const [examples, setExamples] = useState<Example[]>([]);
+  const [listFailed, setListFailed] = useState(false);
   const [selected, setSelected] = useState<string>("");
-  const [json, setJson] = useState<string | null>(null);
+  /** El último ejemplo que respondió: `json` null si no se pudo traer. */
+  const [loaded, setLoaded] = useState<{ file: string; json: string | null } | null>(null);
 
+  // Next recrea los efectos cada vez que la portada vuelve a mostrarse (Activity): el ejemplo elegido sigue elegido.
   useEffect(() => {
-    fetch(`${COACH_BASE}/ejemplos/index.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<Example[]>) : []))
+    loadExamples()
       .then((list) => {
         setExamples(list);
-        // Primero la de scouts: es la más corta de leer.
-        const first = list.find((e) => e.name.toLowerCase().includes("scouts")) ?? list[0];
-        if (first) setSelected(first.file);
+        setListFailed(list.length === 0);
+        setSelected((current) => pickExample(list, current));
       })
-      .catch(() => setExamples([]));
+      .catch(() => setListFailed(true));
   }, []);
 
   useEffect(() => {
     if (!selected) return;
     let cancelled = false;
-    fetch(`${COACH_BASE}/ejemplos/${selected}`)
-      .then((r) => r.text())
+    loadExample(selected)
       .then((text) => {
-        if (!cancelled) setJson(text);
+        if (!cancelled) setLoaded({ file: selected, json: text });
       })
       .catch(() => {
-        if (!cancelled) setJson(null);
+        if (!cancelled) setLoaded({ file: selected, json: null });
       });
     return () => {
       cancelled = true;
     };
   }, [selected]);
 
-  if (examples.length === 0) return <p className="text-sm text-faint">{t.sim.examplesLoading}</p>;
+  if (examples.length === 0) return <p className={`text-sm ${listFailed ? "text-red" : "text-faint"}`}>{listFailed ? t.sim.examplesFailed : t.sim.examplesLoading}</p>;
+  const current = loaded?.file === selected ? loaded : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,7 +58,15 @@ export function ExampleDemo() {
           </button>
         ))}
       </div>
-      {json ? <BuildOrderView key={selected} json={json} /> : <p className="text-sm text-faint">{t.sim.loadingShort}</p>}
+      {current?.json ? (
+        <BuildOrderView key={selected} json={current.json} />
+      ) : current ? (
+        <p role="alert" className="text-sm text-red">
+          {t.sim.examplesFailed}
+        </p>
+      ) : (
+        <p className="text-sm text-faint">{t.sim.loadingShort}</p>
+      )}
     </div>
   );
 }
