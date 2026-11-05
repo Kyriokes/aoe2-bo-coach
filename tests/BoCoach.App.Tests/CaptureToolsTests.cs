@@ -176,6 +176,28 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.Contains("8  equipo 2", report);
     }
 
+    // AP-16: el coach recalibra cada 5 s mientras no lee el reloj. Si no cambió nada, no se toca el archivo: la copia de
+    // la calibración manual ("anterior") se pisaba con la automática a partir de la segunda vez.
+    [Fact]
+    public void Volver_a_calibrar_sin_cambios_no_pisa_la_copia_de_la_calibracion_manual()
+    {
+        var manual = RegionLayout.Default.With(RegionNames.Clock, new RegionRect(0.5, 0.5, 0.05, 0.02));
+        manual.Save(RegionsPath);
+        var tools = Tools(new FakeHost(), screen: new HudScreen());
+
+        Assert.True(tools.TryAutoCalibrate());
+        Assert.Equal(manual.Regions[RegionNames.Clock], RegionLayout.LoadOrDefault(tools.PreviousRegionsPath).Regions[RegionNames.Clock]);
+        var written = File.GetLastWriteTimeUtc(RegionsPath);
+        File.SetLastWriteTimeUtc(RegionsPath, written.AddHours(-1));
+
+        for (var i = 0; i < 3; i++)
+            Assert.True(tools.TryAutoCalibrate());
+
+        Assert.Equal(written.AddHours(-1), File.GetLastWriteTimeUtc(RegionsPath));
+        Assert.Equal(manual.Regions[RegionNames.Clock], RegionLayout.LoadOrDefault(tools.PreviousRegionsPath).Regions[RegionNames.Clock]);
+        Assert.False(File.Exists(RegionsPath + ".nuevo"));
+    }
+
     [Fact]
     public void Sin_el_mod_en_pantalla_queda_la_calibracion_que_habia()
     {

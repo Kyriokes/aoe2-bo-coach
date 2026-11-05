@@ -2,8 +2,10 @@ using BoCoach.App.Coaching;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Record;
 using BoCoach.Vision.Capture;
+using BoCoach.Vision.Hud;
 using BoCoach.Vision.Ocr;
 using BoCoach.Vision.Recording;
+using BoCoach.Vision.Regions;
 
 namespace BoCoach.App.Tests;
 
@@ -86,6 +88,61 @@ public sealed class LiveCoachTests : IDisposable
         for (var i = 0; i < 15; i++)
             await live.StepAsync(); // hasta 12 s
         Assert.Equal(2, frames.Recalibrations);
+    }
+
+    /// <summary>El log a la vista con el reloj sin leerse (algo lo tapa): la calibración sola encuentra el HUD cada vez.</summary>
+    private sealed class CoveredClockFrames(CapturedImage log, HudLayout? hudAfterRecalibrating = null) : IFrameSource
+    {
+        private int _served;
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+        public HudLayout? Hud { get; private set; }
+        public Frame? Next() => new(region => region == RegionNames.EventLog ? log : null, ++_served * 0.5, Area);
+
+        public bool Recalibrate()
+        {
+            Hud = hudAfterRecalibrating;
+            return true;
+        }
+    }
+
+    private static CapturedImage LogWithFiveMessages => RecordedSession.Load(Fixture).Image(1399, RegionNames.EventLog);
+
+    private async Task<List<string>> EventsReadIn12Seconds(IFrameSource frames, OcrReader ocr)
+    {
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr, frames);
+        var events = new List<string>();
+        live.Updated += frame => events.AddRange(frame.Hud?.NewEvents ?? []);
+        for (var i = 0; i < 24; i++)
+            await live.StepAsync();
+        return events;
+    }
+
+    // AP-16: cada 5 s sin reloj con el HUD a la vista se volvía a armar el lector, y uno nuevo da por nuevos todos los
+    // renglones del log: las casas y las unidades se sumaban otra vez, y podían cerrar pasos en falso.
+    [Fact]
+    public async Task Volver_a_calibrar_con_el_mismo_diseno_no_cuenta_de_nuevo_el_log()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return; // sin el OCR en inglés (puede pasar en CI)
+
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages), ocr);
+
+        Assert.Contains("house_built", events);
+        Assert.Equal(events.Distinct(), events);
+    }
+
+    // Otro diseño del HUD sí es otro lector: cada campo se recorta según él.
+    [Fact]
+    public async Task Volver_a_calibrar_con_otro_diseno_arma_otro_lector()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return;
+
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.FileName));
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages, layout), ocr);
+
+        Assert.Equal(2, events.Count(e => e == "house_built"));
     }
 
     /// <summary>

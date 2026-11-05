@@ -236,15 +236,33 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
                 : Texts.HudNotFoundDefault;
             return false;
         }
-        if (IsCalibrated)
-            File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
-        found.Layout.Save(_regionsPath);
+        SaveIfChanged(found.Layout);
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = (found.Hud is { } hud
                 ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)
                 : Texts.CalibratedAuto(area.Width, area.Height, found.Squares.Count))
             + (CapturedImage.NeedsResample(found.Scale) ? Texts.CalibratedScale($"{found.Scale:0.00}") : "") + ".";
         return true;
+    }
+
+    /// <summary>
+    /// Guarda lo que encontró la calibración sola, si cambió algo. El coach la llama cada 5 s mientras no lee el reloj: sin
+    /// esto, la copia de la calibración manual (<see cref="PreviousRegionsPath"/>) quedaba pisada con la automática.
+    /// </summary>
+    private void SaveIfChanged(RegionLayout layout)
+    {
+        var fresh = _regionsPath + ".nuevo";
+        layout.Save(fresh);
+        if (IsCalibrated)
+        {
+            if (File.ReadAllText(fresh) == File.ReadAllText(_regionsPath))
+            {
+                File.Delete(fresh);
+                return;
+            }
+            File.Copy(_regionsPath, PreviousRegionsPath, overwrite: true);
+        }
+        File.Move(fresh, _regionsPath, overwrite: true);
     }
 
     /// <summary>El diseño del mod (data/hud_layout.json), o null si falta o está roto: la calibración sigue con el mod viejo.</summary>

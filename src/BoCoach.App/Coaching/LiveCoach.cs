@@ -364,13 +364,12 @@ public sealed class LiveCoach : IDisposable
             if (!hud.ClockRead)
             {
                 // Sin reloj: el coach arrancó en el menú (sin HUD que calibrar) o la calibración que había no es la del
-                // panel de ahora. Se vuelve a calibrar cada tanto; con regiones nuevas el lector arranca con su diseño.
+                // panel de ahora. Se vuelve a calibrar cada tanto.
                 _lastRecalibrate ??= frame.RealTime;
                 if (frame.RealTime - _lastRecalibrate >= RecalibrateEverySeconds)
                 {
                     _lastRecalibrate = frame.RealTime;
-                    if (Frames.Recalibrate())
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
+                    Recalibrate();
                 }
             }
             else
@@ -378,13 +377,11 @@ public sealed class LiveCoach : IDisposable
                 _lastRecalibrate = null;
                 // Con reloj pero sin calibrar en esta sesión (el coach automático arrancó en el menú): la calibración
                 // vieja lee el reloj pero puede tener otras cajas corridas (en la 20261025-230041, la cola). Se prueba
-                // apenas se ve el reloj y después cada tanto; el lector sigue igual si el diseño del HUD no cambió.
+                // apenas se ve el reloj y después cada tanto.
                 if (!Frames.Calibrated && (_lastInGameRecalibrate is not { } tried || frame.RealTime - tried >= RecalibrateInGameSeconds))
                 {
                     _lastInGameRecalibrate = frame.RealTime;
-                    var before = Frames.Hud?.Name;
-                    if (Frames.Recalibrate() && Frames.Hud?.Name != before)
-                        _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
+                    Recalibrate();
                 }
             }
             if (hud.ClockRead)
@@ -440,6 +437,17 @@ public sealed class LiveCoach : IDisposable
         _frameMs = watch.Elapsed.TotalMilliseconds;
         Publish();
         return true;
+    }
+
+    /// <summary>
+    /// Vuelve a calibrar. El lector sigue igual si el diseño del HUD no cambió: uno nuevo da por nuevos todos los renglones
+    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj.
+    /// </summary>
+    private void Recalibrate()
+    {
+        var before = Frames.Hud?.Name;
+        if (Frames.Recalibrate() && Frames.Hud?.Name != before)
+            _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
     }
 
     /// <summary>
