@@ -62,14 +62,17 @@ public sealed class SessionRecorder : IDisposable
     /// <summary>True mientras no se graba por falta de espacio.</summary>
     public bool PausedForSpace { get; private set; }
 
+    /// <summary>La hora con que se nombra la carpeta. Los tests la reemplazan.</summary>
+    public Func<DateTime> Now { get; init; } = () => DateTime.Now;
+
     /// <summary>Crea la carpeta y escribe session.json, sin arrancar el temporizador (útil para tests).</summary>
     public void Open()
     {
         _area = _source.CaptureArea;
-        Folder = Path.Combine(OutputRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
+        Folder = Path.Combine(OutputRoot, Now().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
         var suffix = 1;
         while (Directory.Exists(Folder))
-            Folder = Path.Combine(OutputRoot, $"{DateTime.Now:yyyyMMdd-HHmmss}-{++suffix}");
+            Folder = Path.Combine(OutputRoot, string.Create(CultureInfo.InvariantCulture, $"{Now():yyyyMMdd-HHmmss}-{++suffix}"));
         Directory.CreateDirectory(Folder);
 
         var session = new

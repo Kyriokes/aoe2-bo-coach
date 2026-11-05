@@ -94,6 +94,32 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.False(recorder.PausedForSpace);
     }
 
+    // Con el calendario del sistema, a la segunda grabación del mismo segundo el nombre de la carpeta decía 2569 (en Tailandia).
+    [Fact]
+    public void El_nombre_de_la_carpeta_no_depende_del_calendario_del_sistema()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("th-TH");
+        try
+        {
+            var now = new DateTime(2026, 11, 5, 12, 30, 0);
+            using var first = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName) { Now = () => now };
+            using var second = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName) { Now = () => now };
+
+            first.Open();
+            second.Open();
+            first.Stop();
+            second.Stop();
+
+            Assert.Equal("20261105-123000", Path.GetFileName(first.Folder));
+            Assert.Equal("20261105-123000-2", Path.GetFileName(second.Folder));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [Fact]
     public void Una_grabacion_vieja_sin_escala_se_lee_a_escala_1()
     {
