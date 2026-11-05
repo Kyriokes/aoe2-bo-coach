@@ -14,6 +14,7 @@ import duckdb
 import numpy as np
 from scipy import sparse
 
+from cache import _ruta
 from franjas import FACTOR_JUEGO, MINIMO_JUEGO_MIN, franja_duracion, franja_elo, indice_mapa, minutos_de_juego
 
 DIAS_MINIMOS_DEL_PARCHE = 28
@@ -70,7 +71,7 @@ def _parche(con: duckdb.DuckDBPyConnection, partidas: str) -> tuple[str, bool, i
 
 
 def _rutas(cache: Path) -> tuple[str, str]:
-    return (cache / "partidas.parquet").as_posix(), (cache / "jugadores.parquet").as_posix()
+    return _ruta(cache / "partidas.parquet"), _ruta(cache / "jugadores.parquet")
 
 
 def _duracion_valida() -> str:
