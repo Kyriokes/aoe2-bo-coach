@@ -180,6 +180,85 @@ public sealed class GameRecordFileTests : IDisposable
         Assert.Empty(record.Captures);
     }
 
+    private const string EndLine = """{"t":"end","reason":"fin","length":1}""";
+
+    /// <summary>Un registro bien cerrado con esas líneas en el medio: si se lee entero, no queda como cortado.</summary>
+    private string WriteBomb(string name, Action<Stream> middle)
+    {
+        var path = PathOf(name);
+        using var gzip = new GZipStream(File.Create(path), CompressionLevel.Fastest);
+        gzip.Write(Encoding.UTF8.GetBytes("""{"t":"meta"}""" + "\n"));
+        middle(gzip);
+        gzip.Write(Encoding.UTF8.GetBytes(EndLine + "\n"));
+        return path;
+    }
+
+    private static void Repeat(Stream stream, byte[] block, long bytes)
+    {
+        for (long written = 0; written < bytes; written += block.Length)
+            stream.Write(block);
+    }
+
+    // 1 MB de gzip puede dar 1 GB de texto, y un OutOfMemoryException no lo ataja nadie.
+    [Fact]
+    public void Una_linea_enorme_corta_la_lectura()
+    {
+        var path = WriteBomb("linea.jsonl.gz", gzip =>
+        {
+            Repeat(gzip, Enumerable.Repeat((byte)'x', 1024 * 1024).ToArray(), 100L * 1024 * 1024);
+            gzip.WriteByte((byte)'\n');
+        });
+        Assert.True(new FileInfo(path).Length < 2 * 1024 * 1024);
+
+        var record = GameRecordReader.Load(path);
+
+        Assert.True(record.Truncated);
+        Assert.NotNull(record.Meta);
+        Assert.Empty(record.Lines);
+    }
+
+    [Fact]
+    public void Lo_que_pasa_del_tope_de_texto_no_se_lee()
+    {
+        var pad = new string('x', GameRecordReader.MaxLineChars / 2);
+        var line = Encoding.UTF8.GetBytes($$"""{"t":"x","pad":"{{pad}}"}""" + "\n");
+        var path = WriteBomb("texto.jsonl.gz", gzip => Repeat(gzip, line, GameRecordReader.MaxChars + GameRecordReader.MaxLineChars));
+
+        var record = GameRecordReader.Load(path);
+
+        Assert.True(record.Truncated);
+        Assert.True(record.Lines.Count * (long)line.Length <= GameRecordReader.MaxChars, $"{record.Lines.Count} líneas");
+        Assert.True(record.Lines.Count * (long)line.Length > GameRecordReader.MaxChars - 2L * line.Length, $"{record.Lines.Count} líneas");
+        Assert.DoesNotContain(record.Lines, l => l["t"]?.GetValue<string>() == GameRecordKeys.End);
+    }
+
+    [Fact]
+    public void Lo_que_pasa_del_tope_de_lineas_no_se_lee()
+    {
+        var line = Encoding.UTF8.GetBytes("{}\n");
+        var path = WriteBomb("lineas.jsonl.gz", gzip => Repeat(gzip, line, line.Length * (GameRecordReader.MaxLines + 10L)));
+
+        var record = GameRecordReader.Load(path);
+
+        Assert.True(record.Truncated);
+        Assert.True(record.Lines.Count <= GameRecordReader.MaxLines);
+    }
+
+    // La línea más larga de un registro de verdad es la meta, con la BO.
+    [Fact]
+    public void Una_meta_con_la_BO_mas_grande_entra()
+    {
+        var note = new string('x', 500_000);
+        var path = PathOf("grande.jsonl.gz");
+        using (var writer = GameRecordWriter.Create(path, new JsonObject { ["build_order"] = new JsonObject { ["schema_version"] = 2, ["name"] = "x", ["description"] = note } }))
+            writer.End("fin", 1);
+
+        var record = GameRecordReader.Load(path);
+
+        Assert.False(record.Truncated);
+        Assert.Equal(note, record.BuildOrder?.Description);
+    }
+
     [Fact]
     public void Dispose_sin_End_escribe_detenido()
     {

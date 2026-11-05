@@ -10,9 +10,9 @@ namespace BoCoach.Core.Record;
 public sealed record RecordedCapture(double Ms, RawCapture Capture);
 
 /// <summary>
-/// Lee un registro de partida entero. Un archivo cortado (la app se cerró sin terminar) se lee hasta donde llega
-/// (<see cref="Truncated"/>); una línea que no es JSON se saltea. Las claves y los tipos de línea que no se conocen
-/// quedan en <see cref="Lines"/> tal cual.
+/// Lee un registro de partida entero. Un archivo cortado (la app se cerró sin terminar) o que pasa de los topes se lee
+/// hasta donde llega (<see cref="Truncated"/>); una línea que no es JSON se saltea. Las claves y los tipos de línea que
+/// no se conocen quedan en <see cref="Lines"/> tal cual.
 /// </summary>
 public sealed class GameRecordReader
 {
@@ -68,6 +68,18 @@ public sealed class GameRecordReader
 
     public static bool IsRecord(string path) => path.EndsWith(".jsonl.gz", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Cuánto texto se lee de un registro. Lo puede mandar cualquiera y 1 MB de gzip puede dar 1 GB de texto; una partida
+    /// de 19 minutos da 1 MB.
+    /// </summary>
+    internal const long MaxChars = 64L * 1024 * 1024;
+
+    /// <summary>La línea más larga: la meta, con la BO (la web acepta hasta 512 KB).</summary>
+    internal const int MaxLineChars = 1024 * 1024;
+
+    /// <summary>Cuántas líneas se leen: sin esto, una línea corta ocupa mucho más en memoria que en el texto. 5 horas de partida son unas 50.000.</summary>
+    internal const int MaxLines = 400_000;
+
     public static GameRecordReader Load(string path)
     {
         // Se puede leer mientras la app lo escribe (una partida en curso).
@@ -77,28 +89,53 @@ public sealed class GameRecordReader
         JsonObject? meta = null;
         var lines = new List<JsonObject>();
         var truncated = false;
+
+        void Add(string text)
+        {
+            if (text.Length == 0)
+                return;
+            JsonObject? json;
+            try
+            {
+                json = JsonNode.Parse(text, documentOptions: CoreJson.NoDuplicates) as JsonObject;
+            }
+            catch (JsonException)
+            {
+                json = null; // una línea a medias al final del archivo cortado
+            }
+            if (json is null)
+                return;
+            if (meta is null && CoreJson.Text(json["t"]) == GameRecordKeys.Meta)
+                meta = json;
+            else
+                lines.Add(json);
+        }
+
         try
         {
-            while (reader.ReadLine() is { } text)
+            var line = new StringBuilder();
+            long chars = 0;
+            var read = 0;
+            for (var c = reader.Read(); c >= 0 && !truncated; c = reader.Read())
             {
-                if (text.Length == 0)
-                    continue;
-                JsonObject? json;
-                try
+                if (++chars > MaxChars)
                 {
-                    json = JsonNode.Parse(text, documentOptions: CoreJson.NoDuplicates) as JsonObject;
+                    truncated = true;
                 }
-                catch (JsonException)
+                else if (c != '\n')
                 {
-                    json = null; // una línea a medias al final del archivo cortado
+                    truncated = line.Length >= MaxLineChars;
+                    line.Append((char)c);
                 }
-                if (json is null)
-                    continue;
-                if (meta is null && CoreJson.Text(json["t"]) == GameRecordKeys.Meta)
-                    meta = json;
                 else
-                    lines.Add(json);
+                {
+                    Add(line.ToString());
+                    line.Clear();
+                    truncated = ++read >= MaxLines;
+                }
             }
+            if (!truncated)
+                Add(line.ToString()); // la última, si no terminó en un salto de línea
         }
         catch (Exception e) when (e is InvalidDataException or IOException or EndOfStreamException)
         {
