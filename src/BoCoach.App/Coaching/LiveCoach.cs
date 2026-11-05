@@ -393,7 +393,13 @@ public sealed class LiveCoach : IDisposable
                 // Un reloj que vuelve a empezar sin pantalla de carga leída: otra partida con la misma BO. Se mira
                 // la lectura cruda: el suavizado nunca deja que el reloj vuelva para atrás.
                 if (_newGame.Check(hud.ClockReading, hud.Clock))
+                {
                     StartGame(null);
+                    // Se vuelve a leer con el lector nuevo: en esta lectura el reloj suavizado es el de la partida anterior,
+                    // y el armado nuevo lo tomaría como la hora de empezar a jugar (el tiempo quedaba en 0 toda la partida).
+                    hud = await _reader.ReadAsync(frame.Region, frame.RealTime);
+                    raw = _reader.LastRaw;
+                }
             }
             RecordCapture(raw, hud, frame.RealTime);
             var snapshot = _builder.Build(hud.ToReading());

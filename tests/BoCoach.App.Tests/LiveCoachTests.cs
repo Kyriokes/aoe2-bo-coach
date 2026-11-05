@@ -464,6 +464,33 @@ public sealed class LiveCoachTests : IDisposable
         Assert.Equal("any", live.Civ);
     }
 
+    // AP-15: al empezar otra partida sin pantalla de carga, la captura se volvía a pasar por el armado nuevo con el reloj
+    // de la partida anterior: el armado la tomaba como la hora de empezar a jugar y el tiempo quedaba en 0 toda la partida.
+    [Fact]
+    public async Task Despues_de_un_reloj_que_vuelve_a_empezar_el_tiempo_de_la_partida_nueva_corre()
+    {
+        var session = RecordedSession.Load(Fixture);
+        var folder = Path.Combine(_library.FullName, "registros");
+        using var live = Recording(new GapFrames(session, before: 13, gap: 0, gapInFront: true, restart: true), folder);
+        var finished = new List<GameRecordInfo>();
+        live.RecordFinished += finished.Add;
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 13 + 13; i++)
+            await live.StepAsync();
+
+        Assert.Equal(0, last!.StartOffset);
+        Assert.True(last.View.Time > 60, $"tiempo {last.View.Time}");
+
+        // La partida nueva deja su informe y su registro, con su duración.
+        Assert.True(live.Report().Length > 60, $"largo {live.Report().Length}");
+        Assert.NotNull(live.TakePendingReport());
+        live.Stop();
+        Assert.Equal(["nueva", "detenido"], finished.Select(f => f.Reason));
+        Assert.True(finished[1].Length > 60, $"largo {finished[1].Length}");
+    }
+
     private string? WarningOf(CoachFrame frame)
     {
         var overlay = new Overlay.OverlayViewModel(_data.GameData, "x");
