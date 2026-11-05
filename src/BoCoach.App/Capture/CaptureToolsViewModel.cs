@@ -318,7 +318,8 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
         CalibrationStatus = (found.Hud is { } hud
                 ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)
                 : Texts.CalibratedAuto(area.Width, area.Height, found.Squares.Count))
-            + (CapturedImage.NeedsResample(found.Scale) ? Texts.CalibratedScale($"{found.Scale:0.00}") : "") + ".";
+            + (CapturedImage.NeedsResample(found.Scale) ? Texts.CalibratedScale($"{found.Scale:0.00}") : "") + "."
+            + (found.SmallDigits ? " " + Texts.CalibratedSmallDigits : "");
         return true;
     }
 

@@ -143,6 +143,27 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.DoesNotContain("leer mal", tools.CalibrationStatus);
     }
 
+    /// <summary>La misma captura del amigo, achicada: el HUD queda como a 720p.</summary>
+    private sealed class SmallScreen : IScreenSource
+    {
+        private readonly CapturedImage _screen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "amigo-20261020-1080p-panel-negro.png")).Resample(2.0 / 3);
+
+        public PixelRect CaptureArea => new(0, 0, _screen.Width, _screen.Height);
+        public bool GameFound => true;
+        public CapturedImage Capture(PixelRect rect) => _screen.Crop(rect);
+    }
+
+    // VI-04: a 768p o 720p calibra, pero los dígitos miden unos 9 px y se lee peor: el jugador tiene que saberlo.
+    [Fact]
+    public void Con_el_HUD_muy_chico_calibra_y_avisa_que_puede_leer_mal()
+    {
+        var tools = Tools(new FakeHost(), screen: new SmallScreen());
+
+        Assert.True(tools.TryAutoCalibrate());
+
+        Assert.Contains("muy chicos", tools.CalibrationStatus);
+    }
+
     // 4.3 del traspaso del 2026-10-20: las capturas de los amigos llegaban comprimidas y sin saber qué vio la app.
     [Fact]
     public async Task La_captura_de_diagnostico_guarda_la_pantalla_sin_perdida_y_lo_que_encontro()
