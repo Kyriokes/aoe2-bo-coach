@@ -20,6 +20,7 @@ import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, typ
 import { entityName } from "@/lib/stepText";
 import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
+import { whatToLoad } from "@/lib/editor/startup";
 import {
   chainLabel,
   detachNewVillager,
@@ -153,11 +154,15 @@ export function BuildOrderEditor({
     [coach, locale, showNotice, t.noCan],
   );
 
-  // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva.
+  // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva. Next recrea este efecto
+  // cada vez que la ruta vuelve a mostrarse (Activity): lo que ya se cargó no se carga de nuevo.
+  const loadedJson = useRef<string | null>(null);
   useEffect(() => {
     loadCoach()
       .then((runtime) => {
         setCoach(runtime);
+        if (whatToLoad(loadedJson.current, initialJson) === "nothing") return;
+        loadedJson.current = initialJson;
         if (!initialJson) {
           setState((prev) => newAssisted(prev));
           return;
@@ -451,6 +456,8 @@ export function BuildOrderEditor({
         setPublishError(result.error);
         return;
       }
+      // Ya se guardó: si se vuelve a esta ruta arranca de nuevo (con lo publicado a la vista, publicar otra vez la duplicaría).
+      loadedJson.current = null;
       router.push(href(`/bo/${editCode ?? (result.value as string)}`));
     });
   }
