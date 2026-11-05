@@ -130,7 +130,7 @@ public sealed class EconomyAdvisor
         _data = data;
         _planner = planner ?? new PlannerSettings();
         _settings = settings ?? new EconomySettings();
-        _observer = new RateObserver(data, _settings.RateWindow);
+        _observer = new RateObserver(_settings.RateWindow);
         _gate = new SuggestionGate(_settings.SustainSeconds, _settings.CooldownSeconds);
         _gatherModel = new GatherModel(data, _planner.Efficiency);
     }
