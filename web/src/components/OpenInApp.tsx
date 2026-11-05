@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
+import { copyText } from "@/lib/clipboard";
 
 /**
  * Llevar la BO a la app: el enlace bocoach://import/<código> la abre directo (si la app registró el enlace), y si
- * no, se puede pegar el código en "Importar desde la web" o descargar el .json.
+ * no, se puede pegar el código en "Pegar código" o descargar el .json.
  */
 export function OpenInApp({ code, fileName }: { code: string; fileName: string }) {
   const { t: dict } = useI18n();
@@ -33,7 +34,11 @@ export function OpenInApp({ code, fileName }: { code: string; fileName: string }
   }
 
   async function copy() {
-    await navigator.clipboard.writeText(code);
+    setError(null);
+    if (!(await copyText(code))) {
+      setError(t.copyFailed);
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }

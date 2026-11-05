@@ -5,6 +5,7 @@ import { useOptimistic, useTransition } from "react";
 import { setVote } from "@/app/actions";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
+import { safeAction } from "@/lib/safeAction";
 
 /** "▲ 12" en pantalla, "12 votos" para el lector de pantalla. */
 export function Votes({ votes }: { votes: number }) {
@@ -40,7 +41,7 @@ export function VoteButton(props: { buildOrderId: string; code: string; votes: n
         startTransition(async () => {
           const vote = !state.voted;
           setOptimistic({ voted: vote, votes: state.votes + (vote ? 1 : -1) });
-          const result = await setVote(props.buildOrderId, props.code, vote, locale);
+          const result = await safeAction(() => setVote(props.buildOrderId, props.code, vote, locale), t.failed);
           if (!result.ok) alert(result.error);
         })
       }

@@ -60,7 +60,9 @@ async function Upload({ searchParams, locale }: { searchParams: PageProps<"/[loc
           })}
         </p>
       ) : null}
+      {/* La misma ruta con o sin ?editar: sin la key, una BO nueva heredaría el estado de la que se editaba (la visibilidad). */}
       <BuildOrderEditor
+        key={ownEdit?.code ?? "nueva"}
         loggedIn={user !== null}
         editCode={ownEdit?.code}
         initialJson={ownEdit ? JSON.stringify(ownEdit.body) : ""}

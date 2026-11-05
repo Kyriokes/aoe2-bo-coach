@@ -124,16 +124,16 @@ export function AssistedEditor({
         <section className="rounded-md border border-amber bg-panel p-3 text-sm" aria-label={t.lastChange}>
           <p className="font-semibold">{fill(t.lastChangeTitle, { change: strip.change })}</p>
           <ul className="mt-1 flex flex-col gap-0.5">
-            {strip.lines.map((line) => (
-              <li key={line}>{line}</li>
+            {strip.lines.map((line, i) => (
+              <li key={i}>{line}</li>
             ))}
           </ul>
         </section>
       ) : null}
       {analysis?.assisted?.problems.length ? (
         <ul className="text-sm text-red" role="alert">
-          {analysis.assisted.problems.map((p) => (
-            <li key={p}>{p}</li>
+          {analysis.assisted.problems.map((p, i) => (
+            <li key={i}>{p}</li>
           ))}
         </ul>
       ) : null}

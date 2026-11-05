@@ -15,7 +15,7 @@ type State = { status: "loading" } | { status: "error"; message: string } | { st
 /**
  * Valida, describe y simula una BO con el Core de la app corriendo en el navegador (WebAssembly), y muestra el
  * resultado. <paramref name="onAnalysis"/> recibe el análisis (por ejemplo, para publicar con la Feudal estimada).
- * <paramref name="fallback"/> se ve mientras carga el Core o si no carga (los pasos escritos desde el servidor).
+ * <paramref name="fallback"/> se ve mientras carga el Core o si no carga o no puede leer la BO (los pasos escritos desde el servidor).
  */
 export function BuildOrderView({
   json,
@@ -66,9 +66,12 @@ export function BuildOrderView({
     );
   if (!state.result.ok)
     return (
-      <p role="alert" className="text-sm text-red">
-        {state.result.error}
-      </p>
+      <div className="flex flex-col gap-3">
+        <p role="alert" className="text-sm text-red">
+          {state.result.error}
+        </p>
+        {fallback}
+      </div>
     );
   return <AnalysisView analysis={state.result} />;
 }

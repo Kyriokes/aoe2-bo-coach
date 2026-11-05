@@ -1,11 +1,47 @@
 "use client";
 
+import { useState } from "react";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { formatClock } from "@/lib/buildOrder";
 import type { AnalyzedStep, Issue } from "@/lib/coach/types";
+import { parseStepNumber } from "@/lib/editor/input";
 import { SOURCES, type EditorStep, type Source } from "@/lib/editor/model";
 import { sourceName } from "@/lib/stepText";
+
+/**
+ * Un número que se aplica al salir del campo o con Enter. Aplicarlo en cada tecla simula la BO con cada valor de paso:
+ * escribir 15 sobre 12 pasa por 1, y si el 1 no se puede, vuelve a 12 y no hay forma de terminar de escribir.
+ */
+function NumberField({ label, value, onChange, min, placeholder }: { label: string; value: number | undefined; onChange: (n: number | undefined) => void; min: number; placeholder: string }) {
+  const [typing, setTyping] = useState<string | null>(null);
+  const commit = () => {
+    if (typing === null) return;
+    setTyping(null);
+    const next = parseStepNumber(typing, min);
+    if (next !== value) onChange(next);
+  };
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="w-28 text-muted">{label}</span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={200}
+        value={typing ?? value ?? ""}
+        placeholder={placeholder}
+        onChange={(e) => setTyping(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+        }}
+        className="field w-24"
+        aria-label={label}
+      />
+    </label>
+  );
+}
 
 /**
  * El paso elegido: sus campos según el tipo, lo que dice el Core de él (texto, tiempos, avisos), "junto con el
@@ -78,20 +114,7 @@ export function StepPanel({
     </label>
   );
   const number = (label: string, value: number | undefined, onChange: (n: number | undefined) => void, min = 1, placeholder = "") => (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="w-28 text-muted">{label}</span>
-      <input
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={200}
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value === "" ? undefined : Math.max(min, Math.min(200, Math.round(Number(e.target.value)))))}
-        className="field w-24"
-        aria-label={label}
-      />
-    </label>
+    <NumberField key={`${step.id}:${label}`} label={label} value={value} onChange={onChange} min={min} placeholder={placeholder} />
   );
 
   return (

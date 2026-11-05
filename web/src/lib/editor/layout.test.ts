@@ -54,6 +54,11 @@ describe("escala", () => {
     expect(scale.x(60) - scale.x(0)).toBeCloseTo(MIN_PX_PER_MIN, 5);
   });
 
+  it("en una PC la línea entra en el lugar que hay aunque sea angosto: la columna de Asistido no es un celular", () => {
+    expect(timelineWidth(535, 58 * 60, NARROW_LABEL_W, false)).toBe(535);
+    expect(timelineWidth(535, 58 * 60, NARROW_LABEL_W, true)).toBe(NARROW_LABEL_W + 8 + 58 * MIN_PX_PER_MIN + 8);
+  });
+
   it("scaleFor pasa de segundos a píxeles y vuelve", () => {
     const scale = scaleFor(1016, 600);
     expect(scale.x(0)).toBe(PAD_L);
@@ -158,6 +163,29 @@ describe("una línea por edificio", () => {
 
     const placed = placeLanes(lanes, scaleFor(800, 600), "ordinal", 24);
     expect(placed.items.find((i) => i.stepId === "a")!.x0).toBe(PAD_L + 4 * ORDINAL_W);
+  });
+
+  // Con la hora en la key, al mover una caja con Alt+← React creaba otro elemento: el foco se iba a la página y el segundo
+  // Alt+← salía del editor (es "Atrás" en el navegador).
+  it("la key de cada caja no depende de la hora: al moverla sigue siendo el mismo elemento", () => {
+    const keys = (x: Analysis) => lanesFor(steps, x, data).flatMap((l) => l.items.map((i) => i.key)).sort();
+    const later: Analysis = { ...a, jobs: a.jobs?.map((j) => ({ ...j, start: j.start + 30, end: j.end + 30 })) };
+    expect(keys(later)).toEqual(keys(a));
+  });
+
+  it("los tramos de un mismo paso tienen cada uno su key", () => {
+    // Los aldeanos cortados por el telar: dos cajas del mismo paso en el mismo edificio.
+    const cut: Analysis = {
+      ...a,
+      jobs: [
+        { step_id: "v", kind: "produce", what: "villager", building: "town_center#1", start: 0, end: 25 },
+        { step_id: "l", kind: "produce", what: "loom", building: "town_center#1", start: 25, end: 50 },
+        { step_id: "v", kind: "produce", what: "villager", building: "town_center#1", start: 50, end: 75 },
+      ],
+    };
+    const items = lanesFor(steps, cut, data).flatMap((l) => l.items);
+    expect(items.filter((i) => i.stepId === "v")).toHaveLength(2);
+    expect(new Set(items.map((i) => i.key)).size).toBe(items.length);
   });
 
   it("las cajas de una línea van en filas solo si se pisan, y cada línea suma su alto", () => {

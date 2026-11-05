@@ -1,9 +1,10 @@
 import { fill, getDictionary } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
 import { formatClock } from "../buildOrder";
+import { civNames } from "../civNames";
 import type { Analysis } from "../coach/types";
 import { entityName } from "../stepText";
-import { fromAnalysis, type EditorBo, type EditorStep } from "./model";
+import { fromAnalysis, reduce, type EditorBo, type EditorState, type EditorStep } from "./model";
 
 /**
  * El modo asistido del editor (D12, pantalla A de la spec): el campo `assisted` de la BO con sus objetivos, las
@@ -51,6 +52,12 @@ export function defaultPlan(): AssistedPlan {
     eco_upgrades: false,
     goals: [{ age: "feudal_age" }, { age: "castle_age" }],
   };
+}
+
+/** Una BO nueva en Asistido: la apertura de siempre y los objetivos de ejemplo, todavía sin cambios para guardar. */
+export function newAssisted(state: EditorState, id: string, name?: string): EditorState {
+  const next = reduce(reduce(state, { type: "new", id, name }), { type: "setAssisted", assisted: defaultPlan() });
+  return { ...next, cleanRevision: next.revision };
 }
 
 const clamp = (value: number, [min, max]: readonly [number, number]) => Math.min(max, Math.max(min, Math.round(value)));
@@ -180,6 +187,14 @@ export function diffGoals(
   return { change, shifts, lines };
 }
 
+/** Lo que dice la franja cuando se toca un dato de la BO: el nombre de la civ o del mapa, no su clave. */
+export function fieldChangeLabel(field: "name" | "civ" | "map" | "author" | "description", value: string, maps: { key: string; name: string }[], locale: Locale = "es") {
+  const dict = getDictionary(locale);
+  if (field === "civ") return fill(dict.editor.changeCiv, { value: value === "any" ? dict.civ.anyShort : (civNames(locale)[value] ?? value) });
+  if (field === "map") return fill(dict.editor.changeMap, { value: maps.find((m) => m.key === value)?.name ?? value });
+  return dict.editor.fields[field];
+}
+
 /** Si dos objetivos son "el mismo" para comparar horas: misma edad, unidad, tecnología o centros urbanos. */
 function sameKind(a: AssistedGoal, b: AssistedGoal) {
   return (a.age !== undefined && a.age === b.age) || (a.unit !== undefined && a.unit === b.unit)
@@ -216,5 +231,16 @@ export function debouncer(ms: number) {
   };
 }
 
+/**
+ * Si lo que generó el Core ya no sirve: hay otra corrida más nueva en camino, o se editó algo después (generar tarda y corre
+ * en otro momento). Ni el reductor ni la franja "Último cambio" tienen que mirar una corrida así.
+ */
+export function isStaleRun(run: { id: number; revision: number }, now: { sequence: number; revision: number }) {
+  return run.id !== now.sequence || run.revision !== now.revision;
+}
+
 /** El tiempo de espera de los toques seguidos. */
 export const DEBOUNCE_MS = 150;
+
+/** El de los textos: escribiendo, entre tecla y tecla suele pasar más que entre dos toques. */
+export const TEXT_DEBOUNCE_MS = 300;

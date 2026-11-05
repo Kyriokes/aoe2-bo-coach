@@ -4,11 +4,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { CoachRuntime } from "../coach/runtime";
 import { coachDir, repoDir, startTestCoach } from "../coach/testing";
 import type { Analysis } from "../coach/types";
+import { newAssisted, planFromJson, updateGoal, type AssistedPlan } from "./assisted";
 import { allowedRange, type GameDataLite } from "./constraints";
+import { draftJson } from "./draft";
 import { paletteItems } from "./gameData";
-import { blockOf, fromAnalysis, initialState, insertBlock, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
-import { placeNew, withOpening } from "./opening";
-import { brokenBy } from "./guard";
+import { blockOf, fromAnalysis, initialState, insertBlock, isDirty, nextId, reduce, splitBlock, toJson, type EditorState, type EditorStep } from "./model";
+import { openingForCiv, placeNew, STANDARD_START, withOpening } from "./opening";
+import { brokenBy, neverStartsReason } from "./guard";
 
 /**
  * El editor contra el Core de verdad (WebAssembly): la ida y vuelta de cada BO del repo por el modelo en unidades,
@@ -160,6 +162,54 @@ describe("una BO nueva arranca", () => {
   });
 });
 
+describe("un borrador vuelve como estaba", () => {
+  it("una BO manual: los mismos pasos, con cambios sin guardar", () => {
+    const loaded = reduce(initialState(), { type: "load", analysis: analyze(readFileSync(join(repoDir, "build_orders", "scouts_22p.json"), "utf8")) });
+    const edited = reduce(loaded, { type: "setCount", id: "s2", count: 7 });
+    expect(isDirty(edited)).toBe(true);
+
+    const restored = reduce(initialState(), { type: "load", analysis: analyze(draftJson(edited)), restored: true });
+
+    expect(restored.steps).toEqual(edited.steps);
+    expect(restored.bo).toEqual(edited.bo);
+    expect(isDirty(restored)).toBe(true);
+  });
+
+  it("una BO manual con errores también (lo que se estaba armando no tiene por qué estar bien)", () => {
+    const state = { ...reduce(initialState(), { type: "new", id: "n1" }), steps: [{ id: "x", do: "research" as const, what: "castle_age", count: 1, after: [], withPrevious: false }] };
+    const analysis = analyze(draftJson(state));
+    expect(analysis.valid).toBe(false);
+    expect(reduce(initialState(), { type: "load", analysis, restored: true }).steps.map((s) => s.what)).toEqual(["castle_age"]);
+  });
+
+  it("una BO asistida: sus objetivos, los pasos generados de nuevo y sin avisar que se recalculó", () => {
+    const fresh = newAssisted(initialState(), "n1");
+    const plan = updateGoal(fresh.bo.assisted as AssistedPlan, 0, { at_pop: 22 });
+    const edited = reduce(fresh, { type: "setAssisted", assisted: plan });
+
+    const analysis = analyze(draftJson(edited));
+    const restored = reduce(initialState(), { type: "load", analysis, restored: true });
+
+    expect(analysis.assisted?.regenerated).toBe(false);
+    expect(planFromJson(restored.bo.assisted)).toEqual(plan);
+    expect(restored.steps.length).toBeGreaterThan(5);
+  });
+});
+
+describe("por qué un paso nunca arranca", () => {
+  // El texto del aviso lo escribe el Core: si cambia, explain.ts deja de reconocerlo y el editor dice otra cosa.
+  it.each(["es", "en"] as const)("una población que no se alcanza se explica con el aviso del Core (%s)", (locale) => {
+    const steps: EditorStep[] = [
+      { id: "s1", do: "move", count: 3, assign: "sheep", after: [], withPrevious: false },
+      { id: "s2", do: "research", what: "feudal_age", count: 1, at_pop: 22, after: [], withPrevious: false },
+    ];
+    const result = coach.analyze(JSON.stringify(toJson({ bo: initialState().bo, steps })), locale);
+    if (!result.ok) throw new Error(result.error);
+
+    expect(neverStartsReason(result, [steps[1]], data, locale)).toMatch(locale === "es" ? /^La población nunca llega a 22/ : /^Population never reaches 22/);
+  });
+});
+
 describe("ninguna edición deja la BO rota", () => {
   const scouts = () => fromAnalysis(analyze(readFileSync(join(repoDir, "build_orders", "scouts_22p.json"), "utf8")));
   function attempt(state: EditorState, action: Parameters<typeof reduce>[1]) {
@@ -184,6 +234,23 @@ describe("ninguna edición deja la BO rota", () => {
   it("una civ que no tiene lo que la BO usa no se puede elegir, y dice por qué", () => {
     const state = { ...initialState(), ...scouts() };
     expect(attempt(state, { type: "setField", field: "civ", value: "mapuche" })).toMatch(/^La civ Mapuches no tiene /);
+  });
+
+  // Antes eran dos ediciones: la de la civ se rechazaba por la casa de la apertura y la de la apertura se aplicaba igual
+  // (hunos sin elegir, y los aldeanos iniciales sin hacer las casas).
+  it("elegir hunos con la apertura de casas: civ y apertura cambian juntas, o ninguna", () => {
+    const state = reduce(initialState(), { type: "new", id: "n1" });
+    expect(attempt(state, { type: "setField", field: "civ", value: "huns" })).toMatch(/^La civ Hunos no tiene /);
+
+    const steps = openingForCiv(state.steps, STANDARD_START, false, nextId(state));
+    const action = { type: "setCiv" as const, civ: "huns", steps };
+    expect(attempt(state, action)).toBeNull();
+    expect(reduce(state, action)).toMatchObject({ bo: { civ: "huns" }, steps: [{ do: "move", count: 3, assign: "sheep" }] });
+
+    // Otra casa más adelante no se arregla sola: se rechaza todo junto y se dice por qué.
+    const house = { id: "x1", do: "build" as const, what: "house", count: 1, after: [], withPrevious: false };
+    const withHouse = { ...state, steps: [...state.steps, house] };
+    expect(attempt(withHouse, { type: "setCiv", civ: "huns", steps: openingForCiv(withHouse.steps, STANDARD_START, false, nextId(withHouse)) })).toMatch(/^La civ Hunos no tiene /);
   });
 
   it("arqueros sin galería en la BO no se pueden agregar", () => {

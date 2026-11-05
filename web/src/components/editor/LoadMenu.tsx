@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
-import { COACH_BASE } from "@/lib/coach/browser";
-
-interface Example {
-  file: string;
-  name: string;
-}
+import { loadExample, loadExamples, type Example } from "@/lib/coach/examples";
 
 /**
  * Cómo entra una BO al editor: un ejemplo de los que trae la app, un archivo .json, el JSON pegado, o una nueva de
  * cero. El archivo y lo pegado pueden ser una guía de buildorderguide.com o de RTS Overlay: el editor la convierte con
- * el Core. Todo termina en `onLoad(json)`.
+ * el Core. Todo termina en `onLoad(json)`, que dice si la cargó (puede no entenderla, o el usuario no querer perder lo que hay).
+ * Lo que no se pudo ni leer se avisa con `onError`.
  */
-export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoad: (json: string) => void; onNew: () => void }) {
+export function LoadMenu({ editCode, onLoad, onNew, onError }: { editCode?: string; onLoad: (json: string) => boolean; onNew: () => void; onError: (message: string) => void }) {
   const { t: dict } = useI18n();
   const t = dict.editor.load;
   const [examples, setExamples] = useState<Example[]>([]);
@@ -22,20 +19,17 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
   const [pasted, setPasted] = useState("");
 
   useEffect(() => {
-    fetch(`${COACH_BASE}/ejemplos/index.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<Example[]>) : []))
+    loadExamples()
       .then(setExamples)
       .catch(() => setExamples([]));
   }, []);
 
-  async function loadExample(file: string) {
-    if (!file) return;
-    onLoad(await fetch(`${COACH_BASE}/ejemplos/${file}`).then((r) => r.text()));
-  }
-
-  async function readFile(file: File | undefined) {
-    if (!file) return;
-    onLoad(await file.text());
+  async function read(text: () => Promise<string>) {
+    try {
+      onLoad(await text());
+    } catch (error) {
+      onError(fill(dict.editor.readFailed, { error: error instanceof Error ? error.message : String(error) }));
+    }
   }
 
   return (
@@ -45,7 +39,7 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
           {t.new}
         </button>
         {examples.length > 0 && !editCode ? (
-          <select className="field" value="" onChange={(e) => loadExample(e.target.value)} aria-label={t.exampleLabel}>
+          <select className="field" value="" onChange={(e) => read(() => loadExample(e.target.value))} aria-label={t.exampleLabel}>
             <option value="" disabled>
               {t.examplePlaceholder}
             </option>
@@ -56,9 +50,19 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
             ))}
           </select>
         ) : null}
-        <label className="button cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-amber">
+        <label className="button cursor-pointer has-[:disabled]:cursor-default has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-amber">
           {t.openJson}
-          <input type="file" accept=".json,application/json" className="sr-only" onChange={(e) => readFile(e.target.files?.[0])} />
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Sin esto, elegir de nuevo el mismo archivo no avisa nada.
+              e.target.value = "";
+              if (file) read(() => file.text());
+            }}
+          />
         </label>
         <button type="button" className="button" aria-expanded={pasteOpen} onClick={() => setPasteOpen((open) => !open)}>
           {t.paste}
@@ -81,8 +85,7 @@ export function LoadMenu({ editCode, onLoad, onNew }: { editCode?: string; onLoa
               className="button"
               disabled={!pasted.trim()}
               onClick={() => {
-                onLoad(pasted);
-                setPasteOpen(false);
+                if (onLoad(pasted)) setPasteOpen(false);
               }}
             >
               {t.pasteLoad}

@@ -10,16 +10,20 @@ import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
-import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, isStaleRun, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
+import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
+import { holdFocus } from "@/lib/editor/input";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
-import { blockOf, initialState, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
+import { blockOf, boxSource, initialState, isDirty, isTextEdit, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
-import { detectOpening, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
+import { detectOpening, openingForCiv, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
+import { safeAction } from "@/lib/safeAction";
+import { whatToLoad } from "@/lib/editor/startup";
 import {
   chainLabel,
   detachNewVillager,
@@ -52,25 +56,25 @@ function newBoId() {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 10);
 }
 
-/** Una BO nueva en Asistido (D12): la apertura de siempre y los objetivos de ejemplo. */
-function newAssisted(state: EditorState): EditorState {
-  return reduce(reduce(state, { type: "new", id: newBoId() }), { type: "setAssisted", assisted: defaultPlan() });
-}
-
 /** Las acciones después de las cuales los edificios que hace el próximo aldeano vuelven a esperar a su aldeano. */
-const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField"]);
+const KEEPS_BUILDERS = new Set<EditorAction["type"]>(["insert", "move", "remove", "update", "setCount", "toggleWithPrevious", "commit", "setSteps", "setField", "setCiv"]);
 
 /** Cambia los pasos (y pide simular de nuevo) solo si son otros. */
 function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
   return steps === state.steps ? state : { ...state, steps, revision: state.revision + 1 };
 }
 
-/** Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. */
-function settle(state: EditorState, coach: CoachRuntime | null, locale: Locale): EditorState {
+/**
+ * Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. Si
+ * el Core no puede, queda sin análisis al día; lo avisa el efecto que vuelve a intentar (`onError`).
+ */
+function settle(state: EditorState, coach: CoachRuntime | null, locale: Locale, onError?: (error: string) => void): EditorState {
   // Una BO asistida se genera fuera de la página (en el worker, ver el efecto de BuildOrderEditor): tarda más.
   if (!coach || state.analyzedRevision >= state.revision || state.bo.assisted !== undefined) return state;
   const result = coach.analyze(JSON.stringify(toJson(state)), locale);
-  return result.ok ? reduce(state, { type: "analyzed", analysis: result, revision: state.revision }) : state;
+  if (result.ok) return reduce(state, { type: "analyzed", analysis: result, revision: state.revision });
+  onError?.(result.error);
+  return state;
 }
 
 /**
@@ -100,6 +104,10 @@ export function BuildOrderEditor({
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
+  /** Lo que se ve es un borrador recuperado: se avisa, con la opción de descartarlo. */
+  const [restored, setRestored] = useState(false);
+  /** El Core no pudo con esta revisión: la BO queda sin análisis al día y no se puede publicar. */
+  const [failure, setFailure] = useState<{ revision: number; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(960);
@@ -132,6 +140,12 @@ export function BuildOrderEditor({
   const dispatch = useCallback(
     (action: EditorAction) => {
       const prev = stateRef.current;
+      // Un texto se aplica ya, sin simular: el análisis llega cuando dejan de llegar teclas (el efecto de abajo).
+      if (isTextEdit(action)) {
+        stateRef.current = reduce(prev, action);
+        setState(stateRef.current);
+        return true;
+      }
       const before = prev.analysis?.start ?? STANDARD_START;
       const builds = KEEPS_BUILDERS.has(action.type) ? newVillagerBuilds(prev.steps, before) : new Set<string>();
       let next = reduce(prev, action);
@@ -153,22 +167,61 @@ export function BuildOrderEditor({
     [coach, locale, showNotice, t.noCan],
   );
 
-  // El motor, los datos del juego y los mapas; con el motor, la BO que se edita o una nueva.
+  // Lo que quedó sin simular (los textos) se simula cuando dejan de llegar teclas: publicar necesita el análisis al día.
+  const textDebounce = useRef(debouncer(TEXT_DEBOUNCE_MS));
+  useEffect(() => {
+    if (!coach || state.bo.assisted !== undefined || state.analyzedRevision >= state.revision) return;
+    const timer = textDebounce.current;
+    const revision = state.revision;
+    timer.schedule(() => {
+      stateRef.current = settle(stateRef.current, coach, locale, (error) => setFailure({ revision, message: fill(t.readFailed, { error }) }));
+      setState(stateRef.current);
+    });
+    return () => timer.cancel();
+  }, [coach, locale, state.analyzedRevision, state.bo.assisted, state.revision, t.readFailed]);
+
+  /** Lo que manda la página: la BO que se edita o una nueva. */
+  const loadInitial = useCallback(
+    (runtime: CoachRuntime) => {
+      setStrip(null);
+      lastPlanRef.current = null;
+      if (!initialJson) {
+        const next = newAssisted(stateRef.current, newBoId(), t.newName);
+        stateRef.current = next;
+        setState(next);
+        return;
+      }
+      const result = runtime.analyze(initialJson, locale);
+      if (result.ok) {
+        const next = reduce(stateRef.current, { type: "load", analysis: result });
+        stateRef.current = next;
+        setState(next);
+        if (result.assisted?.regenerated) showNotice(t.regenerated);
+      } else showNotice(fill(t.readFailed, { error: result.error }));
+    },
+    [initialJson, locale, showNotice, t.newName, t.readFailed, t.regenerated],
+  );
+
+  // El motor, los datos del juego y los mapas; con el motor, el borrador, la BO que se edita o una nueva. Next recrea este
+  // efecto cada vez que la ruta vuelve a mostrarse (Activity): lo que ya se cargó no se carga de nuevo.
+  const draftName = draftKey(editCode);
+  const loadedJson = useRef<string | null>(null);
   useEffect(() => {
     loadCoach()
       .then((runtime) => {
         setCoach(runtime);
-        if (!initialJson) {
-          setState((prev) => newAssisted(prev));
-          return;
-        }
-        const result = runtime.analyze(initialJson, locale);
-        if (result.ok) {
-          setStrip(null);
-          lastPlanRef.current = null;
-          setState((prev) => reduce(prev, { type: "load", analysis: result }));
-          if (result.assisted?.regenerated) showNotice(t.regenerated);
-        } else showNotice(fill(t.readFailed, { error: result.error }));
+        const draft = loadedJson.current === null ? readDraft(draftStorage(), draftName) : null;
+        const what = whatToLoad(loadedJson.current, initialJson, isDirty(stateRef.current), draft !== null);
+        loadedJson.current = initialJson;
+        if (what === "nothing") return;
+        const fromDraft = what === "draft" && draft ? runtime.analyze(draft.json, locale) : null;
+        if (draft && fromDraft?.ok) {
+          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, restored: true });
+          stateRef.current = next;
+          setState(next);
+          setVisibility(draft.visibility);
+          setRestored(true);
+        } else loadInitial(runtime);
       })
       .catch((error: unknown) => setRuntimeError(error instanceof Error ? error.message : String(error)));
     loadGameData()
@@ -177,34 +230,71 @@ export function BuildOrderEditor({
     loadMaps(locale)
       .then(setMaps)
       .catch(() => setMaps([]));
-  }, [initialJson, locale, showNotice, t.readFailed, t.regenerated]);
+  }, [draftName, initialJson, loadInitial, locale]);
 
-  // El ancho de la línea de tiempo (la escala se calcula acá, así el arrastre y la línea usan la misma).
+  // Lo que no se guardó queda en el borrador de esta pestaña: sobrevive a recargar, a iniciar sesión y a cambiar de idioma.
+  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar.
+  const dirty = isDirty(state);
   useEffect(() => {
-    const element = timelineRef.current;
+    if (loadedJson.current === null) return;
+    if (dirty) writeDraft(draftStorage(), draftName, { json: draftJson({ bo: state.bo, steps: state.steps }), visibility });
+    else clearDraft(draftStorage(), draftName);
+  }, [dirty, draftName, state.bo, state.steps, visibility]);
+
+  // Cerrar la pestaña sí se lleva el borrador: el navegador pregunta antes.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // los navegadores viejos miran esto
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  /** Antes de reemplazar lo que se está armando: si hay cambios sin guardar, pregunta. */
+  const canReplace = useCallback(() => !isDirty(stateRef.current) || window.confirm(t.replaceConfirm), [t.replaceConfirm]);
+
+  const discardDraft = useCallback(() => {
+    if (!coach || !canReplace()) return;
+    clearDraft(draftStorage(), draftName);
+    setRestored(false);
+    setVisibility(initialVisibility);
+    loadInitial(coach);
+  }, [canReplace, coach, draftName, initialVisibility, loadInitial]);
+
+  // La línea de tiempo: su elemento, para el arrastre, y su ancho (la escala se calcula acá, así el arrastre y la línea usan
+  // la misma). Cada pestaña tiene la suya: se mide la que aparece, no la del primer render.
+  const attachTimeline = useCallback((element: HTMLDivElement | null) => {
+    timelineRef.current = element;
     if (!element) return;
     const observer = new ResizeObserver((entries) => {
       const w = Math.round(entries[0].contentRect.width);
       if (w > 0) setWidth(w);
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      timelineRef.current = null;
+    };
   }, []);
 
+  /** Carga una BO o una guía en lugar de lo que hay. Dice si la cargó (lo que no se entiende no reemplaza nada). */
   const load = useCallback(
     (json: string) => {
-      if (!coach) return;
+      if (!coach) return false;
       // Una guía de buildorderguide.com o de RTS Overlay se convierte primero; una BO de la app se analiza tal cual.
       const imported = coach.importBuildOrder(json);
       if (!imported.ok) {
         showNotice(fill(t.readFailed, { error: imported.error }));
-        return;
+        return false;
       }
       const result = coach.analyze(imported.source === "bocoach" ? json : JSON.stringify(imported.build_order), locale);
       if (!result.ok) {
         showNotice(fill(t.readFailed, { error: result.error }));
-        return;
+        return false;
       }
+      if (!canReplace()) return false;
       if (imported.source !== "bocoach") {
         const from = imported.source === "buildorderguide" ? "buildorderguide.com" : "RTS Overlay";
         const warnings = imported.warnings.slice(0, 3).join(" · ");
@@ -213,10 +303,12 @@ export function BuildOrderEditor({
       }
       setStrip(null);
       lastPlanRef.current = null;
+      setRestored(false);
       dispatch({ type: "load", analysis: result });
       if (result.assisted?.regenerated) showNotice(t.regenerated);
+      return true;
     },
-    [coach, dispatch, locale, showNotice, t],
+    [canReplace, coach, dispatch, locale, showNotice, t],
   );
 
   // D12: el modo asistido. Cada cambio genera la BO de nuevo en el worker, juntando los toques seguidos; la franja
@@ -241,15 +333,19 @@ export function BuildOrderEditor({
       const id = ++sequence.current;
       analyzeAsync(json, locale)
         .then((result) => {
-          if (id !== sequence.current || !result.ok) return;
+          if (isStaleRun({ id, revision }, { sequence: sequence.current, revision: stateRef.current.revision })) return;
+          if (!result.ok) {
+            setFailure({ revision, message: fill(t.generateFailed, { error: result.error }) });
+            return;
+          }
           const buildingOf = (unit: string) => dataRef.current?.entities[unit]?.made_in;
           setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf, locale));
           lastPlanRef.current = plan;
           setState((prev) => reduce(prev, { type: "generated", analysis: result, revision }));
         })
-        .catch((error: unknown) => showNotice(fill(t.generateFailed, { error: error instanceof Error ? error.message : String(error) })));
+        .catch((error: unknown) => setFailure({ revision, message: fill(t.generateFailed, { error: error instanceof Error ? error.message : String(error) }) }));
     });
-  }, [locale, plan, showNotice, state.analysis, state.analyzedRevision, state.bo, state.revision, t.generateFailed]);
+  }, [locale, plan, state.analysis, state.analyzedRevision, state.bo, state.revision, t.generateFailed]);
 
   const changePlan = useCallback(
     (next: AssistedPlan, change: string) => {
@@ -277,11 +373,12 @@ export function BuildOrderEditor({
 
   const mode: "time" | "ordinal" = state.analysis?.ok && state.analysis.valid && state.steps.length > 0 ? "time" : "ordinal";
   // En el celular la columna de nombres es angosta y la línea se desplaza de costado si no entra.
+  const narrow = useNarrow();
   const scale = useMemo(() => {
     const span = timeSpan(state.analysis);
     const labelWidth = labelWidthFor(width);
-    return scaleFor(timelineWidth(width, span, labelWidth), span, labelWidth);
-  }, [width, state.analysis]);
+    return scaleFor(timelineWidth(width, span, labelWidth, narrow), span, labelWidth);
+  }, [narrow, width, state.analysis]);
 
   const newStep = useCallback((item: PaletteItem): EditorStep => ({ ...item.step, id: nextId(state), after: [], withPrevious: false }), [state]);
   /** Dónde entra un paso agregado sin arrastrar: después de la caja elegida, o al final. */
@@ -371,14 +468,14 @@ export function BuildOrderEditor({
     (next: Opening) => dispatch({ type: "setSteps", steps: withOpening(state.steps, next, start, nextId(state)) }),
     [dispatch, start, state],
   );
-  /** Cambiar la civ: si la nueva no hace casas (hunos) y la apertura era de casas, los iniciales van directo. */
+  /**
+   * Cambiar la civ: si la nueva no hace casas (hunos) y la apertura era de casas, los iniciales van directo. Va todo en una
+   * sola edición: el control mira el resultado, y si no se puede (otra casa más adelante) no cambia nada.
+   */
   const changeCiv = useCallback(
     (civ: string) => {
-      dispatch({ type: "setField", field: "civ", value: civ });
-      if (data && opening.kind === "houses" && !canMake(data, civ, "house")) {
-        dispatch({ type: "setSteps", steps: withOpening(state.steps, { kind: "direct", source: opening.source }, { ...start, houses: false }, nextId(state)) });
-        showNotice(fill(t.noHouses, { place: opening.source === "sheep" ? t.noHousesSheep : t.noHousesSource }));
-      }
+      const steps = data ? openingForCiv(state.steps, start, canMake(data, civ, "house"), nextId(state)) : undefined;
+      if (dispatch({ type: "setCiv", civ, steps }) && steps) showNotice(fill(t.noHouses, { place: opening.source === "sheep" ? t.noHousesSheep : t.noHousesSource }));
     },
     [data, dispatch, opening, showNotice, start, state, t.noHouses, t.noHousesSheep, t.noHousesSource],
   );
@@ -423,7 +520,6 @@ export function BuildOrderEditor({
     [data, state.steps, label, locale, showNotice, dispatch, t.noEarlier, t.noLater],
   );
 
-  const narrow = useNarrow();
   const [sheetOpen, setSheetOpen] = useState(false);
   const selectedStep = state.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIndex = selectedStep ? state.steps.indexOf(selectedStep) : -1;
@@ -436,6 +532,8 @@ export function BuildOrderEditor({
   const analyzedSelected = state.analysis?.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIssues = state.analysis?.issues.filter((i) => i.step_id === state.selected) ?? [];
   const analysisIsCurrent = state.analysis !== null && state.analyzedRevision >= state.revision;
+  // Sin esto, "calculando" para siempre y publicar desactivado sin explicar por qué. Otra edición lo vuelve a intentar.
+  const failed = failure?.revision === state.revision && !analysisIsCurrent ? failure.message : null;
   const canPublish = loggedIn && analysisIsCurrent && state.analysis!.valid && !pending && !drag;
   const canDownload = analysisIsCurrent && state.analysis!.valid;
 
@@ -446,11 +544,21 @@ export function BuildOrderEditor({
     const castle = state.analysis.castle_click ?? null;
     setPublishError(null);
     startTransition(async () => {
-      const result = editCode ? await updateBuildOrder(editCode, json, feudal, castle, visibility, locale) : await publishBuildOrder(json, feudal, castle, visibility, locale);
+      const result = await safeAction<string | null>(
+        () => (editCode ? updateBuildOrder(editCode, json, feudal, castle, visibility, locale) : publishBuildOrder(json, feudal, castle, visibility, locale)),
+        t.publishFailed,
+      );
       if (!result.ok) {
         setPublishError(result.error);
         return;
       }
+      // Ya se guardó: sin borrador y, si se vuelve a esta ruta, arranca de nuevo (con lo publicado a la vista, publicar otra
+      // vez la duplicaría).
+      clearDraft(draftStorage(), draftName);
+      setRestored(false);
+      loadedJson.current = null;
+      stateRef.current = reduce(stateRef.current, { type: "saved" });
+      setState(stateRef.current);
       router.push(href(`/bo/${editCode ?? (result.value as string)}`));
     });
   }
@@ -529,18 +637,36 @@ export function BuildOrderEditor({
   }
 
   return (
+    // Sin el motor no hay con qué cargar ni simular, y lo que se escriba lo pisa la BO inicial cuando arranca: todo desactivado.
+    <fieldset disabled={!coach} className="contents">
     <div className="flex flex-col gap-4">
       <LoadMenu
         editCode={editCode}
         onLoad={load}
+        onError={showNotice}
         onNew={() => {
-          const next = newAssisted(stateRef.current);
+          // Editando una BO publicada, "Guardar" la reemplaza: la nueva se arma en /subir (lo editado queda en su borrador).
+          if (editCode) {
+            router.push(href("/subir"));
+            return;
+          }
+          if (!canReplace()) return;
+          const next = newAssisted(stateRef.current, newBoId(), t.newName);
           stateRef.current = next;
           setState(next);
           setStrip(null);
           lastPlanRef.current = null;
+          setRestored(false);
         }}
       />
+      {restored ? (
+        <p role="status" className="flex flex-wrap items-center gap-2 rounded-md border border-amber bg-panel px-3 py-2 text-sm">
+          {t.draftRestored}
+          <button type="button" className="button ml-auto" onClick={discardDraft}>
+            {t.draftDiscard}
+          </button>
+        </p>
+      ) : null}
       {!coach || !data ? (
         <p role="status" className="text-sm text-faint">
           {t.loadingEngine}
@@ -555,7 +681,7 @@ export function BuildOrderEditor({
         bo={state.bo}
         maps={maps.length > 0 ? maps : [{ key: "any", name: t.any, water: true, sources: [...SOURCES] }]}
         onField={(field, value) => {
-          changeRef.current = field === "civ" ? fill(t.changeCiv, { value }) : field === "map" ? fill(t.changeMap, { value }) : field;
+          changeRef.current = fieldChangeLabel(field, value, maps, locale);
           if (field === "civ" && !plan) changeCiv(value);
           else dispatch({ type: "setField", field, value });
         }}
@@ -591,7 +717,7 @@ export function BuildOrderEditor({
           plan={plan}
           analysis={state.analysis}
           strip={strip}
-          pending={state.analyzedRevision < state.revision}
+          pending={state.analyzedRevision < state.revision && failed === null}
           civ={state.bo.civ}
           data={data}
           narrow={narrow}
@@ -608,7 +734,7 @@ export function BuildOrderEditor({
               viewportWidth={width}
               drag={null}
               selected={null}
-              timelineRef={timelineRef}
+              timelineRef={attachTimeline}
               data={data}
               extraMarkers={goalMarkers}
               onBoxPointerDown={() => {}}
@@ -634,11 +760,11 @@ export function BuildOrderEditor({
         viewportWidth={width}
         drag={drag}
         selected={state.selected}
-        timelineRef={timelineRef}
+        timelineRef={attachTimeline}
         data={data}
         onBoxPointerDown={(e: ReactPointerEvent<HTMLDivElement>, item: PlacedItem) => {
-          const chain = blockOf(state.steps, item.stepId);
-          if (chain) startBoxDrag(e, chain.from, chain.to, countEditable(item.stepId) && !item.construction ? item.stepId : undefined);
+          const source = boxSource(state.steps, item.stepId, countEditable(item.stepId) && !item.construction);
+          if (source) startBoxDrag(e, source);
         }}
         onNudge={nudge}
         onRemove={removeStep}
@@ -676,10 +802,12 @@ export function BuildOrderEditor({
       {!plan && narrow && sheetOpen && paletteNow ? (
         <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/60" onClick={() => setSheetOpen(false)}>
           <div
+            ref={holdFocus}
             role="dialog"
             aria-modal="true"
             aria-label={t.addStep}
-            className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3"
+            tabIndex={-1}
+            className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3 outline-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setSheetOpen(false);
@@ -730,11 +858,17 @@ export function BuildOrderEditor({
           {t.fixErrors}
         </p>
       ) : null}
+      {failed ? (
+        <p role="alert" className="text-sm text-red">
+          {failed}
+        </p>
+      ) : null}
       {publishError ? (
         <p role="alert" className="text-sm text-red">
           {publishError}
         </p>
       ) : null}
     </div>
+    </fieldset>
   );
 }

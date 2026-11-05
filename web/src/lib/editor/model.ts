@@ -63,13 +63,21 @@ export interface EditorState {
   /** Sube con cada edición; cuando supera a `analyzedRevision`, hay que volver a analizar. */
   revision: number;
   analyzedRevision: number;
+  /** La revisión de lo último que se cargó, se empezó o se guardó: si `revision` es otra, hay cambios sin guardar. */
+  cleanRevision: number;
   loadError: string | null;
 }
 
 export type EditorAction =
-  | { type: "load"; analysis: Analysis }
-  | { type: "new"; id: string }
+  /** `restored`: es un borrador recuperado, que sigue teniendo cambios sin guardar. */
+  | { type: "load"; analysis: Analysis; restored?: boolean }
+  /** `name`: el nombre en el idioma de la página. */
+  | { type: "new"; id: string; name?: string }
+  /** Lo que hay quedó guardado en la web. */
+  | { type: "saved" }
   | { type: "setField"; field: "name" | "civ" | "map" | "author" | "description"; value: string }
+  /** Otra civ y, en la misma edición, los pasos que cambian con ella (`openingForCiv`). */
+  | { type: "setCiv"; civ: string; steps?: EditorStep[] }
   | { type: "setTags"; tags: string[] }
   | { type: "insert"; step: EditorStep; index: number }
   | { type: "move"; blockFrom: number; blockTo: number; index: number }
@@ -97,8 +105,14 @@ export function initialState(): EditorState {
     analysis: null,
     revision: 0,
     analyzedRevision: 0,
+    cleanRevision: 0,
     loadError: null,
   };
+}
+
+/** Si hay cambios sin guardar: `select`, `analyzed` y `generated` no suben la revisión. */
+export function isDirty(state: Pick<EditorState, "revision" | "cleanRevision">) {
+  return state.revision !== state.cleanRevision;
 }
 
 export function isVillagerTarget(step: { do: string; what?: unknown; assign?: unknown }) {
@@ -219,6 +233,21 @@ export function blockOf(steps: EditorStep[], id: string): { from: number; to: nu
   return { from, to };
 }
 
+/** Una caja de la línea que se tocó: se arrastra la cadena `from..to`; tocarla elige `stepId`; deslizarla en vertical cambia la cantidad de `countStepId`. */
+export interface BoxSource {
+  kind: "box";
+  from: number;
+  to: number;
+  stepId: string;
+  countStepId?: string;
+}
+
+/** La caja del paso (en una cadena, tocar el segundo elige el segundo). `countable`: se le puede cambiar la cantidad. */
+export function boxSource(steps: EditorStep[], stepId: string, countable: boolean): BoxSource | null {
+  const chain = blockOf(steps, stepId);
+  return chain ? { kind: "box", ...chain, stepId, countStepId: countable ? stepId : undefined } : null;
+}
+
 /** Si en ese índice de inserción se puede meter algo sin partir una cadena. */
 export function isBoundary(steps: EditorStep[], index: number) {
   return index <= 0 || index >= steps.length || !steps[index].withPrevious;
@@ -271,6 +300,12 @@ export function nextId(state: Pick<EditorState, "bo" | "steps">): string {
   return candidate;
 }
 
+/** Una edición que solo cambia textos: la simulación no depende de ellos, así que no hace falta simular en cada tecla. */
+export function isTextEdit(action: EditorAction) {
+  if (action.type === "setField") return action.field === "name" || action.field === "author" || action.field === "description";
+  return action.type === "update" && Object.keys(action.patch).every((key) => key === "note");
+}
+
 function edited(state: EditorState, changes: Partial<EditorState>): EditorState {
   return { ...state, ...changes, revision: state.revision + 1 };
 }
@@ -280,22 +315,27 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
     case "load": {
       const { bo, steps } = fromAnalysis(action.analysis);
       const revision = state.revision + 1;
-      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, loadError: null };
+      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, cleanRevision: action.restored ? state.cleanRevision : revision, loadError: null };
     }
     case "new":
       // Una BO nueva arranca con la apertura de siempre: los 3 iniciales hacen 2 casas y van a las ovejas (si no,
       // quedan sin tarea y ningún paso puede arrancar). Se cambia en la caja "Inicio".
       return edited(state, {
-        bo: { id: action.id, name: NEW_NAME, civ: "any", map: "any", author: "", description: "", tags: [] },
+        bo: { id: action.id, name: action.name ?? NEW_NAME, civ: "any", map: "any", author: "", description: "", tags: [] },
         steps: [{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }],
         selected: null,
         analysis: null,
+        cleanRevision: state.revision + 1,
         loadError: null,
       });
+    case "saved":
+      return { ...state, cleanRevision: state.revision };
     case "setSteps":
       return edited(state, { steps: action.steps, selected: action.selected === undefined ? state.selected : action.selected });
     case "setField":
       return edited(state, { bo: { ...state.bo, [action.field]: action.value } });
+    case "setCiv":
+      return edited(state, { bo: { ...state.bo, civ: action.civ }, steps: action.steps ?? state.steps });
     case "setTags":
       return edited(state, { bo: { ...state.bo, tags: action.tags } });
     case "insert": {

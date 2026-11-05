@@ -7,7 +7,7 @@ import { civNames } from "@/lib/civNames";
 import type { MapInfo } from "@/lib/editor/gameData";
 import type { EditorBo } from "@/lib/editor/model";
 
-/** Los datos de la BO: nombre, civ, mapa, autor, etiquetas y descripción. */
+/** Los datos de la BO: nombre, civ, mapa, autor, etiquetas y descripción (los largos, los topes de parseBuildOrder). */
 export function BoFields({
   bo,
   maps,
@@ -28,6 +28,7 @@ export function BoFields({
       <div className="flex flex-wrap items-center gap-2">
         <input
           value={bo.name}
+          maxLength={100}
           onChange={(e) => onField("name", e.target.value)}
           placeholder={t.namePlaceholder}
           aria-label={t.name}
@@ -57,7 +58,7 @@ export function BoFields({
         </label>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <input value={bo.author} onChange={(e) => onField("author", e.target.value)} placeholder={t.author} aria-label={t.author} className="field min-w-40 flex-1" />
+        <input value={bo.author} maxLength={60} onChange={(e) => onField("author", e.target.value)} placeholder={t.author} aria-label={t.author} className="field min-w-40 flex-1" />
         <input
           defaultValue={bo.tags.join(", ")}
           key={bo.id + bo.tags.join(",")}
@@ -69,6 +70,7 @@ export function BoFields({
       </div>
       <textarea
         value={bo.description}
+        maxLength={4000}
         onChange={(e) => onField("description", e.target.value)}
         placeholder={t.descriptionPlaceholder}
         aria-label={t.description}

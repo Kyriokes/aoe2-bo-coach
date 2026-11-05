@@ -12,9 +12,9 @@ export function waitReason(analysis: Analysis, block: EditorStep[], data: GameDa
   const ids = new Set(block.map((s) => s.id));
   const waits = (analysis.blocks ?? []).filter((b) => ids.has(b.step_id));
   if (waits.length === 0) {
-    // Las esperas por "a N de población" o por "after" no dejan bloqueo: lo que hay es el aviso del validador (del Core,
-    // en castellano en todos los idiomas: por eso se puede buscar por el texto).
-    const issue = analysis.issues.find((i) => i.severity === "warning" && i.step_id !== null && ids.has(i.step_id) && /población|'after'/.test(i.message));
+    // Las esperas por "a N de población" o por "after" no dejan bloqueo: lo que hay es el aviso del validador (del Core, en
+    // el idioma de la página: se busca por el texto en todos, y roundTrip.test.ts controla que el Core siga diciendo eso).
+    const issue = analysis.issues.find((i) => i.severity === "warning" && i.step_id !== null && ids.has(i.step_id) && /población|population|'after'/i.test(i.message));
     return issue ? issue.message : null;
   }
   const last = waits.reduce((best, b) => (b.to > best.to ? b : best));

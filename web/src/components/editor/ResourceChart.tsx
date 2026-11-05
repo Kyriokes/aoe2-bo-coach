@@ -50,8 +50,8 @@ export function ResourceChart({ timeline, scale, height, markers }: { timeline: 
       <text x={scale.x(scale.span) - 4} y={12} fontSize={11} fill={POPULATION.color} textAnchor="end">
         {fill(dict.sim.popMax, { n: maxPop })}
       </text>
-      {markers.map((m) => (
-        <g key={m.label}>
+      {markers.map((m, i) => (
+        <g key={`${m.label}:${i}`}>
           <line x1={scale.x(m.t)} x2={scale.x(m.t)} y1={0} y2={height - 18} stroke={m.dashed ? "var(--muted)" : "var(--red)"} strokeWidth={2} strokeDasharray={m.dashed ? "6 4" : undefined} />
           <text x={scale.x(m.t) + 4} y={12} fontSize={11} fill={m.dashed ? "var(--muted)" : "var(--red)"}>
             {`${m.label} ${formatClock(m.t)}`}

@@ -8,8 +8,9 @@ import type { Analysis } from "@/lib/coach/types";
 import { allowedRange, clampCandidate, indexFromTime, snapToBoundary, type GameDataLite, type Range } from "@/lib/editor/constraints";
 import { waitReason } from "@/lib/editor/explain";
 import { neverStartsReason } from "@/lib/editor/guard";
+import { isLostRelease } from "@/lib/editor/input";
 import { ORDINAL_W, type Scale } from "@/lib/editor/layout";
-import { insertBlock, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
+import { insertBlock, splitBlock, toJson, type BoxSource, type EditorAction, type EditorState, type EditorStep } from "@/lib/editor/model";
 import { neverStartsText, notBeforeText } from "@/lib/editor/text";
 import { guideLabels, type Inserted } from "@/lib/editor/villagers";
 import { formatClock } from "@/lib/buildOrder";
@@ -22,8 +23,8 @@ const DRAG_THRESHOLD_PX = 4;
 export const COUNT_STEP_PX = 18;
 const MAX_COUNT = 200;
 
-/** Una caja de la línea (`countStepId`: el paso cuya cantidad cambia deslizando en vertical) o una de la paleta. */
-export type DragSource = { kind: "box"; from: number; to: number; countStepId?: string } | { kind: "palette"; step: EditorStep };
+/** Una caja de la línea o una de la paleta. */
+export type DragSource = BoxSource | { kind: "palette"; step: EditorStep };
 
 export interface DragState {
   source: DragSource;
@@ -133,8 +134,8 @@ export function useTimelineDrag(options: Options) {
     setDrag(null);
   }, []);
 
-  // Si el componente se va con un arrastre en curso, los eventos se sacan igual.
-  useEffect(() => () => detachRef.current?.(), []);
+  // Si el componente se va o la ruta se esconde (Activity) con un arrastre en curso, se termina: si no, el próximo toque se ignora.
+  useEffect(() => cleanup, [cleanup]);
 
   const begin = useCallback((pending: Pending) => {
     const { state, data, scale, mode, label } = optionsRef.current;
@@ -338,7 +339,7 @@ export function useTimelineDrag(options: Options) {
     if (pending && !session) {
       // Un toque sin arrastre: elegir la caja, o agregar el paso de la paleta.
       if (pending.source.kind === "palette") onPaletteClick(pending.source.step);
-      else onBoxClick(optionsRef.current.state.steps[pending.source.from].id);
+      else onBoxClick(pending.source.stepId);
     } else if (session && pending && session.count) {
       // La cantidad elegida deslizando (el editor la rechaza y explica si deja la BO rota).
       if (session.count.value !== session.count.base) dispatch({ type: "setCount", id: session.count.id, count: session.count.value });
@@ -375,6 +376,10 @@ export function useTimelineDrag(options: Options) {
     const onMove = (e: PointerEvent) => {
       const pending = pendingRef.current;
       if (!pending || e.pointerId !== pending.pointerId) return;
+      if (isLostRelease(e)) {
+        cleanup();
+        return;
+      }
       pointerRef.current = { x: e.clientX, y: e.clientY };
       if (!sessionRef.current) {
         const dx = e.clientX - pending.x0;
@@ -399,15 +404,25 @@ export function useTimelineDrag(options: Options) {
         cleanup();
       }
     };
+    // La suelta puede no llegar nunca (en táctil, o en otra ventana). Otro toque quiere decir que este ya terminó (el mouse
+    // no avisa de un segundo botón con pointerdown), y lo mismo si la página se va de la vista.
+    const onDown = () => cleanup();
+    const onHidden = () => {
+      if (document.hidden) cleanup();
+    };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("visibilitychange", onHidden);
     detachRef.current = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("visibilitychange", onHidden);
     };
   }, [begin, beginCount, update, finish, cleanup]);
 
@@ -424,7 +439,7 @@ export function useTimelineDrag(options: Options) {
     attach();
   }, [attach]);
 
-  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, from: number, to: number, countStepId?: string) => start(e, { kind: "box", from, to, countStepId }), [start]);
+  const startBoxDrag = useCallback((e: ReactPointerEvent<HTMLElement>, source: BoxSource) => start(e, source), [start]);
   const startPaletteDrag = useCallback((e: ReactPointerEvent<HTMLElement>, step: EditorStep) => start(e, { kind: "palette", step }), [start]);
 
   return { drag, startBoxDrag, startPaletteDrag };

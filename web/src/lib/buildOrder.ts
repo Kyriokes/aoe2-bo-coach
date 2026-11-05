@@ -57,12 +57,12 @@ function schemaFor(locale: Locale) {
       .int()
       .min(1)
       .max(CURRENT_SCHEMA_VERSION, fill(t.schemaVersion, { n: CURRENT_SCHEMA_VERSION })),
-    name: z.string().trim().min(1, t.noName).max(100),
+    name: z.string().trim().min(1, t.noName).max(100, fill(t.nameTooLong, { n: 100 })),
     civ: z.string().trim().min(1).max(40).default("any"),
     author: z.string().max(60).nullish(),
     description: z.string().max(4000).nullish(),
     tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
-    steps: z.array(step).min(1, t.noSteps).max(300),
+    steps: z.array(step).min(1, t.noSteps).max(300, fill(t.tooManySteps, { n: 300 })),
     // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
     branches: z
       .array(z.looseObject({ steps: z.array(step).min(1).max(300) }))

@@ -108,6 +108,25 @@ describe("carácter nulo", () => {
   it("una barra y una u escritas de verdad no son un carácter nulo", () => {
     expect(errorOf(bo({ note: "C:\\u0000" }))).toBeNull();
     expect(errorOf(JSON.stringify(bo({ note: "C:\\u0000" })))).toBeNull();
+    });
+  });
+});
+
+// Antes salía el mensaje por defecto de zod, en inglés también en el sitio en castellano ("Too big: expected...").
+describe("los errores de publicación salen en el idioma de la página", () => {
+  const longName = { ...bo({}), name: "x".repeat(101) };
+  const manySteps = { ...bo({}), steps: Array.from({ length: 301 }, (_, i) => ({ id: `s${i}`, do: "train", what: "villager" })) };
+
+  it("un nombre demasiado largo", () => {
+    expect(parseBuildOrder(longName, "es")).toEqual({ ok: false, error: "El nombre tiene hasta 100 caracteres. (name)" });
+    expect(parseBuildOrder(longName, "en")).toEqual({ ok: false, error: "The name can have up to 100 characters. (name)" });
+    expect(errorOf({ ...bo({}), name: "x".repeat(100) })).toBeNull();
+  });
+
+  it("demasiados pasos", () => {
+    expect(parseBuildOrder(manySteps, "es")).toEqual({ ok: false, error: "La BO tiene más de 300 pasos: sacale algunos. (steps)" });
+    expect(parseBuildOrder(manySteps, "en")).toEqual({ ok: false, error: "The BO has more than 300 steps: remove some. (steps)" });
+    expect(errorOf({ ...manySteps, steps: manySteps.steps.slice(0, 300) })).toBeNull();
   });
 });
 

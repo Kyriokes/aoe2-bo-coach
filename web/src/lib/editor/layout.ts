@@ -62,11 +62,11 @@ export function labelWidthFor(viewport: number) {
 }
 
 /**
- * Lo que mide la línea: en PC, lo que hay (la BO entera a la vista); en el celular, más si un minuto no llega a
- * MIN_PX_PER_MIN (y entonces se desplaza de costado).
+ * Lo que mide la línea: en PC, lo que hay (la BO entera a la vista, también en la columna angosta de Asistido); en el
+ * celular, más si un minuto no llega a MIN_PX_PER_MIN (y entonces se desplaza de costado).
  */
-export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport)) {
-  if (viewport >= NARROW_WIDTH) return viewport;
+export function timelineWidth(viewport: number, span: number, labelWidth = labelWidthFor(viewport), phone = viewport < NARROW_WIDTH) {
+  if (!phone) return viewport;
   return Math.max(viewport, labelWidth + 8 + (span / 60) * MIN_PX_PER_MIN + PAD_R);
 }
 
@@ -220,6 +220,9 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
     // Lo que produce cada edificio, de a una cosa: los trabajos seguidos de un mismo paso van en una caja.
     const unitsPerStep = new Map<string, number>();
     for (const j of jobs) if (j.kind === "produce") unitsPerStep.set(j.step_id, (unitsPerStep.get(j.step_id) ?? 0) + 1);
+    // Cada caja se reconoce por su número de tramo dentro del paso, no por la hora: al moverse sigue siendo el mismo
+    // elemento y conserva el foco (si no, el segundo Alt+← le llega a la página, y es "Atrás" en el navegador).
+    const segments = new Map<string, number>();
     for (const [building, list] of produced) {
       const lane = laneOf.get(building);
       if (!lane) continue;
@@ -230,9 +233,11 @@ export function lanesFor(steps: EditorStep[], analysis: Analysis | null, data: G
         const entry = byId.get(current.job.step_id);
         if (entry) {
           const whole = current.count === unitsPerStep.get(current.job.step_id);
+          const segment = segments.get(current.job.step_id) ?? 0;
+          segments.set(current.job.step_id, segment + 1);
           lane.items.push(
             item(entry.step, {
-              key: `${building}:${current.job.step_id}:${current.job.start}`,
+              key: `produce:${current.job.step_id}:${segment}`,
               label: whole ? textOf(entry.step) : unitLabel(entry.step, current.job.what, current.count, locale),
               start: current.job.start,
               end: current.end,
