@@ -63,6 +63,51 @@ public sealed class RegionLayoutTests : IDisposable
         Assert.Contains("\"event_log\"", File.ReadAllText(_path));
     }
 
+    // regions.json se reescribe seguido (cada calibración sola). File.WriteAllText trunca primero: un corte de luz en el
+    // medio dejaba el archivo vacío y la app no abría.
+    [Fact]
+    public void Guardar_no_toca_el_archivo_anterior_hasta_tener_el_nuevo_entero()
+    {
+        RegionLayout.Default.Save(_path);
+        var before = File.ReadAllText(_path);
+
+        using (var open = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+        {
+            // Si este Windows no deja reemplazar un archivo abierto, tira: igual el anterior tiene que quedar entero.
+            Record.Exception(() => RegionLayout.Default.WithHudScale(1.5).Save(_path));
+            using var reader = new StreamReader(open);
+            Assert.Equal(before, reader.ReadToEnd());
+        }
+        Assert.Empty(Leftovers());
+    }
+
+    [Fact]
+    public void Si_no_se_puede_reemplazar_queda_el_anterior_y_no_quedan_temporales()
+    {
+        RegionLayout.Default.Save(_path);
+        var before = File.ReadAllText(_path);
+
+        using (new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.None))
+            Assert.NotNull(Record.Exception(() => RegionLayout.Default.WithHudScale(1.5).Save(_path)));
+
+        Assert.Equal(before, File.ReadAllText(_path));
+        Assert.Empty(Leftovers());
+    }
+
+    [Fact]
+    public void Guardar_encima_reemplaza_el_archivo_y_no_deja_temporales()
+    {
+        RegionLayout.Default.Save(_path);
+
+        RegionLayout.Default.WithHudScale(1.5).Save(_path);
+
+        Assert.Equal(1.5, RegionLayout.LoadOrDefault(_path).HudScale);
+        Assert.Empty(Leftovers());
+    }
+
+    private IEnumerable<string> Leftovers() =>
+        Directory.GetFiles(Path.GetDirectoryName(_path)!, Path.GetFileName(_path) + "*").Where(p => p != _path);
+
     [Fact]
     public void Si_no_hay_archivo_usa_el_default_y_completa_regiones_faltantes()
     {
@@ -128,6 +173,60 @@ public sealed class RegionLayoutTests : IDisposable
 
         Assert.Null(loaded.Hud);
         Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X, 5);
+    }
+
+    // El código promete ignorar un diseño que no entiende, pero un tipo equivocado salía como JsonException y rompía la carga.
+    public static TheoryData<string> BrokenLayouts =>
+    [
+        """{ "name": 5 }""",
+        """{ "name": "x", "bar": "no es un objeto" }""",
+        """[1, 2, 3]""",
+    ];
+
+    [Theory]
+    [MemberData(nameof(BrokenLayouts))]
+    public void Un_diseno_guardado_con_tipos_equivocados_se_ignora(string layout)
+    {
+        File.WriteAllText(_path, $$"""{ "regions": { "food": [0.1, 0.2, 0.03, 0.02] }, "hud_layout": {{layout}} }""");
+
+        var loaded = RegionLayout.LoadOrDefault(_path);
+
+        Assert.Null(loaded.Hud);
+        Assert.Equal(0.1, loaded.Regions[RegionNames.Food].X, 5);
+    }
+
+    [Theory]
+    [InlineData("""{ "name": 5 }""")]
+    [InlineData("""no es json""")]
+    public void HudLayout_avisa_con_InvalidDataException_si_no_entiende_el_json(string json)
+    {
+        var error = Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json, "prueba.json"));
+
+        Assert.Contains("prueba.json", error.Message);
+    }
+
+    [Theory]
+    [InlineData("cells/wood")]
+    [InlineData("cells/wood/fields/stock")]
+    [InlineData("cells/wood/icon")]
+    [InlineData("cells/wood/chip")]
+    public void Un_null_adentro_del_diseno_es_un_diseno_roto_y_no_una_excepcion_cualquiera(string where)
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Hud().ToJson())!;
+        var parts = where.Split('/');
+        var parent = parts[..^1].Aggregate(json, (node, part) => node[part]!);
+        parent[parts[^1]] = null;
+
+        Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json.ToJsonString()));
+    }
+
+    [Fact]
+    public void Un_fondo_null_adentro_del_diseno_es_un_diseno_roto()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Hud().ToJson())!;
+        json["cells"]!["wood"]!["backgrounds"] = new System.Text.Json.Nodes.JsonArray((System.Text.Json.Nodes.JsonNode?)null);
+
+        Assert.Throws<InvalidDataException>(() => HudLayout.Parse(json.ToJsonString()));
     }
 
     [Fact]

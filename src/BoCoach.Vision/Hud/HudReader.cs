@@ -104,14 +104,15 @@ public sealed class HudReader(HudFonts fonts)
     private readonly GlyphReader? _modPopulation = fonts.ModPopulation is { } population ? new(population) : null;
     private readonly GlyphReader? _hudNumbers = fonts.HudNumbers is { } hud ? new(hud) : null;
     private static readonly Regex PopulationText = new(@"^(\d{1,3})/(\d{1,3})$", RegexOptions.Compiled);
-    private static readonly Regex ModClockTime = new(@"^\d\d:\d\d:\d\d", RegexOptions.Compiled);
+    /// <summary>Minutos y segundos de 00 a 59: un 0 leído como 9 ("00:96:10") no es una hora.</summary>
+    private static readonly Regex ModClockTime = new(@"^\d\d:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
 
     /// <summary>
     /// La letra de siempre puede leer la hora sin el cero de adelante; igual pide los dos dígitos de los segundos: con
     /// el último tapado (partida 20261101-165020, un cuadro del juego sobre el reloj), "00:26:5" se tomaba por 26:05,
     /// el reloj volvía 47 s para atrás y el coach empezaba otra partida.
     /// </summary>
-    private static readonly Regex LooseClockTime = new(@"^\d{1,2}:\d\d:\d\d", RegexOptions.Compiled);
+    private static readonly Regex LooseClockTime = new(@"^\d{1,2}:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
 
     /// <summary>
     /// En pausa el juego oscurece todo: los números del mod (blancos sobre negro puro) se estiran para que lo más
@@ -235,6 +236,11 @@ public sealed class HudReader(HudFonts fonts)
         static double? TimeAtStart(GlyphReading reading) =>
             ModClockTime.Match(reading.Text) is { Success: true } time && GameClock.TryParse(time.Value, out var seconds) ? seconds : null;
 
+        // La letra de siempre: el "hh:mm:ss" del principio o, si la lectura está entera, la hora sin el cero de adelante.
+        static double? UsualTime(GlyphReading reading) =>
+            TimeAtStart(reading)
+            ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
+
         double? clockSeconds = null;
         if (image(RegionNames.Clock) is { } clockImage)
         {
@@ -252,10 +258,23 @@ public sealed class HudReader(HudFonts fonts)
             if (clockSeconds is null)
             {
                 var reading = _clock.Read(clockImage);
-                clockSeconds = TimeAtStart(reading)
-                    ?? (reading.IsUsable && LooseClockTime.Match(reading.Text) is { Success: true } loose && GameClock.TryParse(loose.Value, out var seconds) ? seconds : null);
+                clockSeconds = UsualTime(reading);
                 clockClipped |= reading.Clipped;
                 confidence["clock"] = reading.Confidence;
+            }
+            // En pausa el juego oscurece todo ×0,2: sobre el panel opaco del mod (24, 21, 18) o la textura no hay negro
+            // puro y el blanco no llega a la tinta de ninguna letra. Sin reloj, a los 30 s el coach da la partida por
+            // terminada. Primero la letra de siempre, que es la que lee estas cajas fuera de la pausa (la del mod a veces
+            // lee el cero de la hora como 9); una imagen con blancos queda igual y ya se leyó.
+            if (clockSeconds is null)
+            {
+                var bright = clockImage.Stretched(PauseGain, tightText: true);
+                if (!ReferenceEquals(bright, clockImage) && _clock.Read(bright) is var usual && UsualTime(usual) is { } usualTime)
+                    (clockSeconds, confidence["clock"]) = (usualTime, usual.Confidence);
+                // Después la del mod, con cualquier fondo: agrandada desde 900p o 720p, la letra de siempre no entiende
+                // los trazos finos (su tinta arranca en 180) y la del mod sí (50).
+                else if (_modClock?.Read(bright) is { } mod && TimeAtStart(mod) is { } modTime)
+                    (clockSeconds, confidence["clock"]) = (modTime, mod.Confidence);
             }
             if (clockSeconds is null && clockClipped)
                 clipped.Add(RegionNames.Clock);

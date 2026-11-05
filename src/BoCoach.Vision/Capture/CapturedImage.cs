@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Collections.Concurrent;
+
 namespace BoCoach.Vision.Capture;
 
 /// <summary>Rectángulo en píxeles físicos de la pantalla.</summary>
@@ -102,36 +105,60 @@ public sealed class CapturedImage
             return this;
         var w = Math.Max(1, (int)Math.Round(Width * factor));
         var h = Math.Max(1, (int)Math.Round(Height * factor));
-        // Dos pasadas (columnas y después filas) con los pesos de cada píxel de salida.
+        // Dos pasadas (columnas y después filas) con los pesos de cada píxel de salida. Fuera de 1080p esto pasa con cada
+        // región en cada captura: el arreglo intermedio se reusa, y los pesos dependen solo de los tamaños.
         var columns = Weights(Width, w);
         var rows = Weights(Height, h);
-        var horizontal = new double[Height * w * 3];
-        for (var y = 0; y < Height; y++)
-            for (var x = 0; x < w; x++)
-                foreach (var (source, weight) in columns[x])
-                    for (var c = 0; c < 3; c++)
-                        horizontal[(y * w + x) * 3 + c] += Bgra[(y * Width + source) * 4 + c] * weight;
-        var output = new byte[w * h * 4];
-        for (var y = 0; y < h; y++)
+        var length = Height * w * 3;
+        var horizontal = ArrayPool<double>.Shared.Rent(length);
+        try
         {
-            for (var x = 0; x < w; x++)
+            Array.Clear(horizontal, 0, length);
+            for (var y = 0; y < Height; y++)
+                for (var x = 0; x < w; x++)
+                    foreach (var (source, weight) in columns[x])
+                        for (var c = 0; c < 3; c++)
+                            horizontal[(y * w + x) * 3 + c] += Bgra[(y * Width + source) * 4 + c] * weight;
+            var output = new byte[w * h * 4];
+            for (var y = 0; y < h; y++)
             {
-                var o = (y * w + x) * 4;
-                for (var c = 0; c < 3; c++)
+                for (var x = 0; x < w; x++)
                 {
-                    var v = 0.0;
-                    foreach (var (source, weight) in rows[y])
-                        v += horizontal[(source * w + x) * 3 + c] * weight;
-                    output[o + c] = (byte)Math.Clamp(Math.Round(v), 0, 255);
+                    var o = (y * w + x) * 4;
+                    for (var c = 0; c < 3; c++)
+                    {
+                        var v = 0.0;
+                        foreach (var (source, weight) in rows[y])
+                            v += horizontal[(source * w + x) * 3 + c] * weight;
+                        output[o + c] = (byte)Math.Clamp(Math.Round(v), 0, 255);
+                    }
+                    output[o + 3] = 255;
                 }
-                output[o + 3] = 255;
             }
+            return new CapturedImage(w, h, output);
         }
-        return new CapturedImage(w, h, output);
+        finally
+        {
+            ArrayPool<double>.Shared.Return(horizontal);
+        }
     }
+
+    /// <summary>Hasta cuántos pares de tamaños se recuerdan: una partida usa unos pocos, y cambian solo al recalibrar.</summary>
+    private const int MaxCachedWeights = 256;
+
+    private static readonly ConcurrentDictionary<(int From, int To), List<(int Source, double Weight)>[]> CachedWeights = new();
 
     /// <summary>Qué píxeles de origen (y con qué peso) forman cada uno de los <paramref name="to"/> de salida.</summary>
     private static List<(int Source, double Weight)>[] Weights(int from, int to)
+    {
+        if (CachedWeights.TryGetValue((from, to), out var cached))
+            return cached;
+        if (CachedWeights.Count >= MaxCachedWeights)
+            CachedWeights.Clear();
+        return CachedWeights[(from, to)] = ComputeWeights(from, to);
+    }
+
+    private static List<(int Source, double Weight)>[] ComputeWeights(int from, int to)
     {
         var ratio = (double)from / to;
         var weights = new List<(int, double)>[to];
@@ -209,7 +236,9 @@ public sealed class CapturedImage
     /// Queda igual una imagen que ya tiene blancos, que es toda negra (por el tope) o en la que lo más claro ocupa
     /// buena parte (una zona gris pareja no es texto oscurecido).
     /// </summary>
-    public CapturedImage Stretched(double maxGain)
+    /// <param name="maxGain">Hasta cuántas veces se multiplica el brillo.</param>
+    /// <param name="tightText">La caja va justa a las letras (el reloj sin el mod: 59×16): lo más claro ocupa buena parte y sigue siendo texto.</param>
+    public CapturedImage Stretched(double maxGain, bool tightText = false)
     {
         var histogram = new int[256];
         for (var i = 0; i < Bgra.Length; i += 4)
@@ -225,7 +254,7 @@ public sealed class CapturedImage
         }
 
         var gain = Math.Min(maxGain, 255.0 / Math.Max(1, peak));
-        if (gain <= 1.01 || histogram.Skip(peak * 4 / 5).Sum() > pixels / 4)
+        if (gain <= 1.01 || (!tightText && histogram.Skip(peak * 4 / 5).Sum() > pixels / 4))
             return this;
         var output = new byte[Bgra.Length];
         for (var i = 0; i < Bgra.Length; i += 4)
@@ -235,7 +264,7 @@ public sealed class CapturedImage
             output[i + 2] = (byte)Math.Min(255, Bgra[i + 2] * gain);
             output[i + 3] = 255;
         }
-        return new CapturedImage(Width, Height, output);
+        return new CapturedImage(Width, Height, output) { Rescaled = Rescaled };
     }
 
     /// <summary>Escala de grises invertida (texto claro del HUD → texto oscuro sobre fondo claro), en BGRA.</summary>

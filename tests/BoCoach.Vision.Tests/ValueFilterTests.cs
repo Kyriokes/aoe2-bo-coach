@@ -81,6 +81,35 @@ public class ValueFilterTests
         Assert.Equal(371, clock.Add(371, 7.5));
     }
 
+    // Una primera lectura mala dejaba el reloj clavado toda la partida: "09:06:10" se aceptaba y las buenas eran una baja
+    // de 9 horas, que no pasa nunca. La primera se toma recién cuando la siguiente puede seguirle.
+    [Fact]
+    public void Una_primera_lectura_mala_del_reloj_no_lo_deja_clavado()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Null(clock.Add(32770, 0));
+        Assert.Null(clock.Value);
+        Assert.Null(clock.Add(370, 0.5));
+        Assert.Equal(371, clock.Add(371, 1));
+        Assert.Equal(372, clock.Add(372, 1.5));
+    }
+
+    [Fact]
+    public void Dos_lecturas_seguidas_dan_el_reloj()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Null(clock.Add(370, 0));
+        Assert.Equal(370, clock.Add(370, 0.5)); // en pausa no avanza, y da lo mismo
+    }
+
+    [Fact]
+    public void Lo_que_no_es_el_reloj_no_espera_la_segunda_lectura()
+    {
+        Assert.Equal(100, new ValueFilter { Window = 3, MaxRisePerSecond = 150, Slack = 40 }.Add(100, 0));
+    }
+
     [Fact]
     public void Las_bajas_por_gasto_se_aceptan_al_instante()
     {

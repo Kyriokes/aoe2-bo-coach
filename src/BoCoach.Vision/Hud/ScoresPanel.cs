@@ -63,7 +63,7 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
     {
         var top = PanelTop(panel);
         if (top is null)
-            return LoadingScreenReader.DarkOnLight(panel.Resample(Zoom)).Padded(Margin);
+            return LoadingScreenReader.DarkOnLight(panel.ScaleSmooth(Zoom)).Padded(Margin);
         // El fondo del panel (la mediana de los cuartiles bajos de sus filas) va a blanco y lo que lo supera en
         // TextContrast o más, a negro; el mapa a la izquierda del panel y arriba de la banda queda blanco.
         var levels = Enumerable.Range(top.Value, panel.Height - top.Value).Select(y => Background(panel, y)).OrderBy(v => v).ToList();
@@ -80,7 +80,8 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
                 (output[i], output[i + 1], output[i + 2], output[i + 3]) = (v, v, v, 255);
             }
         }
-        return new CapturedImage(panel.Width, panel.Height, output).Resample(Zoom).Padded(Margin);
+        // ScaleSmooth da lo mismo que Resample a ×2 sin el arreglo de doubles (4,3 MB en el montículo de objetos grandes cada 2 s).
+        return new CapturedImage(panel.Width, panel.Height, output).ScaleSmooth(Zoom).Padded(Margin);
     }
 
     /// <summary>Cuánto más claro que el fondo tiene que ser un píxel para ir a negro del todo.</summary>
@@ -145,8 +146,12 @@ public sealed partial class ScoresPanelReader(OcrReader ocr)
         return bottom - top + 1 >= MinBand ? top : null;
     }
 
-    /// <summary>Los renglones que lee el OCR, antes de reconocer los puntajes.</summary>
-    public Task<IReadOnlyList<OcrTextLine>> ReadRawAsync(CapturedImage panel) => ocr.ReadPreparedLinesAsync(Prepare(panel), Zoom, Margin);
+    /// <summary>
+    /// Los renglones que lee el OCR, antes de reconocer los puntajes, con su altura en píxeles del panel. El margen se
+    /// agrega después de agrandar: en píxeles del panel es <c>Margin / Zoom</c>. Con <see cref="Margin"/> entero, cada
+    /// renglón quedaba 6 px más arriba y el color y el ícono de edad se miraban en parte en el renglón de arriba.
+    /// </summary>
+    public Task<IReadOnlyList<OcrTextLine>> ReadRawAsync(CapturedImage panel) => ocr.ReadPreparedLinesAsync(Prepare(panel), Zoom, Margin / Zoom);
 
     /// <summary>
     /// "UKyriokes: 779/779" → 779. El segundo número es el puntaje más alto del equipo (en 1 contra 1, el mismo; en la

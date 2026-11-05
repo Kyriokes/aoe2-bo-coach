@@ -30,13 +30,21 @@ internal static class HudLayoutScreens
     /// corre el reloj esa cantidad de píxeles respecto de donde el diseño lo pone (está en otro panel del juego). Con
     /// <paramref name="sidePanels"/>, el log y la cola del mod sobre su fondo negro (con renglones blancos y tres íconos).
     /// </summary>
-    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0, bool sidePanels = false)
+    /// <param name="texts">Con esto, en cada campo ("celda.campo") va su texto pintado con <paramref name="font"/> en vez de las rayas.</param>
+    public static CapturedImage Render(HudLayout layout, double pixelsPerUnit, int width = 1920, int height = 1080, int originX = 0, int originY = 0, bool gdInside = false, bool idleFrame = false, int clockShift = 0, bool sidePanels = false, IReadOnlyDictionary<string, string>? texts = null, GlyphFont? font = null)
     {
         var canvas = new Canvas(width, height, Grass);
         PixelRect Rect(int x, int y, int w, int h) => new(originX + Px(x, pixelsPerUnit), originY + Px(y, pixelsPerUnit), Px(w, pixelsPerUnit), Px(h, pixelsPerUnit));
         DrawBar(canvas, layout, Rect);
         foreach (var cell in layout.Cells)
-            DrawCell(canvas, layout, cell, Rect, gdInside, stripes: true);
+        {
+            DrawCell(canvas, layout, cell, Rect, gdInside, stripes: texts is null);
+            foreach (var (name, field) in cell.Fields)
+            {
+                if (texts is not null && texts.TryGetValue($"{cell.Name}.{name}", out var text))
+                    canvas.Text(text, Rect(cell.X + field.X, field.Y, field.Width, field.Height), font!, field.Points, pixelsPerUnit, White);
+            }
+        }
         if (idleFrame)
         {
             var idle = layout.CellRect(layout.Cell("idle"));
@@ -66,6 +74,21 @@ internal static class HudLayoutScreens
     }
 
     /// <summary>
+    /// Como <see cref="Render"/>, con los bordes suavizados como los dibuja el juego cuando no caen justo en un píxel: se
+    /// dibuja la parte de arriba 4 veces más grande y se achica. Una franja de 3 px queda con 2 filas enteras y 2 a medias.
+    /// </summary>
+    /// <param name="phase">Cuartos de píxel que se corre todo para abajo.</param>
+    public static CapturedImage RenderSmooth(HudLayout layout, double pixelsPerUnit, int width, int height, int phase = 0, IReadOnlyDictionary<string, string>? texts = null, GlyphFont? font = null)
+    {
+        const int super = 4;
+        var rows = height / 6;
+        var top = Render(layout, pixelsPerUnit * super, width * super, rows * super, originY: phase, texts: texts, font: font).Resample(1.0 / super);
+        var canvas = new Canvas(width, height, Grass);
+        canvas.Paste(top);
+        return canvas.Image;
+    }
+
+    /// <summary>
     /// Una celda sola, como la graba el recorder: la caja de la celda con sus textos pintados con las plantillas de
     /// <paramref name="font"/> (misma letra del juego a 48 pt). <paramref name="darken"/> multiplica los canales
     /// (0,2 = partida en pausa).
@@ -82,6 +105,16 @@ internal static class HudLayoutScreens
         }
         if (darken < 1)
             canvas.Darken(darken);
+        return canvas.Image;
+    }
+
+    /// <summary>El reloj del mod: el texto pintado con las plantillas de la letra sobre negro.</summary>
+    public static CapturedImage ClockBox(string text, GlyphFont font)
+    {
+        const int points = 56;
+        const double ppu = 0.4348;
+        var canvas = new Canvas(200, 40, Black);
+        canvas.Text(text, new PixelRect(0, 0, 200, 40), font, points, ppu, White);
         return canvas.Image;
     }
 
@@ -148,6 +181,12 @@ internal static class HudLayoutScreens
             for (var y = Math.Max(0, rect.Y); y < Math.Min(_height, rect.Y + rect.Height); y++)
                 for (var x = Math.Max(0, rect.X); x < Math.Min(_width, rect.X + rect.Width); x++)
                     Set(x, y, color);
+        }
+
+        public void Paste(CapturedImage image)
+        {
+            for (var y = 0; y < image.Height; y++)
+                Buffer.BlockCopy(image.Bgra, y * image.Width * 4, _bgra, y * _width * 4, image.Width * 4);
         }
 
         public void Darken(double factor)

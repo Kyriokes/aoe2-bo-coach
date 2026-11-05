@@ -1,4 +1,5 @@
 using BoCoach.Core.Data;
+using BoCoach.Vision.Capture;
 using BoCoach.Vision.Hud;
 using BoCoach.Vision.Recording;
 
@@ -26,11 +27,41 @@ public class HudLayoutGoldenTests
     {
         var session = RecordedSession.Load(Fixture);
         Assert.NotNull(session.Hud);
+        var failures = Failures(session, (frame, region) => session.Has(frame, region) ? session.Image(frame, region) : null);
+        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+    }
+
+    // Las mismas capturas, con la GD adentro de los casilleros, llevadas a la escala de otras resoluciones y de vuelta a
+    // 1080p como en vivo: el casillero se tiene que seguir reconociendo con el borde borroneado, sin mirar adentro de la
+    // GD. El juego no se pudo probar a estas resoluciones; a 720p se acepta un error (los números miden 9 px).
+    [Theory]
+    [InlineData(2.0, 0)]
+    [InlineData(1.5, 0)]
+    [InlineData(1.3333, 0)]
+    [InlineData(0.8333, 0)]
+    [InlineData(0.7111, 0)]
+    [InlineData(0.6667, 1)]
+    public void Lee_el_golden_a_la_escala_de_otras_resoluciones(double scale, int allowed)
+    {
+        var session = RecordedSession.Load(Fixture);
+        CapturedImage? Image(int frame, string region)
+        {
+            var path = Path.Combine(Fixture, SessionRecorder.FileName(frame, region));
+            return File.Exists(path) ? Png.Read(path).Resample(scale).AtHudScale(scale) : null;
+        }
+
+        var failures = Failures(session, Image);
+
+        Assert.True(failures.Count <= allowed, string.Join(Environment.NewLine, failures));
+    }
+
+    private static List<string> Failures(RecordedSession session, Func<int, string, CapturedImage?> image)
+    {
         var failures = new List<string>();
         foreach (var expected in Golden())
         {
             var frame = int.Parse(expected["frame"]);
-            var reading = Reader.Read(region => session.Has(frame, region) ? session.Image(frame, region) : null, session.Hud);
+            var reading = Reader.Read(region => image(frame, region), session.Hud);
             void Check(string column, object? actual)
             {
                 if (!string.Equals(expected[column], actual?.ToString(), StringComparison.Ordinal))
@@ -45,9 +76,9 @@ public class HudLayoutGoldenTests
             Check("total", reading.Villagers);
             Check("cap", reading.Population is { } n && reading.PopulationCap is { } m ? $"{n}/{m}" : null);
             Check("idle", reading.IdleVillagers);
-            if (reading.LayoutName != session.Hud.Name)
+            if (reading.LayoutName != session.Hud!.Name)
                 failures.Add($"captura {frame}: no se leyó con el diseño ({reading.LayoutName ?? "-"})");
         }
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        return failures;
     }
 }

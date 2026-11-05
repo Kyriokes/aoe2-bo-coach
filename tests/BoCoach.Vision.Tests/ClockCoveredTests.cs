@@ -25,4 +25,20 @@ public class ClockCoveredTests
         var reading = Reader.Read(region => region == RegionNames.Clock ? image : null);
         Assert.Equal(expected, reading.Clock is { } seconds ? TimeSpan.FromSeconds(seconds).ToString(@"hh\:mm\:ss") : null);
     }
+
+    // Un 0 leído como 9 en los minutos o los segundos no es una hora: "00:96:10" daba 01:36:10.
+    [Theory]
+    [InlineData("00:06:10", 370)]
+    [InlineData("00:59:59", 3599)]
+    [InlineData("01:00:00", 3600)]
+    [InlineData("00:96:10", null)]
+    [InlineData("00:06:70", null)]
+    [InlineData("00:60:00", null)]
+    public void Minutos_o_segundos_de_60_o_mas_no_son_una_hora(string text, int? seconds)
+    {
+        var fonts = HudFonts.Load(Path.Combine(AppContext.BaseDirectory, "fonts"));
+        var image = HudLayoutScreens.ClockBox(text, fonts.ModClock!);
+
+        Assert.Equal(seconds, Reader.Read(region => region == RegionNames.Clock ? image : null).Clock);
+    }
 }

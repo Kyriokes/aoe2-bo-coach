@@ -8,7 +8,24 @@ namespace BoCoach.Vision.Regions;
 /// <param name="Squares">Los cuadrados del mod (madera, comida, oro, piedra, población, inactivos), de izquierda a derecha.</param>
 /// <param name="Clock">La caja del reloj.</param>
 /// <param name="Hud">El diseño del mod con que se calibró (los casilleros son las anclas), o null con el mod viejo.</param>
-public sealed record AutoCalibrationResult(RegionLayout Layout, double Scale, IReadOnlyList<PixelRect> Squares, PixelRect Clock, HudLayout? Hud = null);
+public sealed record AutoCalibrationResult(RegionLayout Layout, double Scale, IReadOnlyList<PixelRect> Squares, PixelRect Clock, HudLayout? Hud = null)
+{
+    /// <summary>Lo que miden los números del HUD (48 pt) a 1080p con escala 1.</summary>
+    private const double DigitsAt1080p = 13;
+
+    /// <summary>
+    /// Por debajo de esto el coach lee mal. Medido achicando capturas reales (el juego no se pudo probar a estas
+    /// resoluciones): el HUD se sigue leyendo casi entero, pero del log reconoce 10 de 12 mensajes a 900p (11 px), 9 a 768p y
+    /// 5 a 720p (9 px).
+    /// </summary>
+    private const double MinDigitPixels = 10;
+
+    /// <summary>Lo que miden los números del HUD en esta pantalla, en píxeles.</summary>
+    public double DigitPixels => DigitsAt1080p * Scale;
+
+    /// <summary>Los números miden tan poco que el coach va a leer mal: hay que avisarle al jugador (subir la resolución o el tamaño de la interfaz).</summary>
+    public bool SmallDigits => DigitPixels < MinDigitPixels;
+}
 
 /// <summary>
 /// Calibración sola, con el mod BoCoach HUD. Las anclas son las seis franjas de color de los cuadrados (marrón de la
@@ -123,7 +140,7 @@ public static class AutoCalibration
     private static AutoCalibrationResult? DetectLayout(CapturedImage screen, RegionLayout reference, HudLayout layout)
     {
         var strip = Strip(screen, LayoutLeftPart);
-        var rects = EvenRects(strip);
+        var rects = EvenRects(strip, layout.Anchors.Any(c => IsThin(c.Chip!)) ? MinThinRows : MinRows);
         var anchors = new List<(HudCell Cell, PixelRect Rect)>();
         foreach (var cell in layout.Anchors)
         {
@@ -269,14 +286,26 @@ public static class AutoCalibration
     /// <summary>
     /// Alto sobre ancho a un cuarto del del casillero del diseño o, para una franja fina (el diseño mínimo: 10 unidades,
     /// 4 px), el alto a <see cref="ThinTolerance"/> píxeles del que le toca por el ancho: con 4 px de alto un cuarto es
-    /// un píxel y el suavizado del borde ya lo gasta.
+    /// un píxel y el suavizado del borde ya lo gasta. Con los bordes a medias se pierden hasta casi 2 filas (a 900p, de
+    /// 3,6 quedan 2).
     /// </summary>
     private static bool ChipShaped(PixelRect rect, HudChip chip) =>
         rect.Width > 0 && (Math.Abs((double)rect.Height / rect.Width - (double)chip.Height / chip.Width) <= ShapeTolerance * chip.Height / chip.Width
             || Math.Abs(rect.Height - (double)rect.Width * chip.Height / chip.Width) <= ThinTolerance);
 
     private const double ShapeTolerance = 0.25;
-    private const double ThinTolerance = 1.5;
+    private const double ThinTolerance = 2;
+
+    /// <summary>Filas enteras de un rectángulo de color parejo.</summary>
+    private const int MinRows = 3;
+
+    /// <summary>
+    /// Lo mismo con una franja fina (el diseño mínimo, el de los jugadores nuevos): a 768p y 720p mide 3 px y, con los
+    /// bordes suavizados, quedan 2 filas enteras y 2 a medias.
+    /// </summary>
+    private const int MinThinRows = 2;
+
+    private static bool IsThin(HudChip chip) => chip.Height * 4 <= chip.Width;
 
     /// <summary>Pendiente de mínimos cuadrados de Y sobre X (píxeles por unidad), o null sin dos puntos distintos o con pendiente nula.</summary>
     private static double? Slope(IReadOnlyList<(double X, double Y)> points)
@@ -393,8 +422,8 @@ public static class AutoCalibration
 
     private static (int R, int G, int B) ToInts((byte R, byte G, byte B) p) => (p.R, p.G, p.B);
 
-    /// <summary>Rectángulos de color parejo (no oscuro, no blanco) de al menos 3 filas y <see cref="MinBandWidth"/> columnas.</summary>
-    private static List<(PixelRect Rect, (int R, int G, int B) Color)> EvenRects(CapturedImage strip)
+    /// <summary>Rectángulos de color parejo (no oscuro, no blanco) de al menos <paramref name="minRows"/> filas y <see cref="MinBandWidth"/> columnas.</summary>
+    private static List<(PixelRect Rect, (int R, int G, int B) Color)> EvenRects(CapturedImage strip, int minRows = MinRows)
     {
         var open = new List<(int Left, int Right, int Top, int Bottom, (int R, int G, int B) Color)>();
         var done = new List<(PixelRect Rect, (int R, int G, int B) Color)>();
@@ -451,7 +480,7 @@ public static class AutoCalibration
 
         void Close((int Left, int Right, int Top, int Bottom, (int R, int G, int B) Color) o)
         {
-            if (o.Bottom - o.Top + 1 >= 3)
+            if (o.Bottom - o.Top + 1 >= minRows)
                 done.Add((new PixelRect(o.Left, o.Top, o.Right - o.Left + 1, o.Bottom - o.Top + 1), o.Color));
         }
     }

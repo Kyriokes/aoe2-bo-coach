@@ -33,6 +33,11 @@ public class LoadingScreenTests
     [InlineData("TEAM 1", 1)]
     [InlineData("TEAM 2", 2)]
     [InlineData("TEAM l", 1)]
+    // La regex no distingue mayúsculas: "TEAM L" y "TEAM i" entraban y reventaban al convertir, y esa partida perdía civ,
+    // rival y número de jugador.
+    [InlineData("TEAM L", 1)]
+    [InlineData("TEAM i", 1)]
+    [InlineData("team I", 1)]
     [InlineData("Equipo 3", 3)]
     [InlineData("Team Fortress", null)]
     [InlineData("Kyriokes", null)]

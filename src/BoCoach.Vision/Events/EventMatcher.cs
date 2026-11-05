@@ -10,10 +10,13 @@ namespace BoCoach.Vision.Events;
 /// </summary>
 public sealed class EventMatcher
 {
+    private readonly EventCatalog _catalog;
     private readonly List<(string EventId, string Phrase, bool Rare)> _phrases;
+    private readonly Dictionary<string, string> _savedLines = [];
 
     public EventMatcher(EventCatalog catalog)
     {
+        _catalog = catalog;
         _phrases = catalog.Phrases
             .SelectMany(e => e.Value.Select((p, i) => (e.Key, Normalize(p), !catalog.IsCommon(e.Key, i))))
             .Where(p => p.Item2.Length > 0)
@@ -35,15 +38,14 @@ public sealed class EventMatcher
     /// <summary>Como <see cref="MatchLines"/>, y además cuántos renglones quedaron sin reconocer.</summary>
     public (IReadOnlyList<string> EventIds, int Unrecognized) MatchAll(IReadOnlyList<string> lines)
     {
-        var result = new List<string>();
-        var unrecognized = Walk(lines, (_, _) => { }, result);
-        return (result, unrecognized);
+        var messages = Messages(lines);
+        return (messages.OfType<string>().ToList(), messages.Count(m => m is null));
     }
 
-    /// <summary>Recorre los renglones: avisa cuáles forman un mensaje (el primero y cuántos) y devuelve cuántos no se reconocieron.</summary>
-    private int Walk(IReadOnlyList<string> lines, Action<int, int> recognized, List<string>? ids = null)
+    /// <summary>De arriba hacia abajo, el evento de cada mensaje (de uno o dos renglones) y null por cada renglón que no se reconoció.</summary>
+    private List<string?> Messages(IReadOnlyList<string> lines)
     {
-        var unrecognized = 0;
+        var messages = new List<string?>(lines.Count);
         for (var i = 0; i < lines.Count; i++)
         {
             var single = Best(lines[i]);
@@ -52,44 +54,41 @@ public sealed class EventMatcher
             var joined = i + 1 < lines.Count && !Closes(lines[i]) && !Opens(lines[i + 1]) ? Best(lines[i] + " " + lines[i + 1]) : null;
             if (joined is { } pair && (single is null || pair.Score < single.Value.Score))
             {
-                ids?.Add(pair.EventId);
-                recognized(i, 2);
+                messages.Add(pair.EventId);
                 i++;
                 continue;
             }
-            if (single is { } one)
-            {
-                ids?.Add(one.EventId);
-                recognized(i, 1);
-                continue;
-            }
-            unrecognized++;
+            messages.Add(single?.EventId);
         }
-        return unrecognized;
+        return messages;
     }
 
     /// <summary>
     /// Lo que reemplaza a un renglón que no es un mensaje del juego en el registro de partida. Termina en guion para
-    /// no juntarse con el renglón siguiente (<see cref="Closes"/>), y no tiene letras: junto con el anterior da lo mismo
-    /// que el anterior solo.
+    /// no juntarse con el renglón siguiente (<see cref="Closes"/>), y no tiene letras: no se reconoce como nada.
     /// </summary>
     public const string Scrubbed = BoCoach.Core.Record.RecordHealth.Unrecognized;
 
     /// <summary>
-    /// Los renglones con lo que no se reconoce tapado (<see cref="Scrubbed"/>): por la caja del log puede pasar el chat,
-    /// con el nombre de quien escribe. Lo tapado se sigue contando como no reconocido y lo demás se reconoce igual, así
-    /// que <see cref="MatchAll"/> da lo mismo con estos renglones.
+    /// Lo que va al registro de partida en vez de los renglones: un renglón por mensaje, con la frase del catálogo, y
+    /// <see cref="Scrubbed"/> por cada renglón que no se reconoció. Nunca lo leído: por la caja del log pasa el chat con el
+    /// nombre de quien escribe ("Ana: gg" junto a un mensaje real se reconoce como un mensaje partido en dos) y el aviso de
+    /// ataque lleva el nombre del jugador. <see cref="MatchAll"/> da lo mismo con estos renglones: con los guiones ninguno
+    /// se junta con el vecino y cada frase vuelve a su evento.
     /// </summary>
-    public IReadOnlyList<string> Scrub(IReadOnlyList<string> lines)
+    public IReadOnlyList<string> Scrub(IReadOnlyList<string> lines) =>
+        Messages(lines).Select(id => id is null ? Scrubbed : SavedLine(id)).ToList();
+
+    /// <summary>La primera frase del evento que vuelve a él: dos eventos pueden compartir una frase.</summary>
+    private string SavedLine(string eventId)
     {
-        var result = new string[lines.Count];
-        Array.Fill(result, Scrubbed);
-        Walk(lines, (first, count) =>
+        if (!_savedLines.TryGetValue(eventId, out var line))
         {
-            for (var i = first; i < first + count; i++)
-                result[i] = lines[i];
-        });
-        return result;
+            var phrases = _catalog.Phrases[eventId];
+            var phrase = phrases.FirstOrDefault(p => Best(p)?.EventId == eventId) ?? phrases[0];
+            _savedLines[eventId] = line = $"--{phrase}--";
+        }
+        return line;
     }
 
     /// <summary>Guiones con que el OCR lee los "--" que abren y cierran cada mensaje.</summary>

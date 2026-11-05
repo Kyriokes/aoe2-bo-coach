@@ -68,6 +68,21 @@ public class HudScaleTests
         Assert.Equal(Describe(expected), Describe(actual));
     }
 
+    // El reloj real del mod sobre su panel opaco (partida 20261101-165020), a la escala de 900p, 768p y 720p y llevado a
+    // 1080p: la letra de siempre, con la tinta desde 180, no entiende los trazos finos; la del mod (desde 50) sí. Sin
+    // reloj no hay coach.
+    [Theory]
+    [InlineData(0.8333)]
+    [InlineData(0.7111)]
+    [InlineData(0.6667)]
+    public void El_reloj_del_mod_se_lee_a_baja_resolucion(double scale)
+    {
+        var image = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "clock-tapado-20261101-165020", "002012_clock.png"));
+        var low = image.Resample(scale).AtHudScale(scale);
+
+        Assert.Equal(1620, Reader.Read(r => r == RegionNames.Clock ? low : null).Clock);
+    }
+
     // La cola de producción (íconos de 33 px a 1080p) también: agrandada a 1,09 y 1,5 y vuelta a 1080p se lee igual.
     [Theory]
     [InlineData(330, 1.09)]

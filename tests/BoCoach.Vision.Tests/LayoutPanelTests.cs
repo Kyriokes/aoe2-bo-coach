@@ -79,6 +79,33 @@ public class LayoutPanelTests
         Assert.Null(LayoutPanel.Chip(Layout, Wood, box));
     }
 
+    // Fuera de 1080p la caja llega reescalada: el borde del casillero sale borroneado, pero el casillero tiene que estar.
+    [Theory]
+    [InlineData(0.6667)]
+    [InlineData(0.7111)]
+    [InlineData(1.3333)]
+    public void Reescalada_se_lo_sigue_reconociendo_por_su_color(double scale)
+    {
+        var withChip = WoodBox().Resample(scale).AtHudScale(scale);
+        var withoutChip = WoodBox(chip: false).Resample(scale).AtHudScale(scale);
+
+        Assert.True(withChip.Rescaled);
+        Assert.NotNull(LayoutPanel.Chip(Layout, Wood, withChip));
+        Assert.Null(LayoutPanel.Chip(Layout, Wood, withoutChip));
+    }
+
+    // El lector estira el brillo antes de mirar el casillero (por si está en pausa).
+    [Fact]
+    public void Estirar_el_brillo_no_pierde_la_marca_de_reescalada()
+    {
+        var box = WoodBox();
+        var dark = new CapturedImage(box.Width, box.Height, box.Bgra.Select((v, i) => i % 4 == 3 ? v : (byte)(v / 5)).ToArray());
+
+        var stretched = dark.Resample(0.6667).AtHudScale(0.6667).Stretched(5);
+
+        Assert.True(stretched.Rescaled);
+    }
+
     [Fact]
     public void La_celda_de_inactivos_devuelve_la_caja_entera()
     {

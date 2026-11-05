@@ -62,14 +62,17 @@ public sealed class SessionRecorder : IDisposable
     /// <summary>True mientras no se graba por falta de espacio.</summary>
     public bool PausedForSpace { get; private set; }
 
+    /// <summary>La hora con que se nombra la carpeta. Los tests la reemplazan.</summary>
+    public Func<DateTime> Now { get; init; } = () => DateTime.Now;
+
     /// <summary>Crea la carpeta y escribe session.json, sin arrancar el temporizador (útil para tests).</summary>
     public void Open()
     {
         _area = _source.CaptureArea;
-        Folder = Path.Combine(OutputRoot, DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
+        Folder = Path.Combine(OutputRoot, Now().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
         var suffix = 1;
         while (Directory.Exists(Folder))
-            Folder = Path.Combine(OutputRoot, $"{DateTime.Now:yyyyMMdd-HHmmss}-{++suffix}");
+            Folder = Path.Combine(OutputRoot, string.Create(CultureInfo.InvariantCulture, $"{Now():yyyyMMdd-HHmmss}-{++suffix}"));
         Directory.CreateDirectory(Folder);
 
         var session = new
@@ -115,7 +118,15 @@ public sealed class SessionRecorder : IDisposable
             using var timer = new PeriodicTimer(_interval);
             do
             {
-                CaptureFrame();
+                try
+                {
+                    CaptureFrame();
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // Lo que no se esperaba tampoco corta la grabación: mataba el loop en silencio.
+                    LastError = e.Message;
+                }
             }
             while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false));
         }, token);
@@ -149,7 +160,7 @@ public sealed class SessionRecorder : IDisposable
                 _index.WriteLine($"{frame},{time}");
                 Frames++;
             }
-            catch (Exception e) when (e is IOException or ArgumentException)
+            catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException or InvalidOperationException)
             {
                 LastError = e.Message;
             }
@@ -158,26 +169,26 @@ public sealed class SessionRecorder : IDisposable
 
     public void Stop()
     {
-        if (_cts is not null)
+        try
         {
-            _cts.Cancel();
-            try
-            {
-                _loop?.Wait();
-            }
-            catch (AggregateException e) when (e.InnerExceptions.All(x => x is OperationCanceledException))
-            {
-            }
-            _cts.Dispose();
+            _cts?.Cancel();
+            _loop?.Wait();
+        }
+        catch (AggregateException e) when (e.InnerExceptions.All(x => x is OperationCanceledException))
+        {
+        }
+        finally
+        {
+            _cts?.Dispose();
             _cts = null;
             _loop = null;
+            lock (_lock)
+            {
+                _index?.Dispose();
+                _index = null;
+            }
+            _clock.Stop();
         }
-        lock (_lock)
-        {
-            _index?.Dispose();
-            _index = null;
-        }
-        _clock.Stop();
     }
 
     public void Dispose() => Stop();

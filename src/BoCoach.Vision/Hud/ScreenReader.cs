@@ -114,7 +114,8 @@ public static class HudStateExtensions
 {
     /// <summary>
     /// Lo que necesita el motor. La población "N/M" solo se lee con el mod BoCoach HUD; si no, la estima el
-    /// SnapshotBuilder.
+    /// SnapshotBuilder. Sin ninguna hora todavía, la cola no se pasa: una tecnología vista "en el 0:00" a mitad de partida
+    /// parecería terminada apenas falte de la cola.
     /// </summary>
     public static ScreenReading ToReading(this HudState state) => new(
         state.Clock, state.Food, state.Wood, state.Gold, state.Stone, state.Villagers,
@@ -122,7 +123,7 @@ public static class HudStateExtensions
         state.VillagersOn is { Count: 4 } on
             ? new ResourceAmounts(on[Resource.Food], on[Resource.Wood], on[Resource.Stone], on[Resource.Gold])
             : null,
-        state.Queue,
+        state.Clock is null ? null : state.Queue,
         state.Scores,
         state.IdleVillagers);
 }

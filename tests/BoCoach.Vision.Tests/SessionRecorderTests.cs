@@ -94,6 +94,32 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.False(recorder.PausedForSpace);
     }
 
+    // Con el calendario del sistema, a la segunda grabación del mismo segundo el nombre de la carpeta decía 2569 (en Tailandia).
+    [Fact]
+    public void El_nombre_de_la_carpeta_no_depende_del_calendario_del_sistema()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("th-TH");
+        try
+        {
+            var now = new DateTime(2026, 11, 5, 12, 30, 0);
+            using var first = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName) { Now = () => now };
+            using var second = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName) { Now = () => now };
+
+            first.Open();
+            second.Open();
+            first.Stop();
+            second.Stop();
+
+            Assert.Equal("20261105-123000", Path.GetFileName(first.Folder));
+            Assert.Equal("20261105-123000-2", Path.GetFileName(second.Folder));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+
     [Fact]
     public void Una_grabacion_vieja_sin_escala_se_lee_a_escala_1()
     {
@@ -104,6 +130,21 @@ public sealed class SessionRecorderTests : IDisposable
         File.WriteAllText(path, File.ReadAllText(path).Replace("\"hud_scale\"", "\"otra_cosa\""));
 
         Assert.Equal(1, RecordedSession.Load(recorder.Folder!).HudScale);
+    }
+
+    // "Una grabación nunca deja de abrirse por su diseño": tampoco con un tipo equivocado adentro.
+    [Fact]
+    public void Una_grabacion_con_un_diseno_de_tipos_equivocados_se_abre_sin_diseno()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default.WithHud(HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "hud_layout.json"))), _root.FullName);
+        recorder.Open();
+        recorder.Stop();
+        var path = Path.Combine(recorder.Folder!, "session.json");
+        var session = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        session["hud_layout"]!["name"] = 5;
+        File.WriteAllText(path, session.ToJsonString());
+
+        Assert.Null(RecordedSession.Load(recorder.Folder!).Hud);
     }
 
     [Fact]
@@ -121,6 +162,16 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Equal(500, root.GetProperty("interval_ms").GetInt32());
         var pixels = root.GetProperty("regions").GetProperty(RegionNames.Wood).GetProperty("pixels");
         Assert.Equal(RegionLayout.Default.PixelsOf(RegionNames.Wood, 1920, 1080).X, pixels[0].GetInt32());
+    }
+
+    [Fact]
+    public void La_grabacion_devuelve_cada_cuanto_se_grabo()
+    {
+        using var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(400));
+        recorder.Open();
+        recorder.Stop();
+
+        Assert.Equal(400, RecordedSession.Load(recorder.Folder!).IntervalMs);
     }
 
     [Fact]
@@ -142,6 +193,72 @@ public sealed class SessionRecorderTests : IDisposable
         Assert.Equal(frames, recorder.Frames);
         Assert.False(recorder.IsRecording);
         Assert.Null(recorder.LastError);
+    }
+
+    /// <summary>Pantalla que falla en la primera captura y después anda.</summary>
+    private sealed class FailsOnce(Exception failure) : IScreenSource
+    {
+        private int _captures;
+        public PixelRect CaptureArea => new(0, 0, 1920, 1080);
+        public bool GameFound => true;
+
+        public CapturedImage Capture(PixelRect rect) =>
+            Interlocked.Increment(ref _captures) == 1 ? throw failure : PngTests.Gradient(rect.Width, rect.Height);
+    }
+
+    // Una carpeta sin permiso o GDI que falla (ScreenCapture tira InvalidOperationException) no cortan la grabación: la
+    // captura se pierde, se avisa y sigue.
+    public static TheoryData<Exception> ExpectedFailures =>
+    [
+        new UnauthorizedAccessException("sin permiso"),
+        new InvalidOperationException("sin GDI"),
+        new IOException("disco"),
+    ];
+
+    [Theory]
+    [MemberData(nameof(ExpectedFailures))]
+    public void Un_error_de_una_captura_se_avisa_y_la_grabacion_sigue(Exception failure)
+    {
+        using var recorder = new SessionRecorder(new FailsOnce(failure), RegionLayout.Default, _root.FullName);
+        recorder.Open();
+
+        recorder.CaptureFrame();
+        Assert.Equal(0, recorder.Frames);
+        Assert.Equal(failure.Message, recorder.LastError);
+
+        recorder.CaptureFrame();
+        Assert.Equal(1, recorder.Frames);
+    }
+
+    // Lo inesperado mataba el loop en silencio (el contador quedaba quieto) y después Stop también tiraba, sin cerrar
+    // frames.csv.
+    [Fact]
+    public async Task Un_error_inesperado_no_mata_la_grabacion_y_detenerla_no_tira()
+    {
+        var recorder = new SessionRecorder(new FailsOnce(new NotSupportedException("rarísimo")), RegionLayout.Default, _root.FullName, TimeSpan.FromMilliseconds(20));
+
+        recorder.Start();
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (recorder.Frames < 1 && waited.Elapsed < TimeSpan.FromSeconds(10))
+            await Task.Delay(20);
+        var error = Record.Exception(recorder.Stop);
+
+        Assert.Null(error);
+        Assert.True(recorder.Frames >= 1);
+        Assert.False(recorder.IsRecording);
+        File.Delete(Path.Combine(recorder.Folder!, "frames.csv")); // quedó cerrado
+    }
+
+    [Fact]
+    public void Detener_dos_veces_no_tira()
+    {
+        var recorder = new SessionRecorder(new FakeScreen(), RegionLayout.Default, _root.FullName);
+        recorder.Start();
+
+        recorder.Stop();
+        recorder.Stop();
+
+        Assert.False(recorder.IsRecording);
     }
 
     [Fact]

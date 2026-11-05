@@ -169,6 +169,44 @@ public class AutoCalibrationTests(Xunit.Abstractions.ITestOutputHelper output)
         AssertClose(new PixelRect(6 + 707, 4, 163, 46), population, 2, RegionNames.Population);
     }
 
+    // Es el diseño de los jugadores nuevos. A 768p y 720p la franja de 10 unidades mide 3 px y, con los bordes suavizados,
+    // quedan 2 filas enteras y 2 a medias: pidiendo 3 filas no calibraba, y sin calibrar el coach no lee nada. A 900p mide
+    // 3,6 px y, con 2 filas enteras, no le daba la forma.
+    [Theory]
+    [InlineData(1600, 900, 0)]
+    [InlineData(1600, 900, 1)]
+    [InlineData(1600, 900, 2)]
+    [InlineData(1600, 900, 3)]
+    [InlineData(1366, 768, 0)]
+    [InlineData(1366, 768, 1)]
+    [InlineData(1366, 768, 2)]
+    [InlineData(1366, 768, 3)]
+    [InlineData(1280, 720, 0)]
+    [InlineData(1280, 720, 1)]
+    [InlineData(1280, 720, 2)]
+    [InlineData(1280, 720, 3)]
+    public void Con_el_diseno_minimo_a_baja_resolucion_encuentra_las_franjas_con_filas_a_medias(int width, int height, int phase)
+    {
+        var scale = height / 1080.0;
+        var ppu = MinimalLayout.PixelsPerUnitAt1080p * scale;
+        var screen = HudLayoutScreens.RenderSmooth(MinimalLayout, ppu, width, height, phase);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, MinimalLayout);
+
+        Assert.NotNull(found);
+        Assert.Equal("bocoach-minimo-2026-11", found.Hud!.Name);
+        Assert.Equal(5, found.Squares.Count);
+        Assert.Equal(scale, found.Scale, 0.02);
+        foreach (var cell in MinimalLayout.Cells.Where(c => c.Name != "age"))
+        {
+            var rect = MinimalLayout.CellRect(cell);
+            var expected = new PixelRect((int)Math.Round(rect.X * ppu), (int)Math.Round(rect.Y * ppu), (int)Math.Round(rect.Width * ppu), (int)Math.Round(rect.Height * ppu));
+            AssertClose(expected, found.Layout.PixelsOf(HudLayout.RegionOf(cell.Name), width, height), 2, cell.Name);
+        }
+        // A esta altura los números miden 9 px: hay con qué avisarle al jugador.
+        Assert.Equal(height <= 768, found.SmallDigits);
+    }
+
     // Al pasar del diseño completo (log en el rincón) al mínimo, la caja del log tiene que volver a la de siempre, no
     // quedarse con la de la referencia (partida 20261101-163015: el log sobre la barra, 0 eventos).
     [Fact]

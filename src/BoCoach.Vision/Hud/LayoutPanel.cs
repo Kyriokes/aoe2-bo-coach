@@ -20,8 +20,10 @@ public static class LayoutPanel
 
     /// <summary>
     /// El rectángulo del casillero si su color está en el lugar que dice el diseño (las cuatro líneas a 1 px de su
-    /// borde, dentro del marco que la GD de la app deja libre); null si no está (mod viejo, sin mod, caja corrida).
-    /// Una celda sin casillero (inactivos) devuelve la caja entera: ahí dibuja la app su marco.
+    /// borde, dentro del marco que la GD de la app deja libre); null si no está (mod viejo, sin mod, caja corrida). En
+    /// una caja llevada a 1080p desde otra escala (<see cref="CapturedImage.Rescaled"/>) vale también la línea siguiente:
+    /// el borde sale borroneado y la caja puede estar un píxel de la pantalla corrida (a 768p, 1,4 px). Más adentro no: ahí
+    /// está la GD. Una celda sin casillero (inactivos) devuelve la caja entera: ahí dibuja la app su marco.
     /// </summary>
     public static PixelRect? Chip(HudLayout layout, HudCell cell, CapturedImage box)
     {
@@ -48,8 +50,10 @@ public static class LayoutPanel
         }
         var columns = Enumerable.Range(inner.X, inner.Width);
         var rows = Enumerable.Range(inner.Y, inner.Height);
-        if (!Line(columns.Select(x => (x, inner.Y))) || !Line(columns.Select(x => (x, inner.Y + inner.Height - 1)))
-            || !Line(rows.Select(y => (inner.X, y))) || !Line(rows.Select(y => (inner.X + inner.Width - 1, y))))
+        var (right, bottom) = (inner.X + inner.Width - 1, inner.Y + inner.Height - 1);
+        bool Side(Func<int, IEnumerable<(int X, int Y)>> lineAt) => Line(lineAt(0)) || (box.Rescaled && Line(lineAt(1)));
+        if (!Side(i => columns.Select(x => (x, inner.Y + i))) || !Side(i => columns.Select(x => (x, bottom - i)))
+            || !Side(i => rows.Select(y => (inner.X + i, y))) || !Side(i => rows.Select(y => (right - i, y))))
             return null;
         return rect;
     }

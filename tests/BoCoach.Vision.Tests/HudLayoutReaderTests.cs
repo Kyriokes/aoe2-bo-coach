@@ -99,6 +99,51 @@ public class HudLayoutReaderTests
         Assert.Equal(layout.ChipRect(layout.Cell("wood"), new PixelRect(0, 0, woodBox.Width, woodBox.Height)), reading.ModBands![RegionNames.Wood]);
     }
 
+    // El diseño de los jugadores nuevos, de punta a punta a baja resolución: dibujado a esa escala con los bordes
+    // suavizados, calibrado y leído como en vivo (cada caja llevada a 1080p). A 768p el borde de la franja caía justo donde
+    // se la miraba y la celda de población no se leía, por más que los números estaban. Es una simulación: el juego no se
+    // pudo probar a estas resoluciones.
+    [Theory]
+    [InlineData(1600, 900, 0)]
+    [InlineData(1600, 900, 2)]
+    [InlineData(1366, 768, 0)]
+    [InlineData(1366, 768, 1)]
+    [InlineData(1366, 768, 2)]
+    [InlineData(1366, 768, 3)]
+    [InlineData(1280, 720, 0)]
+    [InlineData(1280, 720, 1)]
+    [InlineData(1280, 720, 2)]
+    [InlineData(1280, 720, 3)]
+    public void Con_el_diseno_minimo_a_baja_resolucion_calibra_y_lee_todas_las_celdas(int width, int height, int phase)
+    {
+        var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, HudLayout.MinimalFileName));
+        var fonts = HudFonts.Load(FontsDir);
+        var ppu = layout.PixelsPerUnitAt1080p * height / 1080.0;
+        var texts = new Dictionary<string, string>
+        {
+            ["wood.stock"] = "1250", ["wood.villagers"] = "14",
+            ["food.stock"] = "375", ["food.villagers"] = "6",
+            ["gold.stock"] = "907", ["gold.villagers"] = "10",
+            ["stone.stock"] = "200", ["stone.villagers"] = "0",
+            ["population.cap"] = "33/40", ["population.total"] = "30",
+            ["idle.count"] = "2",
+        };
+        var screen = HudLayoutScreens.RenderSmooth(layout, ppu, width, height, phase, texts, fonts.HudNumbers);
+
+        var found = AutoCalibration.Detect(screen, RegionLayout.Default, layout);
+        Assert.NotNull(found);
+        var reading = new HudReader(fonts).Read(
+            region => found.Layout.Regions.ContainsKey(region) ? screen.Crop(found.Layout.PixelsOf(region, width, height)).AtHudScale(found.Scale) : null,
+            found.Layout.Hud);
+
+        Assert.Equal(layout.Name, reading.LayoutName);
+        Assert.Equal((1250, 375, 907, 200), (reading.Wood, reading.Food, reading.Gold, reading.Stone));
+        Assert.Equal((14, 6, 10, 0), (reading.VillagersOn![Resource.Wood], reading.VillagersOn[Resource.Food], reading.VillagersOn[Resource.Gold], reading.VillagersOn[Resource.Stone]));
+        Assert.Equal(30, reading.Villagers);
+        Assert.Equal((33, 40), (reading.Population, reading.PopulationCap));
+        Assert.Equal(2, reading.IdleVillagers);
+    }
+
     [Fact]
     public void Lee_cinco_cifras_de_stock_y_la_poblacion_al_tope()
     {
