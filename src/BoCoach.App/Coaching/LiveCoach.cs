@@ -1,5 +1,6 @@
 using BoCoach.Core.Economy;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using BoCoach.Core.BuildOrders;
@@ -545,9 +546,10 @@ public sealed class LiveCoach : IDisposable
         try
         {
             var started = DateTimeOffset.Now;
-            var path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}.jsonl.gz");
+            var name = started.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+            var path = Path.Combine(RecordsFolder!, $"{name}.jsonl.gz");
             for (var i = 2; File.Exists(path); i++)
-                path = Path.Combine(RecordsFolder!, $"{started:yyyyMMdd-HHmmss}-{i}.jsonl.gz");
+                path = Path.Combine(RecordsFolder!, $"{name}-{i}.jsonl.gz");
             _recordGameId = Guid.NewGuid().ToString("N");
             var rival = _me is not null ? _loadingReading?.Facing(_me)?.Civ : null;
             var meta = GameRecorder.Meta(_recordGameId, started, AppVersion, _data.DatVersion, Frames.Hud?.Name, Frames.HudScale, Civ, BuildOrder.Id, BuildOrder.Name,

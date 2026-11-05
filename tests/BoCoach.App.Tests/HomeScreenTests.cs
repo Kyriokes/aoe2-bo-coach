@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http;
 using BoCoach.App.Capture;
 using BoCoach.App.Coaching;
@@ -335,6 +336,33 @@ public sealed class HomeScreenTests : IDisposable
             coach.Apply(Frame(inGame: true, time: 10));
             Assert.False(coach.ReportPending);
             Assert.Equal(HomeState.InGame, home.Screen.State);
+        }
+    }
+
+    // AP-14: el nombre del archivo salía con el calendario del sistema: con fa-IR dice 1405 y, entre los de antes, el
+    // informe nuevo no era el último.
+    [Fact]
+    public void Con_otro_calendario_el_informe_nuevo_sigue_siendo_el_ultimo()
+    {
+        var (_, coach, _, _, _) = Build();
+        using (coach)
+        {
+            Directory.CreateDirectory(ReportsFolder);
+            File.WriteAllText(Path.Combine(ReportsFolder, "20261101-100000.html"), "");
+            var culture = CultureInfo.CurrentCulture;
+            try
+            {
+                CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+                coach.Finished(FinishedGame(1530));
+            }
+            finally
+            {
+                CultureInfo.CurrentCulture = culture;
+            }
+
+            var latest = CoachSessionViewModel.LatestReportIn(ReportsFolder);
+            Assert.Equal(coach.LastReport?.Path, latest?.Path);
+            Assert.Equal(DateTime.Now.Year, latest?.Date.Year);
         }
     }
 

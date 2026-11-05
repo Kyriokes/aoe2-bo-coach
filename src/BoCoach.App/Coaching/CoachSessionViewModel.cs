@@ -719,7 +719,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             Directory.CreateDirectory(ReportsFolder);
             var now = DateTime.Now;
-            var path = Path.Combine(ReportsFolder, $"{now:yyyyMMdd-HHmmss}.html");
+            // Con el calendario común, sea cual sea el de Windows: es lo que después se ordena en LatestReportIn.
+            var path = Path.Combine(ReportsFolder, $"{now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.html");
             File.WriteAllText(path, GameReportText.Html(report, now));
             LastReport = new ReportInfo(path, now, ReportLine(report), report.Length);
             ReportPending = true;

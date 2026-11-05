@@ -1,3 +1,4 @@
+using System.Globalization;
 using BoCoach.App.Coaching;
 using BoCoach.Core.BuildOrders;
 using BoCoach.Core.Record;
@@ -274,6 +275,30 @@ public sealed class LiveCoachTests : IDisposable
 
         live.Stop();
         Assert.Single(finished); // detener después no vuelve a cerrar nada
+    }
+
+    // AP-14: el nombre del archivo es la fecha del calendario común, sea cual sea el de Windows.
+    [Fact]
+    public async Task El_nombre_del_registro_no_depende_del_calendario_del_sistema()
+    {
+        var folder = Path.Combine(_library.FullName, "registros");
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+            using var live = Recording(new RecordedFrames(RecordedSession.Load(Fixture)), folder);
+            var finished = new List<GameRecordInfo>();
+            live.RecordFinished += finished.Add;
+            for (var i = 0; i < 13; i++)
+                await live.StepAsync();
+            live.Stop();
+
+            Assert.StartsWith(DateTime.Now.Year.ToString(CultureInfo.InvariantCulture), Path.GetFileName(Assert.Single(finished).Path));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 
     // Reproducir una grabación más rápido no es mirar la pantalla más seguido: el registro dice lo segundo, y con eso se

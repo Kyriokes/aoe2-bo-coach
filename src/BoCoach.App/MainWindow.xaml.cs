@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -66,7 +67,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
         Coach.Stopped += autoRecorder.OnCoachStopped;
         // Modo desarrollador: el consumo de cada partida, para comparar.
         var usage = new GameUsageLog(() => DevMode.Instance.IsOn,
-            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "uso", $"{DateTime.Now:yyyyMMdd-HHmmss}-{Coach.LiveCoach?.Frames.CaptureIntervalMs:0}ms.csv"));
+            () => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BoCoach", "uso", $"{DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}-{Coach.LiveCoach?.Frames.CaptureIntervalMs:0}ms.csv"));
         Coach.FrameApplied += frame => usage.OnFrame(frame, frame.InGame && Coach.IsLive);
         Coach.Stopped += usage.OnCoachStopped;
         Coach.Picker = new BuildOrderPicker(cache, data.CivStyles);
