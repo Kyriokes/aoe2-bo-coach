@@ -15,6 +15,7 @@ import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
+import { holdFocus } from "@/lib/editor/input";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
 import { blockOf, boxSource, initialState, isDirty, isTextEdit, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
@@ -801,10 +802,12 @@ export function BuildOrderEditor({
       {!plan && narrow && sheetOpen && paletteNow ? (
         <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/60" onClick={() => setSheetOpen(false)}>
           <div
+            ref={holdFocus}
             role="dialog"
             aria-modal="true"
             aria-label={t.addStep}
-            className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3"
+            tabIndex={-1}
+            className="flex max-h-[80vh] flex-col gap-2 overflow-y-auto rounded-t-xl border-t border-line bg-background p-3 outline-none"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setSheetOpen(false);

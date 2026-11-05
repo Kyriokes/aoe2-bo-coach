@@ -4,6 +4,7 @@ import type { PointerEvent as ReactPointerEvent, KeyboardEvent as ReactKeyboardE
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { formatClock } from "@/lib/buildOrder";
+import { boxKeyAction } from "@/lib/editor/input";
 import { BOX_H, type PlacedItem, type Scale } from "@/lib/editor/layout";
 import { blockReason } from "@/lib/editor/text";
 
@@ -54,19 +55,13 @@ export function StepBox({
     .join("\n");
 
   function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
-    if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-      e.preventDefault();
-      onNudge(e.key === "ArrowLeft" ? -1 : 1);
-    } else if (e.altKey && countEditable && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      e.preventDefault();
-      onCount(e.key === "ArrowUp" ? 1 : -1);
-    } else if (e.key === "Delete" || e.key === "Backspace") {
-      e.preventDefault();
-      onRemove();
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onSelect();
-    }
+    const action = boxKeyAction(e, countEditable, e.target !== e.currentTarget);
+    if (!action) return;
+    e.preventDefault();
+    if (action.kind === "nudge") onNudge(action.direction);
+    else if (action.kind === "count") onCount(action.delta);
+    else if (action.kind === "remove") onRemove();
+    else onSelect();
   }
 
   return (
