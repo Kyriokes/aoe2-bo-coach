@@ -48,25 +48,39 @@ public static class LivePlan
         // También las que el log mostró fuera de la BO (una carretilla que no estaba en el plan).
         var state = tracker.State;
         var researched = layout.Researched;
+        var logged = new Dictionary<string, int> { [BuildOrderValidator.StartingBuilding] = 1 };
         foreach (var e in state.Events)
         {
-            if (EventConventions.Parse(e.EventId) is { Action: StepAction.Research } done && !researched.Contains(done.What))
+            if (tracker.IsDiscarded(e) || EventConventions.Parse(e.EventId) is not { } done)
+                continue;
+            if (done.Action == StepAction.Research && !researched.Contains(done.What))
                 researched.Add(done.What);
+            else if (done.Action == StepAction.Build)
+                logged[done.What] = logged.GetValueOrDefault(done.What) + 1;
         }
-        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, layout.Age, layout.Villagers, layout.Idle, layout.Buildings)
+        // Lo mismo con los edificios: lo que avisó el log fuera de la BO y lo que cuenta como otra cosa (el asentamiento
+        // de los incas es también molino y campamentos). Sin eso, la Feudal no arrancaba nunca en el plan.
+        var buildings = layout.Buildings;
+        foreach (var building in tracker.BuiltBuildings)
+            buildings[building] = Math.Max(buildings.GetValueOrDefault(building), Math.Max(1, logged.GetValueOrDefault(building)));
+        // La edad, la del jugador: sacándola solo de los pasos, sin BO quedaba en la Edad Oscura toda la partida, una BO
+        // que termina en Feudal nunca pedía lo de Castillos y un clic salteado trababa todo lo de esa edad.
+        return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, tracker.Age, layout.Villagers, layout.Idle, buildings)
         {
             Researched = researched,
+            FinishedSteps = tracker.Steps.Where(s => s.State is StepState.Done or StepState.Skipped).Select(s => s.Step.Id).ToList(),
         };
     }
 
     /// <summary>
     /// Dónde quiere la BO a los aldeanos en el punto en que va el jugador: todos los pasos anteriores al actual como
     /// hechos (lo que planea la BO, no lo que el Tracker les asignó) más lo que avanzó el actual. A diferencia de
-    /// <see cref="Start"/>, no salta cuando el Tracker reparte los aldeanos nuevos entre varios pasos abiertos.
+    /// <see cref="Start"/>, no salta cuando el Tracker reparte los aldeanos nuevos entre varios pasos abiertos. Sin paso
+    /// actual (la edad en curso y lo demás esperándola), hasta el primero que falta: al final de la BO solo si no falta nada.
     /// </summary>
     public static IReadOnlyDictionary<GatherSource, int> IntendedVillagers(Tracker tracker)
     {
-        var current = tracker.Current;
+        var current = tracker.Current ?? tracker.FirstOpen;
         var upTo = current?.Index ?? tracker.Steps.Count;
         var steps = tracker.Steps.Take(upTo).Select(s => (s.Step, s.Required, true)).ToList();
         if (current is not null)
@@ -83,15 +97,19 @@ public static class LivePlan
     /// <summary>
     /// Cuántas unidades hace cada paso: en los de aldeanos con fuente, lo que falta para llegar a 'count' en esa
     /// fuente ("6 aldeanos en ovejas" con los 3 iniciales ya ahí son 3 nuevos); en los demás, 'count' (o 1).
+    /// <para>Los aldeanos de más de la civ (chinos 3, mayas 1) arrancan en las ovejas (<see cref="PlanStart.For"/>).
+    /// <paramref name="extraVillagers"/> los descuenta: lo que hay que entrenar de verdad, para simular y para el editor. En
+    /// vivo van sin descontar, porque el <see cref="Tracker"/> los ve salir: <see cref="PlayerState"/> los cuenta como
+    /// aldeanos nuevos en la primera lectura del HUD.</para>
     /// </summary>
-    public static int[] Units(BuildOrder bo)
+    public static int[] Units(BuildOrder bo, int extraVillagers = 0)
     {
         var units = new int[bo.Steps.Count];
         for (var i = 0; i < units.Length; i++)
         {
             var step = bo.Steps[i];
             units[i] = IsVillagerTarget(step)
-                ? Math.Max(0, step.Count - LayoutOf(bo, units, i).Villagers.GetValueOrDefault(step.Assign!.Value))
+                ? Math.Max(0, step.Count - LayoutOf(bo, units, i, extraVillagers).Villagers.GetValueOrDefault(step.Assign!.Value))
                 : step.Do is StepAction.Train or StepAction.Build ? step.Count : 1;
         }
         return units;
@@ -108,25 +126,27 @@ public static class LivePlan
     /// Migración del formato 1, donde 'count' de un paso de aldeanos era cuántos se entrenan: lo pasa al total en la
     /// fuente, así la BO simula lo mismo ("6 nuevos a ovejas" después de las casas son 9 en ovejas).
     /// </summary>
-    public static void CountsToTotals(BuildOrder bo)
+    /// <param name="extraVillagers">Los aldeanos de más de la civ, que están en las ovejas (ver <see cref="Units"/>).</param>
+    public static void CountsToTotals(BuildOrder bo, int extraVillagers = 0)
     {
         var units = bo.Steps.Select(s => s.Do is StepAction.Train or StepAction.Build ? s.Count : 1).ToArray();
-        var totals = bo.Steps.Select((s, i) => IsVillagerTarget(s) ? LayoutOf(bo, units, i + 1).Villagers.GetValueOrDefault(s.Assign!.Value) : s.Count).ToList();
+        var totals = bo.Steps.Select((s, i) => IsVillagerTarget(s) ? LayoutOf(bo, units, i + 1, extraVillagers).Villagers.GetValueOrDefault(s.Assign!.Value) : s.Count).ToList();
         for (var i = 0; i < totals.Count; i++)
             bo.Steps[i].Count = totals[i];
     }
 
-    private static VillagerLayout LayoutOf(BuildOrder bo, int[] units, int stepCount) =>
-        Layout(bo.Steps.Take(stepCount).Select((s, j) => (s, units[j], true)));
+    private static VillagerLayout LayoutOf(BuildOrder bo, int[] units, int stepCount, int extraVillagers = 0) =>
+        Layout(bo.Steps.Take(stepCount).Select((s, j) => (s, units[j], true)), extraVillagers);
 
     private sealed record VillagerLayout(
         Dictionary<GatherSource, int> Villagers, int Idle, Dictionary<string, int> Buildings, Age Age, List<string> Researched);
 
     /// <summary>Dónde quedan los aldeanos, los edificios y la edad después de hacer esos pasos (en orden).</summary>
-    private static VillagerLayout Layout(IEnumerable<(Step Step, int Completed, bool Done)> steps)
+    private static VillagerLayout Layout(IEnumerable<(Step Step, int Completed, bool Done)> steps, int extraVillagers = 0)
     {
         var start = PlanStart.Standard;
         var villagers = Enum.GetValues<GatherSource>().ToDictionary(s => s, _ => 0);
+        villagers[GatherSource.Sheep] = extraVillagers;
         var idle = start.IdleVillagers;
         var buildings = new Dictionary<string, int>(start.Buildings);
         var age = start.Age;

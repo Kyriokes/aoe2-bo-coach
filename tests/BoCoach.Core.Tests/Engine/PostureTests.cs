@@ -177,6 +177,28 @@ public class PostureTests
         Assert.Empty(coach.View(state, [new QueueItem("villager"), new QueueItem("scout_cavalry")], Age.Feudal, Data.Civ("any")).Gaps);
     }
 
+    // Auditoría del 2026-11-05: el cuartel sacando piqueros salía "parado": "pikeman" no está en game_data.
+    [Fact]
+    public void Un_edificio_que_saca_la_mejora_de_su_unidad_no_esta_parado()
+    {
+        var bo = Scouts with { Posture = new ClosingPosture { Queue = ["villager", "spearman"], NextAge = "imperial_age" } };
+        var coach = new PostureCoach(bo, Data) { IdleGrace = 0 };
+
+        var view = coach.View(State(1500, Poor, "barracks_built"), [new QueueItem("pikeman")], Age.Castle, Data.Civ("any"));
+
+        Assert.Empty(view.Gaps);
+    }
+
+    [Fact]
+    public void Un_edificio_investigando_no_esta_parado()
+    {
+        var coach = new PostureCoach(Scouts, Data) { IdleGrace = 0 };
+
+        var view = coach.View(State(700, Poor, "stable_built"), [new QueueItem("bloodlines")], Age.Feudal, Data.Civ("any"));
+
+        Assert.Empty(view.Gaps);
+    }
+
     [Fact]
     public void Con_dos_establos_cada_uno_tiene_que_producir()
     {
@@ -206,6 +228,28 @@ public class PostureTests
         var view = coach.View(State(1500, new ResourceAmounts(500, 100, 0, 100), "stable_built", "castle_built"), [], Age.Castle, Data.Civ("any"));
 
         Assert.Equal("imperial_age", view.NextAge);
+        Assert.Equal(0, view.NextAgeBuildingsMissing);
+    }
+
+    // Auditoría del 2026-11-05: el juego pide 2 edificios distintos (BuildOrderValidator.AgeUpProgress): 2 galerías son
+    // uno, y la postura decía que ya se podía subir.
+    [Fact]
+    public void Dos_edificios_iguales_cuentan_uno_para_la_edad()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var view = coach.View(State(700, Poor, "archery_range_built", "archery_range_built"), [], Age.Feudal, Data.Civ("any"));
+
+        Assert.Equal(1, view.NextAgeBuildingsMissing);
+    }
+
+    [Fact]
+    public void Los_jemeres_no_necesitan_edificios_para_subir_de_edad()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var rich = new ResourceAmounts(2000, 500, 0, 500);
+
+        var view = coach.View(State(700, rich), [], Age.Feudal, Data.Civ("khmer"));
+
         Assert.Equal(0, view.NextAgeBuildingsMissing);
     }
 
@@ -310,6 +354,36 @@ public class PostureTests
         Assert.Equal(["double_bit_axe"], coach.Advance().Techs.Select(t => t.Tech));
         view = coach.Update(new GameSnapshot(901, rich, 25, 30) { VillagersOn = new ResourceAmounts(10, 8, 0, 4) });
         Assert.Equal(["double_bit_axe", "horse_collar"], view.Techs.Select(t => t.Tech));
+    }
+
+    // Auditoría del 2026-11-05: la edad salía solo de los pasos, así que sin BO (o con una que termina antes) las
+    // tecnologías se quedaban en las de la edad que dejó la BO: sin ninguna, solo el telar.
+    [Fact]
+    public void Sin_BO_las_tecnologias_son_las_de_la_edad_que_avisa_el_log()
+    {
+        var coach = new Coach(BuildOrder.None, Data, TestData.Events) { FinishedNoticeSeconds = 0 };
+        var rich = new ResourceAmounts(2000, 2000, 0, 2000);
+
+        var view = coach.Update(new GameSnapshot(600, rich, 25, 30, [new GameEvent("feudal_age_researched", 600)]));
+
+        Assert.Equal(["loom", "wheelbarrow"], view.Techs.Select(t => t.Tech));
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_en_Feudal_pide_lo_de_Castillos_al_llegar()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" }] };
+        var coach = new Coach(bo, Data, TestData.Events) { FinishedNoticeSeconds = 0 };
+        var rich = new ResourceAmounts(2000, 2000, 0, 2000);
+        // Todo lo de Dark y Feudal ya está: lo único que puede faltar es de Castillos.
+        coach.Update(new GameSnapshot(600, rich, 25, 30, [new GameEvent("feudal_age_researched", 600)]));
+        foreach (var tech in new[] { "loom", "wheelbarrow", "fletching", "bloodlines", "forging", "man_at_arms", "crossbowman", "light_cavalry", "padded_archer_armor", "scale_barding_armor", "scale_mail_armor", "husbandry" })
+            coach.Update(new GameSnapshot(601, rich, 25, 30, [new GameEvent($"{tech}_researched", 601)]));
+        coach.Update(new GameSnapshot(1200, rich, 25, 30, [new GameEvent("castle_age_researched", 1200), new GameEvent("town_center_built", 1200)]));
+
+        var view = coach.Update(new GameSnapshot(1201, rich, 25, 30));
+
+        Assert.Contains("hand_cart", view.Techs.Select(t => t.Tech));
     }
 
     // La GD y la economía usan la demanda de la postura (lo que faltaba de D2): producir sin parar cada unidad de la

@@ -94,6 +94,42 @@ public class BranchesTests
         Assert.Null(RivalClicksFeudal(coach).Branch);
     }
 
+    // Auditoría del 2026-11-05: los aldeanos que ya hay en el HUD y las casas del tope cerraban la rama en 2 s, contra "lo
+    // hecho antes no cuenta".
+    [Fact]
+    public void Lo_que_ya_muestra_el_HUD_no_cierra_la_rama()
+    {
+        var bo = Scouts with
+        {
+            Branches =
+            [
+                new Branch
+                {
+                    On = "rival_feudal_click",
+                    Steps =
+                    [
+                        new Step { Id = "r1", Do = StepAction.Train, What = "villager", Count = 3, Assign = GatherSource.Wood },
+                        new Step { Id = "r2", Do = StepAction.Build, What = "house", Assign = GatherSource.Wood },
+                    ],
+                },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        RivalClicksFeudal(coach);
+        var hud = new ResourceAmounts(10, 10, 0, 0);
+
+        coach.Update(At(506) with { VillagersOn = hud });
+        var view = coach.Update(At(510) with { VillagersOn = hud });
+
+        Assert.NotNull(view.Branch);
+        Assert.Equal(0, view.Branch!.Done);
+        Assert.Equal(0, view.Branch.Current!.Completed);
+
+        // Lo de después sí cuenta.
+        view = coach.Update(At(530, null, "house_built") with { VillagersOn = hud });
+        Assert.Equal(1, view.Branch!.Done);
+    }
+
     [Fact]
     public void Ya_esta_cierra_la_rama_y_vuelve_a_la_BO()
     {

@@ -136,7 +136,7 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         }
 
         // Formato 2: un paso de aldeanos dice cuántos tiene que haber en la fuente; si ya los hay, no pide ninguno.
-        var units = ids.Count == bo.Steps.Count ? Engine.LivePlan.Units(bo) : [];
+        var units = ids.Count == bo.Steps.Count ? Engine.LivePlan.Units(bo, gameData.Civ(bo.Civ).Start.ExtraVillagers) : [];
         for (var i = 0; i < units.Length; i++)
         {
             if (units[i] == 0 && Engine.LivePlan.IsVillagerTarget(bo.Steps[i]))

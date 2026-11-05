@@ -526,10 +526,204 @@ public class CoachTests
         var coach = new Coach(Loom, TestData.GameData, TestData.Events);
         coach.Update(builder.Build(QueueReading(200, "villager"))!);
         coach.Tracker.MarkStarted(1, 200); // el clic visto en el oro
-        coach.Update(builder.Build(QueueReading(260, "villager"))!);
-        coach.Update(builder.Build(QueueReading(261, "villager"))!);
+        coach.Update(builder.Build(QueueReading(240, "villager"))!);
+        coach.Update(builder.Build(QueueReading(241, "villager"))!);
 
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
+    // Auditoría del 2026-11-05: dos lecturas de un ícono mal leído dejaban la investigación en curso toda la partida: el
+    // coach no la pedía más y no salía "Hacé clic".
+    [Fact]
+    public void Un_icono_mal_leido_no_deja_la_investigacion_en_curso_toda_la_partida()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        StepState LoomState() => coach.Tracker.Steps[1].State;
+        void See(double clock, params string[] queue) => coach.Update(builder.Build(QueueReading(clock, queue))!);
+
+        See(200, "loom");
+        See(201, "loom");
+        Assert.Equal(StepState.InProgress, LoomState());
+
+        See(205, "villager");
+        See(206, "villager");
+        Assert.Equal(StepState.InProgress, LoomState()); // unos segundos sin el ícono pueden ser un error de lectura
+
+        See(216, "villager");
+        Assert.NotEqual(StepState.InProgress, LoomState());
+        Assert.NotEqual(StepState.Done, LoomState());
+    }
+
+    [Fact]
+    public void Atras_sobre_una_investigacion_vista_en_la_cola_no_se_deshace_en_la_captura_siguiente()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        void See(double clock, params string[] queue) => coach.Update(builder.Build(QueueReading(clock, queue))!);
+
+        See(200, "loom");
+        See(201, "loom");
+        coach.Back();
+
+        See(202, "loom");
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Cancelar_una_investigacion_vista_en_la_cola_la_deja_pendiente()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        void See(double clock, double gold, params string[] queue) =>
+            coach.Update(builder.Build(QueueReading(clock, queue) with { Gold = gold })!);
+
+        See(200, 100);
+        See(200.5, 50, "loom"); // el clic: bajan 50 de oro
+        See(201, 50, "loom");
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+
+        See(201.5, 100); // se canceló: vuelven los 50 de oro
+        See(202, 100);
+        See(203, 100);
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Una_investigacion_que_se_vuelve_a_ver_en_la_cola_vuelve_a_estar_en_curso()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Loom, TestData.GameData, TestData.Events);
+        void See(double clock, params string[] queue) => coach.Update(builder.Build(QueueReading(clock, queue))!);
+
+        See(200, "loom");
+        See(201, "loom");
+        See(216, "villager");
+        See(217, "villager");
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
+
+        See(300, "loom");
+        See(301, "loom");
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+        Assert.Equal(301, coach.Tracker.Steps[1].StartedAt);
+    }
+
+    // Auditoría del 2026-11-05: 2 aldeanos encolados (100 de comida) marcaban la armadura acolchada y un arquero (45 de
+    // oro) el telar; quedaba en curso hasta el final y el coach no la pedía más.
+    private static readonly BuildOrder Padded = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 30, Assign = GatherSource.Wood },
+            new Step { Id = "s2", Do = StepAction.Research, What = "padded_archer_armor" },
+        ],
+    };
+
+    /// <summary>Lo que un clic en la armadura acolchada tarda en vencer si nadie lo confirma.</summary>
+    private static double PaddedExpires => TestData.GameData.Get("padded_archer_armor").Time * 1.5 + 15;
+
+    private static Coach CoachWithPaddedClickAt(double time)
+    {
+        var coach = new Coach(Padded, TestData.GameData, TestData.Events);
+        coach.Update(At(time - 100, 300, 22, "feudal_age_researched", "blacksmith_built"));
+        coach.Update(At(time - 1, 300, 22));
+        coach.Update(At(time, 200, 22));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+        return coach;
+    }
+
+    [Fact]
+    public void Un_clic_que_ni_el_log_ni_la_cola_confirman_vence()
+    {
+        var coach = CoachWithPaddedClickAt(700);
+
+        coach.Update(At(700 + PaddedExpires - 1, 200, 22));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+
+        coach.Update(At(700 + PaddedExpires, 200, 22));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
+        Assert.Equal("s2", coach.Tracker.LaneStep(Lane.Research)?.Step.Id);
+    }
+
+    [Fact]
+    public void Un_clic_que_el_log_confirma_antes_de_vencer_queda_hecho()
+    {
+        var coach = CoachWithPaddedClickAt(700);
+
+        coach.Update(At(740, 200, 22, "padded_archer_armor_researched"));
+        coach.Update(At(700 + PaddedExpires + 10, 200, 22));
+
+        Assert.Equal(StepState.Done, coach.Tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Un_clic_que_la_cola_sigue_mostrando_no_vence()
+    {
+        // Una investigación puede esperar detrás de otras: mientras la cola la muestre, está.
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(Padded, TestData.GameData, TestData.Events);
+        void See(double clock, double food, params string[] queue) =>
+            coach.Update(builder.Build(QueueReading(clock, queue) with { Food = food })!);
+        coach.Update(builder.Build(QueueReading(600, []) with { NewEvents = ["feudal_age_researched", "blacksmith_built"] })!);
+
+        See(699, 300);
+        See(700, 200, "padded_archer_armor");
+        See(700.5, 200, "padded_archer_armor");
+        See(700 + PaddedExpires + 30, 200, "padded_archer_armor");
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Un_clic_de_edad_no_vence_si_ya_se_llego_a_esa_edad()
+    {
+        // El log no leyó "Feudal Age Research Complete", pero ya hay una galería: volver a pedir el clic sería mentira.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", Assign = GatherSource.Wood },
+                new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(460, 200, 20, "archery_range_built"));
+
+        var feudal = TestData.GameData.Get("feudal_age").Time;
+        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+    }
+
+    [Fact]
+    public void Un_clic_que_vencio_no_queda_en_el_informe()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", Assign = GatherSource.Wood },
+                new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20)); // bajan 500 de comida: cinco aldeanos... o la Feudal
+        Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
+
+        var feudal = TestData.GameData.Get("feudal_age").Time;
+        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+
+        Assert.Null(coach.Report().AgeClicks.Single().Click);
     }
 
     [Fact]

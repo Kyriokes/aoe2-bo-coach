@@ -125,7 +125,8 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
             }
             if (queue is null)
                 continue;
-            var working = queue.Count(i => !i.Waiting && data.TryGet(i.Key, out var e) && e.MadeIn == building);
+            // Una mejora sale del mismo edificio que su unidad: "pikeman" no está en game_data y el cuartel salía parado.
+            var working = queue.Count(i => !i.Waiting && (data.TryGet(i.Key, out var e) || data.TryGet(UnitLines.Base(i.Key), out e)) && e.MadeIn == building);
             if (working >= buildings)
             {
                 _idleSince.Remove(building);
@@ -147,13 +148,10 @@ public sealed class PostureCoach(BuildOrder bo, GameData data)
             var need = needed = civ.Cost(ageTech, age) + reserve;
             foreach (var r in Enum.GetValues<Resource>())
                 missing = missing.With(r, Math.Max(0, need[r] - state.Stock[r]));
-            if (BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
-            {
-                // El castillo cuenta doble para Imperial: solo ya alcanza.
-                var built = requirement.Buildings.Sum(b => Built(state, b))
-                            + (BuildOrderValidator.AgeUpAloneBuilding(next) is { } alone && Built(state, alone) > 0 ? 1 : 0);
-                buildingsMissing = Math.Max(0, 2 - built);
-            }
+            // Cada clave cuenta una vez (2 galerías son un edificio) y el castillo vale por los 2 para Imperial. Los jemeres
+            // suben sin edificios (game_data no_age_buildings).
+            if (!civ.NoAgeBuildings && BuildOrderValidator.AgeUpRequirement(next) is { } requirement)
+                buildingsMissing = 2 - BuildOrderValidator.AgeUpProgress(next, requirement.Buildings.Where(b => Built(state, b) > 0));
         }
         return new PostureView(units, _posture.Derived, gaps, next, missing, buildingsMissing,
             next is not null && queue?.Any(i => i.Key == next) == true) { NextAgeNeed = needed };

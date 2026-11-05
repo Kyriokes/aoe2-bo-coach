@@ -38,6 +38,18 @@ public class HousePacingTests
         Assert.Equal(1 / 25.0, HousePacing.ConsumptionRate(queue, Data, Civ, Age.Dark), 6);
     }
 
+    // Auditoría del 2026-11-05: el catálogo de la cola reconoce las mejoras ("pikeman", "crossbowman"), que para game_data
+    // no existen o son la tecnología, y el margen de la casa no contaba lo que estaban produciendo.
+    [Fact]
+    public void Las_mejoras_de_una_unidad_consumen_como_su_unidad_base()
+    {
+        QueueItem[] queue = [new("pikeman"), new("crossbowman")];
+
+        var rate = HousePacing.ConsumptionRate(queue, Data, Civ, Age.Feudal);
+
+        Assert.Equal(1.0 / Data.Get("spearman").Time + 1.0 / Data.Get("archer").Time, rate, 6);
+    }
+
     [Fact]
     public void Sin_cola_se_cuenta_solo_el_centro_urbano()
     {

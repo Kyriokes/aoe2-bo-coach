@@ -19,6 +19,9 @@ public sealed record PlanStart(
     /// <summary>Tecnologías ya terminadas (claves de game_data), en orden: las mejoras económicas cambian las tasas.</summary>
     public IReadOnlyList<string> Researched { get; init; } = [];
 
+    /// <summary>Pasos que ya están hechos o salteados (en vivo no entran a la simulación, pero un <c>after</c> puede pedirlos).</summary>
+    public IReadOnlyList<string> FinishedSteps { get; init; } = [];
+
     /// <summary>Inicio estándar de AoE2:DE: 3 aldeanos, explorador, centro urbano y 200/200/200/100.</summary>
     public static PlanStart Standard { get; } = new(
         Time: 0,
@@ -213,7 +216,8 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
     public PlanResult Simulate(BuildOrder bo, IStepPolicy? policy)
     {
         var civ = CivOf(bo);
-        var units = LivePlan.Units(bo);
+        // Los aldeanos de más de la civ ya están en las ovejas (PlanStart.For): "7 en ovejas" de los chinos es el total.
+        var units = LivePlan.Units(bo, civ.Start.ExtraVillagers);
         var steps = policy is null
             ? bo.Steps
             : bo.Steps.Select((s, i) => LivePlan.IsVillagerTarget(s) ? s with { Count = units[i] } : s).ToList();
@@ -313,6 +317,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _gatherModel = new GatherModel(data, settings.Efficiency);
             _food = settings.Food is { } supply ? new FoodStocks(supply) : null;
             _researched = [.. start.Researched];
+            _finishedSteps.UnionWith(start.FinishedSteps);
             RefreshRates();
             _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step)) { PaidAt = item.PaidAt }).ToList();
             foreach (var item in _items.Where(i => i.Remaining == 0))
@@ -743,7 +748,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 _researched.Add(entity.Key);
                 if (AgeReachedBy(entity.Key) is { } reached)
                 {
-                    _age = reached;
+                    _age = reached > _age ? reached : _age; // en vivo, el log pudo haber dicho una edad mayor
                     _stock += _civ.AgeResources(reached); // dravidianos, etíopes
                 }
                 RefreshRates();

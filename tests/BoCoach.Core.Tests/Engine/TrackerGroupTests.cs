@@ -81,4 +81,70 @@ public class TrackerGroupTests
 
         Assert.Contains(result.Errors, e => e.Message.Contains("seguidas"));
     }
+
+    private static Step Farmers(string id, int count, string? group = "g") =>
+        new() { Id = id, Do = StepAction.Train, What = "villager", Count = count, Assign = GatherSource.Farm, Group = group };
+
+    private static Step Farms(string id, int count, string? group = "g") =>
+        new() { Id = id, Do = StepAction.Build, What = "farm", Count = count, From = GatherSource.Farm, Assign = GatherSource.Farm, Group = group };
+
+    // Auditoría del 2026-11-05: la granja de un paso mixto queda hecha con sus compañeras, y si la compañera se salteó o
+    // no pedía nada, quedaba abierta para siempre.
+    [Fact]
+    public void Si_se_saltea_la_companera_la_granja_del_paso_mixto_no_queda_abierta()
+    {
+        var (tracker, state) = Start(Bo(Farmers("v", 2), Farms("f", 2)));
+        Play(tracker, state, 100);
+
+        tracker.Skip(Lane.Villagers);
+
+        Assert.Equal(StepState.Skipped, tracker.Steps[0].State);
+        Assert.Equal(StepState.Done, tracker.Steps[1].State);
+        Assert.Equal(100, tracker.Steps[1].DoneAt);
+        Assert.False(tracker.HasOpenSteps);
+
+        // "Atrás" la vuelve a abrir.
+        tracker.Back();
+        Assert.NotEqual(StepState.Done, tracker.Steps[1].State);
+    }
+
+    [Fact]
+    public void Si_la_companera_no_pide_nada_la_granja_es_como_una_suelta()
+    {
+        // Los dos granjeros ya estaban (paso "v0"): el paso mixto no pide ningún aldeano y nada confirmaría la granja.
+        var bo = Bo(Farmers("v0", 2, group: null), Farmers("v", 2), Farms("f", 2), new Step { Id = "m", Do = StepAction.Build, What = "mill" });
+        var (tracker, state) = Start(bo);
+        Play(tracker, state, 60, "villager_created", "villager_created");
+
+        Assert.Equal(StepState.Done, tracker.Steps[1].State); // no pide ninguno
+        Assert.NotEqual(StepState.Done, tracker.Steps[2].State); // todavía no le tocó: no se da por hecha sola
+        Assert.Equal("m", tracker.Current?.Step.Id); // no traba la BO: se muestra aparte
+        Assert.Contains(tracker.Silent, s => s.Step.Id == "f");
+
+        Play(tracker, state, 120, "mill_built"); // queda hecha cuando avanza un paso posterior
+
+        Assert.Equal(StepState.Done, tracker.Steps[2].State);
+    }
+
+    [Fact]
+    public void Si_es_lo_ultimo_y_la_companera_no_pide_nada_la_BO_termina_igual()
+    {
+        var (tracker, state) = Start(Bo(Farmers("v0", 2, group: null), Farmers("v", 2), Farms("f", 2)));
+
+        Play(tracker, state, 60, "villager_created", "villager_created");
+
+        Assert.Null(tracker.Current);
+        Assert.False(tracker.HasOpenSteps);
+    }
+
+    [Fact]
+    public void Dos_pasos_de_granjas_en_un_grupo_no_se_esperan_entre_si()
+    {
+        var (tracker, state) = Start(Bo(Farms("f1", 1), Farms("f2", 1), new Step { Id = "m", Do = StepAction.Build, What = "mill" }));
+
+        Play(tracker, state, 60, "mill_built");
+
+        Assert.Equal(StepState.Done, tracker.Steps[0].State);
+        Assert.Equal(StepState.Done, tracker.Steps[1].State);
+    }
 }

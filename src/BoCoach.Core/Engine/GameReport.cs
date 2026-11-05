@@ -89,8 +89,13 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
         var dt = first ? 0 : Math.Clamp(now - _last, 0, 5); // un hueco sin capturas no suma de más
         _last = now;
         _steps = steps;
-        foreach (var s in steps.Where(s => s.State == StepState.InProgress && s.StartedAt is not null && s.Step.What is not null))
-            _clicks.TryAdd(s.Step.What!, s.StartedAt!.Value);
+        foreach (var s in steps.Where(s => s.Step is { Do: StepAction.Research, What: not null }))
+        {
+            if (s.State == StepState.InProgress && s.StartedAt is { } clicked)
+                _clicks[s.Step.What!] = clicked;
+            else if (s.State is StepState.Pending or StepState.Ready)
+                _clicks.Remove(s.Step.What!); // se canceló, o era otra cosa y venció
+        }
 
         // Cada hueco cuenta desde que paró (el aviso sale después de un margen), no desde el aviso.
         if (view.TownCenterIdle is { } idle)
@@ -151,7 +156,7 @@ public sealed class GameReportBuilder(BuildOrder bo, Planner planner)
             Unannounced = s.Step.Do == StepAction.Move || (EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id)),
         }).ToList();
         var clicks = new List<AgeClick>();
-        foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", "Castillos", bo.Targets?.CastleClickTime) })
+        foreach (var (tech, name, target) in new[] { ("feudal_age", "Feudal", bo.Targets?.FeudalClickTime), ("castle_age", L("Castillos", "Castle"), bo.Targets?.CastleClickTime) })
         {
             var step = _steps.FirstOrDefault(s => s.Step is { Do: StepAction.Research } && s.Step.What == tech);
             if (step is null)

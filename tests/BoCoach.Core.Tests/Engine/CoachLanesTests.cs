@@ -116,6 +116,128 @@ public class CoachLanesTests
         Assert.False(view.Compact);
     }
 
+    // Auditoría del 2026-11-05: sin paso actual (la edad en curso y lo demás esperándola), el reparto saltaba al final de
+    // la BO: mientras subía a Feudal, el overlay ya pedía la gente de lo que viene después.
+    private static readonly BuildOrder ThenGold = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            Villagers("v1", 8, GatherSource.Wood),
+            new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+            new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+            new Step { Id = "smith", Do = StepAction.Build, What = "blacksmith", From = GatherSource.Wood, Assign = GatherSource.Gold, Builders = 5 },
+        ],
+    };
+
+    [Fact]
+    public void Subiendo_de_edad_sin_paso_actual_el_reparto_es_el_de_ese_punto_de_la_BO()
+    {
+        var coach = new Coach(ThenGold, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(600, 200, 200, 200);
+        coach.Update(new GameSnapshot(300, stock, 12, 15, [new GameEvent("lumber_camp_built", 300), new GameEvent("barracks_built", 300)]) { Villagers = 11 });
+        coach.Tracker.MarkStarted(3, 301);
+
+        var view = coach.Update(new GameSnapshot(330, stock, 12, 15) { Villagers = 11 });
+
+        Assert.Null(view.Current);
+        var intended = LivePlan.IntendedVillagers(coach.Tracker);
+        Assert.Equal(8, intended[GatherSource.Wood]);
+        Assert.Equal(0, intended[GatherSource.Gold]);
+    }
+
+    [Fact]
+    public void Con_solo_granjas_abiertas_el_reparto_es_el_final_de_la_BO()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                Villagers("v1", 8, GatherSource.Wood),
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "farms", Do = StepAction.Build, What = "farm", Count = 2, From = GatherSource.Wood, Assign = GatherSource.Farm },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(600, 200, 200, 200);
+        coach.Update(new GameSnapshot(300, stock, 12, 15, [new GameEvent("mill_built", 300)]) { Villagers = 11 });
+
+        var view = coach.Update(new GameSnapshot(330, stock, 12, 15) { Villagers = 11 });
+
+        Assert.Null(view.Current);
+        var intended = LivePlan.IntendedVillagers(coach.Tracker);
+        Assert.Equal(6, intended[GatherSource.Wood]);
+        Assert.Equal(2, intended[GatherSource.Farm]);
+    }
+
+    // D1 (valores aprobados por el usuario el 2026-10-20): en el gris (unidades ajenas a la par de las de la BO) sigue con la
+    // BO, pero no marca atrasado lo militar. BuildOrderAbandonment.Gray se calculaba y nadie lo leía.
+    [Fact]
+    public void En_el_gris_lo_militar_no_queda_sin_hacer()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "stable", Do = StepAction.Build, What = "stable", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 3 },
+                new Step { Id = "spearman", Do = StepAction.Train, What = "spearman", Count = 1 },
+                new Step { Id = "scouts", Do = StepAction.Train, What = "scout_cavalry", Count = 3 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(100, stock, "barracks_built", "stable_built", "feudal_age_researched"));
+        coach.Update(At(110, stock, "spearman_created"));
+        var view = coach.Update(At(111, stock));
+
+        // Sin el gris, la milicia que se salteó queda aparte.
+        Assert.False(coach.Abandonment.Gray);
+        Assert.Equal(["militia"], view.Lanes.Single(l => l.Lane == Lane.Produce).Behind.Select(s => s.Step.Id));
+
+        // 6 arqueros que la BO no tiene, con los lanceros de la BO saliendo: el gris.
+        for (var t = 115; t < 121; t++)
+            coach.Update(At(t, stock, "archer_created"));
+        coach.Update(At(125, stock, "spearman_created"));
+        view = coach.Update(At(126, stock));
+
+        Assert.True(coach.Abandonment.Gray);
+        Assert.Null(view.Abandoned);
+        Assert.Empty(view.Lanes.Single(l => l.Lane == Lane.Produce).Behind);
+        Assert.DoesNotContain(CoachText.Lines(view, TestData.GameData).Running, l => l.Contains("Quedó sin hacer"));
+    }
+
+    [Fact]
+    public void En_el_gris_lo_que_no_es_militar_sigue_quedando_sin_hacer()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 9 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(100, stock, "barracks_built"));
+        coach.Update(At(110, stock, "militia_created"));
+        for (var t = 115; t < 121; t++)
+            coach.Update(At(t, stock, "archer_created"));
+        coach.Update(At(125, stock, "militia_created"));
+        var view = coach.Update(At(126, stock));
+
+        Assert.True(coach.Abandonment.Gray);
+        Assert.Equal(["mill"], view.Lanes.Single(l => l.Lane == Lane.Build).Behind.Select(s => s.Step.Id));
+    }
+
     // Partida 20261030-203917: con todo lo demás hecho, el segundo molino que nunca se hizo volvía al renglón de
     // Construir y a los 3 minutos la BO quedaba "abandonada" en vez de terminada.
     [Fact]
@@ -138,5 +260,69 @@ public class CoachLanesTests
         var view = coach.Update(At(400, stock) with { PopulationCap = 10 });
         Assert.Null(view.Abandoned);
         Assert.NotNull(view.Posture);
+    }
+
+    // Auditoría del 2026-11-05: las de los chinos y los malíes terminan en granjas, que nada cierra. A los 3 minutos se
+    // daban por abandonadas y se iban la postura, las tecnologías y la tarjeta, sin volver.
+    [Fact]
+    public void Una_BO_que_termina_en_granjas_no_queda_abandonada()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Berries },
+                new Step { Id = "farms", Do = StepAction.Build, What = "farm", Count = 5, From = GatherSource.Berries, Assign = GatherSource.Farm },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(60, stock, "mill_built"));
+
+        var view = coach.Update(At(400, stock));
+
+        Assert.NotEqual(StepState.Done, coach.Tracker.Steps[1].State); // sigue abierta: nada la cierra
+        Assert.Null(view.Abandoned);
+        Assert.NotNull(view.Posture);
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_con_la_produccion_a_medias_no_queda_abandonada()
+    {
+        // Las de los aztecas, los persas y los polacos terminan entrenando unidades.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 10 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(60, stock, "barracks_built", "militia_created"));
+
+        var view = coach.Update(At(400, stock));
+
+        Assert.Null(view.Abandoned);
+        Assert.NotNull(view.Posture);
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_en_una_edad_que_tarda_no_queda_abandonada_mientras_se_investiga()
+    {
+        // Imperial tarda más de 3 minutos.
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "imperial", Do = StepAction.Research, What = "imperial_age" }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Tracker.MarkStarted(0, 60);
+        coach.Update(At(60, stock));
+
+        var view = coach.Update(At(250, stock));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[0].State);
+        Assert.Null(view.Abandoned);
     }
 }

@@ -6,9 +6,10 @@ namespace BoCoach.Core.Engine;
 /// <param name="Producers">Edificio → cuántos hay al menos, según los íconos iguales que avanzan a la vez.</param>
 /// <param name="InProgress">Tecnologías en la cola en esta lectura y en la anterior.</param>
 /// <param name="Finished">Tecnologías que estuvieron en la cola y ya no están, pasado su tiempo.</param>
-internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IReadOnlySet<string> InProgress, IReadOnlyList<string> Finished)
+/// <param name="Left">Tecnologías que estaban en curso y faltan de la cola hace <see cref="QueueSource.LeftSeconds"/>, sin terminar.</param>
+internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IReadOnlySet<string> InProgress, IReadOnlyList<string> Finished, IReadOnlyList<string> Left)
 {
-    public static readonly QueueFacts None = new(new Dictionary<string, int>(), new HashSet<string>(), []);
+    public static readonly QueueFacts None = new(new Dictionary<string, int>(), new HashSet<string>(), [], []);
 }
 
 /// <summary>
@@ -26,6 +27,8 @@ internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IR
 /// se la vio menos de la mitad de su tiempo no terminó nada: es un parpadeo (en la 20261101-165020, "town_watch" 3
 /// capturas, con el teñido a mitad de camino entre dos íconos) o se canceló. Su tiempo cuenta desde que avanza, no desde
 /// que espera (20261103-193834, con todo el árbol encolado: la forja salía terminada a las 25:40 y el log la avisó a las 26:53).</item>
+/// <item>Una en curso que falta <see cref="LeftSeconds"/> de la cola se fue sin terminar: se canceló o nunca estuvo (un
+/// ícono mal leído dos veces). Si no, quedaba en curso toda la partida. Lo que dura menos es un error de lectura.</item>
 /// </list>
 /// </summary>
 internal sealed class QueueSource(GameData data)
@@ -36,9 +39,15 @@ internal sealed class QueueSource(GameData data)
     /// <summary>Parte de su tiempo que tiene que haberse visto una tecnología en la cola para creer que terminó.</summary>
     public const double SeenShare = 0.5;
 
+    /// <summary>Segundos que una tecnología en curso tiene que faltar de la cola para creer que se fue sin terminar.</summary>
+    public const double LeftSeconds = 15;
+
     private Dictionary<string, int> _previousCounts = [];
     private HashSet<string> _previousKeys = [];
     private readonly Dictionary<string, (double First, double Last)> _seen = [];
+
+    /// <summary>Las tecnologías en curso y la última vez que se las vio en la cola.</summary>
+    private readonly Dictionary<string, double> _running = [];
 
     /// <param name="age">La edad alcanzada: lo de una edad mayor es una lectura mala.</param>
     /// <param name="researchTime">Tiempo de investigación de una tecnología (con la civ).</param>
@@ -87,7 +96,27 @@ internal sealed class QueueSource(GameData data)
             }
         }
 
+        foreach (var tech in inProgress)
+            _running[tech] = now;
+        var left = new List<string>();
+        foreach (var (tech, lastSeen) in _running.ToList())
+        {
+            if (keys.Contains(tech))
+            {
+                _running[tech] = now;
+            }
+            else if (finished.Contains(tech))
+            {
+                _running.Remove(tech);
+            }
+            else if (!_previousKeys.Contains(tech) && now - lastSeen >= LeftSeconds)
+            {
+                left.Add(tech);
+                _running.Remove(tech);
+            }
+        }
+
         (_previousCounts, _previousKeys) = (counts, keys);
-        return new QueueFacts(producers, inProgress, finished);
+        return new QueueFacts(producers, inProgress, finished, left);
     }
 }

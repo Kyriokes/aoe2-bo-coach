@@ -78,8 +78,11 @@ public sealed class GameSignals(GameData data)
     private (int Total, double Since)? _villagerDrop;
     private int _seenEvents;
 
-    /// <summary>El número del jugador (por su color), si se sabe (pantalla de carga o aprendido de su clic).</summary>
-    public int? PlayerSlot { get; set; }
+    /// <summary>El número del jugador (por su color), si se sabe: el de la pantalla de carga o, si no, el aprendido de su clic.</summary>
+    public int? PlayerSlot { get => _slotFromLoading ?? _slotFromClick; set => _slotFromLoading = value; }
+
+    private int? _slotFromLoading;
+    private int? _slotFromClick;
 
     /// <summary>Los números de los aliados (de la pantalla de carga): sus clics no son del rival.</summary>
     public IReadOnlySet<int> AllySlots { get; set; } = new HashSet<int>();
@@ -188,10 +191,10 @@ public sealed class GameSignals(GameData data)
     {
         player.NextAge = age + 1;
         _clickedAges[player.Slot] = age + 1;
-        if (player.Me || (PlayerSlot is { } mine && player.Slot == mine) || _ownClicks.Any(t => Math.Abs(t - time) <= OwnClickWindow))
+        if (IsMe(player, time))
         {
             player.Me = true;
-            PlayerSlot ??= player.Slot;
+            _slotFromClick ??= player.Slot;
             return;
         }
         if (AllySlots.Contains(player.Slot))
@@ -204,6 +207,15 @@ public sealed class GameSignals(GameData data)
         var arrives = data.TryGet(tech, out var entity) ? L($": llega a las {GameClock.Format(time + entity.Time)}", $": arrives at {GameClock.Format(time + entity.Time)}") : "";
         _signals.Add(new GameSignal(kind, time, L($"{who} hizo clic en {name} ({GameClock.Format(time)}){arrives}", $"{who} clicked {name} ({GameClock.Format(time)}){arrives}"), player.Slot is > 0 and <= 8 ? player.Slot : 0));
     }
+
+    /// <summary>
+    /// Si esa caída es del jugador. Con el número de la pantalla de carga, y si ese número está en el panel, decide el
+    /// número: un clic del rival cerca del propio lo marcaba como "yo" para siempre. Si no, la coincidencia con el clic
+    /// propio, que es lo único que hay (y mejor callarse que avisar el clic propio como del rival).
+    /// </summary>
+    private bool IsMe(Player player, double time) => _slotFromLoading is { } slot && _players.Any(p => p.Slot == slot)
+        ? player.Slot == slot
+        : player.Me || player.Slot == _slotFromClick || _ownClicks.Any(t => Math.Abs(t - time) <= OwnClickWindow);
 
     /// <summary>Lo que cae el puntaje al pagar esa edad: la décima parte de su costo (sin bonificaciones de civ).</summary>
     private int Expected(int age)

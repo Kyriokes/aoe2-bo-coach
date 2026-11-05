@@ -159,7 +159,9 @@ public sealed class StateBelief
                     if (_civ.PopBonus(building, Age.Dark) is > 0 and var pop)
                     {
                         _builtCap += pop;
-                        _cap.Credit(pop, now);
+                        // Lo que dedujo el tope ya es esa suba: un crédito de más se comería la casa siguiente.
+                        if (source != EvidenceSource.PopulationCap)
+                            _cap.Credit(pop, now);
                     }
                     // El Settlement de los incas vale por campamento maderero, minero, molino y casa: cada uno avisa como
                     // construido. La población ya la dio el propio edificio.
@@ -218,6 +220,11 @@ public sealed class StateBelief
         {
             if (_research.GetValueOrDefault(tech) != ResearchStatus.Done)
                 Add(EventConventions.EventFor(StepAction.Research, tech)!, EvidenceSource.Queue, Strength.Observed, now, CreditSeconds);
+        }
+        foreach (var tech in facts.Left)
+        {
+            if (_research.TryGetValue(tech, out var status) && status == ResearchStatus.InProgress)
+                _research.Remove(tech);
         }
     }
 

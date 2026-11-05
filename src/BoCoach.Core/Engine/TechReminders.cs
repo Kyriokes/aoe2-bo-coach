@@ -167,7 +167,10 @@ public sealed class TechReminders(GameData data, string civ, IReadOnlyList<strin
     }
 
     /// <summary>Cuánto se deja de pedir una tecnología cliqueada o en la cola sin que el log la confirme.</summary>
-    private double Pause(Entity tech, Age age) => _civ.Time(tech, age) * 1.5 + 15;
+    private double Pause(Entity tech, Age age) => Pause(_civ, tech, age);
+
+    /// <inheritdoc cref="Pause(Entity, Age)"/>
+    internal static double Pause(CivBonuses civ, Entity tech, Age age) => civ.Time(tech, age) * 1.5 + 15;
 
     private TechReminder Reminder(string tech) => new(tech, data.Get(tech).MadeIn!);
 }

@@ -1,4 +1,5 @@
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
 
 namespace BoCoach.Core.Tests.BuildOrders;
@@ -88,6 +89,34 @@ public class CivBuildOrdersTests
         string[] upgrades = ["thumb_ring", "bloodlines", "husbandry", "fletching", "bodkin_arrow", "padded_archer_armor", "leather_archer_armor", "ballistics"];
         Assert.All(upgrades, u => Assert.Contains(bo.Steps, s => s is { Do: StepAction.Research } && s.What == u));
         Assert.Equal("scouts", BuildOrderStyle.Of(bo));
+    }
+
+    // Auditoría del 2026-11-05: el optimizador trabaja en aldeanos nuevos, y los de más de la civ no son nuevos. "7 en
+    // ovejas" de los chinos es uno solo: si sacara más de uno, la BO mejorada tendría aldeanos de más.
+    [Fact]
+    public void Mejorar_una_BO_con_aldeanos_de_mas_no_agrega_aldeanos()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Civ = "chinese",
+            Steps =
+            [
+                new Step { Id = "h", Do = StepAction.Build, What = "house", Count = 2, Builders = 3, Assign = GatherSource.Sheep },
+                new Step { Id = "w", Do = StepAction.Train, What = "villager", Count = 2, Assign = GatherSource.Wood },
+                new Step { Id = "v", Do = StepAction.Train, What = "villager", Count = 7, Assign = GatherSource.Sheep },
+                new Step { Id = "c", Do = StepAction.Build, What = "lumber_camp", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "b", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "m", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "h2", Do = StepAction.Build, What = "house", Count = 4, From = GatherSource.Wood, Assign = GatherSource.Wood },
+            ],
+        };
+        var planner = new Planner(TestData.GameData);
+
+        var improved = new BuildOrderOptimizer(TestData.GameData).Improve(bo);
+
+        Assert.True(improved.Improved);
+        Assert.Equal(planner.Simulate(bo).Timeline[^1].Villagers, planner.Simulate(improved.BuildOrder).Timeline[^1].Villagers);
     }
 
     [Fact]

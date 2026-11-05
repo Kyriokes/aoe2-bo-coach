@@ -33,7 +33,7 @@ public sealed class Branches(BuildOrder bo, GameData data, EventCatalog? events)
                 _fired.Add(branch);
                 var own = new PlayerState(state.Population, state.PopulationCap, state.Villagers);
                 var steps = new BuildOrder { Name = bo.Name, Civ = bo.Civ, Steps = branch.Steps };
-                _runs.Add(new Run(branch, own, new Tracker(steps, data, events)));
+                _runs.Add(new Run(branch, own, new Tracker(steps, data, events, fromNow: true)));
             }
         }
     }
@@ -56,7 +56,7 @@ public sealed class Branches(BuildOrder bo, GameData data, EventCatalog? events)
             return null;
         var steps = run.Tracker.Steps;
         return new BranchView(
-            Branch.Signals.GetValueOrDefault(run.Branch.On, run.Branch.On),
+            Branch.SignalText(run.Branch.On),
             run.Branch.Note,
             // La rama se muestra entera aunque su Tracker no sepa la edad ni los edificios (solo ve lo de después de
             // dispararse): no pasa por la elegibilidad de las líneas.

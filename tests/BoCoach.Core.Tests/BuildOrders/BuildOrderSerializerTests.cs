@@ -185,4 +185,22 @@ public class BuildOrderSerializerTests
         Assert.Equal([2, 9, 4], bo.Steps.Select(s => s.Count));
         Assert.Equal([2, 6, 4], BoCoach.Core.Engine.LivePlan.Units(bo));
     }
+
+    [Fact]
+    public void Con_los_datos_el_formato_1_cuenta_los_aldeanos_de_mas_de_la_civ()
+    {
+        // El editor de la web manda las unidades en formato 1: 1 aldeano nuevo a las ovejas son 7 con los 3 de más de los chinos.
+        const string json = """
+            {
+              "schema_version": 1, "name": "Vieja", "civ": "chinese",
+              "steps": [
+                { "id": "s1", "do": "build", "what": "house", "count": 2, "builders": 3, "assign": "sheep" },
+                { "id": "s2", "do": "train", "what": "villager", "count": 1, "assign": "sheep" }
+              ]
+            }
+            """;
+
+        Assert.Equal(7, BuildOrderSerializer.Parse(json, TestData.GameData).Steps[1].Count);
+        Assert.Equal(4, BuildOrderSerializer.Parse(json).Steps[1].Count); // sin los datos no se sabe la civ
+    }
 }

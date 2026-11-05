@@ -27,7 +27,7 @@ public static class BuildOrderAnalysis
             var regenerated = false;
             try
             {
-                bo = BuildOrderSerializer.Parse(json);
+                bo = BuildOrderSerializer.Parse(json, data);
             }
             catch (BuildOrderFormatException e)
             {
@@ -85,7 +85,7 @@ public static class BuildOrderAnalysis
 
             // Una BO con errores puede no simularse (por ejemplo, una entidad que no existe).
             var plan = validation.IsValid ? new Planner(data, settings).Simulate(bo) : null;
-            WriteSteps(w, bo, plan, language);
+            WriteSteps(w, bo, data, plan, language);
             if (plan is not null)
                 WritePlan(w, plan);
             if (assisted is not null)
@@ -219,11 +219,11 @@ public static class BuildOrderAnalysis
         w.WriteEndArray();
     }
 
-    private static void WriteSteps(Utf8JsonWriter w, BuildOrder bo, PlanResult? plan, string language)
+    private static void WriteSteps(Utf8JsonWriter w, BuildOrder bo, GameData data, PlanResult? plan, string language)
     {
         // D8: las unidades de cada paso (aldeanos nuevos en los de aldeanos, donde count es el total en la fuente), para
         // que el editor de la web cargue cualquier BO a su modelo en unidades.
-        var units = Engine.LivePlan.Units(bo);
+        var units = Engine.LivePlan.Units(bo, data.Civ(bo.Civ).Start.ExtraVillagers);
         w.WriteStartArray("steps");
         for (var i = 0; i < bo.Steps.Count; i++)
         {

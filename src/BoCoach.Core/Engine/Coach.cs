@@ -180,7 +180,7 @@ public sealed class Coach
         _economy = new EconomyAdvisor(data, planner, _economySettings);
         Tracker = new Tracker(bo, data, events);
         Tracker.Update(State);
-        Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
+        Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder, data);
         _posture = new PostureCoach(Tracker.BuildOrder, data);
         _techs = new TechReminders(data, Tracker.BuildOrder.Civ, _posture.Definition.Queue);
         Signals = new GameSignals(data);
@@ -243,8 +243,8 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
-        Abandonment.Update(State, Tracker.Steps, Tracker.IsLeftBehind, Tracker.Current is { } current ? MissingFor(current).Total : 0);
-        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
+        Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
+        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot);
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
         {
@@ -365,7 +365,11 @@ public sealed class Coach
     /// </summary>
     public CoachView Back() => Abandonment.Abandoned
         ? Correct(() => Abandonment.Resume(State))
-        : Correct(Tracker.Back);
+        : Correct(() =>
+        {
+            Tracker.Back();
+            Abandonment.Rewound();
+        });
 
     /// <summary>Atajo "saltear": marca el paso actual como salteado (con una rama en curso, la cierra).</summary>
     public CoachView Skip(Lane? lane = null) => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(() => Tracker.Skip(lane));
@@ -421,10 +425,8 @@ public sealed class Coach
     private bool CanResearchNow(Entity tech, Age age) =>
         tech.Age <= age && (tech.MadeIn is not { } building || building == BuildOrderValidator.StartingBuilding || Built(building));
 
-    /// <summary>Hay un edificio así: lo avisó el log o está hecho un paso de la BO que lo construye.</summary>
-    private bool Built(string building) =>
-        State.Count($"{building}_built") > 0
-        || Tracker.Steps.Any(s => s.Step.Do == StepAction.Build && s.Step.What == building && s.State == StepState.Done);
+    /// <summary>Hay un edificio así: lo avisó el log (y "Atrás" no lo descartó) o está hecho un paso de la BO que lo construye.</summary>
+    private bool Built(string building) => Tracker.Built(building);
 
     /// <summary>Un paso de la BO hizo esa investigación, la tiene en curso o se salteó.</summary>
     private bool ResearchedByBuildOrder(string tech) =>
@@ -435,21 +437,63 @@ public sealed class Coach
     /// lecturas seguidas) ya se pagó: queda en curso aunque la baja del stock no se haya visto. En la 20261018-132830 el
     /// clic en Castillos (20:26) no se vio en el stock y la cola lo mostraba. La que termina sin que el log lo avise llega
     /// como evento sintético "&lt;tech&gt;_researched" y el Tracker la confirma por el camino de siempre.
+    /// <para>Solo al aparecer en la cola: si no, la cancelación y "Atrás" se deshacían en la captura siguiente. Y si se
+    /// va de la cola sin terminar, lo que solo la cola había dicho se deshace: era un ícono mal leído o se canceló. Lo
+    /// que también se vio en el stock lo decide <see cref="ExpireClicks"/>.</para>
     /// </summary>
     private bool ResearchInQueue(GameSnapshot snapshot)
     {
         if (snapshot.Belief is not { } belief)
             return false;
-        var started = false;
-        foreach (var step in Tracker.Steps.Where(s => s.Step.Do == StepAction.Research && s.State is StepState.Pending or StepState.Ready))
+        var changed = false;
+        var inQueue = belief.Research.Where(r => r.Value == ResearchStatus.InProgress).Select(r => r.Key).ToHashSet();
+        foreach (var step in Tracker.Steps.Where(s => s.Step is { Do: StepAction.Research, What: not null }))
         {
-            if (step.Step.What is { } tech && belief.InProgress(tech))
+            var tech = step.Step.What!;
+            if (inQueue.Contains(tech) && !_researchInQueue.Contains(tech) && step.State is StepState.Pending or StepState.Ready)
             {
                 Tracker.MarkStarted(step.Index, snapshot.Time);
-                started = true;
+                _startedByQueue.Add(step.Index);
+                changed = true;
+            }
+            else if (!inQueue.Contains(tech) && _researchInQueue.Contains(tech) && _startedByQueue.Remove(step.Index)
+                && step.State == StepState.InProgress && !belief.Done(tech))
+            {
+                Tracker.ClearStarted(step.Index);
+                changed = true;
             }
         }
-        return started;
+        _researchInQueue = inQueue;
+        return changed;
+    }
+
+    private HashSet<string> _researchInQueue = [];
+    private readonly HashSet<int> _startedByQueue = [];
+
+    /// <summary>
+    /// Un clic visto en el stock que ni el log ni la cola confirman vence, igual que en <see cref="TechReminders"/>: dos
+    /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
+    /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue. El clic de
+    /// una edad a la que ya se llegó (el log no leyó el aviso, pero hay algo de esa edad) tampoco vence: no se puede volver a pedir.
+    /// </summary>
+    private bool ExpireClicks(GameSnapshot snapshot)
+    {
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = Tracker.Age;
+        var expired = false;
+        foreach (var step in Tracker.InProgress.ToList())
+        {
+            if (step.Step.What is not { } tech || !_data.TryGet(tech, out var entity) || step.StartedAt is not { } clicked
+                || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true
+                || BuildOrderValidator.AgeOf(tech) <= age)
+                continue;
+            if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
+            {
+                Tracker.ClearStarted(step.Index);
+                expired = true;
+            }
+        }
+        return expired;
     }
 
     /// <summary>
@@ -679,7 +723,9 @@ public sealed class Coach
 
     private LaneView LaneViewOf(Lane lane) => (Tracker.LaneStep(lane) is { } step
         ? new LaneView(lane, step, MissingFor(step), _plan?.For(step.Step.Id)?.Start)
-        : new LaneView(lane, null, ResourceAmounts.Zero, null)) with { Behind = Tracker.LaneBehind(lane) };
+        : new LaneView(lane, null, ResourceAmounts.Zero, null))
+        // D1: en el gris (unidades ajenas a la par de las de la BO) sigue la BO, pero lo militar no queda atrasado.
+        with { Behind = lane == Lane.Produce && Abandonment.Gray ? [] : Tracker.LaneBehind(lane) };
 
     /// <summary>Lo que falta juntar para un paso: su costo con la civ en la edad del jugador menos el stock.</summary>
     private ResourceAmounts MissingFor(StepProgress step)
