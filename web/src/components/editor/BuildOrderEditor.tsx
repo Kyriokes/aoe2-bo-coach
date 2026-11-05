@@ -10,7 +10,7 @@ import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
-import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, isStaleRun, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
@@ -63,12 +63,17 @@ function withSteps(state: EditorState, steps: EditorStep[]): EditorState {
   return steps === state.steps ? state : { ...state, steps, revision: state.revision + 1 };
 }
 
-/** Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. */
-function settle(state: EditorState, coach: CoachRuntime | null, locale: Locale): EditorState {
+/**
+ * Después de una edición, la simulación: el Core corre acá mismo (sincrónico), así el estado nuevo ya trae su análisis. Si
+ * el Core no puede, queda sin análisis al día; lo avisa el efecto que vuelve a intentar (`onError`).
+ */
+function settle(state: EditorState, coach: CoachRuntime | null, locale: Locale, onError?: (error: string) => void): EditorState {
   // Una BO asistida se genera fuera de la página (en el worker, ver el efecto de BuildOrderEditor): tarda más.
   if (!coach || state.analyzedRevision >= state.revision || state.bo.assisted !== undefined) return state;
   const result = coach.analyze(JSON.stringify(toJson(state)), locale);
-  return result.ok ? reduce(state, { type: "analyzed", analysis: result, revision: state.revision }) : state;
+  if (result.ok) return reduce(state, { type: "analyzed", analysis: result, revision: state.revision });
+  onError?.(result.error);
+  return state;
 }
 
 /**
@@ -100,6 +105,8 @@ export function BuildOrderEditor({
   const [publishError, setPublishError] = useState<string | null>(null);
   /** Lo que se ve es un borrador recuperado: se avisa, con la opción de descartarlo. */
   const [restored, setRestored] = useState(false);
+  /** El Core no pudo con esta revisión: la BO queda sin análisis al día y no se puede publicar. */
+  const [failure, setFailure] = useState<{ revision: number; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(960);
@@ -164,12 +171,13 @@ export function BuildOrderEditor({
   useEffect(() => {
     if (!coach || state.bo.assisted !== undefined || state.analyzedRevision >= state.revision) return;
     const pending = textDebounce.current;
+    const revision = state.revision;
     pending.schedule(() => {
-      stateRef.current = settle(stateRef.current, coach, locale);
+      stateRef.current = settle(stateRef.current, coach, locale, (error) => setFailure({ revision, message: fill(t.readFailed, { error }) }));
       setState(stateRef.current);
     });
     return () => pending.cancel();
-  }, [coach, locale, state.analyzedRevision, state.bo.assisted, state.revision]);
+  }, [coach, locale, state.analyzedRevision, state.bo.assisted, state.revision, t.readFailed]);
 
   /** Lo que manda la página: la BO que se edita o una nueva. */
   const loadInitial = useCallback(
@@ -324,15 +332,19 @@ export function BuildOrderEditor({
       const id = ++sequence.current;
       analyzeAsync(json, locale)
         .then((result) => {
-          if (id !== sequence.current || !result.ok) return;
+          if (isStaleRun({ id, revision }, { sequence: sequence.current, revision: stateRef.current.revision })) return;
+          if (!result.ok) {
+            setFailure({ revision, message: fill(t.generateFailed, { error: result.error }) });
+            return;
+          }
           const buildingOf = (unit: string) => dataRef.current?.entities[unit]?.made_in;
           setStrip(diffGoals(before, result, changeRef.current, plan, lastPlanRef.current, buildingOf, locale));
           lastPlanRef.current = plan;
           setState((prev) => reduce(prev, { type: "generated", analysis: result, revision }));
         })
-        .catch((error: unknown) => showNotice(fill(t.generateFailed, { error: error instanceof Error ? error.message : String(error) })));
+        .catch((error: unknown) => setFailure({ revision, message: fill(t.generateFailed, { error: error instanceof Error ? error.message : String(error) }) }));
     });
-  }, [locale, plan, showNotice, state.analysis, state.analyzedRevision, state.bo, state.revision, t.generateFailed]);
+  }, [locale, plan, state.analysis, state.analyzedRevision, state.bo, state.revision, t.generateFailed]);
 
   const changePlan = useCallback(
     (next: AssistedPlan, change: string) => {
@@ -519,6 +531,8 @@ export function BuildOrderEditor({
   const analyzedSelected = state.analysis?.steps.find((s) => s.id === state.selected) ?? null;
   const selectedIssues = state.analysis?.issues.filter((i) => i.step_id === state.selected) ?? [];
   const analysisIsCurrent = state.analysis !== null && state.analyzedRevision >= state.revision;
+  // Sin esto, "calculando" para siempre y publicar desactivado sin explicar por qué. Otra edición lo vuelve a intentar.
+  const failed = failure?.revision === state.revision ? failure.message : null;
   const canPublish = loggedIn && analysisIsCurrent && state.analysis!.valid && !pending && !drag;
   const canDownload = analysisIsCurrent && state.analysis!.valid;
 
@@ -702,7 +716,7 @@ export function BuildOrderEditor({
           plan={plan}
           analysis={state.analysis}
           strip={strip}
-          pending={state.analyzedRevision < state.revision}
+          pending={state.analyzedRevision < state.revision && failed === null}
           civ={state.bo.civ}
           data={data}
           narrow={narrow}
@@ -839,6 +853,11 @@ export function BuildOrderEditor({
       {analysisIsCurrent && !state.analysis!.valid ? (
         <p role="alert" className="text-sm text-red">
           {t.fixErrors}
+        </p>
+      ) : null}
+      {failed ? (
+        <p role="alert" className="text-sm text-red">
+          {failed}
         </p>
       ) : null}
       {publishError ? (

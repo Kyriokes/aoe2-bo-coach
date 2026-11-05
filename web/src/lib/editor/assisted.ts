@@ -231,6 +231,14 @@ export function debouncer(ms: number) {
   };
 }
 
+/**
+ * Si lo que generó el Core ya no sirve: hay otra corrida más nueva en camino, o se editó algo después (generar tarda y corre
+ * en otro momento). Ni el reductor ni la franja "Último cambio" tienen que mirar una corrida así.
+ */
+export function isStaleRun(run: { id: number; revision: number }, now: { sequence: number; revision: number }) {
+  return run.id !== now.sequence || run.revision !== now.revision;
+}
+
 /** El tiempo de espera de los toques seguidos. */
 export const DEBOUNCE_MS = 150;
 
