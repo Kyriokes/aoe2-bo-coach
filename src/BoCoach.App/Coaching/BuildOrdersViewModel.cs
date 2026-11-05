@@ -196,18 +196,30 @@ public sealed partial class BuildOrdersViewModel : ObservableObject
         await ImportAsync(code, confirm: false);
     }
 
-    /// <summary>Un enlace bocoach:// de la web: conectar la cuenta o sumar una BO (con confirmación).</summary>
-    public Task HandleLinkAsync(string text)
+    /// <summary>
+    /// Un enlace bocoach:// de la web: conectar la cuenta o sumar una BO (con confirmación). Al abrir la app nadie espera
+    /// el resultado, así que un error (no se pudo guardar la cuenta, por ejemplo) se dice acá o se pierde.
+    /// </summary>
+    public async Task HandleLinkAsync(string text)
     {
-        switch (AppLink.Parse(text))
+        try
         {
-            case AppLink.Connect connect:
-                return ConnectWithTokenAsync(connect.Token);
-            case AppLink.Import import:
-                return ImportAsync(import.Code, confirm: true);
-            default:
-                Status = Texts.ForeignLink;
-                return Task.CompletedTask;
+            switch (AppLink.Parse(text))
+            {
+                case AppLink.Connect connect:
+                    await ConnectWithTokenAsync(connect.Token);
+                    break;
+                case AppLink.Import import:
+                    await ImportAsync(import.Code, confirm: true);
+                    break;
+                default:
+                    Status = Texts.ForeignLink;
+                    break;
+            }
+        }
+        catch (Exception e)
+        {
+            Status = Texts.LinkFailed(e.Message);
         }
     }
 

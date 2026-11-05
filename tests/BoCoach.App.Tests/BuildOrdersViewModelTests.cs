@@ -277,6 +277,21 @@ public sealed class BuildOrdersViewModelTests : IDisposable
         Assert.DoesNotContain("POST /api/app/suscripciones/abcdef", _web.Requests);
     }
 
+    // AP-10: al abrir la app nadie espera el resultado del enlace: un error se perdía en silencio.
+    [Fact]
+    public async Task Un_error_al_manejar_un_enlace_se_dice_en_el_estado()
+    {
+        ServeList(Entry("k7m2xq", "Mía", own: true));
+        var folder = Directory.CreateDirectory(Path.Combine(_dir.FullName, "web-carpeta")).FullName; // no se puede guardar ahí
+        var account = new WebAccount(new HttpClient(_web), folder);
+        var vm = new BuildOrdersViewModel(_cache, account, _dialogs, Data);
+
+        await vm.HandleLinkAsync($"bocoach://conectar/{Token}");
+
+        Assert.StartsWith("No se pudo abrir el enlace", vm.Status);
+        Assert.DoesNotContain(Token, vm.Status);
+    }
+
     [Fact]
     public async Task Con_el_token_vencido_pide_conectar_de_nuevo_y_sigue_la_lista()
     {

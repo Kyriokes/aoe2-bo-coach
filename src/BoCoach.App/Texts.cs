@@ -130,6 +130,7 @@ public static class Texts
     public static string ListCount(int count) => L($"{count} BO en tu lista.", $"{count} BOs in your list.");
     public static string NotACode(string text) => L($"\"{text}\" no es un código de la web (son 6 letras y números).", $"\"{text}\" isn't a website code (they're 6 letters and numbers).");
     public static string ConnectFailed(string error) => L($"No se pudo conectar la cuenta: {error}", $"Couldn't connect the account: {error}");
+    public static string LinkFailed(string error) => L($"No se pudo abrir el enlace: {error}", $"Couldn't open the link: {error}");
     public static string ConfirmConnect(string account) => L($"¿Conectar BO Coach con la cuenta {account} de la web?", $"Connect BO Coach to the website account {account}?");
     public static string ConfirmReplaceAccount(string current, string next) => current == next
         ? L($"BO Coach ya está conectado a la cuenta {current}. Este enlace trae otra conexión con ese mismo nombre, que puede ser de otra cuenta. ¿Usarla? Si no tocaste vos «Conectar la app» en Mi cuenta de la web, decí que no.",
