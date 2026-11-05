@@ -264,11 +264,15 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     public GameReport? TakePendingReport()
     {
-        if (!_reportPending)
-            return null;
-        _reportPending = false;
-        var report = Report();
-        return report.Length >= MinReportSeconds ? report : null;
+        // Adentro del lock: lo piden el loop (fin de partida) y la ventana (detener), y los dos podían llevarse el mismo informe.
+        lock (_gate)
+        {
+            if (!_reportPending)
+                return null;
+            _reportPending = false;
+            var report = _coach.Report();
+            return report.Length >= MinReportSeconds ? report : null;
+        }
     }
 
     public void Start()
@@ -294,7 +298,8 @@ public sealed class LiveCoach : IDisposable
     public GameRecordInfo? StopAndTakeRecord()
     {
         _cancel?.Cancel();
-        _recordingStopped = true;
+        lock (_gate)
+            _recordingStopped = true;
         return TakeClosedRecord("detenido");
     }
 
@@ -551,10 +556,13 @@ public sealed class LiveCoach : IDisposable
     /// </summary>
     private void RecordCapture(RawCapture? raw, HudState hud, double realTime)
     {
-        if (raw is null || RecordsFolder is null || _recordingStopped)
+        if (raw is null || RecordsFolder is null)
             return;
         lock (_gate)
         {
+            // Adentro del lock: detener el coach justo antes de esto dejaba abierto un registro que nadie iba a cerrar.
+            if (_recordingStopped)
+                return;
             if (_recordWriter is null && hud.ClockRead)
                 OpenRecord(realTime);
             Record(r => r.Capture(raw, RecordMs(realTime)));
