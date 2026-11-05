@@ -34,6 +34,57 @@ public class BuildOrderValidatorTests
         Assert.Empty(result.Warnings);
     }
 
+    // Sin tope, una BO pública con 90.000 'after' congela la pestaña de quien la abre: el Planner los mira en cada segundo.
+    [Fact]
+    public void After_tiene_un_tope()
+    {
+        var at = Enumerable.Repeat("a", BuildOrderValidator.MaxAfter).ToList();
+        Assert.True(Validator.Validate(Bo(Villagers("a", 6), Villagers("b", 7) with { After = at })).IsValid);
+
+        var error = SingleError(Bo(Villagers("a", 6), Villagers("b", 7) with { After = [.. at, "a"] }));
+
+        Assert.Equal("b", error.StepId);
+        Assert.Contains("'after'", error.Message);
+        Assert.Contains(BuildOrderValidator.MaxAfter.ToString(), error.Message);
+    }
+
+    // Un solo error, no uno por cada uno: la lista de problemas también viaja a la web.
+    [Fact]
+    public void Un_after_enorme_da_un_solo_error()
+    {
+        var error = SingleError(Bo(Villagers("a", 6) with { After = Enumerable.Repeat("no existe", 90_000).ToList() }));
+
+        Assert.Contains("'after'", error.Message);
+    }
+
+    [Fact]
+    public void Los_pasos_de_las_ramas_tambien_tienen_el_tope_de_after()
+    {
+        var branch = new Branch
+        {
+            On = "under_attack",
+            Steps = [Research("x", "loom") with { After = Enumerable.Repeat("x", BuildOrderValidator.MaxAfter + 1).ToList() }],
+        };
+
+        var error = SingleError(Bo(Villagers("a", 6)) with { Branches = [branch] });
+
+        Assert.Contains("'after'", error.Message);
+    }
+
+    [Fact]
+    public void Ninguna_BO_del_repo_queda_afuera_de_los_topes()
+    {
+        var dirs = new[] { TestData.BuildOrdersDir, Path.Combine(AppContext.BaseDirectory, "civs") };
+        var all = dirs.SelectMany(d => Directory.EnumerateFiles(d, "*.json")).Select(BuildOrderSerializer.Load).ToList();
+
+        Assert.True(all.Count > 100);
+        Assert.All(all, bo =>
+        {
+            Assert.All(bo.Steps.Concat((bo.Branches ?? []).SelectMany(b => b.Steps)), s => Assert.InRange(s.After.Count, 0, BuildOrderValidator.MaxAfter));
+            Assert.InRange(bo.Assisted?.Goals.Count ?? 0, 0, BuildOrderValidator.MaxGoals);
+        });
+    }
+
     // D8: el mapa dice qué fuentes hay y si hay agua. Es un aviso, no un error: la tabla es aproximada y el Planner simula igual.
     [Fact]
     public void Avisa_si_la_BO_usa_una_fuente_o_el_muelle_que_su_mapa_no_tiene()

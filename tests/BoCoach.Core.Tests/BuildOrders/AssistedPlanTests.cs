@@ -78,6 +78,29 @@ public class AssistedPlanTests
         Assert.NotEmpty(Validator.Validate(WithGoal(goal)).Errors);
     }
 
+    private static BuildOrder WithGoals(int count) =>
+        WithGoal(string.Join(", ", Enumerable.Repeat("""{ "tech": "loom" }""", count)));
+
+    [Fact]
+    public void Los_objetivos_tienen_un_tope()
+    {
+        Assert.True(Validator.ValidateAssistedPlan(WithGoals(BuildOrderValidator.MaxGoals)).IsValid);
+
+        var error = Assert.Single(Validator.ValidateAssistedPlan(WithGoals(BuildOrderValidator.MaxGoals + 1)).Errors);
+
+        Assert.Contains("assisted.goals", error.Message);
+        Assert.Contains(BuildOrderValidator.MaxGoals.ToString(), error.Message);
+    }
+
+    // Un solo error, no uno por objetivo: la lista de problemas también viaja a la web.
+    [Fact]
+    public void Muchos_objetivos_mal_armados_dan_un_solo_error()
+    {
+        var bo = WithGoal(string.Join(", ", Enumerable.Repeat("{}", 20_000)));
+
+        Assert.Contains("assisted.goals", Assert.Single(Validator.ValidateAssistedPlan(bo).Errors).Message);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(201)]

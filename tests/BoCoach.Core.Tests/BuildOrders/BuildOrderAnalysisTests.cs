@@ -177,6 +177,65 @@ public class BuildOrderAnalysisTests
         Assert.Empty(r.GetProperty("steps").EnumerateArray());
     }
 
+    private static string GoalsJson(string goal, int count) =>
+        "{ \"schema_version\": 2, \"id\": \"asis\", \"name\": \"Asistida\", \"civ\": \"franks\", \"assisted\": { \"villagers\": { \"until\": 40 }, \"goals\": [ "
+        + string.Join(", ", Enumerable.Repeat(goal, count)) + " ] } }";
+
+    // Con más de 100 objetivos iguales la política preguntaba más de la cuenta en un mismo segundo y el Planner tiraba.
+    [Theory]
+    [InlineData("""{ "tech": "loom" }""")]
+    [InlineData("""{ "age": "feudal_age" }""")]
+    [InlineData("""{ "unit": "archer", "count": 1 }""")]
+    [InlineData("""{ "unit": "archer", "count": 1, "buildings": 10 }""")]
+    [InlineData("""{ "town_centers": 2 }""")]
+    public void Con_mas_objetivos_que_el_tope_no_se_genera(string goal)
+    {
+        var r = Analyze(GoalsJson(goal, BuildOrderValidator.MaxGoals + 1));
+
+        Assert.True(r.GetProperty("ok").GetBoolean());
+        Assert.False(r.GetProperty("valid").GetBoolean());
+        Assert.Contains("assisted.goals", Assert.Single(r.GetProperty("issues").EnumerateArray()).GetProperty("message").GetString());
+        Assert.Empty(r.GetProperty("steps").EnumerateArray());
+    }
+
+    [Theory]
+    [InlineData("""{ "tech": "loom" }""")]
+    [InlineData("""{ "age": "feudal_age" }""")]
+    [InlineData("""{ "age": "imperial_age" }""")]
+    [InlineData("""{ "unit": "archer", "count": 1 }""")]
+    [InlineData("""{ "unit": "archer", "count": 1, "buildings": 10 }""")]
+    [InlineData("""{ "town_centers": 2 }""")]
+    public void Con_el_tope_de_objetivos_iguales_no_tira(string goal)
+    {
+        var r = Analyze(GoalsJson(goal, BuildOrderValidator.MaxGoals));
+
+        Assert.True(r.GetProperty("ok").GetBoolean());
+    }
+
+    // Datos del juego sin aldeano: el generador no puede armar nada y tira. La web lo muestra como un problema de la BO.
+    [Fact]
+    public void Lo_que_tira_el_generador_vuelve_como_un_problema()
+    {
+        var data = GameDataLoader.Parse("""
+            {
+              "dat_version": "VER 1.0",
+              "entities": { "town_center": { "kind": "building", "dat_id": 621, "cost": { "wood": 275 }, "time": 150, "age": "castle", "pop_bonus": 5 } },
+              "gather_rates": { "sheep": 0.33, "hunt": 0.41, "berries": 0.31, "fish": 0.43, "farm": 0.53, "wood": 0.39, "gold": 0.38, "stone": 0.36 }
+            }
+            """);
+
+        var r = JsonDocument.Parse(BuildOrderAnalysis.Analyze("""{ "schema_version": 2, "name": "x", "assisted": { } }""", data)).RootElement;
+
+        Assert.True(r.GetProperty("ok").GetBoolean());
+        Assert.False(r.GetProperty("valid").GetBoolean());
+        var issue = Assert.Single(r.GetProperty("issues").EnumerateArray());
+        Assert.Equal("error", issue.GetProperty("severity").GetString());
+        Assert.Contains("objetivos", issue.GetProperty("message").GetString());
+        Assert.Empty(r.GetProperty("steps").EnumerateArray());
+        Assert.False(r.TryGetProperty("timeline", out _));
+        Assert.False(r.TryGetProperty("assisted", out _));
+    }
+
     [Fact]
     public void Con_pasos_viejos_avisa_que_se_regenero()
     {

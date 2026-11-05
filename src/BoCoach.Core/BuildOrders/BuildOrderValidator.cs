@@ -35,6 +35,15 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
     /// </summary>
     public const int MaxCount = MaxPopulation;
 
+    /// <summary>
+    /// Tope de 'after' en un paso (el mismo en la web y en la base). Las BO reales tienen 1 como mucho. Sin tope, una BO
+    /// pública con 90.000 congela la pestaña de quien la abre: el Planner los mira en cada segundo de la simulación.
+    /// </summary>
+    public const int MaxAfter = 50;
+
+    /// <summary>Tope de 'assisted.goals' (el mismo en la web y en la base): cada objetivo le suma trabajo al generador.</summary>
+    public const int MaxGoals = 40;
+
     /// <summary>Edificio con el que arranca la partida.</summary>
     public const string StartingBuilding = "town_center";
 
@@ -255,12 +264,18 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         else if (step.Builders is < 1 or > MaxCount)
             error(id, L($"'builders' tiene que estar entre 1 y {MaxCount} (es {step.Builders}).", $"'builders' must be between 1 and {MaxCount} (it's {step.Builders})."));
 
-        foreach (var dep in step.After)
+        // De más: un solo error, no uno por cada uno (la lista de problemas también viaja a la web).
+        if (step.After.Count > MaxAfter)
+            error(id, L($"'after' puede tener hasta {MaxAfter} pasos (tiene {step.After.Count}).", $"'after' can have up to {MaxAfter} steps (it has {step.After.Count})."));
+        else
         {
-            if (dep == step.Id)
-                error(id, L("El paso depende de sí mismo en 'after'.", "The step depends on itself in 'after'."));
-            else if (!ids.Contains(dep))
-                error(id, L($"'after' menciona el paso '{dep}', que no existe.", $"'after' mentions the step '{dep}', which doesn't exist."));
+            foreach (var dep in step.After)
+            {
+                if (dep == step.Id)
+                    error(id, L("El paso depende de sí mismo en 'after'.", "The step depends on itself in 'after'."));
+                else if (!ids.Contains(dep))
+                    error(id, L($"'after' menciona el paso '{dep}', que no existe.", $"'after' mentions the step '{dep}', which doesn't exist."));
+            }
         }
 
         if (step.ConfirmBy is not null && events is not null && !events.Contains(step.ConfirmBy))
@@ -357,6 +372,11 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         if (assisted.Opening.Berries is not ("auto" or "no"))
             error(null, L($"assisted.opening.berries tiene que ser \"auto\" o \"no\" (es \"{assisted.Opening.Berries}\").", $"assisted.opening.berries must be \"auto\" or \"no\" (it's \"{assisted.Opening.Berries}\")."));
 
+        if (assisted.Goals.Count > MaxGoals)
+        {
+            error(null, L($"assisted.goals puede tener hasta {MaxGoals} objetivos (tiene {assisted.Goals.Count}).", $"assisted.goals can have up to {MaxGoals} goals (it has {assisted.Goals.Count})."));
+            return;
+        }
         for (var i = 0; i < assisted.Goals.Count; i++)
         {
             var goal = assisted.Goals[i];

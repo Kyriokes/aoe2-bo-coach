@@ -43,17 +43,29 @@ public static class BuildOrderAnalysis
             // finita del mapa como la simula el generador.
             AssistedResult? assisted = null;
             var settings = new PlannerSettings();
+            ValidationIssue? notGenerated = null;
             if (bo.Assisted is not null)
             {
                 var assistedErrors = validator.ValidateAssistedPlan(bo);
                 if (assistedErrors.IsValid)
                 {
                     var saved = bo;
-                    assisted = new AssistedGenerator(data, maps ?? new Maps([])).Generate(bo);
-                    bo = assisted.BuildOrder;
-                    settings = AssistedGenerator.Settings(data, maps ?? new Maps([]), bo);
-                    regenerated = saved.Steps.Count > 0
-                                  && BuildOrderSerializer.Serialize(saved with { Steps = bo.Steps, Posture = bo.Posture }) != BuildOrderSerializer.Serialize(saved);
+                    try
+                    {
+                        assisted = new AssistedGenerator(data, maps ?? new Maps([])).Generate(bo);
+                        settings = AssistedGenerator.Settings(data, maps ?? new Maps([]), assisted.BuildOrder);
+                        bo = assisted.BuildOrder;
+                        regenerated = saved.Steps.Count > 0
+                                      && BuildOrderSerializer.Serialize(saved with { Steps = bo.Steps, Posture = bo.Posture }) != BuildOrderSerializer.Serialize(saved);
+                    }
+                    catch (Exception e) when (e is not OutOfMemoryException)
+                    {
+                        // Lo arma una política con muchas reglas (el Planner tira si no termina): la web lo muestra como un
+                        // problema de la BO, y no se pierde lo que el jugador está editando.
+                        assisted = null;
+                        bo = saved with { Steps = [] };
+                        notGenerated = new ValidationIssue(Severity.Error, null, Lang.L($"No se pudo armar la BO con esos objetivos: {e.Message}", $"The BO couldn't be built from those goals: {e.Message}"));
+                    }
                 }
                 else
                 {
@@ -62,6 +74,8 @@ public static class BuildOrderAnalysis
             }
 
             var validation = assisted is null && bo.Assisted is not null ? validator.ValidateAssistedPlan(bo) : validator.Validate(bo);
+            if (notGenerated is not null)
+                validation = new ValidationResult([.. validation.Issues, notGenerated]);
             w.WriteBoolean("ok", true);
             w.WriteBoolean("valid", validation.IsValid);
             w.WriteString("style", BuildOrderStyle.Of(bo));
