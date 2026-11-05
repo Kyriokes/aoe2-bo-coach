@@ -102,6 +102,12 @@ public sealed class ResourceOverlay : Window
             _idle.PropertyChanged += OnIdleChanged;
         }
         SourceInitialized += (_, _) => OverlayWindows.MakeClickThrough(this);
+        // Con monitores de distinto DPI, las cuentas de PlaceOver se hicieron con la escala del monitor de donde venía la ventana.
+        DpiChanged += (_, _) =>
+        {
+            if (_area is { } area)
+                PlaceOver(area);
+        };
         Closed += (_, _) =>
         {
             _blink.Stop();

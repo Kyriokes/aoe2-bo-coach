@@ -25,7 +25,15 @@ public partial class CoachOverlay : Window
         blink.Tick += (_, _) => viewModel.Blink();
         blink.Start();
         Closed += (_, _) => blink.Stop();
+        // Con monitores de distinto DPI, la cuenta de abajo se hizo con la escala del monitor de donde venía la ventana.
+        DpiChanged += (_, _) =>
+        {
+            if (_area is { } area)
+                PlaceOver(area);
+        };
     }
+
+    private PixelRect? _area;
 
     /// <summary>
     /// Lo ubica arriba a la derecha de la zona del juego (lejos del log de eventos, que está a la izquierda), siempre en
@@ -33,6 +41,7 @@ public partial class CoachOverlay : Window
     /// </summary>
     public void PlaceOver(PixelRect area)
     {
+        _area = area;
         var scale = VisualTreeHelperScale();
         var width = (int)Math.Ceiling(Width * scale);
         OverlayWindows.MoveTo(this, area.X + area.Width - width - RightMargin, area.Y + (int)(area.Height * TopFraction));
