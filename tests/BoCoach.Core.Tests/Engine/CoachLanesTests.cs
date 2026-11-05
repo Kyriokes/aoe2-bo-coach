@@ -139,4 +139,68 @@ public class CoachLanesTests
         Assert.Null(view.Abandoned);
         Assert.NotNull(view.Posture);
     }
+
+    // Auditoría del 2026-11-05: las de los chinos y los malíes terminan en granjas, que nada cierra. A los 3 minutos se
+    // daban por abandonadas y se iban la postura, las tecnologías y la tarjeta, sin volver.
+    [Fact]
+    public void Una_BO_que_termina_en_granjas_no_queda_abandonada()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "mill", Do = StepAction.Build, What = "mill", From = GatherSource.Wood, Assign = GatherSource.Berries },
+                new Step { Id = "farms", Do = StepAction.Build, What = "farm", Count = 5, From = GatherSource.Berries, Assign = GatherSource.Farm },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(60, stock, "mill_built"));
+
+        var view = coach.Update(At(400, stock));
+
+        Assert.NotEqual(StepState.Done, coach.Tracker.Steps[1].State); // sigue abierta: nada la cierra
+        Assert.Null(view.Abandoned);
+        Assert.NotNull(view.Posture);
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_con_la_produccion_a_medias_no_queda_abandonada()
+    {
+        // Las de los aztecas, los persas y los polacos terminan entrenando unidades.
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                new Step { Id = "barracks", Do = StepAction.Build, What = "barracks", From = GatherSource.Wood, Assign = GatherSource.Wood },
+                new Step { Id = "militia", Do = StepAction.Train, What = "militia", Count = 10 },
+            ],
+        };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Update(At(60, stock, "barracks_built", "militia_created"));
+
+        var view = coach.Update(At(400, stock));
+
+        Assert.Null(view.Abandoned);
+        Assert.NotNull(view.Posture);
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_en_una_edad_que_tarda_no_queda_abandonada_mientras_se_investiga()
+    {
+        // Imperial tarda más de 3 minutos.
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "imperial", Do = StepAction.Research, What = "imperial_age" }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        var stock = new ResourceAmounts(500, 500, 500, 500);
+        coach.Tracker.MarkStarted(0, 60);
+        coach.Update(At(60, stock));
+
+        var view = coach.Update(At(250, stock));
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[0].State);
+        Assert.Null(view.Abandoned);
+    }
 }

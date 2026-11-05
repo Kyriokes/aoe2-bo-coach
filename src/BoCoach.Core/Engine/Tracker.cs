@@ -288,8 +288,11 @@ public sealed class Tracker
     private string? Producer(Step step) => step.What is { } what && _data.TryGet(what, out var entity) ? entity.MadeIn : null;
 
     /// <summary>Construye casas (o lo que cuenta como casa, como el asentamiento de los incas).</summary>
-    private bool IsHouse(Step step) => step.Do == StepAction.Build && step.What is { } what
-        && (what == "house" || _data.TryGet(what, out var entity) && entity.CountsAs.Contains("house"));
+    private bool IsHouse(Step step) => IsHouse(step, _data);
+
+    /// <inheritdoc cref="IsHouse(Step)"/>
+    internal static bool IsHouse(Step step, GameData? data) => step.Do == StepAction.Build && step.What is { } what
+        && (what == "house" || (data is not null && data.TryGet(what, out var entity) && entity.CountsAs.Contains("house")));
 
     /// <summary>Desde cuándo cada paso es elegible (se borra si deja de serlo).</summary>
     private readonly Dictionary<int, double> _eligibleSince = [];

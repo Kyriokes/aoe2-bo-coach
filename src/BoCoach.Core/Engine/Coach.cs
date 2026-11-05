@@ -180,7 +180,7 @@ public sealed class Coach
         _economy = new EconomyAdvisor(data, planner, _economySettings);
         Tracker = new Tracker(bo, data, events);
         Tracker.Update(State);
-        Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder);
+        Abandonment = new BuildOrderAbandonment(Tracker.BuildOrder, data);
         _posture = new PostureCoach(Tracker.BuildOrder, data);
         _techs = new TechReminders(data, Tracker.BuildOrder.Civ, _posture.Definition.Queue);
         Signals = new GameSignals(data);
@@ -243,7 +243,7 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
-        Abandonment.Update(State, Tracker.Steps, Tracker.IsLeftBehind, Tracker.Current is { } current ? MissingFor(current).Total : 0);
+        Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
         var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot);
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
@@ -365,7 +365,11 @@ public sealed class Coach
     /// </summary>
     public CoachView Back() => Abandonment.Abandoned
         ? Correct(() => Abandonment.Resume(State))
-        : Correct(Tracker.Back);
+        : Correct(() =>
+        {
+            Tracker.Back();
+            Abandonment.Rewound();
+        });
 
     /// <summary>Atajo "saltear": marca el paso actual como salteado (con una rama en curso, la cierra).</summary>
     public CoachView Skip(Lane? lane = null) => _branches.View() is not null ? Correct(() => _branches.Dismiss()) : Correct(() => Tracker.Skip(lane));

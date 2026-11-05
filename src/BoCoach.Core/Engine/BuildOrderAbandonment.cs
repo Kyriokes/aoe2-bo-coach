@@ -1,4 +1,5 @@
 using BoCoach.Core.BuildOrders;
+using BoCoach.Core.Data;
 using static BoCoach.Core.Lang;
 
 namespace BoCoach.Core.Engine;
@@ -22,7 +23,8 @@ namespace BoCoach.Core.Engine;
 /// atrasado.</item>
 /// </list>
 /// Hasta 5 unidades de reacción (piqueros en una BO de arqueros) no cuentan. Queda abandonada hasta que el jugador
-/// la retoma (<see cref="Resume"/>, el atajo "Atrás", o sola cuando avanza un paso de la BO): desde ahí las unidades ajenas y el tiempo se cuentan de nuevo.
+/// la retoma (<see cref="Resume"/>, el atajo "Atrás", o sola cuando avanza un paso que delata que volvió, ver
+/// <see cref="Returned"/>, o la BO termina): desde ahí las unidades ajenas y el tiempo se cuentan de nuevo.
 /// </summary>
 public sealed class BuildOrderAbandonment
 {
@@ -45,13 +47,17 @@ public sealed class BuildOrderAbandonment
     };
 
     private readonly IReadOnlySet<string> _boUnits;
+    private readonly GameData? _data;
     private int _countFrom;
     private int? _progress;
     private double _progressAt;
     private double _leastMissing = double.PositiveInfinity;
+    private int _returned;
 
-    public BuildOrderAbandonment(BuildOrder bo)
+    /// <param name="data">Para saber qué cuenta como casa (el asentamiento de los incas); sin datos, solo la casa.</param>
+    public BuildOrderAbandonment(BuildOrder bo, GameData? data = null)
     {
+        _data = data;
         _boUnits = bo.Steps.Where(s => s.Do == StepAction.Train && s.What is { } what && !Economic.Contains(what))
             .Select(s => s.What!).ToHashSet();
     }
@@ -64,25 +70,34 @@ public sealed class BuildOrderAbandonment
     /// <summary>Muchas unidades ajenas pero la de la BO sigue saliendo: no se marca atrasado lo militar.</summary>
     public bool Gray { get; private set; }
 
-    /// <param name="leftBehind">Pasos abiertos que quedaron atrás: no cuentan para dar la BO por terminada.</param>
+    /// <param name="finished">
+    /// La BO no tiene nada más que pedir (<see cref="Tracker.HasOpenSteps"/>): pueden quedar abiertos lo que quedó atrás,
+    /// lo que el juego no avisa, la producción a medias o una investigación en curso, y eso nada lo cierra. Null = todos
+    /// los pasos hechos o salteados.
+    /// </param>
     /// <param name="missing">Lo que le falta juntar al paso actual (en total): cada vez que llega más abajo que nunca, avanza.</param>
-    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, Func<int, bool>? leftBehind = null, double missing = 0)
+    public void Update(PlayerState state, IReadOnlyList<StepProgress> steps, bool? finished = null, double missing = 0)
     {
-        var progress = Progress(steps);
+        // Con la BO terminada no hay nada que abandonar: sigue su postura (partida 20261031-215314, hunos "Scouts → CA":
+        // terminada a las 23:58, a las 24:38 quedaba abandonada por los arqueros a caballo que la BO no entrena).
+        var done = finished ?? steps.All(s => s.State is StepState.Done or StepState.Skipped);
+        var returned = Returned(steps);
         // Abandonada, si avanza un paso de la BO el jugador volvió a ella (partida 20261031-171509: abandonada a las
         // 16:44 por la herrería sin hacer, seguía así a las 31:18 con la herrería, Castillos y los centros urbanos hechos).
-        if (Abandoned && progress > _progress)
+        if (Abandoned && (returned > _returned || done))
             Resume(state);
-        if (_progress != progress)
+        if (!Abandoned)
+            _returned = returned;
+        // Solo cuenta lo nunca visto: lo hecho de un paso de aldeanos sale del HUD y baja y sube cuando un leñador va a
+        // hacer una casa y vuelve.
+        var progress = Progress(steps);
+        if (_progress is null || progress > _progress)
             (_progress, _progressAt, _leastMissing) = (progress, state.Time, double.PositiveInfinity);
         if (missing > 0 && missing < _leastMissing - SavingStep)
             (_leastMissing, _progressAt) = (missing, state.Time);
         if (Abandoned)
             return;
-        // Con la BO terminada no hay nada que abandonar: sigue su postura (partida 20261031-215314, hunos "Scouts → CA":
-        // terminada a las 23:58, a las 24:38 quedaba abandonada por los arqueros a caballo que la BO no entrena).
-        var finished = steps.All(s => s.State is StepState.Done or StepState.Skipped || leftBehind?.Invoke(s.Index) == true);
-        if (finished)
+        if (done)
         {
             Gray = false;
             return;
@@ -115,6 +130,9 @@ public sealed class BuildOrderAbandonment
         _progressAt = state.Time;
     }
 
+    /// <summary>"Atrás" deshizo un paso: rehacerlo también es avanzar, así que el avance se mide de nuevo desde acá.</summary>
+    public void Rewound() => _progress = null;
+
     private List<string> ForeignUnits(PlayerState state) => state.Events.Skip(_countFrom)
         .Select(e => EventConventions.Parse(e.EventId))
         .Where(u => u is { Action: StepAction.Train } unit && !Economic.Contains(unit.What) && !_boUnits.Contains(unit.What))
@@ -129,4 +147,15 @@ public sealed class BuildOrderAbandonment
         StepState.Skipped => 3,
         _ => 0,
     });
+
+    /// <summary>
+    /// Lo que dice que el jugador volvió a la BO abandonada: lo terminado o lo que salió de un paso que no se hace igual
+    /// sin la BO. No cuentan los aldeanos (el centro urbano los saca siga o no la BO), las casas (se hacen cuando las pide
+    /// la población), lo que el juego no avisa (una granja queda hecha cuando sale cualquier aldeano posterior) ni un clic
+    /// en curso (la baja del stock puede ser otra cosa: cuenta cuando termina).
+    /// </summary>
+    private int Returned(IReadOnlyList<StepProgress> steps) => steps
+        .Where(s => Lanes.Of(s.Step) != Lane.Villagers && !Tracker.IsHouse(s.Step, _data)
+                    && EventConventions.EventFor(s.Step) is { } id && StateBelief.CanObserve(id))
+        .Sum(s => s.Completed + (s.State is StepState.Done or StepState.Skipped ? 1 : 0));
 }
