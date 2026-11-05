@@ -1,4 +1,6 @@
-# Lo que queda de tu parte
+# Lo que quedaba de tu parte, hasta el 2026-11-05
+
+Estado: histórico. Es la lista tal como estaba al reordenar la documentación, con las instrucciones de cada prueba y lo que ya se había hecho. Muchas pruebas nombran cosas que ya no existen (el editor de la app, la biblioteca local, "Importar…"). La lista vigente es `docs/pendientes-usuario.md`.
 
 Lista viva: cada sesión agrega lo nuevo y tacha lo hecho. Ordenado por lo que más destraba.
 

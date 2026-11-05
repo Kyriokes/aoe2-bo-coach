@@ -15,9 +15,10 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
    - Plan **Free**. Tocá **Create new project** y esperá a que termine (un par de minutos).
 3. En el menú de la izquierda, entrá a **SQL Editor** y tocá **New query**.
 4. Abrí en la PC el archivo `web/supabase/migrations/20261016000000_biblioteca.sql`, copiá todo y pegalo en el editor.
-   Tocá **Run**. Abajo tiene que decir **Success. No rows returned**. Repetí lo mismo, en orden, con cada uno de los
-   demás archivos de esa carpeta (por ejemplo `20261022000000_topes.sql`), cada uno en una consulta nueva. Cuando
-   aparezca un archivo nuevo en la carpeta, se corre solo ese.
+   Tocá **Run**. Abajo tiene que decir **Success. No rows returned**. Repetí lo mismo, en orden de nombre, con cada uno
+   de los demás archivos de esa carpeta, cada uno en una consulta nueva. Cuando aparezca un archivo nuevo en la carpeta,
+   se corre solo ese, **antes** de publicar la web que lo necesita. El de los registros (`20261102000000_registros.sql`)
+   crea el bucket privado `registros`: mirá en **Storage** que esté, sin el cartel "Public".
 5. Andá a **Project Settings** (el engranaje) → **API Keys** y copiá:
    - la **Project URL** (`https://<proyecto>.supabase.co`; también está en **Data API**),
    - la **Publishable key** (empieza con `sb_publishable_`). La **Secret key** no se usa: no la copies a ningún lado.
@@ -65,7 +66,8 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
      compilar el motor a WebAssembly, así que el primer build tarda unos minutos.
    - **Environment Variables:** agregá `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` con los
      valores de Supabase. Si más adelante usás un dominio propio, agregá también `NEXT_PUBLIC_SITE_URL` con esa
-     dirección (si no, los enlaces de la vista previa al compartir y el sitemap usan la de Vercel).
+     dirección (si no, los enlaces de la vista previa al compartir y el sitemap usan la de Vercel). Para Google Search
+     Console, `GOOGLE_SITE_VERIFICATION` con el código de la etiqueta HTML.
 4. Tocá **Deploy**. Al terminar, Vercel te da la dirección del sitio (por ejemplo `https://aoe2-bo-coach.vercel.app`).
    El sitio de producción sale de la rama `main`.
 5. De vuelta en Supabase: **Authentication** → **URL Configuration**:
@@ -78,11 +80,14 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
 
 ## 5. Conectar la app
 
-1. En la web, iniciá sesión y entrá a **Mi cuenta** → **Crear token**. Copiá el token (se muestra una sola vez).
-2. En BO Coach, en la biblioteca, tocá **Cuenta de la web…**:
-   - **Dirección de la web:** la de Vercel (si es otra que `https://aoe2-bo-coach.vercel.app`).
-   - **Token de la app:** pegalo.
-   - Tocá **Registrar enlaces bocoach://** para que el botón «Abrir en BO Coach» de la web abra la app.
-   - **Guardar**.
-3. Probá: abrí una BO en el editor, tocá **Publicar en la web** y abrí su página. En otra PC (con BO Coach instalado),
-   el botón **Abrir en BO Coach** de esa página la importa directo.
+1. En BO Coach, tocá **Conectar cuenta** (en la sección Build order): se abre **Mi cuenta** en el navegador. Ahí tocá
+   **Conectar la app** y aceptá si el navegador pregunta si abre BO Coach. La app tiene que decir "Conectada como
+   <tu nombre>" y mostrar tu lista de BO.
+2. Si no se abre, copiá el token que muestra la web. En la app: **Ajustes**, pestaña **Avanzado**, **Dirección y
+   token…**, y pegalo. Ahí también va la dirección de la web, si es otra que `https://aoe2-bo-coach.vercel.app`.
+3. Probá: en la web, en una BO pública, tocá **Usar en el coach**, y en la app tocá **Actualizar lista**: tiene que
+   aparecer. El botón **Abrir en BO Coach** de la página de una BO la suma directo.
+
+Las BO se arman en la web (`/subir`). Para publicar muchas de una vez con tu cuenta hay `BoCoach.exe --publish <carpeta>`
+(`--dry-run` primero, si querés ver qué haría). Ese comando pide un token con permiso de publicar: creá uno con
+**Crear token** en Mi cuenta y pegalo en **Dirección y token…**, porque el de "Conectar la app" no publica.
