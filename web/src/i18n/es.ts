@@ -454,6 +454,9 @@ export const es = {
     noName: "Falta el nombre.",
     noSteps: "La BO no tiene pasos.",
     tooBig: "La BO pesa más de {n} KB: sacale notas o pasos.",
+    tooManyAfter: "Un paso espera a más de {n} pasos (after).",
+    tooManyGoals: "La BO tiene más de {n} objetivos.",
+    mapTooLong: "El mapa tiene más de {n} caracteres.",
     notJson: "No es un JSON válido.",
   },
   editor: {

@@ -59,6 +59,42 @@ describe("tamaño de la BO", () => {
   });
 });
 
+// Sin tope, una BO pública con 90.000 after o 20.000 objetivos congela la pestaña de quien la abre, y el mapa viaja
+// entero en la lista de cada app.
+describe("topes de after, objetivos y mapa", () => {
+  const list = (n: number) => Array.from({ length: n }, (_, i) => `s${i}`);
+
+  it("hasta 50 after por paso", () => {
+    expect(errorOf(bo({ after: list(50) }))).toBeNull();
+    expect(errorOf(bo({ after: null }))).toBeNull();
+    expect(errorOf(bo({ after: list(51) }))).toMatch(/más de 50 pasos/);
+    expect(errorOf(bo({ after: "s1" }))).toContain("after");
+  });
+
+  it("también en las ramas", () => {
+    const branch = { on: "under_attack", steps: [{ id: "r1", do: "train", what: "archer", after: list(51) }] };
+    expect(errorOf({ ...bo({}), branches: [branch] })).toMatch(/más de 50 pasos/);
+  });
+
+  it("hasta 40 objetivos", () => {
+    const goals = (n: number) => Array.from({ length: n }, () => ({ age: "feudal_age" }));
+    expect(errorOf({ ...bo({}), assisted: { goals: goals(40) } })).toBeNull();
+    expect(errorOf({ ...bo({}), assisted: null })).toBeNull();
+    expect(errorOf({ ...bo({}), assisted: { goals: goals(41) } })).toMatch(/más de 40 objetivos/);
+  });
+
+  it("el mapa hasta 40 caracteres", () => {
+    expect(errorOf({ ...bo({}), map: "x".repeat(40) })).toBeNull();
+    expect(errorOf({ ...bo({}), map: null })).toBeNull();
+    expect(errorOf({ ...bo({}), map: "x".repeat(41) })).toMatch(/más de 40 caracteres/);
+  });
+
+  it("en el idioma de la página", () => {
+    const result = parseBuildOrder(bo({ after: list(51) }), "en");
+    expect(result.ok ? null : result.error).toMatch(/more than 50 steps/);
+  });
+});
+
 describe("visibilidad", () => {
   const body = parseBuildOrder({ schema_version: 1, name: "x", steps: [{ id: "a", do: "train", what: "villager" }] });
 

@@ -242,6 +242,44 @@ describe("biblioteca", () => {
       await as(db, ana, big, ["x".repeat(1000)]);
     }, 120_000);
 
+    it("hasta 50 after por paso, también en las ramas", async () => {
+      const after = (n: number) => Array.from({ length: n }, (_, i) => `s${i}`);
+      await as(db, ana, insertBo, ["50 after", step({ after: after(50) })]);
+      await as(db, ana, insertBo, ["After null", step({ after: null })]);
+      await bad(step({ after: after(51) }));
+      await bad(step({ after: "s1" }));
+      await bad({ ...scouts, branches: [{ on: "under_attack", steps: [{ id: "r1", do: "train", what: "archer", after: after(51) }] }] });
+    });
+
+    it("hasta 40 objetivos en el modo asistido", async () => {
+      const goals = (n: number) => Array.from({ length: n }, () => ({ age: "feudal_age" }));
+      await as(db, ana, insertBo, ["40 objetivos", { ...scouts, assisted: { goals: goals(40) } }]);
+      await as(db, ana, insertBo, ["Manual", { ...scouts, assisted: null }]);
+      await bad({ ...scouts, assisted: { goals: goals(41) } });
+      await bad({ ...scouts, assisted: { goals: "muchos" } });
+      await bad({ ...scouts, assisted: "muchos" });
+    });
+
+    it("el mapa es un texto de hasta 40 caracteres", async () => {
+      await as(db, ana, insertBo, ["Mapa largo", { ...scouts, map: "x".repeat(40) }]);
+      await as(db, ana, insertBo, ["Sin mapa", { ...scouts, map: null }]);
+      await bad({ ...scouts, map: "x".repeat(41) });
+      await bad({ ...scouts, map: { nombre: "arabia" } });
+    });
+
+    it("cada paso tiene su id y una acción que la app entiende", async () => {
+      const withStep = (s: Record<string, unknown>) => ({ ...scouts, steps: [s] });
+      await bad(withStep({ do: "train", what: "villager" }));
+      await bad(withStep({ id: "", do: "train", what: "villager" }));
+      await bad(withStep({ id: "x".repeat(41), do: "train", what: "villager" }));
+      await bad(withStep({ id: 5, do: "train", what: "villager" }));
+      await bad(withStep({ id: "s1", what: "villager" }));
+      await bad(withStep({ id: "s1", do: "bailar" }));
+      for (const action of ["train", "build", "research", "move"]) {
+        await as(db, ana, insertBo, [action, withStep({ id: "s1", do: action, what: "villager" })]);
+      }
+    });
+
     it("etiquetas cortas, versión del formato y clics de edad razonables", async () => {
       await bad({ ...scouts, tags: ["x".repeat(31)] });
       await bad({ ...scouts, schema_version: 1000 });

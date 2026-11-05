@@ -179,6 +179,43 @@ create trigger build_orders_touch
   when (old.body is distinct from new.body)
   execute function public.touch_updated_at();
 
+-- BD-10: sin tope para after ni para los objetivos, una BO pública de 512 KB con 90.000 after o 20.000 objetivos
+-- congelaba la pestaña de quien la abre. Hasta 50 y hasta 40, como el esquema de la web y el validador del Core.
+-- BD-16: lo demás que la base no miraba y la web sí: el id y la acción de cada paso (por insert directo quedaba listada
+-- una BO que la app no lee) y el mapa (500 KB de mapa viajaban en la lista de cada app). schema_version sigue de 1 a 100
+-- a propósito, aunque la web entienda hasta 2: una versión nueva del formato no tiene que tocar la base, y la app rechaza
+-- con un mensaje la versión que no conoce.
+
+-- Los after de un paso: ausentes, null o una lista de hasta 50.
+create or replace function public.step_after_ok(value jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select case jsonb_typeof(value)
+           when 'array' then jsonb_array_length(value) <= 50
+           when 'null' then true
+           else value is null
+         end
+$$;
+
+-- Los pasos de una BO o de una rama: una lista de 1 a 300 objetos con su id, una acción de la lista y los números
+-- dentro del tope.
+create or replace function public.steps_ok(steps jsonb) returns boolean
+language sql immutable set search_path = '' as $$
+  select case
+           when jsonb_typeof(steps) is distinct from 'array' then false
+           when jsonb_array_length(steps) not between 1 and 300 then false
+           else not exists (
+             select 1
+               from jsonb_array_elements(steps) as s(step)
+              where jsonb_typeof(step) <> 'object'
+                 or jsonb_typeof(step -> 'id') is distinct from 'string'
+                 or char_length(step ->> 'id') not between 1 and 40
+                 or coalesce(step ->> 'do', '') not in ('train', 'build', 'research', 'move')
+                 or not public.step_number_ok(step -> 'count')
+                 or not public.step_number_ok(step -> 'builders')
+                 or not public.step_after_ok(step -> 'after'))
+         end
+$$;
+
 -- BD-05: una sola cuenta llenaba la base (150 BO de 512 KB por día, y reemplazar en loop dejaba 512 KB muertos cada
 -- vez). Ahora: hasta 128 KB por BO (la más grande del repo pesa 12 KB), 20 MB por cuenta (lo que de verdad ocupa cada
 -- BO, ya comprimida) y una BO no se reemplaza dos veces en 5 segundos.
@@ -194,6 +231,15 @@ language sql immutable set search_path = '' as $$
                from jsonb_array_elements(body -> 'branches') as b(branch)
               where jsonb_typeof(branch) <> 'object' or not public.steps_ok(branch -> 'steps'))
          end
+     and case
+           when coalesce(jsonb_typeof(body -> 'assisted'), 'null') = 'null' then true
+           when jsonb_typeof(body -> 'assisted') <> 'object' then false
+           when coalesce(jsonb_typeof(body -> 'assisted' -> 'goals'), 'null') = 'null' then true
+           when jsonb_typeof(body -> 'assisted' -> 'goals') <> 'array' then false
+           else jsonb_array_length(body -> 'assisted' -> 'goals') <= 40
+         end
+     and coalesce(jsonb_typeof(body -> 'map'), 'null') in ('string', 'null')
+     and char_length(coalesce(body ->> 'map', '')) <= 40
 $$;
 
 -- Error si con ese JSON las BO de la cuenta pasan los 20 MB (sin contar lo que ocupa hoy esa misma BO).

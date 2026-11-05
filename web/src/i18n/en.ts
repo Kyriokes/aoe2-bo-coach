@@ -452,6 +452,9 @@ export const en: Dictionary = {
     noName: "The name is missing.",
     noSteps: "The BO has no steps.",
     tooBig: "The BO weighs more than {n} KB: remove some notes or steps.",
+    tooManyAfter: "A step waits for more than {n} steps (after).",
+    tooManyGoals: "The BO has more than {n} goals.",
+    mapTooLong: "The map has more than {n} characters.",
     notJson: "That isn't valid JSON.",
   },
   editor: {
