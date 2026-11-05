@@ -41,6 +41,35 @@ public sealed class BuildOrderCacheTests : IDisposable
         Assert.Equal(["k7m2xq"], offline.List.Items.Select(i => i.Code));
     }
 
+    [Fact]
+    public void Lo_guardado_con_claves_repetidas_se_ignora()
+    {
+        File.WriteAllText(Path.Combine(_dir, "mis-bo.json"), """{"account":"a","account":"b"}""");
+        Directory.CreateDirectory(Path.Combine(_dir, "bo"));
+        File.WriteAllText(Path.Combine(_dir, "bo", "k7m2xq.json"), """{"build_order":{},"build_order":{}}""");
+
+        var cache = Cache();
+
+        Assert.Equal(WebBuildOrderList.Empty, cache.List);
+        Assert.Null(cache.Saved("k7m2xq"));
+    }
+
+    [Fact]
+    public void Lo_guardado_que_no_se_puede_leer_se_ignora()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "bo"));
+        File.WriteAllText(Path.Combine(_dir, "bo", "k7m2xq.json"), """{"build_order":{"schema_version":2,"name":"\ud800"}}""");
+        File.WriteAllText(Path.Combine(_dir, "bo", "k7m2xr.json"), """{"build_order":{"schema_version":2,"steps":[null]}}""");
+        File.WriteAllText(Path.Combine(_dir, "bo", "k7m2xs.json"), """{"updated_at":"\ud800","build_order":{"schema_version":2,"name":"Sirve"}}""");
+
+        var cache = Cache();
+
+        Assert.Null(cache.Saved("k7m2xq"));
+        Assert.Null(cache.Saved("k7m2xr"));
+        Assert.Equal("Sirve", cache.Saved("k7m2xs")?.Name);
+        Assert.Equal("k7m2xs", Assert.Single(cache.AllSaved()).Id);
+    }
+
     // Partida 20261102-212823: las BO republicadas (--publish) no se volvían a bajar y el coach jugó con la vieja.
     [Fact]
     public async Task Una_republicada_en_la_web_no_esta_al_dia_y_se_vuelve_a_bajar()

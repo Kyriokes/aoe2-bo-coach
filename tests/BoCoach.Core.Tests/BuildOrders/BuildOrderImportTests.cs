@@ -51,12 +51,31 @@ public class BuildOrderImportTests
     [InlineData("""{"build":[null, 3, {"type":5}],"resources":"x"}""")]
     [InlineData("""{"build":[{"type":"newVillagers","count":"x","task":null}]}""")]
     [InlineData("""{"schema_version":2,"steps":[null]}""")]
+    [InlineData("""{"schema_version":1,"steps":[null]}""")]
     [InlineData("""[1,2]""")]
     public void ReadJson_GuiaRara_NoTira(string guide)
     {
         var json = JsonNode.Parse(BuildOrderImport.ReadJson(guide, TestData.GameData))!;
 
         Assert.NotNull(json["ok"]);
+    }
+
+    // Una clave repetida tiraba ArgumentException al tocar el objeto, y nadie la esperaba (CR-12).
+    [Theory]
+    [InlineData("""{"build_order":[],"build_order":[]}""")]
+    [InlineData("""{"build_order":[{"notes":[],"notes":[]}]}""")]
+    [InlineData("""{"build":[],"build":[],"civilization":"x"}""")]
+    [InlineData("""{"build":[{"type":"build","type":"lure"}],"civilization":"Franks"}""")]
+    [InlineData("""{"schema_version":2,"schema_version":2,"name":"x"}""")]
+    [InlineData("""{"schema_version":2,"name":"x","steps":[{"id":"a","id":"b"}]}""")]
+    [InlineData("""{"a":1,"a":2}""")]
+    public void ReadJson_ClavesRepetidas_DevuelveError(string json)
+    {
+        var result = JsonNode.Parse(BuildOrderImport.ReadJson(json, TestData.GameData))!;
+
+        Assert.False(result["ok"]!.GetValue<bool>());
+        Assert.Contains("JSON inválido", result["error"]!.GetValue<string>());
+        Assert.DoesNotContain("línea )", result["error"]!.GetValue<string>());
     }
 
     [Fact]

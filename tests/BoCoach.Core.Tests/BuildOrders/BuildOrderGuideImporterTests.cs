@@ -89,6 +89,21 @@ public class BuildOrderGuideImporterTests
         Assert.True(new Planner(TestData.GameData).Simulate(bo).Completed);
     }
 
+    // Lo del mercado son recursos: el tope de las cantidades es para aldeanos, unidades y edificios.
+    [Fact]
+    public void Lo_que_se_vende_en_el_mercado_no_tiene_el_tope_de_las_cantidades()
+    {
+        const string json = """
+            { "title": "x", "civilization": "Franks", "build": [
+                { "type": "trade", "action": "sell", "count": 500, "resource": "stone" },
+                { "type": "newVillagers", "task": "wood", "count": 1 } ] }
+            """;
+
+        var bo = BuildOrderGuideImporter.Convert(json, TestData.GameData).BuildOrder;
+
+        Assert.Contains(bo.Steps, s => s.Note?.Contains("vendé 500 de stone") == true);
+    }
+
     [Theory]
     [InlineData("lithuanians", "castle_age")] // sube a Castillos solo con el establo
     [InlineData("romans", "castle_age")] // solo con la herrería

@@ -21,9 +21,9 @@ public static class BuildOrderGuideImporter
     {
         try
         {
-            return JsonNode.Parse(json, documentOptions: Options) is JsonObject obj && obj["build"] is JsonArray && obj["civilization"] is JsonValue;
+            return JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) is JsonObject obj && obj["build"] is JsonArray && obj["civilization"] is JsonValue;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             return false;
         }
@@ -36,19 +36,17 @@ public static class BuildOrderGuideImporter
         JsonObject root;
         try
         {
-            root = JsonNode.Parse(json, documentOptions: Options) as JsonObject
+            root = JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) as JsonObject
                 ?? throw new BuildOrderFormatException("La build order tiene que ser un objeto JSON.");
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
-            throw new BuildOrderFormatException($"JSON inválido (línea {e.LineNumber + 1}): {e.Message}", e);
+            throw BuildOrderSerializer.Invalid(e);
         }
         if (root["build"] is not JsonArray guide || guide.Count == 0)
             throw new BuildOrderFormatException("No tiene pasos ('build').");
         return Convert(root, guide, data, civ);
     }
-
-    private static readonly JsonDocumentOptions Options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     /// <summary>Los grupos de civs de la página ("Meso", "South American") no son una civ: quedan para cualquiera.</summary>
     private static readonly HashSet<string> CivGroups = new(StringComparer.OrdinalIgnoreCase) { "Generic", "Meso", "South American" };
@@ -127,7 +125,7 @@ public static class BuildOrderGuideImporter
                         converter.Remark(text.Replace('\n', ' '));
                     break;
                 case "trade":
-                    converter.Remark($"Mercado: {(Str(step["action"]) == "buy" ? "comprá" : "vendé")} {RtsOverlayImporter.Number(step["count"]) ?? 100} de {Str(step["resource"])}");
+                    converter.Remark($"Mercado: {(Str(step["action"]) == "buy" ? "comprá" : "vendé")} {RtsOverlayImporter.RawNumber(step["count"]) ?? 100} de {Str(step["resource"])}");
                     break;
                 case "collectGold":
                     converter.Remark("Juntá un poco de oro con un aldeano (lo justo para lo que sigue)");

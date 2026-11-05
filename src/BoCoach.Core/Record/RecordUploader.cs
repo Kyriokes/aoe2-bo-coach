@@ -9,18 +9,31 @@ public sealed record RecordSendResult(int Sent, int Failed, int Dropped);
 /// <summary>
 /// Manda lo que está vencido en la cola. Se llama al terminar una partida y al abrir la app, nunca jugando. Si no hay
 /// conexión o la web pide esperar, todo lo vencido espera (no se insiste con cada uno); lo que la web rechaza para
-/// siempre (formato, tamaño, secreto) sale de la cola.
+/// siempre (formato, tamaño) sale de la cola. Un 401 o un 403 también espera: puede venir de lo que hay en el camino (el
+/// firewall de Vercel, un proxy) y no decir nada del registro; solo si se repite <see cref="MaxDenials"/> veces con el
+/// mismo registro, ese sale de la cola.
 /// </summary>
 public static class RecordUploader
 {
+    public const int MaxDenials = 5;
+
+    /// <param name="keepSending">
+    /// Se pregunta antes de cada envío: si da false (se apagó el interruptor), lo que falta queda en la cola, sin contar
+    /// como un intento.
+    /// </param>
     public static async Task<RecordSendResult> SendPendingAsync(RecordQueue queue, WebLibraryClient client, InstallIdentity identity, string appVersion,
-        DateTimeOffset now, CancellationToken cancel = default)
+        DateTimeOffset now, CancellationToken cancel = default, Func<bool>? keepSending = null)
     {
         var (sent, failed, dropped) = (0, 0, 0);
         var due = queue.Due(now);
         for (var i = 0; i < due.Count; i++)
         {
+            if (keepSending?.Invoke() == false)
+                break;
             var record = due[i];
+            // Mientras se mandaba lo anterior salió de la cola: "Borrar lo compartido" la vació.
+            if (!queue.Contains(record))
+                continue;
             var file = new FileInfo(queue.PathOf(record));
             if (!file.Exists || file.Length > RecordQueue.MaxUploadBytes)
             {
@@ -41,9 +54,17 @@ public static class RecordUploader
             }
             catch (Exception e) when (e is WebLibraryException or IOException)
             {
-                foreach (var waiting in due.Skip(i))
+                var denied = e is WebLibraryException { Status: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden };
+                var waiting = due.Skip(i);
+                if (denied && record.Denials + 1 >= MaxDenials)
                 {
-                    queue.Failed(waiting, now);
+                    queue.Remove(record);
+                    dropped++;
+                    waiting = due.Skip(i + 1);
+                }
+                foreach (var next in waiting)
+                {
+                    queue.Failed(next, now, denied && next == record);
                     failed++;
                 }
                 break;
@@ -60,5 +81,5 @@ public static class RecordUploader
     }
 
     private static bool IsFinal(HttpStatusCode? status) =>
-        status is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.RequestEntityTooLarge or HttpStatusCode.UnprocessableEntity;
+        status is HttpStatusCode.BadRequest or HttpStatusCode.RequestEntityTooLarge or HttpStatusCode.UnprocessableEntity;
 }

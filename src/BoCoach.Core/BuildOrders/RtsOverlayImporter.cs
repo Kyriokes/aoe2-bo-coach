@@ -31,9 +31,9 @@ public static partial class RtsOverlayImporter
     {
         try
         {
-            return JsonNode.Parse(json, documentOptions: Options) is JsonObject obj && obj["build_order"] is JsonArray;
+            return JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) is JsonObject obj && obj["build_order"] is JsonArray;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
             return false;
         }
@@ -44,19 +44,17 @@ public static partial class RtsOverlayImporter
         JsonObject root;
         try
         {
-            root = JsonNode.Parse(json, documentOptions: Options) as JsonObject
+            root = JsonNode.Parse(json, documentOptions: BuildOrderSerializer.DocumentOptions) as JsonObject
                 ?? throw new BuildOrderFormatException("La build order tiene que ser un objeto JSON.");
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
-            throw new BuildOrderFormatException($"JSON inválido (línea {e.LineNumber + 1}): {e.Message}", e);
+            throw BuildOrderSerializer.Invalid(e);
         }
         if (root["build_order"] is not JsonArray guide || guide.Count == 0)
             throw new BuildOrderFormatException("No tiene pasos ('build_order').");
         return new Converter(data, Civ(Text(root["civilization"]), data)).Run(root, guide);
     }
-
-    private static readonly JsonDocumentOptions Options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     /// <summary>
     /// Arma la BO paso a paso con lo que las guías dan por sabido. Lo usan este importador (que lee notas de texto)
@@ -140,7 +138,7 @@ public static partial class RtsOverlayImporter
         /// <summary>Una nota del autor para el paso siguiente; con <paramref name="warning"/>, también un aviso.</summary>
         internal void Remark(string note, string? warning = null)
         {
-            _pendingNote = _pendingNote is null ? note : $"{_pendingNote}. {note}";
+            _pendingNote = Joined(_pendingNote, note);
             if (warning is not null)
                 _warnings.Add(warning);
         }
@@ -259,7 +257,7 @@ public static partial class RtsOverlayImporter
             // nota anterior y leídas como acciones duplicaban edificios.
             if (note.TrimStart().StartsWith('('))
             {
-                _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
+                _pendingNote = Joined(_pendingNote, Clean(note));
                 return;
             }
 
@@ -342,7 +340,7 @@ public static partial class RtsOverlayImporter
             if ((words.Contains("before") || words.Contains("in")) && tokens.Count(t => t.Text.Length > 0) <= 2)
                 return;
 
-            _pendingNote = _pendingNote is null ? Clean(note) : $"{_pendingNote}. {Clean(note)}";
+            _pendingNote = Joined(_pendingNote, Clean(note));
             if (!LooksLikeAdvice(words) && !note.Contains('→')) // "FC → Boom": un título, no una acción
                 _warnings.Add($"Paso {guideStep} de la guía: no entendí \"{Clean(note)}\" (quedó como nota).");
         }
@@ -358,6 +356,7 @@ public static partial class RtsOverlayImporter
             HousesFor(_villagers + count);
             if (to == GatherSource.Farm)
             {
+                Require("farm");
                 // Cada uno hace su granja: los aldeanos nuevos a granjas y las granjas hechas por ellos, en un solo paso.
                 var group = $"granjas{++_groups}";
                 Add(new Step { Do = StepAction.Train, What = "villager", Count = _on[to] + count, Assign = to, Group = group });
@@ -390,6 +389,7 @@ public static partial class RtsOverlayImporter
                 return;
             if (to == GatherSource.Farm)
             {
+                Require("farm");
                 Add(new Step { Do = StepAction.Build, What = "farm", Count = count, From = from, Assign = GatherSource.Farm });
             }
             else
@@ -447,18 +447,41 @@ public static partial class RtsOverlayImporter
             if (what is "lumber_camp" or "mill" or "mining_camp")
                 _camps.Add(what);
             what = made;
-            // El que pide antes (la galería, el cuartel) si la guía no lo hizo: el juego no deja ponerlo sin él.
-            if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
-                Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
+            Require(what);
             if (what == "house")
-                _cap += count * HousePop;
+                _cap = Math.Min(BuildOrderValidator.MaxPopulation, _cap + count * HousePop);
             if (what == "farm")
             {
-                Add(new Step { Do = StepAction.Build, What = "farm", Count = count, From = Builders(), Assign = GatherSource.Farm, Note = note });
+                Farms(count, note);
                 return;
             }
             var from = Builders();
             Add(new Step { Do = StepAction.Build, What = what, Count = count, From = from, Assign = from, Note = note });
+        }
+
+        /// <summary>El que pide antes (la galería, el cuartel, el molino de la granja) si la guía no lo hizo: el juego no deja ponerlo sin él.</summary>
+        private void Require(string what)
+        {
+            if (data.TryGet(what, out var entity) && data.Civ(civ).Requires(entity) is { } required && !Built(required))
+                Build(1, required, $"Agregado al importar: {StepText.Name(what)} pide {StepText.Name(required)} antes");
+        }
+
+        /// <summary>
+        /// Las granjas que una nota construye: cada una la hace un aldeano que se queda en ella, así que sale de donde estaba,
+        /// como en <see cref="Move"/>, y los totales que siguen lo cuentan. Uno que ya tiene su granja no hace otra, y lo que
+        /// no tiene quién lo haga esperaría para siempre: se hacen las que se puede y se avisa.
+        /// </summary>
+        private void Farms(int count, string? note)
+        {
+            var from = _on[GatherSource.Wood] > 0 ? GatherSource.Wood : _on.Where(o => o.Key != GatherSource.Farm).MaxBy(o => o.Value).Key;
+            var farms = Math.Min(count, _on[from]);
+            if (farms < count)
+                _warnings.Add($"La guía hace {count} granjas y hay {farms} aldeanos en {StepText.Source(from)} para hacerlas: quedaron {farms}.");
+            if (farms <= 0)
+                return;
+            Add(new Step { Do = StepAction.Build, What = "farm", Count = farms, From = from, Assign = GatherSource.Farm, Note = note });
+            _on[from] -= farms;
+            _on[GatherSource.Farm] += farms;
         }
 
         /// <summary>
@@ -505,8 +528,16 @@ public static partial class RtsOverlayImporter
             return step;
         }
 
-        private static void AppendNote(Step step, string note) =>
-            step.Note = string.IsNullOrEmpty(step.Note) ? note : $"{step.Note}. {note}";
+        private static void AppendNote(Step step, string note) => step.Note = Joined(step.Note, note);
+
+        /// <summary>
+        /// Las notas juntas, hasta un largo que ninguna guía de verdad alcanza (la más larga del repo tiene 316 caracteres):
+        /// sumarlas de a una sin tope tarda el cuadrado del total.
+        /// </summary>
+        private static string Joined(string? note, string more) =>
+            string.IsNullOrEmpty(note) ? more : note.Length >= MaxJoinedNote ? note : $"{note}. {more}";
+
+        private const int MaxJoinedNote = 2000;
 
         /// <summary>Si los aldeanos convertidos no coinciden con los de la guía en ese paso, se avisa.</summary>
         private void Check(int guideStep, int? villagerCount, JsonObject? resources)
@@ -565,12 +596,18 @@ public static partial class RtsOverlayImporter
             if (m.Groups["icon"].Success)
                 tokens.Add(new Token(m.Value, Icon: IconName(m.Groups["icon"].Value)));
             else if (int.TryParse(m.Groups["number"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && m.Groups["number"].Success)
-                tokens.Add(new Token(m.Value, Number: n));
+                tokens.Add(new Token(m.Value, Number: Quantity(n)));
             else
                 tokens.Add(new Token(m.Value));
         }
         return tokens;
     }
+
+    /// <summary>
+    /// Una cantidad leída de una guía, con el tope del validador: nada se hace de a más. Sin tope, las cuentas se dan vuelta
+    /// ("500000000 house" dejaba el tope de población negativo y el aldeano siguiente agregaba casas hasta agotar la memoria).
+    /// </summary>
+    private static int Quantity(int value) => Math.Clamp(value, 0, BuildOrderValidator.MaxCount);
 
     [GeneratedRegex(@"@(?<icon>[^@]+)@|\d+%|(?<number>\d+)|-->|[\p{L}_]+")]
     private static partial Regex TokenPattern();
@@ -590,9 +627,12 @@ public static partial class RtsOverlayImporter
     {
         var name = Path.GetFileNameWithoutExtension(path.Replace('\\', '/').Split('/')[^1]);
         name = AoePrefix().Replace(name, "");
-        name = IconSuffix().Replace(name, "");
-        return name;
+        // Con un nombre largo no vale la pena: la expresión tarda el cuadrado del largo si no termina en lo que busca.
+        return name.Length <= MaxIconName ? IconSuffix().Replace(name, "") : name;
     }
+
+    /// <summary>Más largo que cualquier archivo de ícono de las guías.</summary>
+    private const int MaxIconName = 100;
 
     [GeneratedRegex(@"^aoe2de_", RegexOptions.IgnoreCase)]
     private static partial Regex AoePrefix();
@@ -676,14 +716,20 @@ public static partial class RtsOverlayImporter
     [GeneratedRegex(@"\bLure\b", RegexOptions.IgnoreCase)]
     private static partial Regex LureWord();
 
-    // "jabalí 50% --> atraé jabalí" y "50% Feudal --> cuartel".
-    [GeneratedRegex(@"^(?<what>[^%]+?)\s+(?<pct>\d+%)\s*-->\s*(?<then>.+)$")]
+    // "jabalí 50% --> atraé jabalí" y "50% Feudal --> cuartel". Lo de adelante termina en algo que no es un espacio y lo de
+    // atrás llega hasta el final (también los saltos de línea): si no, una nota con muchos espacios, o con muchas flechas y
+    // un salto de línea, tarda el cuadrado de su largo.
+    [GeneratedRegex(@"^(?<what>[^%]*?\S)\s+(?<pct>\d+%)\s*-->\s*(?<then>.+)$", RegexOptions.Singleline)]
     private static partial Regex HalfWay();
 
-    [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.+?)\s*-->\s*(?<then>.+)$")]
+    [GeneratedRegex(@"^(?<pct>\d+%)\s+(?<what>.*?\S)\s*-->\s*(?<then>.+)$", RegexOptions.Singleline)]
     private static partial Regex HalfWayFirst();
 
-    internal static int? Number(JsonNode? node)
+    /// <summary>Cuántos aldeanos, unidades o edificios dice la guía (ver <see cref="Quantity"/>).</summary>
+    internal static int? Number(JsonNode? node) => RawNumber(node) is { } value ? Quantity(value) : null;
+
+    /// <summary>El número tal cual: lo que se vende en el mercado son recursos, no tiene ese tope.</summary>
+    internal static int? RawNumber(JsonNode? node)
     {
         try
         {

@@ -118,6 +118,86 @@ public class WebLibraryClientTests
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.OK, """{"build_order":{},"build_order":{}}""")]
+    [InlineData(HttpStatusCode.InternalServerError, """{"error":"a","error":"b"}""")]
+    public async Task Una_respuesta_con_claves_repetidas_es_un_error_explicado(HttpStatusCode status, string body)
+    {
+        var (client, _) = Client(status, body);
+
+        await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+    }
+
+    // Se escapaba como InvalidOperationException: la cola de los registros no anotaba el intento y nadie la atrapaba.
+    [Theory]
+    [InlineData("""{"error":{"code":1}}""", "500")]
+    [InlineData("""{"error":5}""", "500")]
+    [InlineData("""{"error":[]}""", "500")]
+    [InlineData("""{"error":"\ud800"}""", "500")]
+    [InlineData("""{"error":""}""", "500")]
+    [InlineData("""{"error":"Algo pasó."}""", "Algo pasó.")]
+    public async Task Un_error_con_otra_forma_llega_explicado(string body, string expected)
+    {
+        var (client, _) = Client(HttpStatusCode.InternalServerError, body);
+
+        var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+
+        Assert.Contains(expected, error.Message);
+        Assert.Equal(HttpStatusCode.InternalServerError, error.Status);
+    }
+
+    /// <summary>Servidor falso que manda un juego de caracteres que no existe.</summary>
+    private sealed class BadCharsetWeb(HttpStatusCode status) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
+        {
+            var content = new ByteArrayContent(Encoding.UTF8.GetBytes("""{"error":"no"}"""));
+            content.Headers.TryAddWithoutValidation("Content-Type", "application/json; charset=no-existe");
+            return Task.FromResult(new HttpResponseMessage(status) { Content = content });
+        }
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK, null)]
+    [InlineData(HttpStatusCode.InternalServerError, HttpStatusCode.InternalServerError)]
+    public async Task Un_juego_de_caracteres_invalido_llega_explicado(HttpStatusCode status, HttpStatusCode? expected)
+    {
+        var client = new WebLibraryClient(new HttpClient(new BadCharsetWeb(status)), new Uri("https://bo.example/"));
+
+        var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+
+        Assert.Equal(expected, error.Status);
+    }
+
+    [Fact]
+    public async Task Una_BO_con_un_texto_que_no_se_puede_leer_llega_explicada()
+    {
+        var (client, _) = Client(HttpStatusCode.OK, """{"build_order":{"schema_version":2,"name":"\ud800"}}""");
+
+        var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+
+        Assert.Contains("no se pudo leer", error.Message);
+    }
+
+    [Fact]
+    public async Task Un_autor_que_no_se_puede_leer_queda_como_anonimo()
+    {
+        var (client, _) = Client(HttpStatusCode.OK, """{"author":"\ud800","build_order":{"schema_version":2,"name":"x"}}""");
+
+        Assert.Equal("Anónimo", (await client.DownloadAsync("k7m2xq")).Author);
+    }
+
+    [Fact]
+    public void En_la_lista_una_entrada_con_un_texto_que_no_se_puede_leer_se_saltea()
+    {
+        var json = JsonNode.Parse("""{"account":"\ud800","items":[{"code":"\ud800","name":"x","updated_at":"2026-10-31T10:00:00Z"}]}""")!.AsObject();
+
+        var list = WebLibraryClient.ParseList(json);
+
+        Assert.Equal("", list.Account);
+        Assert.Empty(list.Items);
+    }
+
+    [Theory]
     [InlineData("http://bo.example/", false)]
     [InlineData("http://localhost:3000/", true)]
     [InlineData("http://127.0.0.1:3000/", true)]

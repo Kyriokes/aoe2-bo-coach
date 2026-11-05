@@ -8,6 +8,18 @@ public sealed class BuildOrderFormatException(string message, Exception? inner =
 /// <summary>Lee y escribe build orders en JSON. Solo revisa el formato; las reglas las revisa <see cref="BuildOrderValidator"/>.</summary>
 public static class BuildOrderSerializer
 {
+    /// <summary>Cómo se lee el JSON de una BO o de una guía: se puede escribir a mano, pero una clave repetida es un error.</summary>
+    internal static readonly JsonDocumentOptions DocumentOptions = new()
+    {
+        CommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        AllowDuplicateProperties = false,
+    };
+
+    /// <summary>El error de un JSON que no se pudo leer. Una clave repetida no trae el número de línea.</summary>
+    internal static BuildOrderFormatException Invalid(Exception e) =>
+        new(e is JsonException { LineNumber: { } line } ? $"JSON inválido (línea {line + 1}): {e.Message}" : $"JSON inválido: {e.Message}", e);
+
     public static BuildOrder Load(string path)
     {
         try
@@ -25,15 +37,15 @@ public static class BuildOrderSerializer
         JsonNode? root;
         try
         {
-            root = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions
-            {
-                CommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true,
-            });
+            root = JsonNode.Parse(json, documentOptions: DocumentOptions);
         }
         catch (JsonException e)
         {
-            throw new BuildOrderFormatException($"JSON inválido (línea {e.LineNumber + 1}): {e.Message}", e);
+            throw Invalid(e);
+        }
+        catch (ArgumentException e)
+        {
+            throw Invalid(e); // una mitad de un carácter suelta en el texto: JavaScript la puede mandar
         }
 
         if (root is not JsonObject obj)
@@ -58,6 +70,11 @@ public static class BuildOrderSerializer
         {
             throw new BuildOrderFormatException($"Valor inválido en {Describe(e.Path)}: {e.Message}", e);
         }
+        catch (InvalidOperationException e)
+        {
+            throw Invalid(e); // un texto que no se puede leer ("\ud800")
+        }
+        Normalize(bo);
 
         // Formato 1 → 2: en los pasos de aldeanos, 'count' pasó de "cuántos se entrenan" a "cuántos tiene que haber en
         // la fuente" (como el contador del HUD).
@@ -65,6 +82,65 @@ public static class BuildOrderSerializer
             Engine.LivePlan.CountsToTotals(bo);
         return bo;
     }
+
+    /// <summary>
+    /// Un null en el JSON pasa la web y la base, y los serializadores generados lo dejan tal cual aunque la propiedad no lo
+    /// admita, así que después tira cualquiera que la toque. Donde hay un valor por defecto, vale lo mismo que si la clave
+    /// no viniera; adentro de una lista, o en la señal de una rama, no se sabe qué quiso decir.
+    /// </summary>
+    private static void Normalize(BuildOrder bo)
+    {
+        bo.Id ??= "";
+        bo.Name ??= "";
+        bo.Civ ??= "any";
+        bo.Tags = NoNulls(bo.Tags, "tags");
+        bo.Steps = NoNulls(bo.Steps, "steps");
+        Normalize(bo.Steps, "steps");
+        if (bo.Posture is { } posture)
+            posture.Queue = NoNulls(posture.Queue, "posture.queue");
+        if (bo.Branches is not null)
+        {
+            bo.Branches = NoNulls(bo.Branches, "branches");
+            for (var i = 0; i < bo.Branches.Count; i++)
+            {
+                var branch = bo.Branches[i];
+                if (branch.On is null)
+                    throw NullAt($"branches[{i}].on");
+                branch.Steps = NoNulls(branch.Steps, $"branches[{i}].steps");
+                Normalize(branch.Steps, $"branches[{i}].steps");
+            }
+        }
+        if (bo.Assisted is { } assisted)
+        {
+            assisted.Opening ??= new AssistedOpening();
+            assisted.Opening.Berries ??= new AssistedOpening().Berries;
+            assisted.Villagers ??= new AssistedVillagers();
+            assisted.Goals = NoNulls(assisted.Goals, "assisted.goals");
+        }
+    }
+
+    private static void Normalize(IReadOnlyList<Step> steps, string path)
+    {
+        for (var i = 0; i < steps.Count; i++)
+        {
+            steps[i].Id ??= "";
+            steps[i].After = NoNulls(steps[i].After, $"{path}[{i}].after");
+        }
+    }
+
+    private static IReadOnlyList<T> NoNulls<T>(IReadOnlyList<T>? list, string path) where T : class
+    {
+        if (list is null)
+            return [];
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i] is null)
+                throw NullAt($"{path}[{i}]");
+        }
+        return list;
+    }
+
+    private static BuildOrderFormatException NullAt(string path) => new($"Valor inválido en {path}: no puede ser null.");
 
     public static string Serialize(BuildOrder buildOrder) => JsonSerializer.Serialize(buildOrder, CoreJson.Info<BuildOrder>());
 

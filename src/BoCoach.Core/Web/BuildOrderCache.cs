@@ -129,13 +129,13 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
         try
         {
             var bo = BuildOrderSerializer.Parse(json["build_order"]?.ToJsonString() ?? "");
-            var updated = json["updated_at"] is JsonValue value && value.TryGetValue<string>(out var text)
+            var updated = CoreJson.Text(json["updated_at"]) is { } text
                 && DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var date)
                 ? date
                 : DateTimeOffset.MinValue;
             return new SavedBuildOrder(bo with { Id = code }, updated);
         }
-        catch (BuildOrderFormatException)
+        catch (Exception e) when (e is BuildOrderFormatException or InvalidOperationException) // InvalidOperation: un "\ud800" al volver a escribirla
         {
             return null;
         }
@@ -148,7 +148,7 @@ public sealed class BuildOrderCache(string directory, Func<WebLibraryClient> cli
     {
         try
         {
-            return File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : null;
+            return File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path), documentOptions: CoreJson.NoDuplicates) as JsonObject : null;
         }
         catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
         {

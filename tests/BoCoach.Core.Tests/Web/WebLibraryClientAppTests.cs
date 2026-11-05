@@ -26,12 +26,16 @@ public class WebLibraryClientAppTests
         /// <summary>El cuerpo de cada pedido, vacío si no tiene.</summary>
         public List<byte[]> Bodies { get; } = [];
 
+        /// <summary>Lo que pasa mientras la web atiende un pedido.</summary>
+        public Action? WhileAnswering { get; set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancel)
         {
             if (Offline)
                 throw new HttpRequestException("sin conexión");
             var path = request.RequestUri!.AbsolutePath;
             Requests.Add((request.Method, path, request.Headers.Authorization?.ToString()));
+            WhileAnswering?.Invoke();
             RequestHeaders.Add(request.Headers.Concat(request.Content?.Headers ?? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>())
                 .ToDictionary(h => h.Key, h => string.Join(",", h.Value)));
             Bodies.Add(request.Content is null ? [] : await request.Content.ReadAsByteArrayAsync(cancel));

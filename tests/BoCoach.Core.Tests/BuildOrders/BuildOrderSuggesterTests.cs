@@ -230,6 +230,10 @@ public class BuildOrderSuggesterTests
             File.WriteAllText(path, "{ \"civs\": [ }");
             var error = Assert.Throws<InvalidDataException>(() => CivStyles.Load(path));
             Assert.Contains(Path.GetFileName(path), error.Message);
+
+            File.WriteAllText(path, "{ \"civs\": { \"britons\": [\"archers\"], \"britons\": [\"scouts\"] } }");
+            error = Assert.Throws<InvalidDataException>(() => CivStyles.Load(path));
+            Assert.Contains(Path.GetFileName(path), error.Message);
         }
         finally
         {

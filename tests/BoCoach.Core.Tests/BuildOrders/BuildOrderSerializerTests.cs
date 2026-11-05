@@ -64,6 +64,90 @@ public class BuildOrderSerializerTests
         Assert.Contains(expected, e.Message);
     }
 
+    // Un null pasa zod y la base. Si hay un valor por defecto, vale lo mismo que si la clave no viniera.
+    [Fact]
+    public void Un_null_vale_lo_mismo_que_si_la_clave_no_viniera()
+    {
+        var bo = BuildOrderSerializer.Parse("""
+            {
+              "schema_version": 2, "id": null, "name": null, "civ": null, "map": null, "author": null, "description": null, "tags": null, "targets": null,
+              "steps": [ { "id": null, "do": "train", "what": "villager", "assign": "sheep", "after": null, "builders": null, "at_pop": null, "at_time": null, "confirm_by": null, "group": null, "note": null } ],
+              "posture": { "queue": null, "next_age": null },
+              "branches": [ { "on": "under_attack", "before": null, "note": null, "steps": null } ],
+              "assisted": { "opening": null, "villagers": null, "goals": null }
+            }
+            """);
+
+        var expected = BuildOrderSerializer.Parse("""
+            {
+              "schema_version": 2,
+              "steps": [ { "do": "train", "what": "villager", "assign": "sheep" } ],
+              "posture": { },
+              "branches": [ { "on": "under_attack" } ],
+              "assisted": { }
+            }
+            """);
+        Assert.Equal(BuildOrderSerializer.Serialize(expected), BuildOrderSerializer.Serialize(bo));
+        Assert.Equal("any", bo.Civ);
+        Assert.Empty(bo.Tags);
+        Assert.Empty(bo.Steps[0].After);
+        Assert.Empty(bo.Posture!.Queue);
+        Assert.Empty(bo.Branches![0].Steps);
+        Assert.Equal(120, bo.Assisted!.Villagers.Until);
+        Assert.Equal("auto", bo.Assisted.Opening.Berries);
+        Assert.Empty(bo.Assisted.Goals);
+
+        Assert.Empty(BuildOrderSerializer.Parse("""{ "schema_version": 2, "steps": null }""").Steps);
+        Assert.Null(BuildOrderSerializer.Parse("""{ "schema_version": 2, "posture": null, "branches": null, "assisted": null }""").Posture);
+        Assert.Equal("auto", BuildOrderSerializer.Parse("""{ "schema_version": 2, "assisted": { "opening": { "berries": null } } }""").Assisted!.Opening.Berries);
+    }
+
+    // Adentro de una lista, o en lo que no tiene un valor por defecto, un null no se sabe qué quiso decir.
+    [Theory]
+    [InlineData("""{ "schema_version": 2, "steps": [null] }""", "steps[0]")]
+    [InlineData("""{ "schema_version": 1, "steps": [null] }""", "steps[0]")]
+    [InlineData("""{ "schema_version": 2, "steps": [ { "id": "a" }, null ] }""", "steps[1]")]
+    [InlineData("""{ "schema_version": 2, "tags": ["a", null] }""", "tags[1]")]
+    [InlineData("""{ "schema_version": 2, "steps": [ { "id": "a", "after": [null] } ] }""", "steps[0].after[0]")]
+    [InlineData("""{ "schema_version": 1, "steps": [ { "id": "a", "after": [null] } ] }""", "steps[0].after[0]")]
+    [InlineData("""{ "schema_version": 2, "posture": { "queue": [null] } }""", "posture.queue[0]")]
+    [InlineData("""{ "schema_version": 2, "branches": [null] }""", "branches[0]")]
+    [InlineData("""{ "schema_version": 2, "branches": [ { "on": null } ] }""", "branches[0].on")]
+    [InlineData("""{ "schema_version": 2, "branches": [ { "on": "under_attack", "steps": [null] } ] }""", "branches[0].steps[0]")]
+    [InlineData("""{ "schema_version": 2, "branches": [ { "on": "under_attack", "steps": [ { "id": "a", "after": [null] } ] } ] }""", "branches[0].steps[0].after[0]")]
+    [InlineData("""{ "schema_version": 2, "assisted": { "goals": [null] } }""", "assisted.goals[0]")]
+    public void Un_null_sin_valor_por_defecto_da_error_que_dice_donde(string json, string expected)
+    {
+        var e = Assert.Throws<BuildOrderFormatException>(() => BuildOrderSerializer.Parse(json));
+
+        Assert.Contains(expected, e.Message);
+    }
+
+    [Theory]
+    [InlineData("""{ "schema_version": 2, "name": "\ud800" }""")]
+    [InlineData("""{ "schema_version": 2, "steps": [ { "id": "\ud800" } ] }""")]
+    public void Un_texto_que_no_se_puede_leer_da_error(string json)
+    {
+        Assert.Throws<BuildOrderFormatException>(() => BuildOrderSerializer.Parse(json));
+    }
+
+    [Fact]
+    public void Una_mitad_de_un_caracter_tal_cual_en_el_texto_da_error()
+    {
+        Assert.Throws<BuildOrderFormatException>(() => BuildOrderSerializer.Parse("{ \"schema_version\": 2, \"name\": \"" + (char)0xD800 + "\" }"));
+    }
+
+    // Lo que no se conoce se ignora (las versiones viejas abren las BO nuevas), también con nulls o claves raras adentro.
+    [Fact]
+    public void Lo_que_no_se_conoce_se_ignora_aunque_tenga_nulls()
+    {
+        var bo = BuildOrderSerializer.Parse("""
+            { "schema_version": 2, "name": "x", "algo_nuevo": [null, { "a": null }], "steps": [ { "id": "a", "do": "research", "what": "loom", "otra": [null] } ] }
+            """);
+
+        Assert.Equal("a", Assert.Single(bo.Steps).Id);
+    }
+
     [Fact]
     public void Error_al_cargar_archivo_incluye_su_nombre()
     {

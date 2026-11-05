@@ -11,23 +11,38 @@ namespace BoCoach.Core.Record;
 /// </summary>
 public sealed partial record InstallIdentity(string Id, string Secret)
 {
+    /// <summary>
+    /// La identidad guardada, o una nueva si no hay o lo guardado no sirve (para la base es una instalación nueva). Si no
+    /// se puede leer el archivo (un antivirus lo tiene tomado) tira: otra identidad escrita encima dejaría afuera de
+    /// "Borrar lo compartido" todo lo que subió esta.
+    /// </summary>
     public static InstallIdentity LoadOrCreate(string path)
+    {
+        if (File.Exists(path) && Parse(File.ReadAllText(path)) is { } saved)
+            return saved;
+        var created = new InstallIdentity(Guid.NewGuid().ToString("N"), Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)));
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        // Por un temporal: si se corta a la mitad, no queda un archivo roto en lugar del que había.
+        var temporary = path + ".tmp";
+        File.WriteAllText(temporary, new JsonObject { ["id"] = created.Id, ["secret"] = created.Secret }.ToJsonString() + "\n");
+        File.Move(temporary, path, overwrite: true);
+        return created;
+    }
+
+    private static InstallIdentity? Parse(string text)
     {
         try
         {
-            if (File.Exists(path) && JsonNode.Parse(File.ReadAllText(path)) is JsonObject json
-                && json["id"] is JsonValue id && id.TryGetValue<string>(out var idText) && IdPattern().IsMatch(idText)
-                && json["secret"] is JsonValue secret && secret.TryGetValue<string>(out var secretText) && SecretPattern().IsMatch(secretText))
-                return new InstallIdentity(idText, secretText);
+            return JsonNode.Parse(text, documentOptions: CoreJson.NoDuplicates) is JsonObject json
+                   && CoreJson.Text(json["id"]) is { } id && IdPattern().IsMatch(id)
+                   && CoreJson.Text(json["secret"]) is { } secret && SecretPattern().IsMatch(secret)
+                ? new InstallIdentity(id, secret)
+                : null;
         }
-        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        catch (JsonException)
         {
-            // Un archivo roto: se arma otra. Para la base es una instalación nueva.
+            return null;
         }
-        var created = new InstallIdentity(Guid.NewGuid().ToString("N"), Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32)));
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        File.WriteAllText(path, new JsonObject { ["id"] = created.Id, ["secret"] = created.Secret }.ToJsonString() + "\n");
-        return created;
     }
 
     [GeneratedRegex("^[0-9a-f]{32}$")]

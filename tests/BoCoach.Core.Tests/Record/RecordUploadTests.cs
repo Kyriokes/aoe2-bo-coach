@@ -154,7 +154,6 @@ public sealed class RecordUploadTests : IDisposable
 
     [Theory]
     [InlineData(HttpStatusCode.BadRequest)]
-    [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.RequestEntityTooLarge)]
     [InlineData(HttpStatusCode.UnprocessableEntity)]
     public async Task Lo_que_la_web_rechaza_para_siempre_se_descarta(HttpStatusCode status)
@@ -164,6 +163,103 @@ public sealed class RecordUploadTests : IDisposable
 
         Assert.Equal(new RecordSendResult(0, 0, 2), await Send(queue, Now));
         Assert.Empty(queue.Pending);
+    }
+
+    // Un 401 o un 403 pueden venir del firewall de Vercel o de un proxy, y no dicen nada del registro: descartarlos vaciaba
+    // toda la cola en una sola pasada.
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task Un_401_o_403_corta_la_tanda_y_espera(HttpStatusCode status)
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (status, """{"error":"no"}""");
+
+        Assert.Equal(new RecordSendResult(0, 2, 0), await Send(queue, Now));
+
+        Assert.Single(_web.Requests);
+        Assert.Equal(2, queue.Pending.Count);
+        Assert.Empty(queue.Due(Now.AddMinutes(14)));
+        Assert.Equal(2, queue.Due(Now.AddMinutes(15)).Count);
+    }
+
+    [Fact]
+    public async Task Cuando_la_web_vuelve_a_atender_sale_todo()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials - 1; i++)
+        {
+            await Send(queue, now);
+            now = queue.Pending.Max(r => r.NextTry);
+        }
+
+        Accept();
+
+        Assert.Equal(new RecordSendResult(2, 0, 0), await Send(queue, now));
+        Assert.Empty(queue.Pending);
+    }
+
+    // Si insiste de verdad (el secreto no es el de la instalación) no va a salir nunca: se saca, pero de a uno y solo el
+    // que se intentó: los demás siguen esperando.
+    [Fact]
+    public async Task Un_401_que_insiste_saca_solo_el_que_se_intento()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Unauthorized, """{"error":"no"}""");
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials - 1; i++)
+        {
+            Assert.Equal(new RecordSendResult(0, 2, 0), await Send(queue, now));
+            now = queue.Pending.Max(r => r.NextTry);
+        }
+
+        Assert.Equal(new RecordSendResult(0, 1, 1), await Send(queue, now));
+
+        Assert.Equal(GameId('b'), Assert.Single(queue.Pending).GameId);
+        Assert.Equal(0, queue.Pending[0].Denials);
+        Assert.Equal(RecordUploader.MaxDenials, _web.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Las_negativas_sobreviven_a_cerrar_la_app()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+        await Send(queue, Now);
+
+        Assert.Equal(1, Assert.Single(new RecordQueue(_dir).Pending).Denials);
+    }
+
+    // Una semana sin internet no acerca a nadie a salir de la cola.
+    [Fact]
+    public async Task Los_intentos_sin_conexion_no_cuentan_como_negativas()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Offline = true;
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials + 2; i++)
+        {
+            await Send(queue, now);
+            now = Assert.Single(queue.Pending).NextTry;
+        }
+        _web.Offline = false;
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+
+        Assert.Equal(new RecordSendResult(0, 1, 0), await Send(queue, now));
+        Assert.Equal(1, Assert.Single(queue.Pending).Denials);
+    }
+
+    [Fact]
+    public void Una_cola_de_antes_de_las_negativas_se_lee()
+    {
+        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName),
+            """[{"file":"a.jsonl.gz","game_id":"x","length":600,"added":"2026-11-02T22:00:00+00:00","attempts":2,"next_try":"2026-11-02T22:00:00+00:00"}]""");
+
+        var item = Assert.Single(new RecordQueue(_dir).Pending);
+
+        Assert.Equal((2, 0), (item.Attempts, item.Denials));
     }
 
     // Sin la migración corrida, o con el límite diario: se reintenta más tarde, no se pierde nada.
@@ -182,6 +278,19 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Equal(new RecordSendResult(0, 2, 0), result);
         Assert.Single(_web.Requests); // no insiste con los demás en la misma tanda
         Assert.Equal(2, queue.Pending.Count);
+    }
+
+    // Una respuesta rara del servidor es un fallo más: se escapaba como InvalidOperationException, sin anotar el intento.
+    [Fact]
+    public async Task Un_error_con_otra_forma_cuenta_como_un_intento()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.InternalServerError, """{"error":{"code":1}}""");
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(0, 1, 0), result);
+        Assert.Equal(1, Assert.Single(queue.Pending).Attempts);
     }
 
     [Fact]
@@ -225,10 +334,12 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Equal([GameId('b')], queue.Pending.Select(r => r.GameId));
     }
 
-    [Fact]
-    public void Una_cola_rota_arranca_vacia()
+    [Theory]
+    [InlineData("{ esto no es")]
+    [InlineData("""[{"file":"a","file":"b"}]""")]
+    public void Una_cola_rota_arranca_vacia(string contents)
     {
-        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName), "{ esto no es");
+        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName), contents);
         Assert.Empty(new RecordQueue(_dir).Pending);
     }
 
@@ -244,12 +355,47 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Matches("^[0-9a-f]{64}$", first.Secret);
     }
 
-    [Fact]
-    public void Una_identidad_rota_se_vuelve_a_crear()
+    [Theory]
+    [InlineData("""{"id":"no sirve"}""")]
+    [InlineData("")]
+    [InlineData("{ esto no es")]
+    [InlineData("[]")]
+    [InlineData("""{"id":5,"secret":[]}""")]
+    [InlineData("""{"id":"\ud800","secret":"\ud800"}""")]
+    [InlineData("""{"id":"a","id":"b"}""")]
+    public void Una_identidad_rota_se_vuelve_a_crear(string contents)
     {
         var path = Path.Combine(_dir, "rota.json");
-        File.WriteAllText(path, """{"id":"no sirve"}""");
-        Assert.Matches("^[0-9a-f]{32}$", InstallIdentity.LoadOrCreate(path).Id);
+        File.WriteAllText(path, contents);
+
+        var created = InstallIdentity.LoadOrCreate(path);
+
+        Assert.Matches("^[0-9a-f]{32}$", created.Id);
+        Assert.Equal(created, InstallIdentity.LoadOrCreate(path));
+    }
+
+    // Un antivirus que tiene tomado el archivo: se puede escribir pero no leer. Otra identidad escrita encima dejaba
+    // afuera de "Borrar lo compartido" todo lo que subió la anterior.
+    [Fact]
+    public void Un_bloqueo_al_leer_no_cambia_la_identidad()
+    {
+        var path = Path.Combine(_dir, "tomada.json");
+        var first = InstallIdentity.LoadOrCreate(path);
+
+        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Write))
+            Assert.ThrowsAny<IOException>(() => InstallIdentity.LoadOrCreate(path));
+
+        Assert.Equal(first, InstallIdentity.LoadOrCreate(path));
+    }
+
+    [Fact]
+    public void Crear_la_identidad_no_deja_temporales()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_dir, "sola")).FullName;
+
+        InstallIdentity.LoadOrCreate(Path.Combine(folder, "instalacion.json"));
+
+        Assert.Equal(["instalacion.json"], Directory.EnumerateFiles(folder).Select(Path.GetFileName));
     }
 
     [Fact]
@@ -261,6 +407,50 @@ public sealed class RecordUploadTests : IDisposable
 
         Assert.Equal(new RecordSendResult(0, 1, 0), result);
         Assert.Empty(_web.Requests);
+    }
+
+    // "Borrar lo compartido" con un envío en curso: lo que faltaba de la tanda seguía saliendo y quedaba en la web.
+    [Fact]
+    public async Task Si_se_vacia_la_cola_durante_un_envio_no_sale_lo_que_faltaba()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        _web.WhileAnswering = queue.Clear;
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(1, 0, 0), result);
+        Assert.Single(_web.Requests);
+        Assert.Empty(queue.Pending);
+    }
+
+    // Lo que la cola saca mientras se manda otra cosa (por el tope de espacio) no sale, y lo que sigue sí.
+    [Fact]
+    public async Task Lo_que_salio_de_la_cola_durante_un_envio_no_sale_y_lo_demas_si()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        var second = queue.Pending[1];
+        _web.WhileAnswering = () => queue.Remove(second);
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(2, 0, 0), result);
+        Assert.Equal([GameId('a'), GameId('c')], _web.RequestHeaders.Select(h => h["X-BoCoach-Game"]));
+    }
+
+    [Fact]
+    public async Task Si_se_apaga_durante_un_envio_lo_que_faltaba_queda_en_la_cola_sin_contar_como_intento()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz", "c.jsonl.gz");
+        var sharing = true;
+        _web.WhileAnswering = () => sharing = false;
+
+        var result = await RecordUploader.SendPendingAsync(queue, Client(), _identity, "v1", Now, keepSending: () => sharing);
+
+        Assert.Equal(new RecordSendResult(1, 0, 0), result);
+        Assert.Single(_web.Requests);
+        Assert.Equal([GameId('b'), GameId('c')], queue.Pending.Select(r => r.GameId));
+        Assert.All(queue.Pending, r => Assert.Equal(0, r.Attempts));
+        Assert.Equal(2, queue.Due(Now).Count);
     }
 
     [Fact]

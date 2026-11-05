@@ -6,7 +6,8 @@ namespace BoCoach.Core.Record;
 
 /// <summary>Un registro esperando salir.</summary>
 /// <param name="File">Nombre del archivo, en la carpeta de los registros.</param>
-public sealed record QueuedRecord(string File, string GameId, double Length, DateTimeOffset Added, int Attempts, DateTimeOffset NextTry);
+/// <param name="Denials">Cuántas veces la web, o algo en el camino, le contestó 401 o 403 a este registro.</param>
+public sealed record QueuedRecord(string File, string GameId, double Length, DateTimeOffset Added, int Attempts, DateTimeOffset NextTry, int Denials = 0);
 
 /// <summary>
 /// Los registros por enviar (<c>cola.json</c>, en la carpeta de los registros). Tiene tope de espacio y de antigüedad, y
@@ -65,6 +66,13 @@ public sealed class RecordQueue
             return _items.Where(r => r.NextTry <= now).ToList();
     }
 
+    /// <summary>Si sigue esperando salir.</summary>
+    public bool Contains(QueuedRecord record)
+    {
+        lock (_items)
+            return _items.Any(r => r.GameId == record.GameId);
+    }
+
     /// <summary>Salió, o no va a salir nunca.</summary>
     public void Remove(QueuedRecord record)
     {
@@ -76,7 +84,8 @@ public sealed class RecordQueue
     }
 
     /// <summary>No salió: otra vez más tarde, con el doble de espera cada vez.</summary>
-    public void Failed(QueuedRecord record, DateTimeOffset now)
+    /// <param name="denied">Se intentó y contestaron 401 o 403 (ver <see cref="QueuedRecord.Denials"/>).</param>
+    public void Failed(QueuedRecord record, DateTimeOffset now, bool denied = false)
     {
         lock (_items)
         {
@@ -85,7 +94,12 @@ public sealed class RecordQueue
                 return;
             // Con un tope al exponente: de ahí en más la espera ya es la máxima.
             var doubled = BaseDelay * Math.Pow(2, Math.Min(record.Attempts, 16));
-            _items[index] = record with { Attempts = record.Attempts + 1, NextTry = now + (doubled < MaxDelay ? doubled : MaxDelay) };
+            _items[index] = record with
+            {
+                Attempts = record.Attempts + 1,
+                NextTry = now + (doubled < MaxDelay ? doubled : MaxDelay),
+                Denials = record.Denials + (denied ? 1 : 0),
+            };
             Save();
         }
     }
@@ -115,13 +129,13 @@ public sealed class RecordQueue
     {
         try
         {
-            if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path)) is not JsonArray array)
+            if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path), documentOptions: CoreJson.NoDuplicates) is not JsonArray array)
                 return [];
             var items = new List<QueuedRecord>();
             foreach (var node in array.OfType<JsonObject>())
             {
                 if (Text(node["file"]) is { } file && Text(node["game_id"]) is { } game && Date(node["added"]) is { } added && Date(node["next_try"]) is { } next)
-                    items.Add(new QueuedRecord(Path.GetFileName(file), game, RawCapture.Double(node["length"]) ?? 0, added, RawCapture.Int(node["attempts"]) ?? 0, next));
+                    items.Add(new QueuedRecord(Path.GetFileName(file), game, RawCapture.Double(node["length"]) ?? 0, added, RawCapture.Int(node["attempts"]) ?? 0, next, RawCapture.Int(node["denials"]) ?? 0));
             }
             return items;
         }
@@ -141,6 +155,7 @@ public sealed class RecordQueue
             ["added"] = r.Added.ToString("O", CultureInfo.InvariantCulture),
             ["attempts"] = r.Attempts,
             ["next_try"] = r.NextTry.ToString("O", CultureInfo.InvariantCulture),
+            ["denials"] = r.Denials,
         }).ToArray());
         Directory.CreateDirectory(_folder);
         var path = Path.Combine(_folder, FileName);
@@ -149,7 +164,7 @@ public sealed class RecordQueue
         File.Move(temporary, path, overwrite: true);
     }
 
-    private static string? Text(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+    private static string? Text(JsonNode? node) => CoreJson.Text(node);
 
     private static DateTimeOffset? Date(JsonNode? node) =>
         Text(node) is { } text && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date) ? date : null;
