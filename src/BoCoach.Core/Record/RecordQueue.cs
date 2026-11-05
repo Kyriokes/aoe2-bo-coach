@@ -149,7 +149,7 @@ public sealed class RecordQueue
         File.Move(temporary, path, overwrite: true);
     }
 
-    private static string? Text(JsonNode? node) => node is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+    private static string? Text(JsonNode? node) => CoreJson.Text(node);
 
     private static DateTimeOffset? Date(JsonNode? node) =>
         Text(node) is { } text && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var date) ? date : null;

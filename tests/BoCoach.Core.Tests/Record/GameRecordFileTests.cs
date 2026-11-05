@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using System.Text;
 using System.Text.Json.Nodes;
 using BoCoach.Core.Data;
 using BoCoach.Core.Engine;
@@ -91,6 +93,91 @@ public sealed class GameRecordFileTests : IDisposable
         Assert.True(record.Truncated);
         Assert.NotNull(record.Meta);
         Assert.InRange(record.Captures.Count(), 1, 199);
+    }
+
+    private string WriteLines(string name, params string[] lines)
+    {
+        var path = PathOf(name);
+        using var gzip = new GZipStream(File.Create(path), CompressionLevel.Fastest);
+        gzip.Write(Encoding.UTF8.GetBytes(string.Join("\n", lines) + "\n"));
+        return path;
+    }
+
+    // Un registro lo manda cualquiera: la BO de su meta puede ser cualquier cosa.
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"schema_version":99}""")]
+    [InlineData("""{"schema_version":2,"steps":"x"}""")]
+    [InlineData("""{"schema_version":2,"name":"\ud800"}""")]
+    public void Una_BO_que_no_se_entiende_queda_en_null(string buildOrder)
+    {
+        var path = WriteLines("bo.jsonl.gz", $$"""{"t":"meta","build_order":{{buildOrder}}}""");
+
+        Assert.Null(GameRecordReader.Load(path).BuildOrder);
+    }
+
+    [Fact]
+    public void Una_BO_que_se_entiende_se_lee()
+    {
+        var path = WriteLines("bo.jsonl.gz", """{"t":"meta","build_order":{"schema_version":2,"name":"Scouts"}}""");
+
+        Assert.Equal("Scouts", GameRecordReader.Load(path).BuildOrder?.Name);
+    }
+
+    [Fact]
+    public void Una_captura_con_tipos_raros_no_corta_la_lectura()
+    {
+        var path = WriteLines("raro.jsonl.gz",
+            """{"t":"meta","game_id":"abc"}""",
+            """{"t":7}""",
+            """{"t":{"a":1}}""",
+            """{"t":"\ud800"}""",
+            """{"t":"cap","clock":"ya","food":[],"wood":{},"on":3,"conf":{"a":"b"},"clipped":5,"log":7,"age":8,"queue":[[1,true],[],"x",["villager",3],[null]],"scores":[[1],["a",2],[1,2,{}]],"ms":"x"}""",
+            """{"t":"cap","clock":2,"log":["a",5,null,"\ud800"],"age":"\ud800","queue":[["\ud800",false]],"clipped":["\ud800","b"]}""",
+            """{"t":"end","reason":5,"length":"x"}""");
+
+        var record = GameRecordReader.Load(path);
+
+        Assert.False(record.Truncated);
+        var captures = record.Captures.ToList();
+        Assert.Equal(2, captures.Count);
+        var first = captures[0].Capture;
+        Assert.Null(first.Clock);
+        Assert.Null(first.Food);
+        Assert.Null(first.VillagersOn);
+        Assert.Empty(first.Confidence);
+        Assert.Empty(first.Clipped);
+        Assert.Null(first.AgeText);
+        Assert.Equal([new QueueItem("villager")], first.Queue);
+        Assert.Equal([new PlayerScore(1, 2, false)], first.Scores);
+        Assert.Equal(0, captures[0].Ms);
+        var second = captures[1].Capture;
+        Assert.Equal(["a"], second.LogLines);
+        Assert.Null(second.AgeText);
+        Assert.Empty(second.Queue!);
+        Assert.Equal(["b"], second.Clipped);
+    }
+
+    [Theory]
+    [InlineData("""{"t":7}""")]
+    [InlineData("""{"t":"\ud800"}""")]
+    public void Si_la_ultima_linea_tiene_un_tipo_raro_es_que_quedo_cortado(string last)
+    {
+        var record = GameRecordReader.Load(WriteLines("raro.jsonl.gz", """{"t":"meta"}""", last));
+
+        Assert.True(record.Truncated);
+        Assert.Single(record.Lines);
+    }
+
+    [Theory]
+    [InlineData("""{"t":7}""")]
+    [InlineData("""{"t":"\ud800"}""")]
+    public void Si_la_primera_linea_tiene_un_tipo_raro_no_hay_meta(string first)
+    {
+        var record = GameRecordReader.Load(WriteLines("raro.jsonl.gz", first));
+
+        Assert.Null(record.Meta);
+        Assert.Empty(record.Captures);
     }
 
     [Fact]

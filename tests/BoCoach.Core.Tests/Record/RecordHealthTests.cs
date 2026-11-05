@@ -181,6 +181,25 @@ public sealed class RecordHealthTests : IDisposable
     }
 
     [Fact]
+    public void Un_texto_que_no_se_puede_leer_no_tira_la_partida_entera()
+    {
+        WriteText("raro.jsonl.gz", """
+            {"t":"meta","game_id":"\ud800","civ":"\ud800","app":"\ud800"}
+            {"t":"\ud800"}
+            {"t":"done","src":"\ud800"}
+            {"t":"cap","clock":1,"log":["\ud800"],"queue":[["\ud800",false]]}
+            {"t":"end","reason":"\ud800","length":10}
+            """);
+
+        var game = Assert.Single(RecordHealthReport.Scan(_dir).Games);
+
+        Assert.Null(game.GameId);
+        Assert.Equal(1, game.Captures);
+        Assert.Equal(1, game.LogLines);
+        Assert.NotEmpty(RecordHealthReport.Scan(_dir).Lines());
+    }
+
+    [Fact]
     public void Un_registro_que_no_empieza_con_su_meta_se_cuenta_como_roto()
     {
         using (var gzip = new GZipStream(File.Create(PathOf("raro.jsonl.gz")), CompressionMode.Compress))

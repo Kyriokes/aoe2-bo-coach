@@ -42,7 +42,7 @@ public sealed class GameRecordReader
             {
                 return Meta?["build_order"] is JsonObject json ? BuildOrderSerializer.Parse(json.ToJsonString()) : null;
             }
-            catch (Exception e) when (e is JsonException or InvalidDataException or InvalidOperationException)
+            catch (Exception e) when (e is BuildOrderFormatException or JsonException or InvalidDataException or InvalidOperationException)
             {
                 return null;
             }
@@ -57,7 +57,7 @@ public sealed class GameRecordReader
             IReadOnlyList<string>? log = null;
             foreach (var line in Lines)
             {
-                if (line["t"]?.GetValue<string>() != GameRecordKeys.Capture)
+                if (CoreJson.Text(line["t"]) != GameRecordKeys.Capture)
                     continue;
                 var capture = RawCapture.FromJson(line, log);
                 log = capture.LogLines;
@@ -94,7 +94,7 @@ public sealed class GameRecordReader
                 }
                 if (json is null)
                     continue;
-                if (meta is null && json["t"]?.GetValue<string>() == GameRecordKeys.Meta)
+                if (meta is null && CoreJson.Text(json["t"]) == GameRecordKeys.Meta)
                     meta = json;
                 else
                     lines.Add(json);
@@ -104,7 +104,7 @@ public sealed class GameRecordReader
         {
             truncated = true;
         }
-        if (!truncated && (lines.Count == 0 || lines[^1]["t"]?.GetValue<string>() != GameRecordKeys.End))
+        if (!truncated && (lines.Count == 0 || CoreJson.Text(lines[^1]["t"]) != GameRecordKeys.End))
             truncated = true;
         return new GameRecordReader(meta, lines, truncated);
     }

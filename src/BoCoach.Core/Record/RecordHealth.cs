@@ -150,7 +150,7 @@ public sealed record RecordHealth
 
     private static double Share(int part, int total) => total > 0 ? (double)part / total : 0;
 
-    private static string? Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    private static string? Text(JsonNode? node) => CoreJson.Text(node);
 }
 
 /// <summary>El resumen de una carpeta de registros, con lo que manda cada jugador tratado como lo que es: datos de afuera.</summary>

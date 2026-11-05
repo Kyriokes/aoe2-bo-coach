@@ -114,7 +114,7 @@ public sealed record RawCapture(
         var clipped = Strings(json["clipped"]) ?? [];
         var log = json.ContainsKey("log") ? Strings(json["log"]) : previousLog;
         IReadOnlyList<QueueItem>? queue = json["queue"] is JsonArray q
-            ? q.OfType<JsonArray>().Where(i => i.Count >= 1 && i[0] is JsonValue).Select(i => new QueueItem(i[0]!.GetValue<string>(), i.Count > 1 && Bool(i[1]))).ToList()
+            ? q.OfType<JsonArray>().Where(i => i.Count >= 1 && CoreJson.Text(i[0]) is not null).Select(i => new QueueItem(CoreJson.Text(i[0])!, i.Count > 1 && Bool(i[1]))).ToList()
             : null;
         IReadOnlyList<PlayerScore>? scores = json["scores"] is JsonArray s
             ? s.OfType<JsonArray>().Where(i => i.Count >= 2 && Int(i[0]) is not null && Int(i[1]) is not null)
@@ -123,7 +123,7 @@ public sealed record RawCapture(
         return new RawCapture(
             Double(json["clock"]), Int(json["food"]), Int(json["wood"]), Int(json["gold"]), Int(json["stone"]),
             Int(json["vil"]), Int(json["idle"]), Int(json["pop"]), Int(json["cap"]),
-            on, confidence, clipped, log, json["age"] is JsonValue a && a.TryGetValue<string>(out var age) ? age : null, queue, scores);
+            on, confidence, clipped, log, CoreJson.Text(json["age"]), queue, scores);
     }
 
     private static string Key(Resource r) => r switch
@@ -153,5 +153,5 @@ public sealed record RawCapture(
     private static bool Bool(JsonNode? node) => node is JsonValue v && v.TryGetValue<bool>(out var b) && b;
 
     private static List<string>? Strings(JsonNode? node) =>
-        node is JsonArray a ? a.OfType<JsonValue>().Select(v => v.TryGetValue<string>(out var s) ? s : null).OfType<string>().ToList() : null;
+        node is JsonArray a ? a.Select(CoreJson.Text).OfType<string>().ToList() : null;
 }
