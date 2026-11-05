@@ -154,7 +154,6 @@ public sealed class RecordUploadTests : IDisposable
 
     [Theory]
     [InlineData(HttpStatusCode.BadRequest)]
-    [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.RequestEntityTooLarge)]
     [InlineData(HttpStatusCode.UnprocessableEntity)]
     public async Task Lo_que_la_web_rechaza_para_siempre_se_descarta(HttpStatusCode status)
@@ -164,6 +163,103 @@ public sealed class RecordUploadTests : IDisposable
 
         Assert.Equal(new RecordSendResult(0, 0, 2), await Send(queue, Now));
         Assert.Empty(queue.Pending);
+    }
+
+    // Un 401 o un 403 pueden venir del firewall de Vercel o de un proxy, y no dicen nada del registro: descartarlos vaciaba
+    // toda la cola en una sola pasada.
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task Un_401_o_403_corta_la_tanda_y_espera(HttpStatusCode status)
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (status, """{"error":"no"}""");
+
+        Assert.Equal(new RecordSendResult(0, 2, 0), await Send(queue, Now));
+
+        Assert.Single(_web.Requests);
+        Assert.Equal(2, queue.Pending.Count);
+        Assert.Empty(queue.Due(Now.AddMinutes(14)));
+        Assert.Equal(2, queue.Due(Now.AddMinutes(15)).Count);
+    }
+
+    [Fact]
+    public async Task Cuando_la_web_vuelve_a_atender_sale_todo()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials - 1; i++)
+        {
+            await Send(queue, now);
+            now = queue.Pending.Max(r => r.NextTry);
+        }
+
+        Accept();
+
+        Assert.Equal(new RecordSendResult(2, 0, 0), await Send(queue, now));
+        Assert.Empty(queue.Pending);
+    }
+
+    // Si insiste de verdad (el secreto no es el de la instalación) no va a salir nunca: se saca, pero de a uno y solo el
+    // que se intentó: los demás siguen esperando.
+    [Fact]
+    public async Task Un_401_que_insiste_saca_solo_el_que_se_intento()
+    {
+        var queue = Queue("a.jsonl.gz", "b.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Unauthorized, """{"error":"no"}""");
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials - 1; i++)
+        {
+            Assert.Equal(new RecordSendResult(0, 2, 0), await Send(queue, now));
+            now = queue.Pending.Max(r => r.NextTry);
+        }
+
+        Assert.Equal(new RecordSendResult(0, 1, 1), await Send(queue, now));
+
+        Assert.Equal(GameId('b'), Assert.Single(queue.Pending).GameId);
+        Assert.Equal(0, queue.Pending[0].Denials);
+        Assert.Equal(RecordUploader.MaxDenials, _web.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Las_negativas_sobreviven_a_cerrar_la_app()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+        await Send(queue, Now);
+
+        Assert.Equal(1, Assert.Single(new RecordQueue(_dir).Pending).Denials);
+    }
+
+    // Una semana sin internet no acerca a nadie a salir de la cola.
+    [Fact]
+    public async Task Los_intentos_sin_conexion_no_cuentan_como_negativas()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Offline = true;
+        var now = Now;
+        for (var i = 0; i < RecordUploader.MaxDenials + 2; i++)
+        {
+            await Send(queue, now);
+            now = Assert.Single(queue.Pending).NextTry;
+        }
+        _web.Offline = false;
+        _web.Routes[Route] = (HttpStatusCode.Forbidden, """{"error":"no"}""");
+
+        Assert.Equal(new RecordSendResult(0, 1, 0), await Send(queue, now));
+        Assert.Equal(1, Assert.Single(queue.Pending).Denials);
+    }
+
+    [Fact]
+    public void Una_cola_de_antes_de_las_negativas_se_lee()
+    {
+        File.WriteAllText(Path.Combine(_dir, RecordQueue.FileName),
+            """[{"file":"a.jsonl.gz","game_id":"x","length":600,"added":"2026-11-02T22:00:00+00:00","attempts":2,"next_try":"2026-11-02T22:00:00+00:00"}]""");
+
+        var item = Assert.Single(new RecordQueue(_dir).Pending);
+
+        Assert.Equal((2, 0), (item.Attempts, item.Denials));
     }
 
     // Sin la migración corrida, o con el límite diario: se reintenta más tarde, no se pierde nada.
