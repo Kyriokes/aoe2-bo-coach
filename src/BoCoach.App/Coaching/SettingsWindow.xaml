@@ -115,6 +115,9 @@
                     <TextBlock Text="{x:Static app:Texts.UninstallLabel}" FontWeight="SemiBold" Margin="0,24,0,4" />
                     <TextBlock Text="{x:Static app:Texts.UninstallHint}" Style="{StaticResource Hint}" />
                     <Button Content="{x:Static app:Texts.UninstallButton}" Command="{Binding Tools.UninstallCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+
+                    <!-- Lo del juego es de Microsoft: el mismo sentido que el aviso del pie de la web -->
+                    <TextBlock Text="{x:Static app:Texts.GameContentNotice}" Style="{StaticResource Hint}" Margin="0,24,0,0" />
                 </StackPanel>
             </TabItem>
 

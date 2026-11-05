@@ -88,6 +88,19 @@ public partial class TextsTests
         }
     }
 
+    // IN-04: dice de quién es lo del juego, con el mismo sentido que el pie de la web, y no usa a Microsoft como respaldo.
+    [Fact]
+    public void El_aviso_del_contenido_del_juego_dice_de_quien_es_y_que_no_hay_respaldo()
+    {
+        Assert.Contains("son de Microsoft", Texts.GameContentNotice);
+        Assert.Contains("Game Content Usage Rules", Texts.GameContentNotice);
+        Assert.Contains("no está respaldado por Microsoft ni afiliado a Microsoft", Texts.GameContentNotice);
+        using var english = Lang.Use(Lang.English);
+        Assert.Contains("belong to Microsoft", Texts.GameContentNotice);
+        Assert.Contains("Game Content Usage Rules", Texts.GameContentNotice);
+        Assert.Contains("not endorsed by or affiliated with Microsoft", Texts.GameContentNotice);
+    }
+
     [Fact]
     public void La_web_se_abre_en_el_idioma_de_la_app()
     {

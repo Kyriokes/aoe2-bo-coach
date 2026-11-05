@@ -331,6 +331,7 @@ public static class Texts
     public static string ReportsLabel => L("Informes de las partidas", "Match reports");
     public static string ReportsHint => L("Cada partida deja una página con los pasos contra la BO, el centro urbano parado y los recursos acumulados.", "Each match leaves a page with the steps against the BO, the idle town center and the floating resources.");
     public static string ReportsButton => L("Abrir la carpeta", "Open the folder");
+    public static string GameContentNotice => L("Age of Empires II © Microsoft Corporation. Los íconos, las letras y los textos del juego son de Microsoft. AoE2 BO Coach los usa bajo las Game Content Usage Rules de Microsoft, y no está respaldado por Microsoft ni afiliado a Microsoft.", "Age of Empires II © Microsoft Corporation. The game's icons, fonts and text belong to Microsoft. AoE2 BO Coach uses them under Microsoft's Game Content Usage Rules, and it is not endorsed by or affiliated with Microsoft.");
     public static string UninstallLabel => L("Sacar el mod y los enlaces", "Remove the mod and the links");
     public static string UninstallHint => L("Si dejás de usar la app: borra el mod «BoCoach HUD» de tus perfiles del juego y los enlaces bocoach:// de Windows. Tus otros mods y tu cuenta no se tocan.", "If you stop using the app: it deletes the \"BoCoach HUD\" mod from your game profiles and the bocoach:// links from Windows. Your other mods and your account aren't touched.");
     public static string UninstallButton => L("Sacar…", "Remove…");
