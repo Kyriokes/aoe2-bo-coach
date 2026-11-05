@@ -399,6 +399,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     {
         OnPropertyChanged(nameof(IsAutoMode));
         OnPropertyChanged(nameof(IsManualMode));
+        // Al pasar a "Elegir de mi lista", la que está elegida manda (ver FollowSelection).
+        _followedSelection = null;
         SaveSettings();
     }
 
@@ -542,9 +544,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                     Stop();
                     Status = Texts.GameClosedStopped;
                 }
-                return;
             }
-            if (!canStart || !AutoStart || IsRunning || _autoBlocked)
+            FollowSelection();
+            if (!gameRunning || !canStart || !AutoStart || IsRunning || _autoBlocked)
                 return;
             if (AutoBuildOrder() is not { } bo)
             {
@@ -570,11 +572,31 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>
-    /// La última BO usada (si está guardada), o la elegida; en automática, si no hay ninguna, sin BO: la elige la
-    /// pantalla de carga.
+    /// Con qué BO arranca solo. A mano, la elegida (si todavía se está bajando, la última usada); en automática, la última
+    /// usada si está guardada, o la elegida y, si no hay ninguna, sin BO: la elige la pantalla de carga.
     /// </summary>
-    private BuildOrder? AutoBuildOrder() =>
-        ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? (BoMode == BuildOrderMode.Auto ? BuildOrder.None : null);
+    private BuildOrder? AutoBuildOrder() => BoMode == BuildOrderMode.Manual
+        ? _selected() ?? ActivePicker.Current(LastBuildOrderId)
+        : ActivePicker.Current(LastBuildOrderId) ?? _selected() ?? BuildOrder.None;
+
+    /// <summary>La elegida de la lista la última vez que se miró, para reaccionar cuando el jugador elige otra.</summary>
+    private string? _followedSelection;
+
+    /// <summary>
+    /// A mano, la elegida manda: si el coach está esperando la partida con otra (arrancó solo con el juego), se reinicia con
+    /// ella. En plena partida no se toca y vale para la siguiente. Lo que se aceptó con el atajo de la sugerida no se deshace:
+    /// recién cuenta si el jugador elige otra en la lista.
+    /// </summary>
+    private void FollowSelection()
+    {
+        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || _lastInGame || _selected() is not { } selected || selected.Id == _followedSelection)
+            return;
+        _followedSelection = selected.Id;
+        if (_coach?.BuildOrder.Id == selected.Id)
+            return;
+        _previousBuildOrder = null;
+        Start(selected, _liveFrames(), _startedAutomatically);
+    }
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
     /// <returns>False si la BO tiene errores: el coach que corre sigue con la suya y el estado dice qué pasó.</returns>
@@ -628,6 +650,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (!ManualSteps)
             _coach.Start();
         IsRunning = true;
+        _followedSelection = _selected()?.Id;
         Status = Texts.CoachWaiting(bo.Name, GameCiv != BoCiv ? Texts.PlayingAs(bo.Civ) : "", LanguageNote(ocr), Key("advance"), Key("back"), Key("skip"), Key("overlay"), Key("cursor_reminders"));
         return true;
     }

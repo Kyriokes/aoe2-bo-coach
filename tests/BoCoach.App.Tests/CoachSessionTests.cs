@@ -1118,6 +1118,96 @@ public sealed class CoachSessionTests : IDisposable
         Assert.False(session.IsRunning);
     }
 
+    // AP-18: en "Elegir de mi lista" el arranque solo usaba la última BO con que corrió, y la elegida quedaba sin efecto.
+    [Fact]
+    public void A_mano_el_arranque_solo_usa_la_elegida_y_no_la_ultima()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { LastBuildOrder = "bog-huns", BoMode = BuildOrderMode.Manual }.Save(path);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames(), path)
+        {
+            ManualSteps = true,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+
+        session.Tick(gameRunning: true);
+
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void A_mano_sin_elegida_el_arranque_solo_usa_la_ultima()
+    {
+        var path = Path.Combine(_library.FullName, "settings.json");
+        new CoachSettings { LastBuildOrder = "bog-huns", BoMode = BuildOrderMode.Manual }.Save(path);
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames(), path)
+        {
+            ManualSteps = true,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // AP-18: el coach arrancó con el juego y el jugador elige otra antes de la partida.
+    [Fact]
+    public void A_mano_elegir_otra_con_el_coach_esperando_la_partida_lo_reinicia_con_ella()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames()) { ManualSteps = true, BoMode = BuildOrderMode.Manual };
+        session.Tick(gameRunning: true);
+        Assert.Equal(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    [Fact]
+    public void A_mano_elegir_otra_en_plena_partida_vale_recien_para_la_siguiente()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames()) { ManualSteps = true, BoMode = BuildOrderMode.Manual };
+        session.Tick(gameRunning: true);
+        session.Apply(Frame(ViewAt(300)) with { InGame = true });
+        var running = session.LiveCoach;
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        Assert.Same(running, session.LiveCoach);
+
+        session.Apply(Frame(ViewAt(900)) with { InGame = false });
+        session.Tick(gameRunning: true);
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.
+    [Fact]
+    public async Task A_mano_la_sugerida_que_aceptaste_no_se_deshace_sola()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Tick(gameRunning: true);
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        var accepted = session.LiveCoach;
+        await accepted!.StepAsync();
+        session.Tick(gameRunning: true);
+
+        Assert.Same(accepted, session.LiveCoach);
+    }
+
     [Fact]
     public async Task Buscar_sin_nombre_lo_pide()
     {
