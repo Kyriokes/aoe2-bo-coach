@@ -88,6 +88,115 @@ public class ScreenReplayTests
         Assert.Equal(unrecognized, scrubbedUnrecognized);
     }
 
+    // La privacidad: al registro compartido va la frase del catálogo, nunca lo leído. Por la caja del log pasa el chat
+    // ("Ana: gg" junto a un mensaje real se reconoce como un mensaje partido en dos, "Ana: house built" se reconoce solo)
+    // y el aviso de ataque lleva el nombre del jugador.
+    [Theory]
+    [InlineData("Ana: gg", "'--Feudal Age Research Complete--")]
+    [InlineData("Ana: house built")]
+    [InlineData("-Warning: You arc being attacked by Player 2 Ana!!!-")]
+    [InlineData("-Warning: You arc being attacked by", "Player 2 Ana!!!-")]
+    [InlineData("--House Built--", "Ana: gg", "Complete--", "Ana: villager created")]
+    public void Lo_que_se_guarda_no_lleva_nada_de_lo_leido(params string[] lines)
+    {
+        var matcher = new EventMatcher(Catalog);
+
+        var saved = matcher.Scrub(lines);
+
+        Assert.DoesNotContain(saved, line => line.Contains("Ana", StringComparison.OrdinalIgnoreCase));
+        Assert.All(saved, line => Assert.True(line == EventMatcher.Scrubbed || IsCatalogPhrase(line, Catalog), line));
+        Assert.Equal(matcher.MatchAll(lines), matcher.MatchAll(saved), MatchAllComparer);
+    }
+
+    [Fact]
+    public void Un_mensaje_largo_se_guarda_en_un_solo_renglon_con_la_frase_del_catalogo()
+    {
+        var matcher = new EventMatcher(Catalog);
+
+        var saved = matcher.Scrub(["xqzt wvvk", "—Leather Archer Armor Researcb", "Complete—", "-Vtllager Created-"]);
+
+        Assert.Equal([EventMatcher.Scrubbed, "--Leather Archer Armor Research Complete--", "--Villager Created--"], saved);
+    }
+
+    public static TheoryData<string, string?> Catalogs => new()
+    {
+        { "events.json", null },
+        { "events.json", "events.es.json" },
+        { "events.json", "events.mx.json" },
+    };
+
+    private static EventCatalog LoadCatalog(string file, string? extra)
+    {
+        var data = GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "game_data"));
+        var catalog = EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, file));
+        return (extra is null ? catalog : catalog.Merged(EventCatalog.Load(Path.Combine(AppContext.BaseDirectory, extra)))).PreferringEntitiesOf(data);
+    }
+
+    // Dos eventos pueden tener la misma frase ("Arquero emplumado" de élite y sin élite), y una lectura con errores puede
+    // dar uno y la frase exacta otro: el registro se reproduce leyendo lo guardado, así que tiene que dar el mismo evento.
+    [Theory]
+    [MemberData(nameof(Catalogs))]
+    public void Lo_guardado_de_cualquier_frase_da_el_mismo_evento_que_lo_leido(string file, string? extra)
+    {
+        var catalog = LoadCatalog(file, extra);
+        var matcher = new EventMatcher(catalog);
+        var wrong = new List<string>();
+        foreach (var phrase in catalog.Phrases.Values.SelectMany(p => p))
+        {
+            // Tal cual, y con una letra mal leída.
+            foreach (var reading in new[] { phrase, Misread(phrase) })
+            {
+                var read = matcher.MatchAll([reading]);
+                var saved = matcher.MatchAll(matcher.Scrub([reading]));
+                if (!read.EventIds.SequenceEqual(saved.EventIds) || read.Unrecognized != saved.Unrecognized)
+                    wrong.Add($"\"{reading}\": leído {string.Join(",", read.EventIds)}, guardado {string.Join(",", saved.EventIds)}");
+            }
+        }
+        Assert.True(wrong.Count == 0, string.Join("\n", wrong));
+    }
+
+    // Sobre lo que leyó de verdad el OCR en una partida, con errores y todo: captura por captura, los mismos eventos.
+    [Theory]
+    [InlineData("event_log_ocr.tsv")]
+    [InlineData("event_log_ocr_gris.tsv")]
+    public void Lo_guardado_de_una_partida_real_da_los_mismos_eventos(string transcript)
+    {
+        var matcher = new EventMatcher(LoadCatalog("events.json", "events.es.json"));
+        var frames = File.ReadLines(Path.Combine(AppContext.BaseDirectory, "fixtures", "rec-20261015-205040", transcript))
+            .Select(l => l.Split('\t'))
+            .Select(p => (Frame: int.Parse(p[0]), Lines: p[1].Split('|').Select(s => s[(s.IndexOf(':') + 1)..]).ToList()))
+            .ToList();
+
+        var (liveTracker, replayTracker) = (new EventLogTracker(), new EventLogTracker());
+        var (live, replay) = (new List<string>(), new List<string>());
+        foreach (var (frame, lines) in frames)
+        {
+            var saved = matcher.Scrub(lines);
+            Assert.True(saved.Count <= lines.Count, $"captura {frame}");
+            live.AddRange(EventLogReader.Process(matcher, liveTracker, lines));
+            replay.AddRange(EventLogReader.Process(matcher, replayTracker, saved));
+        }
+
+        Assert.NotEmpty(live);
+        Assert.Equal(live, replay);
+    }
+
+    private static string Misread(string phrase)
+    {
+        var chars = phrase.ToCharArray();
+        var letters = Enumerable.Range(0, chars.Length).Where(i => char.IsLetter(chars[i])).ToList();
+        chars[letters[letters.Count / 2]] = 'x';
+        return new string(chars);
+    }
+
+    private static bool IsCatalogPhrase(string line, EventCatalog catalog) =>
+        catalog.Phrases.Values.Any(phrases => phrases.Any(p => line == $"--{p}--"));
+
+    private static readonly IEqualityComparer<(IReadOnlyList<string> EventIds, int Unrecognized)> MatchAllComparer =
+        EqualityComparer<(IReadOnlyList<string> EventIds, int Unrecognized)>.Create(
+            (a, b) => a.EventIds.SequenceEqual(b.EventIds) && a.Unrecognized == b.Unrecognized,
+            a => a.Unrecognized);
+
     [Fact]
     public void El_marcador_de_edad_no_es_una_edad() => Assert.Null(AgeText.Parse(ScreenReader.UnknownAge));
 }

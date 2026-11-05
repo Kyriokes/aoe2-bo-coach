@@ -21,7 +21,7 @@ public sealed class EventLogReader(OcrReader? ocr, EventCatalog catalog, double 
     /// <summary>Mensajes reconocidos que se ven ahora (estabilizados).</summary>
     public IReadOnlyList<string> Visible => _tracker.Visible;
 
-    /// <summary>Los renglones de la última captura, con lo que no es un mensaje del juego tapado (es lo que va al registro de partida).</summary>
+    /// <summary>Lo que va al registro de partida por la última captura: la frase del catálogo de cada mensaje, nunca lo leído (ver <see cref="EventMatcher.Scrub"/>).</summary>
     public IReadOnlyList<string> LastLines { get; private set; } = [];
 
     /// <summary>Cuántas veces se pasó el OCR (para medir cuánto se ahorra).</summary>
