@@ -112,6 +112,7 @@ public sealed class Tracker
         _units = LivePlan.Units(bo);
         _hudTarget = fromNow ? new (Resource, int)?[bo.Steps.Count] : HudTargets(bo);
         _capTarget = fromNow ? new int?[bo.Steps.Count] : CapTargets(bo, data);
+        _loose = bo.Steps.Select((s, i) => Unannounced(s) && !MatesOf(i).Any()).ToArray();
         _atPop = PopulationTargets(bo, data);
         _moveWaitsFor = bo.Steps.Select((s, i) => s.Do == StepAction.Move ? MoveWaitsFor(i) : null).ToArray();
         Recompute();
@@ -353,8 +354,22 @@ public sealed class Tracker
         ? _steps.Where(s => s.Index < current.Index && IsOpen(s) && IsSilent(s))
         : _steps.Where(s => IsOpen(s) && IsSilent(s));
 
-    private static bool IsSilent(StepProgress s) =>
-        s.Step.Group is null && EventConventions.EventFor(s.Step) is { } id && !StateBelief.CanObserve(id);
+    private bool IsSilent(StepProgress s) => _loose[s.Index];
+
+    /// <summary>
+    /// Pasos que el juego no avisa y sin compañeras de paso mixto que los arrastren: sueltos, o con metas que no piden
+    /// nada (ver <see cref="Silent"/>).
+    /// </summary>
+    private readonly bool[] _loose;
+
+    private static bool Unannounced(Step step) => EventConventions.EventFor(step) is { } id && !StateBelief.CanObserve(id);
+
+    /// <summary>
+    /// Las metas del paso mixto de una granja de las que depende: las que piden algo y se pueden confirmar. Que la
+    /// compañera no pida ningún aldeano (ya estaban) o sea otra granja no puede cerrarla nunca.
+    /// </summary>
+    private IEnumerable<int> MatesOf(int index) => Enumerable.Range(0, _bo.Steps.Count)
+        .Where(j => j != index && SameGroup(index, j) && Required(j) > 0 && !Unannounced(_bo.Steps[j]));
 
     /// <summary>
     /// Unidades que no son aldeanos y ya empezaron a salir: de este paso, o de un paso anterior con la misma unidad
@@ -625,25 +640,22 @@ public sealed class Tracker
             if (_confirmEvent[i] is not null || _bo.Steps[i].Do == StepAction.Move || IsDone(i) || _skipped.ContainsKey(i) || _noImplicit.Contains(i))
                 continue;
             // Lo que el juego nunca avisa (granjas), en un paso mixto: hecho cuando las otras metas están hechas (los
-            // aldeanos a granjas y sus granjas). Lo que el log avisa pero no se pudo leer espera a un paso posterior:
-            // terminar el cuartel no dice que la Feudal terminó.
-            var mates = EventConventions.EventFor(_bo.Steps[i]) is { } silent && !StateBelief.CanObserve(silent)
-                ? Enumerable.Range(0, n).Where(j => j != i && SameGroup(i, j)).ToList()
-                : [];
+            // aldeanos a granjas y sus granjas) o salteadas. Lo que el log avisa pero no se pudo leer espera a un paso
+            // posterior: terminar el cuartel no dice que la Feudal terminó.
+            var mates = Unannounced(_bo.Steps[i]) ? MatesOf(i).ToList() : [];
             if (mates.Count > 0)
             {
                 // Solo con sus compañeras: en la 20261018-132830 el telar terminado temprano (4:21) daba por hecha la
                 // granja de "1 aldeano a granjas" y dejaba atrasados la casa y el molino de antes.
-                if (mates.All(IsDone))
-                    doneAt[i] = mates.Max(j => doneAt[j] ?? _manualDone.GetValueOrDefault(j));
+                if (mates.All(j => IsDone(j) || _skipped.ContainsKey(j)))
+                    doneAt[i] = mates.Max(j => doneAt[j] ?? _manualDone.GetValueOrDefault(j, _skipped.GetValueOrDefault(j)));
                 continue;
             }
             // Una investigación empezada da por hechas las granjas sueltas de antes (el clic en Castillos con las granjas
             // pendientes), pero no lo de un paso mixto: el telar se puede pagar temprano sin haber hecho la granja. Vale
             // cualquier línea: lo que nada confirma (granjas, un mensaje que el log no lee) quedaría abierto para siempre.
-            var loose = _bo.Steps[i].Group is null && EventConventions.EventFor(_bo.Steps[i]) is { } ev && !StateBelief.CanObserve(ev);
             var progressAfter = Enumerable.Range(i + 1, n - i - 1)
-                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || (loose && _started.ContainsKey(j))))
+                .Where(j => !SameGroup(i, j) && (completed[j] > 0 || IsDone(j) || (_loose[i] && _started.ContainsKey(j))))
                 .Select(j => FirstProgressTime(j, doneAt))
                 .Min();
             if (progressAfter is not null)
