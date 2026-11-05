@@ -209,6 +209,28 @@ public class PostureTests
         Assert.Equal(0, view.NextAgeBuildingsMissing);
     }
 
+    // Auditoría del 2026-11-05: el juego pide 2 edificios distintos (BuildOrderValidator.AgeUpProgress): 2 galerías son
+    // uno, y la postura decía que ya se podía subir.
+    [Fact]
+    public void Dos_edificios_iguales_cuentan_uno_para_la_edad()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var view = coach.View(State(700, Poor, "archery_range_built", "archery_range_built"), [], Age.Feudal, Data.Civ("any"));
+
+        Assert.Equal(1, view.NextAgeBuildingsMissing);
+    }
+
+    [Fact]
+    public void Los_jemeres_no_necesitan_edificios_para_subir_de_edad()
+    {
+        var coach = new PostureCoach(Scouts, Data);
+        var rich = new ResourceAmounts(2000, 500, 0, 500);
+
+        var view = coach.View(State(700, rich), [], Age.Feudal, Data.Civ("khmer"));
+
+        Assert.Equal(0, view.NextAgeBuildingsMissing);
+    }
+
     [Fact]
     public void Para_Castillos_faltan_dos_edificios_de_Feudal_y_lo_que_cuesta_guardando_para_la_produccion()
     {
