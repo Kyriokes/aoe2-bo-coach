@@ -30,7 +30,14 @@ La revisión de punta a punta ([`auditorias/2026-11-05.md`](auditorias/2026-11-0
 
 5. **Mirá que la release salga bien.** El archivo que la arma cambió entero y no se puede probar sin publicar. A los 5 o 10 minutos, en <https://github.com/Kyriokes/aoe2-bo-coach/releases> tiene que estar la versión nueva con dos archivos: el `.zip` y su `.sha256`. Si no aparece, pestaña **Actions**, corrida **Release**, y pasame qué paso quedó en rojo.
 
-6. **Probá lo que PGlite no puede probar** (hace falta Supabase de verdad). Si algo no da como dice acá, contame:
+6. **Volvé a publicar las BO de chinos y mayas.** La simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
+
+   ```bash
+   src\BoCoach.App\bin\Release\net10.0-windows10.0.19041.0\BoCoach.exe --publish build_orders\civs --dry-run
+   ```n
+   Si la lista se ve bien, corrélo de nuevo sin `--dry-run`. Reemplaza las publicadas con los mismos códigos y, como cambia el cuerpo de pocas, las apps solo vuelven a bajar esas.
+
+7. **Probá lo que PGlite no puede probar** (hace falta Supabase de verdad). Si algo no da como dice acá, contame:
    - **Subir una partida:** jugá una partida de más de un minuto con "Compartir mis partidas" prendido. En Ajustes, pestaña Partida, tiene que decir "Registro de la partida enviado. ¡Gracias!". Si no, los registros quedan en cola en tu PC y no se pierden.
    - **Borrar:** tocá "Borrar lo compartido…" y aceptá. En Supabase, **Storage** → `registros`, ese archivo tiene que desaparecer.
    - **Votar:** votá una BO. El contador sube y la fecha "actualizada" no cambia.
@@ -97,7 +104,7 @@ Lo que no se pudo probar sin jugar. Si algo no da como dice, apretá Ctrl+Alt+F 
 11. Cerrá la app, dejá `%APPDATA%\BoCoach\settings.json` vacío y abrila: tiene que abrir, avisar en Ajustes y dejar apagado "Compartir mis partidas" hasta que lo prendas. Lo mismo con `regions.json` vacío: abre igual.
 12. Ajustes → Avanzado → **Sacar…**, con el juego cerrado: el mod se va de Mods instalados.
 13. Si tenés dos monitores con distinta escala de Windows, mirá que el overlay caiga en su lugar.
-14. A 1366×768 o 1280×720: la app tiene que calibrar sola. El aviso de que a esa resolución se lee peor todavía no está en la app.
+14. A 1366×768 o 1280×720: la app tiene que calibrar sola y avisar, en Primeros pasos y en Ajustes, que a esa resolución los números salen muy chicos y se lee peor.
 
 **En la web, con sesión:**
 

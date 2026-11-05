@@ -85,7 +85,7 @@ sola vez. Donde dice `<proyecto>` va el identificador que Supabase le da a tu pr
    <tu nombre>" y mostrar tu lista de BO.
 2. Si no se abre, copiá el token que muestra la web. En la app: **Ajustes**, pestaña **Avanzado**, **Dirección y
    token…**, y pegalo. Ahí también va la dirección de la web, si es otra que `https://aoe2-bo-coach.vercel.app`.
-3. Probá: en la web, en una BO pública, tocá **Usar en el coach**, y en la app tocá **Actualizar lista**: tiene que
+3. Probá: en la web, en una BO pública, tocá **Usar en el coach**, y en la app tocá **Actualizar**: tiene que
    aparecer. El botón **Abrir en BO Coach** de la página de una BO la suma directo.
 
 Las BO se arman en la web (`/subir`). Para publicar muchas de una vez con tu cuenta hay `BoCoach.exe --publish <carpeta>`
