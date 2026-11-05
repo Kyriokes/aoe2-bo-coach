@@ -325,8 +325,18 @@ begin
   return null;
 end $$;
 
+-- ---------------------------------------------------------------------------------------------------------------
+-- Tokens de la app.
+-- ---------------------------------------------------------------------------------------------------------------
+
+-- BD-18: el token de "Conectar la app" también servía para publicar, aunque la app ya no publica salvo con --publish:
+-- quien lo robara reemplazaba cualquier BO del dueño y sus suscriptos la bajaban solos. Ahora ese token solo sirve para
+-- usar la app. Los que ya estaban y los que se crean a mano en Mi cuenta publican como siempre.
+alter table public.app_tokens add column if not exists can_publish boolean not null default true;
+
 -- BD-13: el tope de tokens, también de a uno por vez.
-create or replace function public.create_app_token(p_label text default 'BO Coach') returns text
+drop function if exists public.create_app_token(text);
+create or replace function public.create_app_token(p_label text default 'BO Coach', p_can_publish boolean default true) returns text
 language plpgsql security definer set search_path = '' as $$
 declare
   token text := 'bocoach_' || replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
@@ -338,7 +348,62 @@ begin
   if (select count(*) from public.app_tokens where user_id = auth.uid()) >= 20 then
     raise exception 'Ya tenés 20 tokens: borrá alguno que no uses antes de crear otro.' using errcode = '23514';
   end if;
-  insert into public.app_tokens (user_id, token_hash, label)
-  values (auth.uid(), public.hash_token(token), coalesce(nullif(trim(p_label), ''), 'BO Coach'));
+  insert into public.app_tokens (user_id, token_hash, label, can_publish)
+  values (auth.uid(), public.hash_token(token), coalesce(nullif(trim(p_label), ''), 'BO Coach'), coalesce(p_can_publish, true));
   return token;
 end $$;
+
+revoke execute on function public.create_app_token(text, boolean) from public, anon;
+grant execute on function public.create_app_token(text, boolean) to authenticated;
+
+-- Publica (o actualiza, si se pasa el código de una BO propia) desde la app. Devuelve el código. El error de un token
+-- que no publica es 28000 (401) y no 42501 (403): con un 403, la app da por borrada la BO de la web y se olvida su código.
+create or replace function public.app_publish(
+  p_token text,
+  p_body jsonb,
+  p_feudal_click int default null,
+  p_castle_click int default null,
+  p_code text default null
+) returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  owner uuid := public.app_token_owner(p_token);
+  result text;
+begin
+  if not exists (select 1 from public.app_tokens where token_hash = public.hash_token(p_token) and can_publish) then
+    raise exception 'Este token sirve para usar la app, no para publicar: creá uno con "Crear token" en Mi cuenta de la web.' using errcode = '28000';
+  end if;
+  if p_code is null then
+    insert into public.build_orders (owner_id, name, civ, tags, description, schema_version, body, feudal_click, castle_click)
+    values (
+      owner,
+      p_body ->> 'name',
+      coalesce(p_body ->> 'civ', 'any'),
+      coalesce(array(select jsonb_array_elements_text(coalesce(p_body -> 'tags', '[]'::jsonb))), '{}'),
+      p_body ->> 'description',
+      (p_body ->> 'schema_version')::int,
+      p_body,
+      p_feudal_click,
+      p_castle_click)
+    returning code into result;
+  else
+    update public.build_orders
+       set name = p_body ->> 'name',
+           civ = coalesce(p_body ->> 'civ', 'any'),
+           tags = coalesce(array(select jsonb_array_elements_text(coalesce(p_body -> 'tags', '[]'::jsonb))), '{}'),
+           description = p_body ->> 'description',
+           schema_version = (p_body ->> 'schema_version')::int,
+           body = p_body,
+           feudal_click = p_feudal_click,
+           castle_click = p_castle_click
+     where code = p_code and owner_id = owner
+    returning code into result;
+    if result is null then
+      raise exception 'No hay una BO tuya con el código %.', p_code using errcode = '42501';
+    end if;
+  end if;
+  return result;
+end $$;
+
+-- PostgREST guarda la lista de funciones: que tome la de create_app_token con su parámetro nuevo.
+notify pgrst, 'reload schema';

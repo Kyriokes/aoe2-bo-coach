@@ -18,7 +18,7 @@ export function ConnectAppButton() {
 
   function connect() {
     startTransition(async () => {
-      const result = await createAppToken("BO Coach", locale);
+      const result = await createAppToken("BO Coach", locale, false);
       if (!result.ok) {
         setError(result.error);
         return;

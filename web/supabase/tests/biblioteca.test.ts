@@ -145,6 +145,42 @@ describe("biblioteca", () => {
       await expect(as(db, null, "select public.hash_token('x')")).rejects.toThrow(/permission/);
     });
 
+    describe("el token de Conectar la app", () => {
+      const connect = async (userId: string) =>
+        (await as<{ token: string }>(db, userId, "select public.create_app_token('BO Coach', false) as token")).rows[0].token;
+
+      it("no publica ni reemplaza, y el motivo lo explica", async () => {
+        const t = await connect(ana);
+        await expect(as(db, null, publish, [t, scouts, null])).rejects.toMatchObject({ code: "28000", message: expect.stringMatching(/publicar/) });
+
+        const code = (await as<{ code: string }>(db, null, publish, [await token(ana), scouts, null])).rows[0].code;
+        await settle(db);
+        await expect(as(db, null, update, [t, { ...scouts, name: "Robada" }, code])).rejects.toMatchObject({ code: "28000" });
+        expect((await db.query("select name from public.build_orders")).rows).toEqual([{ name: "Scouts Feudal" }]);
+      });
+
+      it("sirve para todo lo demás de la app", async () => {
+        const t = await connect(ana);
+        const mine = await as<{ result: { account: string } }>(db, null, "select public.app_my_build_orders($1) as result", [t]);
+        expect(mine.rows[0].result.account).toBe("Ana");
+        const code = (await as<{ code: string }>(db, beto, insertBo, ["De Beto", scouts])).rows[0].code;
+        const subscribed = await as<{ result: string }>(db, null, "select public.app_subscribe($1, $2) as result", [t, code]);
+        expect(subscribed.rows[0].result).toBe("subscribed");
+        const bo = await as<{ bo: { code: string } }>(db, null, "select public.app_build_order($1, $2) as bo", [t, code]);
+        expect(bo.rows[0].bo.code).toBe(code);
+      });
+
+      it("los que ya estaban y los que se crean a mano sí publican, y nadie se cambia el permiso", async () => {
+        const t = await token(ana);
+        const stored = await as<{ can_publish: boolean }>(db, ana, "select can_publish from public.app_tokens");
+        expect(stored.rows).toEqual([{ can_publish: true }]);
+        await as(db, null, publish, [t, scouts, null]);
+
+        await connect(ana);
+        await expect(as(db, ana, "update public.app_tokens set can_publish = true")).rejects.toThrow(/permission/);
+      });
+    });
+
     it("con el token tampoco se saltean los topes de la BO", async () => {
       const t = await token(ana);
       const huge = { ...scouts, steps: [{ id: "s1", do: "train", what: "villager", count: 1_000_000 }] };
