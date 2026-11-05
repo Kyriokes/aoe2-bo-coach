@@ -184,6 +184,19 @@ public sealed class RecordUploadTests : IDisposable
         Assert.Equal(2, queue.Pending.Count);
     }
 
+    // Una respuesta rara del servidor es un fallo más: se escapaba como InvalidOperationException, sin anotar el intento.
+    [Fact]
+    public async Task Un_error_con_otra_forma_cuenta_como_un_intento()
+    {
+        var queue = Queue("a.jsonl.gz");
+        _web.Routes[Route] = (HttpStatusCode.InternalServerError, """{"error":{"code":1}}""");
+
+        var result = await Send(queue, Now);
+
+        Assert.Equal(new RecordSendResult(0, 1, 0), result);
+        Assert.Equal(1, Assert.Single(queue.Pending).Attempts);
+    }
+
     [Fact]
     public async Task Un_registro_de_mas_de_1_MB_no_se_manda()
     {

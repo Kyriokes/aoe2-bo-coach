@@ -88,7 +88,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
             var author = Text(json["author"]) ?? "Anónimo";
             return new WebBuildOrder(code, author, bo, Date(json["updated_at"]), Short(json["guide_author"]) ?? author);
         }
-        catch (BuildOrderFormatException e)
+        catch (Exception e) when (e is BuildOrderFormatException or InvalidOperationException)
         {
             throw new WebLibraryException(Lang.L($"La BO de la web no se pudo leer: {e.Message}", $"The BO from the web couldn't be read: {e.Message}"), inner: e);
         }
@@ -190,8 +190,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         return request;
     }
 
-    private static string? Text(JsonNode? node) =>
-        node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    private static string? Text(JsonNode? node) => CoreJson.Text(node);
 
     /// <summary>El autor que dice el JSON de una BO lo escribe cualquiera: hasta 60 caracteres, como en la web.</summary>
     public const int MaxAuthorLength = 60;
@@ -264,7 +263,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
             return JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel), documentOptions: CoreJson.NoDuplicates) as JsonObject
                 ?? throw new WebLibraryException(Lang.L("La web respondió algo que no es un objeto JSON.", "The web answered something that isn't a JSON object."));
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or InvalidOperationException) // InvalidOperation: un juego de caracteres que no existe
         {
             throw new WebLibraryException(Lang.L("La web respondió algo que no es JSON (¿la dirección es la de la biblioteca?).", "The web answered something that isn't JSON (is that the library's address?)."), inner: e);
         }
@@ -281,10 +280,10 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
         try
         {
             if (JsonNode.Parse(await response.Content.ReadAsStringAsync(cancel), documentOptions: CoreJson.NoDuplicates) is JsonObject { } obj
-                && obj["error"]?.GetValue<string>() is { Length: > 0 } error)
+                && Text(obj["error"]) is { Length: > 0 } error)
                 return error;
         }
-        catch (JsonException)
+        catch (Exception e) when (e is JsonException or InvalidOperationException or HttpRequestException) // InvalidOperation: un juego de caracteres que no existe
         {
         }
         return response.StatusCode switch
