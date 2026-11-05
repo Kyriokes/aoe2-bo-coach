@@ -179,6 +179,8 @@ internal static class CivGuides
     private static void Save(Candidate best, string civ, string kind, GameData data, string outDir, string fixtures)
     {
         var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        // El publisher es el UID de Firebase de quien la subió: no hace falta para nada y el fixture es público.
+        best.Guide.Remove("publisher");
         File.WriteAllText(Path.Combine(fixtures, $"{civ}.json"), best.Guide.ToJsonString(options));
         var bo = best.Import.BuildOrder;
         var civName = data.Civ(civ).Names.TryGetValue("es", out var es) ? es : civ;
