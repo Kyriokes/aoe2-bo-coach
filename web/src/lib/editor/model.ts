@@ -299,6 +299,12 @@ export function nextId(state: Pick<EditorState, "bo" | "steps">): string {
   return candidate;
 }
 
+/** Una edición que solo cambia textos: la simulación no depende de ellos, así que no hace falta simular en cada tecla. */
+export function isTextEdit(action: EditorAction) {
+  if (action.type === "setField") return action.field === "name" || action.field === "author" || action.field === "description";
+  return action.type === "update" && Object.keys(action.patch).every((key) => key === "note");
+}
+
 function edited(state: EditorState, changes: Partial<EditorState>): EditorState {
   return { ...state, ...changes, revision: state.revision + 1 };
 }

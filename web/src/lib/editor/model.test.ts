@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Analysis } from "../coach/types";
-import { allIds, blockOf, boxSource, fromAnalysis, groupNames, initialState, insertBlock, isBoundary, nextId, reduce, splitBlock, toJson, type EditorStep } from "./model";
+import { allIds, blockOf, boxSource, fromAnalysis, groupNames, initialState, insertBlock, isBoundary, isTextEdit, nextId, reduce, splitBlock, toJson, type EditorStep } from "./model";
 
 /** Un análisis del Core armado a mano: la BO normalizada (schema 2, totales) y las unidades por paso. */
 function analysis(steps: Record<string, unknown>[], units: number[], extra: Record<string, unknown> = {}): Analysis {
@@ -121,6 +121,23 @@ describe("cadenas e ids", () => {
     expect(allIds(state)).toEqual(new Set(["s1", "s7", "x", "s9"]));
     expect(nextId(state)).toBe("s10");
     expect(nextId({ ...initialState(), steps: [] })).toBe("s1");
+  });
+});
+
+// Simular toda la BO tarda unos 60 ms con el intérprete de .NET: en cada tecla de un texto se sentía.
+describe("lo que no cambia la simulación", () => {
+  it("nombre, autor, descripción y nota son textos; lo demás se simula en el momento", () => {
+    expect(isTextEdit({ type: "setField", field: "name", value: "x" })).toBe(true);
+    expect(isTextEdit({ type: "setField", field: "author", value: "x" })).toBe(true);
+    expect(isTextEdit({ type: "setField", field: "description", value: "x" })).toBe(true);
+    expect(isTextEdit({ type: "update", id: "s1", patch: { note: "x" } })).toBe(true);
+    expect(isTextEdit({ type: "update", id: "s1", patch: { note: undefined } })).toBe(true);
+
+    expect(isTextEdit({ type: "setField", field: "civ", value: "huns" })).toBe(false);
+    expect(isTextEdit({ type: "setField", field: "map", value: "arabia" })).toBe(false);
+    expect(isTextEdit({ type: "update", id: "s1", patch: { at_pop: 22 } })).toBe(false);
+    expect(isTextEdit({ type: "update", id: "s1", patch: { note: "x", at_pop: 22 } })).toBe(false);
+    expect(isTextEdit({ type: "setCount", id: "s1", count: 2 })).toBe(false);
   });
 });
 

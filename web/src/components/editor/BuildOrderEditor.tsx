@@ -10,14 +10,14 @@ import type { Locale } from "@/i18n/locales";
 import type { Visibility } from "@/lib/buildOrder";
 import { loadCoach } from "@/lib/coach/browser";
 import { analyzeAsync } from "@/lib/coach/worker";
-import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, newAssisted, planFromJson, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
+import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, goalLabel, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
 import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
 import { labelWidthFor, scaleFor, timelineWidth, timeSpan, type PlacedItem } from "@/lib/editor/layout";
-import { blockOf, boxSource, initialState, isDirty, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
+import { blockOf, boxSource, initialState, isDirty, isTextEdit, nextId, reduce, SOURCES, splitBlock, toJson, type EditorAction, type EditorState, type EditorStep, type Source } from "@/lib/editor/model";
 import { entityName } from "@/lib/stepText";
 import { detectOpening, openingForCiv, STANDARD_START, withOpening, type Opening } from "@/lib/editor/opening";
 import { allItems, paletteBar, paletteHere } from "@/lib/editor/palette";
@@ -132,6 +132,12 @@ export function BuildOrderEditor({
   const dispatch = useCallback(
     (action: EditorAction) => {
       const prev = stateRef.current;
+      // Un texto se aplica ya, sin simular: el análisis llega cuando dejan de llegar teclas (el efecto de abajo).
+      if (isTextEdit(action)) {
+        stateRef.current = reduce(prev, action);
+        setState(stateRef.current);
+        return true;
+      }
       const before = prev.analysis?.start ?? STANDARD_START;
       const builds = KEEPS_BUILDERS.has(action.type) ? newVillagerBuilds(prev.steps, before) : new Set<string>();
       let next = reduce(prev, action);
@@ -152,6 +158,18 @@ export function BuildOrderEditor({
     },
     [coach, locale, showNotice, t.noCan],
   );
+
+  // Lo que quedó sin simular (los textos) se simula cuando dejan de llegar teclas: publicar necesita el análisis al día.
+  const textDebounce = useRef(debouncer(TEXT_DEBOUNCE_MS));
+  useEffect(() => {
+    if (!coach || state.bo.assisted !== undefined || state.analyzedRevision >= state.revision) return;
+    const pending = textDebounce.current;
+    pending.schedule(() => {
+      stateRef.current = settle(stateRef.current, coach, locale);
+      setState(stateRef.current);
+    });
+    return () => pending.cancel();
+  }, [coach, locale, state.analyzedRevision, state.bo.assisted, state.revision]);
 
   /** Lo que manda la página: la BO que se edita o una nueva. */
   const loadInitial = useCallback(

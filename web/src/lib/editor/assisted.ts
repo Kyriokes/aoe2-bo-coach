@@ -224,3 +224,6 @@ export function debouncer(ms: number) {
 
 /** El tiempo de espera de los toques seguidos. */
 export const DEBOUNCE_MS = 150;
+
+/** El de los textos: escribiendo, entre tecla y tecla suele pasar más que entre dos toques. */
+export const TEXT_DEBOUNCE_MS = 300;
