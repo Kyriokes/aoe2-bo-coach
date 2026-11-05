@@ -61,6 +61,9 @@ jobs:
 
       # La versión portable (BoCoach.exe con .NET adentro + data), para bajarla y probarla en otra PC.
       - run: dotnet publish src/BoCoach.App -c Release -r win-x64 -o publish/BoCoach
+      - name: La versión portable está completa
+        shell: pwsh
+        run: ./.github/scripts/verificar-portable.ps1 -Salida publish/BoCoach
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: BoCoach-portable-win-x64

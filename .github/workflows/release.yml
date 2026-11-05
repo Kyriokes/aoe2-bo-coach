@@ -78,6 +78,10 @@ jobs:
         shell: pwsh
         run: dotnet publish src/BoCoach.App -c Release -r win-x64 "-p:Version=$($env:TAG.TrimStart('v'))" -o publish/BoCoach
 
+      - name: La versión portable está completa
+        shell: pwsh
+        run: ./.github/scripts/verificar-portable.ps1 -Salida publish/BoCoach
+
       # El .sha256 tiene el formato de sha256sum (huella, dos espacios y el archivo), en minúsculas y con salto de línea LF.
       - name: Zip y su huella
         shell: pwsh
