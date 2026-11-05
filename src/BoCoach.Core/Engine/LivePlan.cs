@@ -66,6 +66,7 @@ public static class LivePlan
         return new PlanStart(state.Time, state.Stock, state.Population, state.PopulationCap, tracker.Age, layout.Villagers, layout.Idle, buildings)
         {
             Researched = researched,
+            FinishedSteps = tracker.Steps.Where(s => s.State is StepState.Done or StepState.Skipped).Select(s => s.Step.Id).ToList(),
         };
     }
 

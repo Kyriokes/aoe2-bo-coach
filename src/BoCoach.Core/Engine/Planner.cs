@@ -19,6 +19,9 @@ public sealed record PlanStart(
     /// <summary>Tecnologías ya terminadas (claves de game_data), en orden: las mejoras económicas cambian las tasas.</summary>
     public IReadOnlyList<string> Researched { get; init; } = [];
 
+    /// <summary>Pasos que ya están hechos o salteados (en vivo no entran a la simulación, pero un <c>after</c> puede pedirlos).</summary>
+    public IReadOnlyList<string> FinishedSteps { get; init; } = [];
+
     /// <summary>Inicio estándar de AoE2:DE: 3 aldeanos, explorador, centro urbano y 200/200/200/100.</summary>
     public static PlanStart Standard { get; } = new(
         Time: 0,
@@ -313,6 +316,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
             _gatherModel = new GatherModel(data, settings.Efficiency);
             _food = settings.Food is { } supply ? new FoodStocks(supply) : null;
             _researched = [.. start.Researched];
+            _finishedSteps.UnionWith(start.FinishedSteps);
             RefreshRates();
             _items = items.Select((item, i) => new ItemSim(item.Step, i, item.Remaining, Lookup(item.Step)) { PaidAt = item.PaidAt }).ToList();
             foreach (var item in _items.Where(i => i.Remaining == 0))

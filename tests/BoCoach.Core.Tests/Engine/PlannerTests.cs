@@ -313,6 +313,48 @@ public class PlannerTests
 
     private static Step Build(string id, string what) => new() { Id = id, Do = StepAction.Build, What = what, Assign = GatherSource.Wood };
 
+    // Auditoría del 2026-11-05: lo hecho no entra al plan en vivo, así que su "after" nunca se cumplía y el paso (y todo lo
+    // que no es de aldeanos después de él) quedaba sin estimación.
+    [Fact]
+    public void Un_after_de_un_paso_hecho_se_cumple_en_el_plan_en_vivo()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Build("h", "house"), Research("loom", "loom") with { After = ["h"] }, Build("c", "lumber_camp")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Event("house_built").State);
+
+        var plan = LivePlan.Replan(tracker, Planner);
+
+        Assert.NotNull(plan.For("loom")!.End);
+        Assert.NotNull(plan.For("c")!.End);
+    }
+
+    [Fact]
+    public void Un_after_de_un_paso_salteado_se_cumple_en_el_plan_en_vivo()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Build("h", "house"), Research("loom", "loom") with { After = ["h"] }] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Wait(1).State);
+
+        tracker.Skip(Lane.Build);
+
+        Assert.NotNull(LivePlan.Replan(tracker, Planner).For("loom")!.End);
+    }
+
+    [Fact]
+    public void Un_after_de_un_paso_sin_hacer_sigue_esperando_en_el_plan_en_vivo()
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps = [Research("loom", "loom") with { After = ["c"] }, Build("c", "lumber_camp") with { AtTime = 100 }],
+        };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Wait(1).State);
+
+        // El telar es lo primero de la BO y espera a un paso de después que nunca se alcanza: no arranca.
+        Assert.Null(LivePlan.Replan(tracker, Planner).For("loom")!.Start);
+    }
+
     [Fact]
     public void El_plan_en_vivo_toma_la_edad_del_log_aunque_la_BO_no_tenga_ese_paso()
     {
