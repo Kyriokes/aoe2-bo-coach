@@ -525,6 +525,29 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(session.LiveCoach!.BuildOrder.IsNone);
     }
 
+    // AP-21: si la versión nueva no se pudo bajar, GetAsync devuelve la guardada sin tirar error: el coach se reiniciaba con
+    // la vieja, volvía a ver que estaba vieja y repetía.
+    [Fact]
+    public void Si_la_version_nueva_no_se_pudo_bajar_el_coach_sigue_con_la_que_tiene()
+    {
+        var running = RepoBuildOrders.Get("bog-japanese");
+        var source = new FixedDownload(new RepoBuildOrders(), running) { Fresh = false };
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(source, _data.CivStyles),
+        };
+        session.Start(running, new HiddenFrames());
+        var coach = session.LiveCoach;
+        var reading = TwoPlayers("Ana", "japanese");
+
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+
+        Assert.Same(coach, session.LiveCoach);
+        Assert.Equal(1, source.Downloads);
+    }
+
     // Revisión de la parte 4: sin internet la mejor de la lista no se baja y el coach toma una guardada; Ctrl+Alt+B
     // vuelve a la anterior y no se deshace solo.
     [Fact]

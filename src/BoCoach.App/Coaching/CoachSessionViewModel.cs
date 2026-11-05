@@ -840,6 +840,9 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         {
             return; // sin internet: sigue con la guardada
         }
+        // Si no se pudo bajar, GetAsync da la guardada sin tirar error: reiniciar con la misma daba otra vuelta sin fin.
+        if (!picker.IsFresh(running.Id))
+            return;
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
         if (Start(bo, _liveFrames(), _startedAutomatically))
