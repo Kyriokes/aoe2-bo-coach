@@ -306,6 +306,94 @@ public class PlannerTests
         Assert.Equal(partida.Time, start.Time);
     }
 
+    // Auditoría del 2026-11-05: el plan en vivo sacaba la edad y los edificios solo de los pasos hechos.
+    private static readonly ResourceAmounts Rich = new(5000, 5000, 5000, 5000);
+
+    private static Step Research(string id, string what) => new() { Id = id, Do = StepAction.Research, What = what };
+
+    private static Step Build(string id, string what) => new() { Id = id, Do = StepAction.Build, What = what, Assign = GatherSource.Wood };
+
+    [Fact]
+    public void El_plan_en_vivo_toma_la_edad_del_log_aunque_la_BO_no_tenga_ese_paso()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Research("loom", "loom")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida().Event("feudal_age_researched").Event("castle_age_researched").State);
+
+        Assert.Equal(Age.Castle, LivePlan.Start(tracker).Age);
+    }
+
+    [Fact]
+    public void Un_clic_de_edad_salteado_no_traba_lo_de_esa_edad_en_el_plan()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Research("feudal", "feudal_age"), Build("smith", "blacksmith")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Event("lumber_camp_built").Event("barracks_built").State);
+
+        tracker.Skip(Lane.Research);
+
+        Assert.Equal(Age.Feudal, LivePlan.Start(tracker).Age);
+        Assert.NotNull(LivePlan.Replan(tracker, Planner).For("smith")!.End);
+    }
+
+    [Fact]
+    public void Con_el_asentamiento_hecho_la_Feudal_arranca_en_el_plan_en_vivo()
+    {
+        // Vale por campamento maderero, minero, molino y casa: sin esto, los incas no llegaban nunca a Feudal en el plan.
+        var bo = new BuildOrder { Name = "t", Civ = "incas", Steps = [Build("s", "settlement"), Research("feudal", "feudal_age")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Event("settlement_built").State);
+
+        var start = LivePlan.Start(tracker);
+
+        Assert.Equal(1, start.Buildings["settlement"]);
+        Assert.Equal(1, start.Buildings["mill"]);
+        Assert.NotNull(LivePlan.Replan(tracker, Planner).ClickTime("feudal_age"));
+    }
+
+    [Fact]
+    public void Los_edificios_que_avisa_el_log_fuera_de_la_BO_cuentan_en_el_plan()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [Research("feudal", "feudal_age")] };
+        var tracker = new Tracker(bo, TestData.GameData);
+        tracker.Update(new Partida { Stock = Rich }.Event("lumber_camp_built").Events("barracks_built", 2).State);
+
+        var start = LivePlan.Start(tracker);
+
+        Assert.Equal(1, start.Buildings["town_center"]);
+        Assert.Equal(1, start.Buildings["lumber_camp"]);
+        Assert.Equal(2, start.Buildings["barracks"]);
+        Assert.NotNull(LivePlan.Replan(tracker, Planner).ClickTime("feudal_age"));
+    }
+
+    [Fact]
+    public void Los_centros_urbanos_que_avisa_el_log_se_suman_al_del_arranque()
+    {
+        var tracker = new Tracker(new BuildOrder { Name = "t", Steps = [Research("loom", "loom")] }, TestData.GameData);
+        tracker.Update(new Partida().Event("town_center_built").State);
+
+        Assert.Equal(2, LivePlan.Start(tracker).Buildings["town_center"]);
+    }
+
+    [Fact]
+    public void Una_edad_que_termina_no_baja_la_edad_del_plan()
+    {
+        // El log dijo Castillos y la Feudal de la BO sigue abierta: al terminar en el plan, no vuelve a Feudal.
+        var feudal = Research("feudal", "feudal_age");
+        var university = new Step { Id = "u", Do = StepAction.Build, What = "university", From = GatherSource.Wood, Assign = GatherSource.Wood };
+        var start = PlanStart.Standard with
+        {
+            Age = Age.Castle,
+            Stock = ResourceAmounts.Zero,
+            Villagers = new Dictionary<GatherSource, int> { [GatherSource.Wood] = 3 },
+            IdleVillagers = 0,
+        };
+
+        var plan = Planner.Simulate([new PlanItem(feudal, 1, PaidAt: 0), new PlanItem(university, 1)], start);
+
+        Assert.NotNull(plan.For("u")!.End);
+    }
+
     [Fact]
     public void Lo_ya_pagado_no_se_vuelve_a_pagar_y_ocupa_el_edificio()
     {

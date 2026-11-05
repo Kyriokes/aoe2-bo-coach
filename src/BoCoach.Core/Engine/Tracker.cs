@@ -321,6 +321,9 @@ public sealed class Tracker
     /// </summary>
     public bool Built(string building) => _built.Contains(building);
 
+    /// <summary>Los edificios de los que hay al menos uno (ver <see cref="Built"/>).</summary>
+    public IReadOnlyCollection<string> BuiltBuildings => _built;
+
     /// <summary>
     /// El paso se puede mostrar: es de la edad del jugador o de una anterior, existe el edificio que lo hace (o el que
     /// pide para construirse), los pasos de su <c>after</c> están hechos y, si es un clic de edad, están los 2 edificios

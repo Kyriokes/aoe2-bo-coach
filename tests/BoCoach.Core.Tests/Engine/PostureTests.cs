@@ -312,6 +312,36 @@ public class PostureTests
         Assert.Equal(["double_bit_axe", "horse_collar"], view.Techs.Select(t => t.Tech));
     }
 
+    // Auditoría del 2026-11-05: la edad salía solo de los pasos, así que sin BO (o con una que termina antes) las
+    // tecnologías se quedaban en las de la edad que dejó la BO: sin ninguna, solo el telar.
+    [Fact]
+    public void Sin_BO_las_tecnologias_son_las_de_la_edad_que_avisa_el_log()
+    {
+        var coach = new Coach(BuildOrder.None, Data, TestData.Events) { FinishedNoticeSeconds = 0 };
+        var rich = new ResourceAmounts(2000, 2000, 0, 2000);
+
+        var view = coach.Update(new GameSnapshot(600, rich, 25, 30, [new GameEvent("feudal_age_researched", 600)]));
+
+        Assert.Equal(["loom", "wheelbarrow"], view.Techs.Select(t => t.Tech));
+    }
+
+    [Fact]
+    public void Una_BO_que_termina_en_Feudal_pide_lo_de_Castillos_al_llegar()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" }] };
+        var coach = new Coach(bo, Data, TestData.Events) { FinishedNoticeSeconds = 0 };
+        var rich = new ResourceAmounts(2000, 2000, 0, 2000);
+        // Todo lo de Dark y Feudal ya está: lo único que puede faltar es de Castillos.
+        coach.Update(new GameSnapshot(600, rich, 25, 30, [new GameEvent("feudal_age_researched", 600)]));
+        foreach (var tech in new[] { "loom", "wheelbarrow", "fletching", "bloodlines", "forging", "man_at_arms", "crossbowman", "light_cavalry", "padded_archer_armor", "scale_barding_armor", "scale_mail_armor", "husbandry" })
+            coach.Update(new GameSnapshot(601, rich, 25, 30, [new GameEvent($"{tech}_researched", 601)]));
+        coach.Update(new GameSnapshot(1200, rich, 25, 30, [new GameEvent("castle_age_researched", 1200), new GameEvent("town_center_built", 1200)]));
+
+        var view = coach.Update(new GameSnapshot(1201, rich, 25, 30));
+
+        Assert.Contains("hand_cart", view.Techs.Select(t => t.Tech));
+    }
+
     // La GD y la economía usan la demanda de la postura (lo que faltaba de D2): producir sin parar cada unidad de la
     // postura en cada edificio que la hace, y juntar lo que falta para la próxima edad.
     [Fact]

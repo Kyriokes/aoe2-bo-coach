@@ -743,7 +743,7 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 _researched.Add(entity.Key);
                 if (AgeReachedBy(entity.Key) is { } reached)
                 {
-                    _age = reached;
+                    _age = reached > _age ? reached : _age; // en vivo, el log pudo haber dicho una edad mayor
                     _stock += _civ.AgeResources(reached); // dravidianos, etíopes
                 }
                 RefreshRates();
