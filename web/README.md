@@ -38,4 +38,4 @@ npm test
 | POST | `/api/app/registros` | El registro de una partida, en gzip. Sin cuenta: cabeceras `X-BoCoach-Install`, `-Secret`, `-Game` y `-Version`. 201, o 200 con `{ duplicate: true }` si ya estaba |
 | DELETE | `/api/app/registros` | El pedido de borrado de lo que subió esa instalación. `{ forgotten }` |
 
-El token se crea en "Mi cuenta" y la base guarda solo su hash; la función `app_publish` lo valida, así la web no necesita la clave de administrador de Supabase.
+El token se crea en "Mi cuenta" y la base guarda solo su hash; la función `app_publish` lo valida, así la web no necesita la clave de administrador de Supabase. El de "Conectar la app" sirve para usar la app, pero no para publicar: para `BoCoach.exe --publish` hace falta uno creado con "Crear token".

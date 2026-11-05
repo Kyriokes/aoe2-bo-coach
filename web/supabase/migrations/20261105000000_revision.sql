@@ -4,6 +4,10 @@
 -- medias), y se puede volver a correr sin romper nada. Después de esto se pide el push de la web; la web publicada
 -- sigue andando con esta base mientras tanto.
 --
+-- Los topes nuevos no revisan lo que ya está, pero sí cada cambio de esa fila, votar incluido. Para ver si alguna BO vieja
+-- no entra (tendría que dar cero filas; si da alguna, hay que editarla o no se la va a poder votar):
+--   select code, name, octet_length(body::text) from public.build_orders where not public.build_order_body_ok(body);
+--
 -- ---------------------------------------------------------------------------------------------------------------
 -- Registros de partida.
 -- ---------------------------------------------------------------------------------------------------------------
