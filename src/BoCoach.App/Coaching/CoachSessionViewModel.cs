@@ -524,12 +524,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     }
 
     /// <summary>
-    /// D6: la ventana lo llama cada segundo con si corre el proceso del juego (y no está abierto el tutorial). Con
-    /// "Coach automático", arranca solo con la última BO usada y se detiene (con el informe) cuando el juego se cierra.
+    /// D6: la ventana lo llama cada segundo con si corre el proceso del juego. Con "Coach automático", arranca solo con la
+    /// última BO usada y se detiene (con el informe) cuando el juego se cierra.
     /// Un error no sale de acá: apagaría el temporizador de la ventana para siempre (un DispatcherTimer no se vuelve a
     /// armar), y el coach dejaría de seguir al juego. Se dice en el estado y no se insiste hasta que el juego se vuelva a abrir.
     /// </summary>
-    public void Tick(bool gameRunning)
+    /// <param name="canStart">False mientras el tutorial mira la pantalla: no arranca, y si ya corre, sigue.</param>
+    public void Tick(bool gameRunning, bool canStart = true)
     {
         try
         {
@@ -543,7 +544,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
                 }
                 return;
             }
-            if (!AutoStart || IsRunning || _autoBlocked)
+            if (!canStart || !AutoStart || IsRunning || _autoBlocked)
                 return;
             if (AutoBuildOrder() is not { } bo)
             {

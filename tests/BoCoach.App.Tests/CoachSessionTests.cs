@@ -1020,6 +1020,39 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal(2, tries);
     }
 
+    // AP-12: abrir "Primeros pasos" en plena partida contaba como que el juego se cerró: detenía el coach, guardaba un
+    // informe parcial y borraba que lo habías detenido a mano.
+    [Fact]
+    public void Con_el_tutorial_abierto_el_coach_no_arranca_y_si_ya_corre_sigue()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames()) { ManualSteps = true };
+
+        session.Tick(gameRunning: true, canStart: false);
+        Assert.False(session.IsRunning);
+
+        session.Tick(gameRunning: true);
+        var running = session.LiveCoach;
+        Assert.NotNull(running);
+
+        session.Tick(gameRunning: true, canStart: false);
+        Assert.Same(running, session.LiveCoach);
+        Assert.True(session.IsRunning);
+        Assert.DoesNotContain("se cerró", session.Status);
+    }
+
+    [Fact]
+    public void Con_el_tutorial_abierto_no_se_olvida_que_lo_detuviste_a_mano()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => Scouts, () => new HiddenFrames()) { ManualSteps = true };
+        session.Tick(gameRunning: true);
+        session.StartStopCommand.Execute(null);
+
+        session.Tick(gameRunning: true, canStart: false);
+        session.Tick(gameRunning: true);
+
+        Assert.False(session.IsRunning);
+    }
+
     [Fact]
     public async Task Buscar_sin_nombre_lo_pide()
     {

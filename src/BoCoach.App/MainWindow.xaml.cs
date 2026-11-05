@@ -103,7 +103,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
                 var gameRunning = GameWindow.IsRunning();
                 Home.GameOpen = gameRunning;
                 // D6: el coach arranca y se detiene con el proceso del juego (no mientras el tutorial mira la pantalla).
-                Coach.Tick(gameRunning && _firstRun is null);
+                Coach.Tick(gameRunning, canStart: _firstRun is null);
                 if (Tools.IsRecording)
                     _indicator.SetText($"● {Tools.RecordingStatus}");
             }
