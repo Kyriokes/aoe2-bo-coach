@@ -83,6 +83,10 @@ public sealed partial class HomeViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowLive))]
     public partial HomeScreen Screen { get; private set; }
 
+    /// <summary>El aviso de versión nueva de arriba de la ventana; vacío si no hay o no se pudo preguntar.</summary>
+    [ObservableProperty]
+    public partial string UpdateNotice { get; set; } = "";
+
     /// <summary>Si está abierto el proceso del juego (la ventana lo mira cada segundo).</summary>
     public bool GameOpen
     {

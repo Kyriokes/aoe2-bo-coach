@@ -99,6 +99,8 @@ public static class Texts
     public static string ModeManual => L("Elegir de mi lista", "Choose from my list");
     public static string ConnectAccount => L("Conectar cuenta", "Connect account");
     public static string ConnectAccountTip => L("Abre Mi cuenta en la web: ahí \"Conectar la app\" trae tu cuenta acá", "Opens My account on the website: there, \"Connect the app\" brings your account here");
+    public static string UpdateAvailable(string version) => L($"Hay una versión nueva de BO Coach, la {version}. Bajala, descomprimila en otra carpeta y abrí la nueva: tus ajustes, tu cuenta y tus BO quedan.", $"There's a new version of BO Coach, {version}. Download it, unzip it to another folder and open the new one: your settings, account and build orders stay.");
+    public static string UpdateDownload => L("Bajar la versión nueva", "Download the new version");
     public static string AccountSettingsTip => L("Dirección de la web y el token pegado a mano", "The website's address and the token pasted by hand");
     public static string SearchMore => L("Buscar más en la web", "Find more on the website");
     public static string SearchMoreTip => L("La biblioteca de la web: \"Usar en el coach\" suma una BO a tu lista", "The website's library: \"Use in the coach\" adds a BO to your list");

@@ -91,6 +91,9 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             BuildOrders.Select(Coach.LastBuildOrderId);
             // Lo que quedó sin enviar de otra vez (sin internet, o se cerró la app).
             await Coach.SendPendingRecordsAsync();
+            // Las capturas de prueba (con su propia carpeta) no le preguntan nada a GitHub.
+            if (userDir is null)
+                await CheckForUpdateAsync();
         };
 
         _tick.Tick += (_, _) =>
@@ -396,6 +399,20 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
     }
 
     private void Support_Click(object sender, RoutedEventArgs e) => OpenUrl(BuildOrders.SupportUrl);
+
+    private void Update_Click(object sender, RoutedEventArgs e) => OpenUrl(UpdateCheck.DownloadUrl);
+
+    /// <summary>Si hay una versión más nueva en GitHub, el aviso de arriba; sin internet o con GitHub caído, nada.</summary>
+    private async Task CheckForUpdateAsync()
+    {
+        var current = typeof(MainWindow).Assembly.GetName().Version;
+        if (current is null)
+            return;
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = UpdateCheck.Timeout, MaxResponseContentBufferSize = 1 << 20 };
+        var newer = await UpdateCheck.NewerVersionAsync(http, current);
+        if (newer is not null)
+            Home.UpdateNotice = Texts.UpdateAvailable($"v{newer}");
+    }
 
     /// <summary>Solo direcciones http(s): las arma la web, pero no se abre cualquier cosa.</summary>
     public void OpenUrl(string url)

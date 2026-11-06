@@ -69,6 +69,15 @@
     </Window.Resources>
 
     <DockPanel>
+        <!-- Versión nueva en GitHub: el aviso con el enlace directo al .zip -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource Panel}" BorderBrush="{StaticResource Accent}" BorderThickness="0,0,0,1" Padding="16,6"
+                Visibility="{Binding UpdateNotice, Converter={StaticResource NotEmptyToVisibility}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="{x:Static app:Texts.UpdateDownload}" Style="{StaticResource LinkButton}" Margin="16,0,0,0" Click="Update_Click" />
+                <TextBlock Text="{Binding UpdateNotice}" ToolTip="{Binding UpdateNotice}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
         <!-- Barra de estado: el último mensaje y, si se está grabando, la grabación -->
         <Border DockPanel.Dock="Bottom" Background="{StaticResource Field}" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,1,0,0" Padding="16,5">
             <DockPanel>
