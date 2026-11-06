@@ -79,7 +79,7 @@ export const en: Dictionary = {
     roadmapButton: "See the roadmap",
     downloadTitle: "Download and get started",
     downloadSteps: [
-      "Get the latest version from <github>GitHub</github> and unzip it anywhere. There's nothing to install: .NET comes inside.",
+      "Download <github>the latest version</github> (a .zip) and unzip it anywhere. There's nothing to install: .NET comes inside. When a new one comes out, the app tells you.",
       "Open <code>BoCoach.exe</code>. Since it isn't signed, Windows may warn that it's an unrecognized app: click <em>More info</em> and <em>Run anyway</em>.",
       "Follow <em>First steps</em>, which opens by itself the first time: you connect your website account and install the HUD mod, which lets the app calibrate itself.",
       "Play. The coach starts by itself with the game and picks the build order for your civ on the loading screen, or you can pick one from your list. The overlay shows up at the top right of the game.",
@@ -247,10 +247,10 @@ export const en: Dictionary = {
   privacy: {
     title: "Privacy",
     description: "What data AoE2 BO Coach stores and why.",
-    updated: "Last updated: November 5, 2026.",
+    updated: "Last updated: November 6, 2026.",
     appTitle: "The desktop app",
     appText:
-      "BO Coach reads the game's screen on your PC. It never sends screenshots. Recordings and the record of each game are saved on your PC, in <code>%LOCALAPPDATA%\\BoCoach</code>. The app connects to this website to download your build orders and, unless you turn it off, to share your games.",
+      "BO Coach reads the game's screen on your PC. It never sends screenshots. Recordings and the record of each game are saved on your PC, in <code>%LOCALAPPDATA%\\BoCoach</code>. The app connects to this website to download your build orders and, unless you turn it off, to share your games. When it opens it asks GitHub which version is the latest, to tell you if there's a new one: that request carries nothing of yours, though GitHub sees the IP address like any server. And only if you look up your Elo in the settings, it sends the name you typed to the game's official API.",
     shareTitle: "Sharing your games",
     shareText1:
       "The \"Share my games to improve the coach\" option comes turned on, and you can turn it off in the app's settings or in First steps. While it is on, when each game of one minute or longer ends, the app uploads a record with:",

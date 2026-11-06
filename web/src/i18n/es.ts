@@ -81,7 +81,7 @@ export const es = {
     roadmapButton: "Ver qué viene",
     downloadTitle: "Descargar y empezar",
     downloadSteps: [
-      "Bajá la última versión desde <github>GitHub</github> y descomprimila donde quieras. No hace falta instalar nada: trae .NET adentro.",
+      "Bajá <github>la última versión</github> (un .zip) y descomprimila donde quieras. No hace falta instalar nada: trae .NET adentro. Cuando salga una nueva, la app te avisa.",
       "Abrí <code>BoCoach.exe</code>. Como no está firmado, Windows puede avisar que es una aplicación no reconocida: tocá <em>Más información</em> y <em>Ejecutar de todas formas</em>.",
       "Seguí <em>Primeros pasos</em>, que se abre solo la primera vez: conectás tu cuenta de la web e instalás el mod del HUD, con el que la app se calibra sola.",
       "Jugá. El coach arranca solo con el juego y en la pantalla de carga elige la build order para tu civ, o elegí vos una de tu lista. El overlay aparece arriba a la derecha del juego.",
@@ -249,10 +249,10 @@ export const es = {
   privacy: {
     title: "Privacidad",
     description: "Qué datos guarda AoE2 BO Coach y para qué.",
-    updated: "Última actualización: 5 de noviembre de 2026.",
+    updated: "Última actualización: 6 de noviembre de 2026.",
     appTitle: "La app de escritorio",
     appText:
-      "BO Coach lee la pantalla del juego en tu PC. Nunca manda capturas de pantalla. Las grabaciones y los registros de cada partida se guardan en tu PC, en <code>%LOCALAPPDATA%\\BoCoach</code>. La app se conecta a esta web para bajar tus build orders y, si no lo apagás, para compartir tus partidas.",
+      "BO Coach lee la pantalla del juego en tu PC. Nunca manda capturas de pantalla. Las grabaciones y los registros de cada partida se guardan en tu PC, en <code>%LOCALAPPDATA%\\BoCoach</code>. La app se conecta a esta web para bajar tus build orders y, si no lo apagás, para compartir tus partidas. Al abrirse le pregunta a GitHub cuál es la última versión, para avisarte si hay una nueva: ese pedido no lleva nada tuyo, aunque GitHub ve la dirección IP como cualquier servidor. Y solo si buscás tu Elo en los ajustes, manda el nombre que escribiste a la API oficial del juego.",
     shareTitle: "Compartir tus partidas",
     shareText1:
       "La opción \"Compartir mis partidas para mejorar el coach\" viene prendida y se apaga en los ajustes de la app o en Primeros pasos. Con ella prendida, al terminar cada partida de un minuto o más se sube un registro con:",

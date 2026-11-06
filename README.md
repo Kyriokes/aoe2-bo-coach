@@ -13,7 +13,7 @@ Todavía no es la versión definitiva y casi nadie más la probó: es muy probab
 
 Hace falta Windows 10 (2004 o posterior) u 11, y el juego en inglés o en castellano: en otro idioma el coach no entiende los mensajes del juego y confirma mucho menos.
 
-1. Bajá el último `.zip` de [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases), descomprimilo donde quieras y abrí `BoCoach.exe`. Trae .NET adentro: no hay que instalar nada. Windows puede avisar "Windows protegió su PC" porque el programa no está firmado: tocá "Más información" y "Ejecutar de todas formas".
+1. Bajá [la última versión](https://github.com/Kyriokes/aoe2-bo-coach/releases/latest/download/BoCoach-win-x64.zip) (un `.zip`; todas las versiones están en [Releases](https://github.com/Kyriokes/aoe2-bo-coach/releases)), descomprimilo donde quieras y abrí `BoCoach.exe`. Trae .NET adentro: no hay que instalar nada. Windows puede avisar "Windows protegió su PC" porque el programa no está firmado: tocá "Más información" y "Ejecutar de todas formas".
 2. La primera vez se abre **Primeros pasos**, que te lleva por lo que hace falta: la cuenta de la web (ahí se eligen las BO), el idioma del juego, el mod del HUD, una partida rápida contra 7 IA para leer tu nombre y calibrar la pantalla, y si querés compartir tus partidas.
 3. Jugá. Con **Automática** el coach arranca solo con el juego y, en la pantalla de carga, elige la BO para tu civ, el mapa y tu rival. Si querés una en particular, elegila en la lista. Al terminar la partida te queda el informe.
 

@@ -1,8 +1,12 @@
 /** El repositorio de la app (código abierto, MIT). */
 export const REPO_URL = "https://github.com/Kyriokes/aoe2-bo-coach";
 
-/** La última versión publicada de la app (la arma release.yml al subir una etiqueta v*). */
-export const DOWNLOAD_URL = `${REPO_URL}/releases/latest`;
+/**
+ * El .zip de la última versión de la app, directo: la página de releases de GitHub muestra varias descargas y quien no
+ * la conoce no sabe cuál bajar. release.yml sube el mismo .zip también con este nombre sin versión, y el aviso de
+ * versión nueva de la app enlaza lo mismo (UpdateCheck.DownloadUrl).
+ */
+export const DOWNLOAD_URL = `${REPO_URL}/releases/latest/download/BoCoach-win-x64.zip`;
 
 /**
  * Dirección pública de la web, sin barra al final: la de NEXT_PUBLIC_SITE_URL si está, si no la de producción de
