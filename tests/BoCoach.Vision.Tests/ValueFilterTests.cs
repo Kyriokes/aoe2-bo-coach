@@ -159,22 +159,67 @@ public class ValueFilterTests
 
     // Arrancando a mitad de partida con una o varias lecturas malas al principio, el reloj llega al bueno a los pocos
     // segundos de verlo, y desde ahí no se mueve. Tapado 30 s también: más de 7 capturas malas al arrancar corroboraban
-    // la hora mala y el reloj quedaba clavado toda la partida.
+    // la hora mala y el reloj quedaba clavado toda la partida. Y tapado más de 2 minutos, o con el coach arrancado en
+    // pausa y tapado 150 s después de despausar: la cadena más baja valía solo 120 s reales desde que el reloj subió, y
+    // el reloj quedaba en la hora mala hasta que la buena la alcanzara.
     [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(4)]
-    [InlineData(8)]
-    [InlineData(20)]
-    [InlineData(60)]
-    public void Con_lecturas_malas_al_arrancar_el_reloj_llega_al_bueno_en_pocos_segundos(int bad)
+    [InlineData(1, 0)]
+    [InlineData(2, 0)]
+    [InlineData(4, 0)]
+    [InlineData(8, 0)]
+    [InlineData(20, 0)]
+    [InlineData(60, 0)]
+    [InlineData(250, 0)]
+    [InlineData(420, 60)]
+    public void Con_lecturas_malas_al_arrancar_el_reloj_llega_al_bueno_en_pocos_segundos(int bad, double pausedUntil)
     {
         var clock = ValueFilter.GameClock();
 
-        foreach (var (time, truth, read) in Game(0, bad))
+        foreach (var (time, truth, read) in Game(0, bad, pausedUntil, length: Math.Max(200, bad + 100)))
         {
             var value = clock.Add(read, time);
             if (time >= bad * 0.5 + 5)
+                Assert.Equal(truth, value);
+        }
+    }
+
+    private const double Break = 150;
+
+    /// <summary>
+    /// Como <see cref="Game"/>, pero cuando termina el cuadro (la captura <paramref name="to"/>) la partida queda en pausa
+    /// <see cref="Break"/> segundos (se lee la hora quieta), o el jugador se va a otra ventana ese rato con el juego
+    /// andando (no se lee nada).
+    /// </summary>
+    private static IEnumerable<(double Time, double Truth, double? Read)> GameWithBreak(
+        int from, int to, double start, double offset, bool altTab, int length = 800)
+    {
+        var at = to * 0.5;
+        for (var i = 0; i < length; i++)
+        {
+            var t = i * 0.5;
+            var running = altTab || t < at ? t : Math.Max(at, t - Break);
+            var truth = start + Math.Floor(1.7 * running);
+            double? read = altTab && t >= at && t < at + Break ? null : i >= from && i < to ? truth + offset : truth;
+            yield return (t, truth, read);
+        }
+    }
+
+    // Una pausa o un alt-tab antes de que vuelva la hora buena no gastan el tiempo para corregir: se cuenta por lo que
+    // avanzó el reloj, no por el tiempo real. Con la hora mala del arranque (10 s tapada) y con un reemplazo equivocado
+    // (a 1:05:00, un cuadro que lee la hora una menos), el reloj quedaba en la hora mala hasta que la buena la alcanzara.
+    [Theory]
+    [InlineData(1200, 3600, 0, 20, false)]
+    [InlineData(1200, 3600, 0, 20, true)]
+    [InlineData(3900, -3600, 2, 10, false)]
+    [InlineData(3900, -3600, 2, 10, true)]
+    public void Una_pausa_o_un_alt_tab_antes_de_la_hora_buena_no_dejan_el_reloj_mal(double start, double offset, int from, int to, bool altTab)
+    {
+        var clock = ValueFilter.GameClock();
+
+        foreach (var (time, truth, read) in GameWithBreak(from, to, start, offset, altTab))
+        {
+            var value = clock.Add(read, time);
+            if (time >= to * 0.5 + Break + 5)
                 Assert.Equal(truth, value);
         }
     }
@@ -193,9 +238,10 @@ public class ValueFilterTests
     }
 
     // Ni a mitad de una partida de más de 50 minutos: un cuadro que lee la hora una menos ("0:05:00" por "1:05:00")
-    // mientras el juego sigue no mueve el reloj, dure lo que dure. La cadena de más de 50 minutos por debajo vale solo en
-    // los primeros dos minutos, que es cuando un cuadro tapa la hora al arrancar. Antes bajaba el reloj una hora y lo
-    // dejaba clavado ahí: las buenas eran una subida de una hora, que no se confirma nunca.
+    // mientras el juego sigue no mueve el reloj, dure lo que dure. La cadena de más de 50 minutos por debajo vale solo
+    // mientras el reloj no avanzó 10 minutos, que es cuando un cuadro tapa la hora al arrancar (y ahí, si se equivoca,
+    // se deshace: ver abajo). Antes bajaba el reloj una hora y lo dejaba clavado ahí: las buenas eran una subida de una
+    // hora, que no se confirma nunca.
     [Theory]
     [InlineData(8)]
     [InlineData(12)]
@@ -204,7 +250,7 @@ public class ValueFilterTests
     {
         var clock = ValueFilter.GameClock();
 
-        foreach (var (time, truth, read) in Game(400, 400 + bad, start: 3900, offset: -3600, length: 600))
+        foreach (var (time, truth, read) in Game(800, 800 + bad, start: 3900, offset: -3600, length: 1000))
         {
             var value = clock.Add(read, time);
             if (time > 0)
@@ -215,9 +261,9 @@ public class ValueFilterTests
     }
 
     // Si igual un reemplazo hacia abajo fue el equivocado (al arrancar, con el reloj bueno recién tomado o ya corroborado,
-    // un cuadro que lee una hora o diez minutos menos mientras el juego sigue), las buenas que vuelven siguen desde lo
-    // reemplazado: el reloj vuelve a ellas a los pocos segundos. Antes quedaba atrás toda la partida, o 7 minutos con
-    // diez minutos de diferencia.
+    // un cuadro que lee una hora o diez minutos menos mientras el juego sigue, también a los 5 minutos del coach), las
+    // buenas que vuelven siguen desde lo reemplazado: el reloj vuelve a ellas a los pocos segundos. Antes quedaba atrás
+    // toda la partida, o 7 minutos con diez minutos de diferencia.
     [Theory]
     [InlineData(2122, -600, 2, 8)]
     [InlineData(3900, -3600, 2, 8)]
@@ -226,11 +272,12 @@ public class ValueFilterTests
     [InlineData(3900, -3600, 100, 12)]
     [InlineData(3900, -3600, 100, 20)]
     [InlineData(3900, -3600, 100, 60)]
+    [InlineData(3900, -3600, 600, 20)]
     public void Un_reemplazo_equivocado_se_deshace_cuando_vuelve_el_reloj_bueno(double start, double offset, int from, int bad)
     {
         var clock = ValueFilter.GameClock();
 
-        foreach (var (time, truth, read) in Game(from, from + bad, start: start, offset: offset))
+        foreach (var (time, truth, read) in Game(from, from + bad, start: start, offset: offset, length: Math.Max(200, from + bad + 100)))
         {
             var value = clock.Add(read, time);
             if (time > 0)
