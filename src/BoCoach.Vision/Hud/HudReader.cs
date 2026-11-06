@@ -104,15 +104,19 @@ public sealed class HudReader(HudFonts fonts)
     private readonly GlyphReader? _modPopulation = fonts.ModPopulation is { } population ? new(population) : null;
     private readonly GlyphReader? _hudNumbers = fonts.HudNumbers is { } hud ? new(hud) : null;
     private static readonly Regex PopulationText = new(@"^(\d{1,3})/(\d{1,3})$", RegexOptions.Compiled);
-    /// <summary>Minutos y segundos de 00 a 59: un 0 leído como 9 ("00:96:10") no es una hora.</summary>
-    private static readonly Regex ModClockTime = new(@"^\d\d:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
+    /// <summary>
+    /// Minutos y segundos de 00 a 59: un 0 leído como 9 ("00:96:10") no es una hora. Y horas de 00 a 05: una partida no
+    /// llega a 6 h de reloj (3,5 h reales a velocidad normal), y "09:06:10" (en pausa), "10:00:54" o "89:00:54" (un
+    /// cuadro tapando el principio) son lecturas malas que, repetidas en las dos primeras, dejaban el reloj clavado.
+    /// </summary>
+    private static readonly Regex ModClockTime = new(@"^0[0-5]:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
 
     /// <summary>
     /// La letra de siempre puede leer la hora sin el cero de adelante; igual pide los dos dígitos de los segundos: con
     /// el último tapado (partida 20261101-165020, un cuadro del juego sobre el reloj), "00:26:5" se tomaba por 26:05,
-    /// el reloj volvía 47 s para atrás y el coach empezaba otra partida.
+    /// el reloj volvía 47 s para atrás y el coach empezaba otra partida. La hora, de 0 a 5, como la del mod.
     /// </summary>
-    private static readonly Regex LooseClockTime = new(@"^\d{1,2}:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
+    private static readonly Regex LooseClockTime = new(@"^0?[0-5]:[0-5]\d:[0-5]\d", RegexOptions.Compiled);
 
     /// <summary>
     /// En pausa el juego oscurece todo: los números del mod (blancos sobre negro puro) se estiran para que lo más
