@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { warnBeforeUnload } from "@/lib/editor/draft";
+import { comeBackOnSubmit, warnBeforeUnload } from "@/lib/editor/draft";
+
+/**
+ * Los formularios GET nativos del sitio (buscar en la biblioteca, "Ver cruce") cargan otra página en esta pestaña. Se mira
+ * al final de la burbuja, en window, así ya pasaron los de React (que van en el documento) y `defaultPrevented` dice si la
+ * página lo manejó.
+ */
+function onSubmit(event: SubmitEvent) {
+  if (event.target instanceof HTMLFormElement) {
+    comeBackOnSubmit({ defaultPrevented: event.defaultPrevented, form: event.target, submitter: event.submitter }, window.location.href);
+  }
+}
 
 /**
  * El aviso del navegador antes de cerrar la pestaña con una BO sin guardar, en cada documento del sitio: el borrador es de
@@ -12,6 +23,7 @@ import { warnBeforeUnload } from "@/lib/editor/draft";
 export function LeaveWarning() {
   useEffect(() => {
     window.addEventListener("beforeunload", warnBeforeUnload);
+    window.addEventListener("submit", onSubmit);
   }, []);
   return null;
 }

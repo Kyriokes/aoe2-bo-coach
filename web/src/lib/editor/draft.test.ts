@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { defaultPlan, newAssisted } from "./assisted";
-import { clearDraft, comeBackOnClick, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
+import { clearDraft, comeBackOnClick, comeBackOnSubmit, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
 import { initialState, isDirty, reduce, type EditorState } from "./model";
 
 /** Un sessionStorage de mentira. */
@@ -236,6 +236,61 @@ describe("antes de salir de la página", () => {
       expect(asks()).toBe(true);
     } finally {
       markUnsaved(key, false);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Buscar en la biblioteca y "Ver cruce" son formularios GET nativos: recargan la página en esta pestaña, con el borrador
+  // intacto, y preguntaban en cada envío mientras quedara un borrador (alcanzaba con haber probado un ejemplo).
+  it("mandar un formulario que recarga esta pestaña en el mismo sitio no pregunta; a otra pestaña, a otro sitio, por POST o si la página lo maneja, sí", () => {
+    const storage = memoryStorage();
+    const here = "https://aoe2-bo-coach.vercel.app/biblioteca?q=scouts";
+    const element = (attributes: Record<string, string>) => ({ getAttribute: (name: string) => attributes[name] ?? null });
+    const submit = (form: Record<string, string>, submitter?: Record<string, string>, defaultPrevented = false) =>
+      comeBackOnSubmit({ defaultPrevented, form: element(form), submitter: submitter ? element(submitter) : null }, here);
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      writeDraft(storage, draftKey(), json);
+      expect(asks()).toBe(true);
+
+      // La biblioteca: sin action ni method, va a la misma página.
+      submit({ role: "search" });
+      expect(asks()).toBe(false);
+      // "Ver cruce": /cruces/ir redirige al cruce, en el mismo sitio.
+      submit({ action: "/en/cruces/ir", method: "get" });
+      expect(asks()).toBe(false);
+      submit({ action: "https://aoe2-bo-coach.vercel.app/cruces/ir", method: "GET", target: "_SELF" });
+      expect(asks()).toBe(false);
+      // Un botón puede cambiar a dónde va un formulario que sale.
+      submit({ action: "https://github.com/x", method: "post" }, { formaction: "/cruces/ir", formmethod: "get" });
+      expect(asks()).toBe(false);
+
+      // Esta pestaña se queda (otra pestaña o ventana, un diálogo), sale del sitio o hace algo que no es solo mirar.
+      const leaving: [Record<string, string>, Record<string, string>?][] = [
+        [{ method: "post" }],
+        [{ method: "dialog" }],
+        [{ target: "_blank" }],
+        [{ target: "otra" }],
+        [{ action: "https://github.com/search" }],
+        [{ action: "javascript:void(0)" }],
+        [{}, { formmethod: "post" }],
+        [{}, { formtarget: "_blank" }],
+        [{}, { formaction: "https://github.com/search" }],
+      ];
+      for (const [form, submitter] of leaving) {
+        submit(form, submitter);
+        expect(asks(), JSON.stringify([form, submitter])).toBe(true);
+      }
+      // Lo manejó la página (una acción del servidor, un onSubmit): no se va.
+      submit({}, undefined, true);
+      expect(asks()).toBe(true);
+
+      // Lo que no llegó al borrador se pierde igual.
+      markUnsaved(draftKey("otra"), true);
+      submit({});
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(draftKey("otra"), false);
       vi.unstubAllGlobals();
     }
   });

@@ -79,8 +79,8 @@ function hasDrafts(storage: DraftStorage | null) {
 /**
  * Si salir de la página pierde algo. `unsaved`: las BO con cambios sin guardar según el editor. Lo que no quedó en un
  * borrador (el navegador no dejó escribirlo) se pierde siempre. Los borradores son de la pestaña: cerrarla se los lleva
- * (recargar no, pero el navegador no distingue y pregunta igual); salir del sitio para volver a ella (`comingBack`, el
- * login o el idioma), no.
+ * (recargar no, pero el navegador no distingue y pregunta igual); salir para volver a ella (`comingBack`: el login, el
+ * idioma o un formulario del sitio), no.
  */
 export function losesWork(storage: DraftStorage | null, unsaved: Iterable<string>, comingBack: boolean) {
   for (const key of unsaved) if (readDraft(storage, key) === null) return true;
@@ -96,7 +96,7 @@ export function markUnsaved(key: string, dirty: boolean) {
   else unsaved.delete(key);
 }
 
-/** La próxima salida del sitio vuelve a esta pestaña (el login, el idioma): el borrador la sobrevive. `false` si al final no se sale. */
+/** La próxima salida vuelve a esta pestaña (el login, el idioma, una búsqueda): el borrador la sobrevive. `false` si al final no se sale. */
 export function leaveAndComeBack(value = true) {
   comingBack = value;
 }
@@ -108,6 +108,29 @@ export function leaveAndComeBack(value = true) {
  */
 export function comeBackOnClick(event: Pick<MouseEvent, "button" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">) {
   if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) leaveAndComeBack();
+}
+
+type Attributes = { getAttribute(name: string): string | null };
+
+/**
+ * Un formulario que se manda: si el navegador carga otra página del sitio en esta pestaña (buscar en la biblioteca, "Ver
+ * cruce"), sale y vuelve a ella con el borrador intacto. No, si lo manejó la página (una acción del servidor, un onSubmit),
+ * si va a otra pestaña o ventana, a otro sitio, o por POST. El botón que lo manda puede cambiar el método, el destino y a
+ * dónde va (`formmethod`, `formtarget`, `formaction`). `here`: la dirección de esta página, a la que va sin `action`.
+ */
+export function comeBackOnSubmit(event: { defaultPrevented: boolean; form: Attributes; submitter: Attributes | null }, here: string) {
+  if (event.defaultPrevented) return;
+  const attribute = (name: string) => event.submitter?.getAttribute(`form${name}`) ?? event.form.getAttribute(name);
+  // Un método que no se entiende es GET, como en el navegador.
+  const method = attribute("method")?.toLowerCase();
+  if (method === "post" || method === "dialog") return;
+  const target = attribute("target")?.toLowerCase() ?? "";
+  if (target !== "" && target !== "_self") return;
+  try {
+    if (new URL(attribute("action") || here, here).origin === new URL(here).origin) leaveAndComeBack();
+  } catch {
+    // Una dirección que no se entiende: el navegador no va a ningún lado.
+  }
 }
 
 let toApp = false;
