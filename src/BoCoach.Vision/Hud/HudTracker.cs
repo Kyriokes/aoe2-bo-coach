@@ -14,7 +14,7 @@ namespace BoCoach.Vision.Hud;
 /// <param name="PopulationCap">"M" de "N/M" (solo con el mod BoCoach HUD).</param>
 /// <param name="VillagersOn">Aldeanos en cada recurso según el HUD (solo con el mod BoCoach HUD).</param>
 /// <param name="ModBands">Franja de color del cuadrado de cada recurso en su caja (con el mod), para dibujar la GD.</param>
-/// <param name="ClockReading">El reloj tal cual se leyó en esta captura, sin suavizar (el suavizado nunca acepta que vuelva para atrás: así se ve una partida nueva).</param>
+/// <param name="ClockReading">El reloj tal cual se leyó en esta captura, sin suavizar (el suavizado no acepta que vuelva para atrás, salvo para corregir una hora mala que había aceptado: así se ve una partida nueva).</param>
 /// <param name="LayoutName">El diseño del mod nuevo con que se leyó (data/hud_layout.json), o null con el mod viejo o sin mod: el overlay dibuja distinto.</param>
 public sealed record HudState(
     double RealTime,
@@ -44,6 +44,12 @@ public sealed record HudState(
 
     /// <summary>El panel de puntajes, si se leyó en esta captura (cada 2 s), o null.</summary>
     public IReadOnlyList<Core.Engine.PlayerScore>? Scores { get; init; }
+
+    /// <summary>
+    /// Si el suavizado del reloj cambió en esta captura la hora que venía siguiendo (<see cref="ValueFilter.Replaced"/> y
+    /// <see cref="ValueFilter.Undone"/>): el motor marca la corrección y, al deshacer, vuelve al inicio de antes.
+    /// </summary>
+    public Core.Engine.ClockChange ClockChange { get; init; }
 
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
@@ -97,9 +103,10 @@ public sealed class HudTracker
         }
         var population = (int?)_population.Add(reading.Population, realTime);
         var cap = (int?)_cap.Add(reading.PopulationCap, realTime);
+        var clock = _clock.Add(reading.Clock, realTime);
         return new HudState(
             realTime,
-            _clock.Add(reading.Clock, realTime),
+            clock,
             _food.Add(reading.Food, realTime),
             _wood.Add(reading.Wood, realTime),
             _gold.Add(reading.Gold, realTime),
@@ -115,7 +122,12 @@ public sealed class HudTracker
             villagersOn.Count > 0 ? villagersOn : null,
             reading.ModBands,
             reading.Clock,
-            reading.LayoutName);
+            reading.LayoutName)
+        {
+            ClockChange = _clock.Undone ? Core.Engine.ClockChange.Undone
+                : _clock.Replaced ? Core.Engine.ClockChange.Replaced
+                : Core.Engine.ClockChange.None,
+        };
     }
 
     private void UpdateAge(Age? read)

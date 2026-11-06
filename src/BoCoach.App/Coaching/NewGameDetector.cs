@@ -41,7 +41,7 @@ public sealed class NewGameDetector
     /// <see cref="BackReads"/> no se sabe si es otra partida o una lectura mala.
     /// </summary>
     public static bool MayBeNew(double? raw, double? smoothed) =>
-        // El suavizado nunca deja que el reloj vuelva para atrás: una partida nueva se ve en la lectura cruda.
+        // El suavizado no deja que el reloj vuelva para atrás (solo para corregir una hora mala): una partida nueva se ve en la lectura cruda.
         raw is { } now && smoothed is { } clock && now < clock - BackSeconds && now <= NewGameSeconds;
 
     public void Reset() => _backwards = 0;

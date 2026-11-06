@@ -67,6 +67,118 @@ public class GameStartTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Equal(0.0, builder.StartOffset);
     }
 
+    // Coach arrancado a mitad de partida (20:00, 20 aldeanos) con un cuadro tapando la hora en las primeras capturas: el
+    // reloj suavizado da "1:20:00" hasta que el bueno lo corrige (ValueFilter.ConfirmFirst), lo único que lo hace volver
+    // para atrás. El inicio se había fijado con la hora mala (1:12:55) y el tiempo quedaba en 0 hasta pasarla.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_del_arranque_el_tiempo_llega_al_bueno()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var moved = Start with { Food = 300, Wood = 180 };
+
+        foreach (var bad in new[] { 4800.0, 4801, 4802, 4803, 4803, 4804 })
+            Build(builder, bad, moved, 20);
+        for (var clock = 1206.0; clock < 1216; clock++)
+            Assert.Equal(clock, Build(builder, clock, moved, 20).Time);
+        Assert.Equal(0.0, builder.StartOffset);
+    }
+
+    // Lo mismo en la partida que arrancó tarde (36 minutos quieto): el inicio sale de los aldeanos con el reloj bueno.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_en_una_partida_que_arranco_tarde_el_inicio_sale_del_bueno()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var moved = Start with { Food = 230, Wood = 160 };
+
+        Assert.Equal(75.0, Build(builder, 2186 + 3600, moved, 6).Time, 1.0);
+        Build(builder, 2187 + 3600, moved, 6);
+
+        Assert.Equal(75.0, Build(builder, 2188, moved, 6).Time, 1.0);
+        Assert.Equal(2188.0 - 75, builder.StartOffset, 1.0);
+        Assert.Equal(85.0, Build(builder, 2198, moved, 6).Time, 1.0);
+    }
+
+    // Y si el coach lo vio quieto con la hora mala y empezó a jugar antes de que se corrigiera, el inicio pasa a la hora
+    // buena: si no, el tiempo quedaba en 0 una hora.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_despues_de_verlo_quieto_el_inicio_pasa_a_la_buena()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var queued = Start with { Food = 150 };
+
+        Assert.Equal(0.0, Build(builder, 2180 + 3600, Start, 3).Time);
+        Assert.Equal(0.0, Build(builder, 2186 + 3600, queued, 3).Time);
+        Build(builder, 2187 + 3600, queued, 3);
+
+        Build(builder, 2188, queued, 3);
+        Assert.InRange(builder.StartOffset, 2186, 2188);
+        Assert.Equal(7.0, Build(builder, 2195, queued, 3).Time, 2.0);
+    }
+
+    // Una hora mala que llega después de fijar el inicio con el reloj bueno (un lector nuevo al volver a calibrar) y se
+    // corrige no toca el inicio.
+    [Fact]
+    public void Una_hora_mala_despues_de_fijar_el_inicio_no_lo_mueve()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var queued = Start with { Food = 150 };
+        Build(builder, 1, Start, 3);
+        Build(builder, 2186, queued, 3);
+
+        Build(builder, 2190 + 3600, queued, 3);
+        Build(builder, 2191 + 3600, queued, 3);
+
+        Assert.Equal(9.0, Build(builder, 2195, queued, 3).Time);
+        Assert.Equal(2186.0, builder.StartOffset);
+    }
+
+    // Cuando el reloj se corrige, el tiempo del coach salta (de 7:05 a 20:06 con la hora mala de las primeras capturas, o
+    // de 1:20:02 a 20:06 si llegó con un lector nuevo) y la BO quedaba abandonada, "hace 12:58 que no avanza ningún paso",
+    // hasta que el jugador avanzara uno que no fuera un aldeano o una casa.
+    [Theory]
+    [InlineData(new[] { 4800.0, 4801, 4802, 4803, 4803, 4804, 1206, 1207, 1208 })]
+    [InlineData(new[] { 1200.0, 1201, 4802, 4803, 4803, 4804, 1206, 1207, 1208 })]
+    public void Cuando_el_reloj_se_corrige_la_BO_no_queda_abandonada_por_el_salto(double[] clocks)
+    {
+        var scouts = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "scouts_feudal.json"));
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(scouts, TestData.GameData, TestData.Events);
+        var moved = Start with { Food = 300, Wood = 180 };
+
+        foreach (var clock in clocks)
+            coach.Update(Build(builder, clock, moved, 20));
+
+        Assert.Equal(1208.0, coach.State.Time);
+        Assert.Null(coach.Abandonment.Reason);
+    }
+
+    // El coach arranca a las 35:22 con 20 aldeanos (inicio estimado a las 28:17, tiempo 7:05) y un cuadro hace leer la hora
+    // 10 minutos menos 8 capturas mientras el juego sigue. El reloj suavizado baja (un reemplazo) y, cuando vuelve la hora
+    // buena, lo deshace (ValueFilter.UndoWithin): estas son sus horas captura por captura. El inicio se recalculaba con la
+    // hora baja (0) y no volvía: el tiempo del coach quedaba en 35:35 en vez de 7:18, y como la subida no se marcaba, la
+    // BO quedaba abandonada, "hace 10:07 que no avanza ningún paso".
+    [Fact]
+    public void Si_el_reloj_deshace_una_correccion_equivocada_vuelve_el_inicio_de_antes()
+    {
+        var scouts = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "scouts_feudal.json"));
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(scouts, TestData.GameData, TestData.Events);
+        var moved = Start with { Food = 300, Wood = 180 };
+        var clocks = Enumerable.Repeat((Clock: 2122.0, Change: ClockChange.None), 7)
+            .Append((1528, ClockChange.Replaced))
+            .Concat(Enumerable.Repeat((1529.0, ClockChange.None), 7))
+            .Append((2135, ClockChange.Undone));
+
+        foreach (var (clock, change) in clocks)
+            coach.Update(builder.Build(Reading(clock, moved, 20) with { ClockChange = change })!);
+
+        Assert.Equal(Clock("7:18"), coach.State.Time);
+        Assert.Equal(1697.0, builder.StartOffset);
+        Assert.Null(coach.Abandonment.Reason);
+        coach.Update(Build(builder, 2136, moved, 20));
+        Assert.Equal(Clock("7:19"), coach.State.Time);
+    }
+
     [Fact]
     public void Una_partida_que_arranco_tarde_sigue_la_BO_con_los_mismos_tiempos()
     {

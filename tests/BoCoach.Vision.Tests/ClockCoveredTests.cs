@@ -41,4 +41,37 @@ public class ClockCoveredTests
 
         Assert.Equal(seconds, Reader.Read(region => region == RegionNames.Clock ? image : null).Clock);
     }
+
+    // Una partida no llega a 6 h de reloj (3,5 h reales a velocidad normal). Una hora así es una lectura mala: en pausa,
+    // "09:06:10" por "00:06:10"; con un cuadro tapando el principio, "10:00:54" o "89:00:54" por "00:00:54"; el reloj del
+    // juego sin mod agrandado, "40:35:22". Si se repetía en las dos primeras lecturas, el reloj quedaba clavado.
+    [Theory]
+    [InlineData("05:59:59", 21599)]
+    [InlineData("06:00:00", null)]
+    [InlineData("09:06:10", null)]
+    [InlineData("10:00:54", null)]
+    [InlineData("40:35:22", null)]
+    [InlineData("89:00:54", null)]
+    public void Una_hora_de_6_o_mas_no_es_un_reloj(string text, int? seconds)
+    {
+        var fonts = HudFonts.Load(Path.Combine(AppContext.BaseDirectory, "fonts"));
+        var image = HudLayoutScreens.ClockBox(text, fonts.ModClock!);
+
+        Assert.Equal(seconds, Reader.Read(region => region == RegionNames.Clock ? image : null).Clock);
+    }
+
+    // Lo mismo con la letra de siempre (reloj del juego, sin el negro del mod), que acepta la hora sin el cero.
+    [Theory]
+    [InlineData("0:06:10", 370)]
+    [InlineData("5:59:59", 21599)]
+    [InlineData("6:00:00", null)]
+    [InlineData("9:06:10", null)]
+    [InlineData("40:35:22", null)]
+    public void Con_la_letra_de_siempre_una_hora_de_6_o_mas_tampoco(string text, int? seconds)
+    {
+        var fonts = HudFonts.Load(Path.Combine(AppContext.BaseDirectory, "fonts"));
+        var image = HudLayoutScreens.ClockBox(text, fonts.Clock, background: (52, 40, 28));
+
+        Assert.Equal(seconds, Reader.Read(region => region == RegionNames.Clock ? image : null).Clock);
+    }
 }

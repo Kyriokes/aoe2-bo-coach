@@ -243,6 +243,10 @@ public sealed class Coach
         State.Apply(snapshot);
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
+        // Con el reloj corregido, el tiempo sin avanzar se cuenta de nuevo: el salto de la hora mala a la buena no es
+        // tiempo de partida, y daba la BO por abandonada hasta que avanzara un paso.
+        if (snapshot.ClockCorrected)
+            Abandonment.Resume(State);
         Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
         var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot) | ReviveAgeClicks();
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).

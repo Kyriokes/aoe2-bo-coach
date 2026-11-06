@@ -47,6 +47,14 @@ public sealed record GameSnapshot(
 
     /// <summary>Lo que la creencia del estado (<see cref="StateBelief"/>) cree en esta captura, o null si el snapshot se armó sin ella (una rama, un test).</summary>
     public BeliefView? Belief { get; init; }
+
+    /// <summary>
+    /// El reloj se corrigió en esta captura: volvió para atrás porque corrigió una hora mala que había aceptado ("1:20:00"
+    /// por "0:20:00", un cuadro tapando la hora), o saltó para adelante porque deshizo una corrección equivocada o confirmó
+    /// un salto (<see cref="ScreenReading.ClockChange"/>). El tiempo no sigue al del snapshot anterior (ver
+    /// <see cref="SnapshotBuilder.ClockCorrection"/>).
+    /// </summary>
+    public bool ClockCorrected { get; init; }
 }
 
 /// <summary>Un renglón del panel de puntajes: el jugador (por su color), su puntaje y si sigue en la Edad Oscura.</summary>
