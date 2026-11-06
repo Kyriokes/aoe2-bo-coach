@@ -127,6 +127,17 @@ describe("los errores de publicación salen en el idioma de la página", () => {
     expect(parseBuildOrder(manySteps, "en")).toEqual({ ok: false, error: "The BO has more than 300 steps: remove some. (steps)" });
     expect(errorOf({ ...manySteps, steps: manySteps.steps.slice(0, 300) })).toBeNull();
   });
+
+  // El campo de etiquetas no tiene tope (es una lista separada por comas): lo típico es escribirlas con espacios.
+  it("una etiqueta demasiado larga o demasiadas etiquetas", () => {
+    const longTag = { ...bo({}), tags: ["arabia feudal scouts principiante"] };
+    const manyTags = { ...bo({}), tags: Array.from({ length: 13 }, (_, i) => `t${i}`) };
+    expect(parseBuildOrder(longTag, "es")).toEqual({ ok: false, error: "Cada etiqueta tiene hasta 30 caracteres: separalas con comas. (tags.0)" });
+    expect(parseBuildOrder(longTag, "en")).toEqual({ ok: false, error: "Each tag can have up to 30 characters: separate them with commas. (tags.0)" });
+    expect(parseBuildOrder(manyTags, "es")).toEqual({ ok: false, error: "La BO tiene más de 12 etiquetas. (tags)" });
+    expect(parseBuildOrder(manyTags, "en")).toEqual({ ok: false, error: "The BO has more than 12 tags. (tags)" });
+    expect(errorOf({ ...bo({}), tags: ["x".repeat(30), ...manyTags.tags.slice(0, 11)] })).toBeNull();
+  });
 });
 
 describe("visibilidad", () => {

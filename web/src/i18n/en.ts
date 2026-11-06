@@ -463,6 +463,8 @@ export const en: Dictionary = {
     tooManyAfter: "A step waits for more than {n} steps (after).",
     tooManyGoals: "The BO has more than {n} goals.",
     mapTooLong: "The map has more than {n} characters.",
+    tagTooLong: "Each tag can have up to {n} characters: separate them with commas.",
+    tooManyTags: "The BO has more than {n} tags.",
     notJson: "That isn't valid JSON.",
   },
   editor: {

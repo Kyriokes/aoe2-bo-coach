@@ -61,7 +61,10 @@ function schemaFor(locale: Locale) {
     civ: z.string().trim().min(1).max(40).default("any"),
     author: z.string().max(60).nullish(),
     description: z.string().max(4000).nullish(),
-    tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
+    tags: z
+      .array(z.string().trim().min(1).max(30, fill(t.tagTooLong, { n: 30 })))
+      .max(12, fill(t.tooManyTags, { n: 12 }))
+      .default([]),
     steps: z.array(step).min(1, t.noSteps).max(300, fill(t.tooManySteps, { n: 300 })),
     // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
     branches: z
