@@ -82,6 +82,29 @@ public class BuildOrderAnalysisTests
         Assert.Equal(JsonValueKind.Null, r.GetProperty("steps")[0].GetProperty("start").ValueKind);
     }
 
+    // La página de la BO dibuja cada problema, en el hilo de la pestaña: una regla del validador que crezca con los pasos no
+    // tiene que volver a mandarle megas. De más, primero los errores (los que hay que arreglar) y al final cuántos faltan.
+    [Fact]
+    public void Los_problemas_que_van_a_la_web_tienen_tope()
+    {
+        var warnings = Enumerable.Range(1, 250).Select(i => $$"""{ "id": "w{{i}}", "do": "research", "what": "loom", "at_pop": 150 }""");
+        var errors = Enumerable.Range(1, 60).Select(i => $$"""{ "id": "e{{i}}", "do": "train", "what": "dragon" }""");
+        var json = $$"""{ "schema_version": 2, "name": "x", "steps": [ {{string.Join(", ", warnings.Concat(errors))}} ] }""";
+        var total = new BuildOrderValidator(TestData.GameData, TestData.Events).Validate(BuildOrderSerializer.Parse(json)).Issues.Count;
+        Assert.True(total > BuildOrderAnalysis.MaxIssues);
+
+        var r = Analyze(json);
+
+        Assert.False(r.GetProperty("valid").GetBoolean());
+        var issues = r.GetProperty("issues").EnumerateArray().ToList();
+        Assert.Equal(BuildOrderAnalysis.MaxIssues + 1, issues.Count);
+        Assert.Equal(60, issues.Count(i => i.GetProperty("severity").GetString() == "error"));
+        var more = issues[^1];
+        Assert.Equal("warning", more.GetProperty("severity").GetString());
+        Assert.Equal(JsonValueKind.Null, more.GetProperty("step_id").ValueKind);
+        Assert.Contains($"{total - BuildOrderAnalysis.MaxIssues} problemas más", more.GetProperty("message").GetString());
+    }
+
     [Fact]
     public void Con_mapas_escribe_el_mapa_y_avisa_lo_que_no_tiene()
     {

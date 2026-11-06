@@ -264,17 +264,23 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         else if (step.Builders is < 1 or > MaxCount)
             error(id, L($"'builders' tiene que estar entre 1 y {MaxCount} (es {step.Builders}).", $"'builders' must be between 1 and {MaxCount} (it's {step.Builders})."));
 
-        // De más: un solo error, no uno por cada uno (la lista de problemas también viaja a la web).
+        // De más, o los que no existen: un solo error por paso, no uno por cada uno (la lista de problemas también viaja a
+        // la web, y 300 pasos con 50 cada uno eran 15.000).
         if (step.After.Count > MaxAfter)
             error(id, L($"'after' puede tener hasta {MaxAfter} pasos (tiene {step.After.Count}).", $"'after' can have up to {MaxAfter} steps (it has {step.After.Count})."));
         else
         {
-            foreach (var dep in step.After)
+            if (step.After.Contains(step.Id))
+                error(id, L("El paso depende de sí mismo en 'after'.", "The step depends on itself in 'after'."));
+            var missing = step.After.Where(dep => dep != step.Id && !ids.Contains(dep)).Distinct().ToList();
+            if (missing.Count == 1)
+                error(id, L($"'after' menciona el paso '{missing[0]}', que no existe.", $"'after' mentions the step '{missing[0]}', which doesn't exist."));
+            else if (missing.Count > 1)
             {
-                if (dep == step.Id)
-                    error(id, L("El paso depende de sí mismo en 'after'.", "The step depends on itself in 'after'."));
-                else if (!ids.Contains(dep))
-                    error(id, L($"'after' menciona el paso '{dep}', que no existe.", $"'after' mentions the step '{dep}', which doesn't exist."));
+                var shown = string.Join(", ", missing.Take(5).Select(dep => $"'{dep}'"));
+                var rest = missing.Count - 5;
+                error(id, L($"'after' menciona {missing.Count} pasos que no existen: {shown}{(rest > 0 ? $" y {rest} más" : "")}.",
+                    $"'after' mentions {missing.Count} steps that don't exist: {shown}{(rest > 0 ? $" and {rest} more" : "")}."));
             }
         }
 
@@ -424,7 +430,13 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
         }
     }
 
-    /// <summary>Ciclos en el grafo de 'after', cada uno como lista de ids cerrada (a → b → a).</summary>
+    /// <summary>
+    /// Los primeros ciclos que se informan. Con uno alcanza para arreglarlo; sin tope, 300 pasos con 50 'after' cada uno
+    /// daban 13.475 ciclos con el camino entero cada uno (12 MB de mensajes).
+    /// </summary>
+    private const int MaxCycles = 3;
+
+    /// <summary>Ciclos en el grafo de 'after' (hasta <see cref="MaxCycles"/>), cada uno como lista de ids cerrada (a → b → a).</summary>
     private static List<List<string>> FindCycles(IReadOnlyList<Step> steps)
     {
         var deps = steps
@@ -441,6 +453,8 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             path.Add(id);
             foreach (var dep in deps[id].Where(deps.ContainsKey))
             {
+                if (cycles.Count >= MaxCycles)
+                    return; // ya no se sigue: lo que queda a medias no se vuelve a mirar
                 if (dep == id)
                     continue; // ya se informa como "depende de sí mismo"
                 if (state.GetValueOrDefault(dep) == 1)
@@ -452,8 +466,13 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             state[id] = 2;
         }
 
-        foreach (var id in deps.Keys.Where(id => state.GetValueOrDefault(id) == 0))
-            Visit(id);
+        foreach (var id in deps.Keys)
+        {
+            if (cycles.Count >= MaxCycles)
+                break;
+            if (state.GetValueOrDefault(id) == 0)
+                Visit(id);
+        }
         return cycles;
     }
 
