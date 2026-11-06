@@ -384,6 +384,9 @@ public sealed class Coach
     /// <summary>
     /// Marca como en curso la primera investigación pendiente cuyo costo coincide con lo que bajó el stock, o
     /// desmarca una en curso si el stock subió justo su costo (se canceló).
+    /// <para>Si la cola de esa captura la sigue mostrando, lo que volvió es otra cosa: al cancelarla de verdad, el ícono
+    /// se va en el mismo cuadro en que vuelve el stock. En la revisión del 2026-11-05, sacar 9 aldeanos de la cola para
+    /// que arrancara la Feudal devolvía 450 de comida, desmarcaba la Feudal en espera y el coach pedía el clic de nuevo.</para>
     /// </summary>
     private bool DetectResearchClick(GameSnapshot snapshot)
     {
@@ -402,8 +405,9 @@ public sealed class Coach
         {
             if (step.State is StepState.Done or StepState.Skipped || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
                 continue;
-            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)))
+            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)) && snapshot.Queue?.Any(i => i.Key == tech) != true)
             {
+                _canceledByStock[step.Index] = step.StartedAt!.Value;
                 Tracker.ClearStarted(step.Index);
                 return true;
             }
@@ -440,9 +444,13 @@ public sealed class Coach
     /// <para>Solo al aparecer en la cola: si no, la cancelación y "Atrás" se deshacían en la captura siguiente. Y si se
     /// va de la cola sin terminar, lo que solo la cola había dicho se deshace: era un ícono mal leído o se canceló. Lo
     /// que también se vio en el stock lo decide <see cref="ExpireClicks"/>.</para>
+    /// <para>Lo que el stock dio por cancelado mientras la creencia lo tiene en curso vuelve a estar en curso, desde su
+    /// clic, si la cola lo muestra en dos lecturas seguidas: en la captura de la devolución, el ícono en espera pudo salir "?".</para>
     /// </summary>
     private bool ResearchInQueue(GameSnapshot snapshot)
     {
+        var previousRaw = _rawQueue;
+        _rawQueue = snapshot.Queue?.Select(i => i.Key).ToHashSet() ?? [];
         if (snapshot.Belief is not { } belief)
             return false;
         var changed = false;
@@ -462,6 +470,18 @@ public sealed class Coach
                 Tracker.ClearStarted(step.Index);
                 changed = true;
             }
+            else if (_canceledByStock.TryGetValue(step.Index, out var clicked) && inQueue.Contains(tech)
+                && step.State is StepState.Pending or StepState.Ready && _rawQueue.Contains(tech) && previousRaw.Contains(tech))
+            {
+                Tracker.MarkStarted(step.Index, clicked);
+                changed = true;
+            }
+        }
+        // Lo que ya no está pendiente, o que la creencia dejó de tener en curso, sigue por el camino de siempre.
+        foreach (var index in _canceledByStock.Keys.ToList())
+        {
+            if (Tracker.Steps[index] is not { State: StepState.Pending or StepState.Ready, Step.What: { } tech } || !inQueue.Contains(tech))
+                _canceledByStock.Remove(index);
         }
         _researchInQueue = inQueue;
         return changed;
@@ -469,6 +489,12 @@ public sealed class Coach
 
     private HashSet<string> _researchInQueue = [];
     private readonly HashSet<int> _startedByQueue = [];
+
+    /// <summary>Las investigaciones que el stock dio por canceladas, con la hora de su clic (ver <see cref="ResearchInQueue"/>).</summary>
+    private readonly Dictionary<int, double> _canceledByStock = [];
+
+    /// <summary>Lo que mostró la cola en la última captura, tal cual se leyó (vacío si no se leyó).</summary>
+    private HashSet<string> _rawQueue = [];
 
     /// <summary>
     /// Un clic visto en el stock que ni el log ni la cola confirman vence, igual que en <see cref="TechReminders"/>: dos
