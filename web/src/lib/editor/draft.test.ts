@@ -1,12 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defaultPlan, newAssisted } from "./assisted";
-import { clearDraft, draftJson, draftKey, readDraft, writeDraft } from "./draft";
+import { clearDraft, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, readDraft, warnBeforeUnload, writeDraft } from "./draft";
 import { initialState, isDirty, reduce, type EditorState } from "./model";
 
 /** Un sessionStorage de mentira. */
 function memoryStorage() {
   const items = new Map<string, string>();
   return {
+    get length() {
+      return items.size;
+    },
+    key: (index: number) => [...items.keys()][index] ?? null,
     getItem: (key: string) => items.get(key) ?? null,
     setItem: (key: string, value: string) => void items.set(key, value),
     removeItem: (key: string) => void items.delete(key),
@@ -15,6 +19,12 @@ function memoryStorage() {
 
 /** Un sessionStorage que el navegador no deja usar (modo privado, sin lugar). */
 const brokenStorage = {
+  get length(): number {
+    throw new Error("SecurityError");
+  },
+  key: () => {
+    throw new Error("SecurityError");
+  },
   getItem: () => {
     throw new Error("SecurityError");
   },
@@ -107,6 +117,71 @@ describe("si hay cambios sin guardar", () => {
     const restored = reduce(fresh, { type: "load", analysis: analysis(), from: "draft" });
     expect(isDirty(restored)).toBe(true);
     expect(isDirty(reduce(restored, { type: "saved" }))).toBe(false);
+  });
+});
+
+// Next esconde /subir en <Activity hidden> al ir a otra página del sitio y React corre los cleanups: un aviso atado a la
+// vista se iba, y cerrar la pestaña desde la biblioteca perdía la BO sin preguntar.
+describe("antes de salir de la página", () => {
+  const json = { json: "{}", visibility: "private" as const };
+
+  it("cerrar la pestaña pierde lo que no se guardó, esté o no el editor a la vista: los borradores se van con ella", () => {
+    const storage = memoryStorage();
+    expect(losesWork(storage, [], false)).toBe(false);
+
+    writeDraft(storage, draftKey("k7m2qa"), json);
+    expect(losesWork(storage, [draftKey("k7m2qa")], false)).toBe(true);
+    // El editor ya no está (otra ruta, o se desmontó), pero el borrador sí.
+    expect(losesWork(storage, [], false)).toBe(true);
+  });
+
+  it("salir para volver a esta pestaña (el login) no pregunta si lo que no se guardó quedó en el borrador", () => {
+    const storage = memoryStorage();
+    writeDraft(storage, draftKey(), json);
+    expect(losesWork(storage, [draftKey()], true)).toBe(false);
+    expect(losesWork(storage, [], true)).toBe(false);
+    // Si el navegador no dejó escribirlo, lo único que hay es lo de la página: pregunta igual.
+    expect(losesWork(storage, [draftKey("otra")], true)).toBe(true);
+    expect(losesWork(brokenStorage, [draftKey()], true)).toBe(true);
+    expect(losesWork(null, [draftKey()], true)).toBe(true);
+  });
+
+  it("lo que no es un borrador del editor no cuenta, y sin almacenamiento solo cuenta lo que marcó el editor", () => {
+    const storage = memoryStorage();
+    storage.setItem("otra.cosa", "x");
+    storage.setItem(draftKey("rota"), "{ roto");
+    expect(losesWork(storage, [], false)).toBe(false);
+    expect(losesWork(brokenStorage, [], false)).toBe(false);
+    expect(losesWork(null, [], false)).toBe(false);
+    expect(losesWork(null, [draftKey()], false)).toBe(true);
+  });
+
+  it("el aviso mira lo que marcó el editor y los borradores, no si el editor está a la vista; salir para volver vale una vez", () => {
+    const storage = memoryStorage();
+    const key = draftKey("k7m2qa");
+    /** Lo que hace el navegador al cerrar la pestaña: si el aviso pide quedarse, pregunta. */
+    const asks = () => {
+      const event = { preventDefault: vi.fn(), returnValue: undefined as unknown };
+      warnBeforeUnload(event as unknown as BeforeUnloadEvent);
+      return event.preventDefault.mock.calls.length > 0 && event.returnValue === "";
+    };
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      expect(asks()).toBe(false);
+      markUnsaved(key, true);
+      expect(asks()).toBe(true);
+      writeDraft(storage, key, json);
+      expect(asks()).toBe(true);
+      leaveAndComeBack();
+      expect(asks()).toBe(false);
+      expect(asks()).toBe(true);
+      markUnsaved(key, false);
+      clearDraft(storage, key);
+      expect(asks()).toBe(false);
+    } finally {
+      markUnsaved(key, false);
+      vi.unstubAllGlobals();
+    }
   });
 });
 
