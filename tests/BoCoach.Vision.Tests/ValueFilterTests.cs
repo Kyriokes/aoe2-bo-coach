@@ -95,6 +95,53 @@ public class ValueFilterTests
         Assert.Equal(372, clock.Add(372, 1.5));
     }
 
+    // Coach arrancado con el juego en pausa, o con algo tapando el reloj en las dos primeras capturas: la misma lectura
+    // mala dos veces se confirmaba, y las buenas eran una baja que no pasaba nunca (el reloj quedaba clavado toda la
+    // partida). Mientras el reloj no avanzó desde la primera, las buenas que avanzan entre sí la reemplazan. 3670 es
+    // "01:01:10" por "00:06:10": una hora posible, que el lector no puede descartar.
+    [Theory]
+    [InlineData(32770)]
+    [InlineData(3670)]
+    public void Una_primera_lectura_mala_repetida_se_corrige_cuando_el_reloj_avanza(double bad)
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(bad, Feed(clock, bad, bad, bad, bad));
+        var good = 370.0;
+        for (var t = 2.0; t < 8; t += 0.5)
+            clock.Add(good++, t);
+        Assert.Equal(good - 1, clock.Value);
+        Assert.Equal(good, clock.Add(good, 8));
+    }
+
+    // Lo de arriba solo vale al arrancar: con el reloj ya corroborado, una racha mala que avanza (un cuadro del juego
+    // tapando la hora mientras la partida sigue) no lo mueve, y el reloj bueno sigue donde estaba.
+    [Fact]
+    public void Con_el_reloj_ya_corroborado_una_racha_mala_que_avanza_no_lo_mueve()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(377, Feed(clock, 369, 370, 371, 372, 373, 374, 375, 376, 377));
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(377, clock.Add(3978 + i, 4.5 + i * 0.5));
+        Assert.Equal(390, clock.Add(390, 10.5));
+    }
+
+    // Una lectura descartada suelta entre las buenas no arma una cadena: hacen falta varias seguidas.
+    [Fact]
+    public void Lecturas_malas_sueltas_al_arrancar_no_reemplazan_el_reloj()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(371, Feed(clock, 370, 371));
+        var t = 1.0;
+        for (var i = 0; i < 8; i++)
+        {
+            clock.Add(3672 + i, t += 0.5);
+            Assert.Equal(372 + i, clock.Add(372 + i, t += 0.5));
+        }
+    }
+
     [Fact]
     public void Dos_lecturas_seguidas_dan_el_reloj()
     {

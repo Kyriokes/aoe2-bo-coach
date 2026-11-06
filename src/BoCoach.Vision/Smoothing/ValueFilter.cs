@@ -18,6 +18,10 @@ public sealed class ValueFilter
     private int _pendingCount;
     private double? _first;
     private double _firstTime;
+    private int _advances;
+    private double? _chain;
+    private double _chainTime;
+    private int _chainCount;
 
     /// <summary>Cuántas lecturas aceptadas entran en la mediana.</summary>
     public int Window { get; init; } = 5;
@@ -42,7 +46,8 @@ public sealed class ValueFilter
 
     /// <summary>
     /// El reloj de la partida: sube a lo sumo 3 s de juego por segundo real (velocidad del juego con margen), nunca baja
-    /// (una partida nueva la ve <c>LiveCoach</c> con la lectura cruda) y un salto se acepta si se repite 6 veces.
+    /// (una partida nueva la ve <c>LiveCoach</c> con la lectura cruda; la única baja es corregir una primera lectura mala,
+    /// ver <see cref="ConfirmFirst"/>) y un salto se acepta si se repite 6 veces.
     /// </summary>
     /// En la partida 20261031-140712 la letra leyó "09:06:10" por "00:06:10" y, en pausa, la lectura se repitió: un
     /// salto de más de 10 minutos no se confirma nunca.
@@ -60,6 +65,10 @@ public sealed class ValueFilter
     /// <summary>
     /// La primera lectura no se toma sola: hace falta una siguiente que pueda seguirle, y mientras tanto no hay valor.
     /// Con el reloj, que nunca baja, una primera lectura mala ("09:06:10") quedaba clavada toda la partida.
+    /// Igual, la misma lectura mala dos veces (en pausa, o con algo tapando el reloj al arrancar) se confirmaba: por eso,
+    /// mientras el valor no subió <see cref="ConfirmJump"/> veces desde que se tomó, <see cref="ConfirmJump"/> lecturas
+    /// descartadas seguidas que suben entre sí lo reemplazan. Después ya no: a mitad de partida una racha mala que
+    /// avanza (un cuadro tapando la hora) no mueve el reloj.
     /// </summary>
     public bool ConfirmFirst { get; init; }
 
@@ -82,15 +91,25 @@ public sealed class ValueFilter
 
         if (_lastAccepted is { } last && !Plausible(value - last, dt))
         {
-            if (MaxConfirmedJump is { } max && Math.Abs(value - last) > max + (MaxRisePerSecond ?? 0) * dt + Slack)
-                return Value;
-            if (_pending is { } pending && Math.Abs(pending - value) < 1e-9)
-                _pendingCount++;
-            else
-                (_pending, _pendingCount) = (value, 1);
-            if (_pendingCount < ConfirmJump)
-                return Value;
+            if (!Unconfirmed(value, time))
+            {
+                if (MaxConfirmedJump is { } max && Math.Abs(value - last) > max + (MaxRisePerSecond ?? 0) * dt + Slack)
+                    return Value;
+                if (_pending is { } pending && Math.Abs(pending - value) < 1e-9)
+                    _pendingCount++;
+                else
+                    (_pending, _pendingCount) = (value, 1);
+                if (_pendingCount < ConfirmJump)
+                    return Value;
+            }
             _window.Clear(); // el salto era real: se arranca de nuevo desde el valor nuevo
+            (_advances, _chain, _chainCount) = (0, null, 0);
+        }
+        else if (_lastAccepted is { } accepted && value > accepted)
+        {
+            // Sube desde lo aceptado: lo corrobora, y lo descartado hasta acá deja de ser una cadena.
+            _advances++;
+            (_chain, _chainCount) = (null, 0);
         }
 
         if (ResetOnDrop is { } drop && _lastAccepted is { } before && before - value > drop)
@@ -103,6 +122,27 @@ public sealed class ValueFilter
         while (_window.Count > Window)
             _window.Dequeue();
         return Value;
+    }
+
+    /// <summary>
+    /// Con <see cref="ConfirmFirst"/>, si lo aceptado todavía no está corroborado y las lecturas descartadas seguidas
+    /// forman una cadena que sube de a poco (cada una plausible desde la anterior) de <see cref="ConfirmJump"/> valores,
+    /// lo aceptado era la lectura mala. Una igual a la anterior de la cadena no suma ni la corta (en pausa no sube).
+    /// </summary>
+    private bool Unconfirmed(double value, double time)
+    {
+        if (!ConfirmFirst || _advances >= ConfirmJump)
+            return false;
+        if (_chain is { } previous && Plausible(value - previous, Math.Max(0, time - _chainTime)))
+        {
+            if (value > previous)
+                (_chain, _chainTime, _chainCount) = (value, time, _chainCount + 1);
+        }
+        else
+        {
+            (_chain, _chainTime, _chainCount) = (value, time, 1);
+        }
+        return _chainCount >= ConfirmJump;
     }
 
     private bool Plausible(double change, double dt)
