@@ -219,6 +219,26 @@ public class BuildOrderValidatorTests
         Assert.Contains("s1 → s3 → s2 → s1", error.Message);
     }
 
+    // Una BO de 300 pasos con 50 'after' cada uno (la aceptan la web y la base) daba 13.475 ciclos, cada uno con el camino
+    // entero: 12 MB de mensajes que la página de la BO dibujaba en el hilo de la pestaña de quien la abre.
+    [Fact]
+    public void Muchos_ciclos_dan_pocos_errores()
+    {
+        static List<string> AfterOf(int i)
+        {
+            var after = Enumerable.Range(1, 49).Where(j => j != i).Select(j => $"s{j}").ToList();
+            if (i < 300)
+                after.Add($"s{i + 1}");
+            return after;
+        }
+        var bo = Bo([.. Enumerable.Range(1, 300).Select(i => Research($"s{i}", "loom") with { After = AfterOf(i) })]);
+
+        var cycles = Validator.Validate(bo).Errors.Where(e => e.Message.Contains("circular")).ToList();
+
+        Assert.InRange(cycles.Count, 1, 3);
+        Assert.InRange(cycles.Sum(e => e.Message.Length), 1, 20_000);
+    }
+
     [Fact]
     public void Paso_que_depende_de_si_mismo()
     {
@@ -233,6 +253,19 @@ public class BuildOrderValidatorTests
         var error = SingleError(Bo(Villagers("s1") with { After = ["s9"] }));
 
         Assert.Contains("'s9'", error.Message);
+    }
+
+    // Uno por paso, no uno por cada 'after': 300 pasos con 50 cada uno eran 15.000 errores.
+    [Fact]
+    public void Los_after_que_no_existen_de_un_paso_dan_un_solo_error()
+    {
+        var missing = Enumerable.Range(1, BuildOrderValidator.MaxAfter).Select(j => $"no{j}").ToList();
+
+        var error = SingleError(Bo(Villagers("s1", 6) with { After = missing }));
+
+        Assert.Equal("s1", error.StepId);
+        Assert.Contains("50 pasos que no existen: 'no1', 'no2', 'no3', 'no4', 'no5' y 45 más", error.Message);
+        Assert.Contains("sí mismo", SingleError(Bo(Villagers("s1") with { After = ["s1", "s1", "s1"] })).Message);
     }
 
     [Fact]

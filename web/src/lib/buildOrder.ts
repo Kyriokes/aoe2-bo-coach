@@ -9,11 +9,31 @@ export const CURRENT_SCHEMA_VERSION = 2;
 export const MAX_COUNT = 200;
 
 /**
- * Tope del JSON de una BO, en caracteres (la base controla lo mismo). La más grande del repo pesa 12 KB; sin tope, los
- * pasos admiten notas y campos de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la
+ * Tope del JSON de una BO, en bytes y medido como la base (ver storedBytes). La más grande del repo pesa 12 KB; sin tope,
+ * los pasos admiten notas y campos de cualquier largo, y una BO de varios megas la bajaría cada visita a su página y la
  * app de quien la importe.
  */
-export const MAX_BODY_CHARS = 128_000;
+export const MAX_BODY_BYTES = 128_000;
+
+/**
+ * Lo que mide la base de un JSON (octet_length(body::text)): los bytes en UTF-8 del texto como lo escribe jsonb, que lleva
+ * un espacio después de cada ':' y cada ','. Medido en caracteres del JSON compacto, una BO con tildes de unos 120.000
+ * pasaba la web y la rechazaba la base.
+ */
+export function storedBytes(value: unknown): number {
+  const json = JSON.stringify(value) ?? "";
+  let bytes = new TextEncoder().encode(json).length;
+  let inString = false;
+  for (let i = 0; i < json.length; i++) {
+    const c = json[i];
+    if (inString) {
+      if (c === "\\") i++;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === "," || c === ":") bytes++;
+  }
+  return bytes;
+}
 
 /** Hasta dónde puede estimarse un clic de edad, en segundos (la base controla lo mismo). */
 export const MAX_CLICK_SECONDS = 86_400;
@@ -61,7 +81,10 @@ function schemaFor(locale: Locale) {
     civ: z.string().trim().min(1).max(40).default("any"),
     author: z.string().max(60).nullish(),
     description: z.string().max(4000).nullish(),
-    tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
+    tags: z
+      .array(z.string().trim().min(1).max(30, fill(t.tagTooLong, { n: 30 })))
+      .max(12, fill(t.tooManyTags, { n: 12 }))
+      .default([]),
     steps: z.array(step).min(1, t.noSteps).max(300, fill(t.tooManySteps, { n: 300 })),
     // Las ramas tienen sus propios pasos, con los mismos topes (la base también los controla).
     branches: z
@@ -84,16 +107,17 @@ export type BuildOrderBody = z.infer<typeof buildOrderSchema>;
 /** Lee y revisa el JSON de una BO. Devuelve el error en el idioma pedido si no sirve. */
 export function parseBuildOrder(json: unknown, locale: Locale = "es"): { ok: true; body: BuildOrderBody } | { ok: false; error: string } {
   const t = getDictionary(locale).serverErrors;
-  const tooBig = { ok: false as const, error: fill(t.tooBig, { n: MAX_BODY_CHARS / 1000 }) };
+  const tooBig = { ok: false as const, error: fill(t.tooBig, { n: MAX_BODY_BYTES / 1000 }) };
+  // Antes de leerlo, el largo en caracteres: nunca es más que lo que mide la base de un JSON compacto.
   let value = json;
   if (typeof json === "string") {
-    if (json.length > MAX_BODY_CHARS) return tooBig;
+    if (json.length > MAX_BODY_BYTES) return tooBig;
     try {
       value = JSON.parse(json);
     } catch {
       return { ok: false, error: t.notJson };
     }
-  } else if ((JSON.stringify(json) ?? "").length > MAX_BODY_CHARS) {
+  } else if ((JSON.stringify(json) ?? "").length > MAX_BODY_BYTES) {
     return tooBig;
   }
   if (NULL_CHARACTER.test(JSON.stringify(value) ?? "")) return { ok: false, error: t.nullCharacter };
@@ -103,6 +127,8 @@ export function parseBuildOrder(json: unknown, locale: Locale = "es"): { ok: tru
     const where = issue.path.length > 0 ? ` (${issue.path.join(".")})` : "";
     return { ok: false, error: `${issue.message}${where}` };
   }
+  // Lo que se guarda, medido como la base: lo que la web acepta, la base también.
+  if (storedBytes(result.data) > MAX_BODY_BYTES) return tooBig;
   return { ok: true, body: result.data };
 }
 

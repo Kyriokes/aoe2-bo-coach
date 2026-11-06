@@ -465,6 +465,8 @@ export const es = {
     tooManyAfter: "Un paso espera a más de {n} pasos (after).",
     tooManyGoals: "La BO tiene más de {n} objetivos.",
     mapTooLong: "El mapa tiene más de {n} caracteres.",
+    tagTooLong: "Cada etiqueta tiene hasta {n} caracteres: separalas con comas.",
+    tooManyTags: "La BO tiene más de {n} etiquetas.",
     notJson: "No es un JSON válido.",
   },
   editor: {

@@ -14,6 +14,12 @@ namespace BoCoach.Core.BuildOrders;
 /// </summary>
 public static class BuildOrderAnalysis
 {
+    /// <summary>
+    /// Tope de problemas que van a la web: la página de la BO los dibuja todos, en el hilo de la pestaña. Una BO real tiene
+    /// unos pocos; una pública armada para eso, con una regla del validador que crezca con los pasos, mandaba megas.
+    /// </summary>
+    public const int MaxIssues = 200;
+
     /// <param name="maps">Los mapas (data/maps.json), para los avisos del mapa de la BO (D8).</param>
     /// <param name="language">El idioma de los pasos, la postura, las ramas y los avisos (<see cref="StepText.Spanish"/> o <see cref="StepText.English"/>).</param>
     public static string Analyze(string json, GameData data, EventCatalog? events = null, Maps? maps = null, string language = StepText.Spanish)
@@ -207,8 +213,16 @@ public static class BuildOrderAnalysis
 
     private static void WriteIssues(Utf8JsonWriter w, ValidationResult validation)
     {
+        // De más: primero los errores (los que hay que arreglar), en su orden, y al final un aviso con cuántos quedaron
+        // afuera. Un aviso y no un error: el editor rechaza un cambio que trae un error nuevo, y el número cambia con cada uno.
+        var issues = validation.Issues;
+        var hidden = issues.Count - MaxIssues;
+        var shown = hidden > 0 ? issues.OrderBy(i => i.Severity == Severity.Error ? 0 : 1).Take(MaxIssues) : issues;
+        if (hidden > 0)
+            shown = shown.Append(new ValidationIssue(Severity.Warning, null, Lang.L($"Y {hidden} problemas más: se muestran los primeros {MaxIssues}.", $"And {hidden} more problems: only the first {MaxIssues} are shown.")));
+
         w.WriteStartArray("issues");
-        foreach (var issue in validation.Issues)
+        foreach (var issue in shown)
         {
             w.WriteStartObject();
             w.WriteString("severity", issue.Severity == Severity.Error ? "error" : "warning");
