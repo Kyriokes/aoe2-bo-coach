@@ -387,6 +387,8 @@ public sealed class Coach
     /// <para>Si la cola de esa captura la sigue mostrando, lo que volvió es otra cosa: al cancelarla de verdad, el ícono
     /// se va en el mismo cuadro en que vuelve el stock. En la revisión del 2026-11-05, sacar 9 aldeanos de la cola para
     /// que arrancara la Feudal devolvía 450 de comida, desmarcaba la Feudal en espera y el coach pedía el clic de nuevo.</para>
+    /// <para>Una edad a la que ya se llegó (como en <see cref="ExpireClicks"/>) tampoco se cancela: sin la cola ni el aviso
+    /// del log, comprar 500 de comida en el mercado en plena Feudal la desmarcaba y volvía "Hacé clic en Edad Feudal".</para>
     /// </summary>
     private bool DetectResearchClick(GameSnapshot snapshot)
     {
@@ -405,7 +407,8 @@ public sealed class Coach
         {
             if (step.State is StepState.Done or StepState.Skipped || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
                 continue;
-            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)) && snapshot.Queue?.Any(i => i.Key == tech) != true)
+            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)) && snapshot.Queue?.Any(i => i.Key == tech) != true
+                && !(BuildOrderValidator.AgeOf(tech) is { } stepAge && stepAge <= Tracker.Age))
             {
                 _canceledByStock[step.Index] = step.StartedAt!.Value;
                 Tracker.ClearStarted(step.Index);

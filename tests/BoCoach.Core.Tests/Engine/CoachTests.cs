@@ -792,6 +792,42 @@ public class CoachTests
         Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
     }
 
+    // Revisión del 2026-11-05: sin la cola ni el aviso del log, una suba de comida justo del costo de la Feudal en plena
+    // Feudal (comprar 500 con shift+clic en el mercado, un tributo, sacar 9 aldeanos de la cola) la daba por cancelada y
+    // volvía "Hacé clic en Edad Feudal" toda la partida. A una edad a la que ya se llegó no se la puede cancelar.
+    [Theory]
+    [InlineData(500)] // el mercado, con shift+clic
+    [InlineData(450)] // 9 aldeanos sacados de la cola
+    public void Una_suba_de_comida_en_plena_Feudal_no_cancela_el_clic_de_Feudal(double refund)
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                .. FeudalAfterCampAndMill.Steps,
+                new Step { Id = "range", Do = StepAction.Build, What = "archery_range", Assign = GatherSource.Wood },
+                new Step { Id = "smith", Do = StepAction.Build, What = "blacksmith", Assign = GatherSource.Wood },
+                new Step { Id = "castle", Do = StepAction.Research, What = "castle_age" },
+            ],
+        };
+        static GameSnapshot WithGold(GameSnapshot snapshot, double gold) => snapshot with { Stock = snapshot.Stock with { Gold = gold } };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20)); // el clic en Feudal
+        coach.Update(At(700, 700, 20, "archery_range_built"));
+        coach.Update(WithGold(At(750, 900, 20, "blacksmith_built"), 300));
+        coach.Update(At(800, 100, 20)); // el clic en Castillos
+        coach.Update(At(849.5, 120, 20));
+        coach.Update(At(850, 120 + refund, 20));
+        var view = coach.Update(At(900, 120 + refund, 20));
+
+        Assert.Equal(Age.Feudal, coach.Tracker.Age);
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.Equal(301, coach.Report().AgeClicks.First().Click);
+        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
     [Fact]
     public void Un_clic_que_vencio_no_queda_en_el_informe()
     {
