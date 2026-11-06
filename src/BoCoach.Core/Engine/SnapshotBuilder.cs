@@ -80,7 +80,11 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
 
     public const double IdleThreshold = 60;
 
-    /// <summary>Segundos que el reloj tiene que volver por debajo de la hora con que se fijó el inicio para calcularlo de nuevo.</summary>
+    /// <summary>
+    /// Segundos que el reloj tiene que volver para atrás para tomarlo por la corrección de una hora mala (el suavizado
+    /// tolera 1,5 s de vaivén): el snapshot lo marca (<see cref="GameSnapshot.ClockCorrected"/>) y, si quedó por debajo de
+    /// la hora con que se fijó el inicio, el inicio se calcula de nuevo.
+    /// </summary>
     public const double ClockCorrection = 5;
 
     /// <summary>A mitad de partida, parte del reloj que tiene que quedar sin explicar por los aldeanos para tomarla por idle.</summary>
@@ -94,6 +98,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
     {
         var now = reading.Clock ?? _lastClock;
         _belief.Observe(reading, now);
+        var corrected = reading.Clock < _lastClock - ClockCorrection;
         if (reading.Clock is { } c)
             _lastClock = c;
 
@@ -131,6 +136,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
             Scores = reading.Scores,
             IdleVillagers = reading.IdleVillagers,
             Belief = belief,
+            ClockCorrected = corrected,
         };
     }
 

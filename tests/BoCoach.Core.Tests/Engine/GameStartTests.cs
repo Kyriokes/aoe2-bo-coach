@@ -132,6 +132,26 @@ public class GameStartTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Equal(2186.0, builder.StartOffset);
     }
 
+    // Cuando el reloj se corrige, el tiempo del coach salta (de 7:05 a 20:06 con la hora mala de las primeras capturas, o
+    // de 1:20:02 a 20:06 si llegó con un lector nuevo) y la BO quedaba abandonada, "hace 12:58 que no avanza ningún paso",
+    // hasta que el jugador avanzara uno que no fuera un aldeano o una casa.
+    [Theory]
+    [InlineData(new[] { 4800.0, 4801, 4802, 4803, 4803, 4804, 1206, 1207, 1208 })]
+    [InlineData(new[] { 1200.0, 1201, 4802, 4803, 4803, 4804, 1206, 1207, 1208 })]
+    public void Cuando_el_reloj_se_corrige_la_BO_no_queda_abandonada_por_el_salto(double[] clocks)
+    {
+        var scouts = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "scouts_feudal.json"));
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(scouts, TestData.GameData, TestData.Events);
+        var moved = Start with { Food = 300, Wood = 180 };
+
+        foreach (var clock in clocks)
+            coach.Update(Build(builder, clock, moved, 20));
+
+        Assert.Equal(1208.0, coach.State.Time);
+        Assert.Null(coach.Abandonment.Reason);
+    }
+
     [Fact]
     public void Una_partida_que_arranco_tarde_sigue_la_BO_con_los_mismos_tiempos()
     {
