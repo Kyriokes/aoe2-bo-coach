@@ -113,8 +113,12 @@ jobs:
 
       # Desde main la etiqueta no existe: la crea la release en el commit que se subió. Una etiqueta creada con el token
       # del workflow no vuelve a disparar este workflow.
+      # El mismo .zip va también con el nombre sin versión: la web y el aviso de la app enlazan
+      # releases/latest/download/BoCoach-win-x64.zip, que baja directo la última sin pasar por la página de GitHub.
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.version.outputs.tag }}
-        run: gh release create "$TAG" "BoCoach-$TAG-win-x64.zip" "BoCoach-$TAG-win-x64.zip.sha256" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "BO Coach $TAG" --generate-notes
+        run: |
+          cp "BoCoach-$TAG-win-x64.zip" BoCoach-win-x64.zip
+          gh release create "$TAG" "BoCoach-$TAG-win-x64.zip" "BoCoach-$TAG-win-x64.zip.sha256" BoCoach-win-x64.zip --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "BO Coach $TAG" --generate-notes
