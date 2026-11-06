@@ -180,7 +180,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
     {
         if (!SendsTokenSafely(BaseUrl))
             throw new WebLibraryException(
-                Lang.L($"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en \"Cuenta de la web…\".", $"The web address ({BaseUrl}) isn't https: the token would travel unencrypted. Change it in \"Web account…\"."));
+                Lang.L($"La dirección de la web ({BaseUrl}) no es https: el token viajaría sin cifrar. Cambiala en Ajustes > Avanzado > \"Dirección y token…\".", $"The web address ({BaseUrl}) isn't https: the token would travel unencrypted. Change it in Settings > Advanced > \"Address and token…\"."));
     }
 
     private static HttpRequestMessage WithToken(HttpRequestMessage request, string? token)
@@ -293,7 +293,7 @@ public sealed class WebLibraryClient(HttpClient http, Uri baseUrl)
             HttpStatusCode.NotFound => Lang.L("No está en la biblioteca.", "It isn't in the library."),
             HttpStatusCode.Unauthorized => Lang.L("El token de la app no es válido: creá uno nuevo en Mi cuenta de la web.", "The app token isn't valid: create a new one in My account on the web."),
             HttpStatusCode.Forbidden => Lang.L("Esa BO no es tuya.", "That BO isn't yours."),
-            >= HttpStatusCode.MultipleChoices and < HttpStatusCode.BadRequest => Lang.L("La web respondió con una redirección a otra dirección: revisá la dirección en \"Cuenta de la web…\".", "The web answered with a redirect to another address: check the address in \"Web account…\"."),
+            >= HttpStatusCode.MultipleChoices and < HttpStatusCode.BadRequest => Lang.L("La web respondió con una redirección a otra dirección: revisá la dirección en Ajustes > Avanzado > \"Dirección y token…\".", "The web answered with a redirect to another address: check the address in Settings > Advanced > \"Address and token…\"."),
             _ => Lang.L($"La web respondió {(int)response.StatusCode} ({response.ReasonPhrase}).", $"The web answered {(int)response.StatusCode} ({response.ReasonPhrase})."),
         };
     }

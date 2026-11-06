@@ -226,7 +226,22 @@ public class WebLibraryClientTests
         var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.PublishAsync(Scouts, "bocoach_x", null, null));
 
         Assert.Contains("https", error.Message);
+        Assert.Contains(WhereToChangeTheAddress, error.Message);
         Assert.Empty(web.Requests);
+    }
+
+    /// <summary>Dónde se cambia la dirección de la web en la app (Texts.TabAdvanced y Texts.WebAccountButton).</summary>
+    private const string WhereToChangeTheAddress = "Ajustes > Avanzado > \"Dirección y token…\"";
+
+    // Mandaba a "Cuenta de la web…", un botón que ya no existe.
+    [Fact]
+    public async Task Una_redireccion_dice_donde_se_cambia_la_direccion()
+    {
+        var (client, _) = Client(HttpStatusCode.Redirect, "");
+
+        var error = await Assert.ThrowsAsync<WebLibraryException>(() => client.DownloadAsync("k7m2xq"));
+
+        Assert.Contains(WhereToChangeTheAddress, error.Message);
     }
 
     [Fact]
