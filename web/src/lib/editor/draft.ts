@@ -80,7 +80,7 @@ function hasDrafts(storage: DraftStorage | null) {
  * Si salir de la página pierde algo. `unsaved`: las BO con cambios sin guardar según el editor. Lo que no quedó en un
  * borrador (el navegador no dejó escribirlo) se pierde siempre. Los borradores son de la pestaña: cerrarla se los lleva
  * (recargar no, pero el navegador no distingue y pregunta igual); salir del sitio para volver a ella (`comingBack`, el
- * login), no.
+ * login o el idioma), no.
  */
 export function losesWork(storage: DraftStorage | null, unsaved: Iterable<string>, comingBack: boolean) {
   for (const key of unsaved) if (readDraft(storage, key) === null) return true;
@@ -96,9 +96,18 @@ export function markUnsaved(key: string, dirty: boolean) {
   else unsaved.delete(key);
 }
 
-/** La próxima salida del sitio vuelve a esta pestaña (el login): el borrador la sobrevive. `false` si al final no se sale. */
+/** La próxima salida del sitio vuelve a esta pestaña (el login, el idioma): el borrador la sobrevive. `false` si al final no se sale. */
 export function leaveAndComeBack(value = true) {
   comingBack = value;
+}
+
+/**
+ * Un clic en un enlace que sale y vuelve a esta pestaña, en la misma página: el idioma (/idioma guarda la elección y
+ * redirige de vuelta, y el editor recupera el borrador solo). Con Ctrl, Mayús, Cmd o Alt el navegador lo abre en otra
+ * pestaña o ventana, o lo descarga: esta no se va, y no se toca nada.
+ */
+export function comeBackOnClick(event: Pick<MouseEvent, "button" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">) {
+  if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) leaveAndComeBack();
 }
 
 let toApp = false;

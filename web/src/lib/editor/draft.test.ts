@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { defaultPlan, newAssisted } from "./assisted";
-import { clearDraft, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
+import { clearDraft, comeBackOnClick, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
 import { initialState, isDirty, reduce, type EditorState } from "./model";
 
 /** Un sessionStorage de mentira. */
@@ -206,6 +206,36 @@ describe("antes de salir de la página", () => {
     } finally {
       markUnsaved(key, false);
       vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // /idioma guarda la elección y vuelve a esta pestaña, en la misma página: el borrador se recupera solo.
+  it("cambiar de idioma no pregunta, desde el editor o desde otra página; abrir el enlace en otra pestaña no sale de esta", () => {
+    const storage = memoryStorage();
+    const key = draftKey();
+    const click = { button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false };
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      writeDraft(storage, key, json);
+      expect(asks()).toBe(true);
+      comeBackOnClick(click);
+      expect(asks()).toBe(false);
+
+      markUnsaved(key, true);
+      comeBackOnClick(click);
+      expect(asks()).toBe(false);
+
+      // Con Ctrl, Mayús, Cmd o Alt el navegador lo abre en otra pestaña o ventana (o lo descarga): esta se queda, y cerrarla
+      // después tiene que preguntar.
+      for (const modifier of ["ctrlKey", "metaKey", "shiftKey", "altKey"] as const) {
+        comeBackOnClick({ ...click, [modifier]: true });
+        expect(asks()).toBe(true);
+      }
+      comeBackOnClick({ ...click, button: 1 });
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(key, false);
       vi.unstubAllGlobals();
     }
   });
