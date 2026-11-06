@@ -193,7 +193,7 @@ export function BuildOrderEditor({
       }
       const result = runtime.analyze(initialJson, locale);
       if (result.ok) {
-        const next = reduce(stateRef.current, { type: "load", analysis: result });
+        const next = reduce(stateRef.current, { type: "load", analysis: result, from: "page" });
         stateRef.current = next;
         setState(next);
         if (result.assisted?.regenerated) showNotice(t.regenerated);
@@ -216,7 +216,7 @@ export function BuildOrderEditor({
         if (what === "nothing") return;
         const fromDraft = what === "draft" && draft ? runtime.analyze(draft.json, locale) : null;
         if (draft && fromDraft?.ok) {
-          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, restored: true });
+          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, from: "draft" });
           stateRef.current = next;
           setState(next);
           setVisibility(draft.visibility);
@@ -304,7 +304,8 @@ export function BuildOrderEditor({
       setStrip(null);
       lastPlanRef.current = null;
       setRestored(false);
-      dispatch({ type: "load", analysis: result });
+      // No está guardado en la web: va al borrador, así sobrevive a iniciar sesión para publicarla.
+      dispatch({ type: "load", analysis: result, from: "user" });
       if (result.assisted?.regenerated) showNotice(t.regenerated);
       return true;
     },

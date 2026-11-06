@@ -78,12 +78,19 @@ describe("si hay cambios sin guardar", () => {
   const empty = initialState();
   const fresh = newAssisted(empty, "n1");
 
-  it("al abrir, con una BO nueva o recién cargada, no hay", () => {
+  it("al abrir, con una BO nueva o con la que manda la página, no hay", () => {
     expect(isDirty(empty)).toBe(false);
     expect(isDirty(fresh)).toBe(false);
     expect(isDirty(reduce(empty, { type: "new", id: "n1" }))).toBe(false);
     const edited = reduce(fresh, { type: "setField", field: "name", value: "Mía" });
-    expect(isDirty(reduce(edited, { type: "load", analysis: analysis() }))).toBe(false);
+    expect(isDirty(reduce(edited, { type: "load", analysis: analysis(), from: "page" }))).toBe(false);
+  });
+
+  // Antes quedaba "sin cambios": sin borrador ni aviso, e iniciar sesión para publicarla volvía a "Nueva build order".
+  it("lo que carga el usuario (un ejemplo, un archivo, una guía pegada) no está guardado en la web: los hay hasta guardar", () => {
+    const loaded = reduce(fresh, { type: "load", analysis: analysis(), from: "user" });
+    expect(isDirty(loaded)).toBe(true);
+    expect(isDirty(reduce(loaded, { type: "saved" }))).toBe(false);
   });
 
   it("cualquier edición los hace, elegir una caja o que llegue un análisis no", () => {
@@ -97,7 +104,7 @@ describe("si hay cambios sin guardar", () => {
   });
 
   it("un borrador recuperado sigue con cambios, y guardar los limpia", () => {
-    const restored = reduce(fresh, { type: "load", analysis: analysis(), restored: true });
+    const restored = reduce(fresh, { type: "load", analysis: analysis(), from: "draft" });
     expect(isDirty(restored)).toBe(true);
     expect(isDirty(reduce(restored, { type: "saved" }))).toBe(false);
   });

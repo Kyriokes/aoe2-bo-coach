@@ -195,6 +195,6 @@ describe("el reductor", () => {
     expect(state.steps).toEqual([{ id: "s1", do: "build", what: "house", count: 2, builders: 3, assign: "sheep", after: [], withPrevious: false }]);
     expect(state.bo.name).toBe("Nueva build order");
     expect(state.analysis).toBeNull();
-    expect(reduce(state, { type: "load", analysis: loaded }).steps).toHaveLength(5);
+    expect(reduce(state, { type: "load", analysis: loaded, from: "user" }).steps).toHaveLength(5);
   });
 });
