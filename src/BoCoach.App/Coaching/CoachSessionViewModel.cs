@@ -631,6 +631,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
         StopCoach(notify: false);
+        // Sin pantalla de carga el coach nuevo no sigue la partida de la que salieron la sugerida, lo rechazado y el cruce
+        // (terminó, o no se sabe si sigue). La pantalla de carga siguiente no los olvidaba (_loading queda en null): el
+        // atajo usaba en la siguiente la sugerida de la anterior.
+        if (loading is null)
+            ForgetMatchChoices();
         IsLive = frames is not RecordedFrames;
         _startedAutomatically = automatic;
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
@@ -863,12 +868,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.BoSuggestion = Texts.Suggested(suggestion.Summary.Name, suggestion.Reason, Key("accept_suggestion"));
     }
 
+    /// <summary>Lo que salió de la pantalla de carga de una partida: la sugerida, lo rechazado y el cruce (también el del informe).</summary>
     private void ForgetMatchChoices()
     {
         _declined.Clear();
-        (_suggestion, _previousBuildOrder, _lastSwitchBest) = (null, null, null);
+        (_suggestion, _previousBuildOrder, _lastSwitchBest, _matchupQuery) = (null, null, null, null);
         if (Overlay is not null)
-            Overlay.BoSuggestion = null;
+            (Overlay.BoSuggestion, Overlay.MatchupLine, Overlay.MatchAdvice) = (null, null, null);
     }
 
     /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
@@ -1168,6 +1174,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (loading != _restartedOn)
                 Status = LoadingNote(frame);
             Suggest(frame);
+        }
+        else if (frame.Loading is null && _loading is not null)
+        {
+            // La partida empezó sin que se leyera su pantalla de carga (el reloj volvió a empezar): lo que salió de la de la
+            // anterior no es de esta. El cruce de una partida corta (sin informe) terminaba en el informe de la siguiente.
+            ForgetMatchChoices();
+            _loading = null;
         }
         // La sugerencia, el aviso de que cambió de BO y el atajo que vuelve a la anterior valen durante la carga y el primer
         // minuto de partida.

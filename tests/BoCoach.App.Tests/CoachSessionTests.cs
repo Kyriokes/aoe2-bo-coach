@@ -1296,6 +1296,64 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("huns", session.LiveCoach.Civ);
     }
 
+    // Elegida otra entre partidas, el coach nuevo arranca sin pantalla de carga y la siguiente es otra partida, pero la
+    // sesión se quedaba con la sugerida de la anterior: el atajo la usaba en la siguiente aunque ahí no se sugiriera nada.
+    [Fact]
+    public void Entre_partidas_la_sugerida_de_la_anterior_no_queda_para_la_siguiente()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Tick(gameRunning: true);
+        var first = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.StartsWith("Sugerida", session.Overlay!.BoSuggestion);
+        session.Apply(Frame(ViewAt(20)) with { Loading = first, Me = first.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(20)) with { Loading = first, Me = first.Players[0], Waiting = true });
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+
+        // La siguiente, sin tu nombre: no hay nada que sugerir.
+        var second = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = null });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // Una partida corta (sin informe) y la siguiente sin su pantalla de carga: el cruce de la 1 quedaba en el overlay y
+    // terminaba en el informe de la 2.
+    [Fact]
+    public void El_cruce_de_la_partida_anterior_no_pasa_a_una_que_empieza_sin_leer_su_pantalla_de_carga()
+    {
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Francos contra britanos en Arabia", session.Overlay!.MatchupLine);
+        session.Apply(Frame(ViewAt(23)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        // La 2: el coach ya no publica la pantalla de carga de la 1 como de esta partida.
+        session.Apply(Frame(ViewAt(5)) with { InGame = true });
+        Assert.Null(session.Overlay.MatchupLine);
+        Assert.Null(session.Overlay.MatchAdvice);
+        session.Finished(new Coach(Scouts, _data.GameData, _data.Events).Report() with { Length = 900 });
+
+        Assert.DoesNotContain(host.Report!.Value.Summary, line => line.StartsWith("El cruce", StringComparison.Ordinal));
+    }
+
     private enum Stretch { Menu, Loading, Game, Away }
 
     /// <summary>
