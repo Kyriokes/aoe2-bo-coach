@@ -18,6 +18,7 @@ import { civsWithData } from "@/lib/matchupView";
 import { GAME } from "@/lib/jsonLd";
 import { getOwnBuildOrder, mySubscriptionIds } from "@/lib/ownData";
 import { getCurrentUser } from "@/lib/session";
+import { linkify } from "@/lib/linkify";
 import { byline, civLabel, shareDescription, SITE_NAME } from "@/lib/share";
 import { siteUrl } from "@/lib/site";
 import { describeStep } from "@/lib/stepText";
@@ -182,7 +183,20 @@ async function Detail({ params }: { params: PageProps<"/[locale]/bo/[code]">["pa
             )}
           </div>
         </div>
-        {bo.description ? <p className="max-w-3xl whitespace-pre-line text-sm text-muted">{bo.description}</p> : null}
+        {bo.description ? (
+          <p className="max-w-3xl whitespace-pre-line text-sm text-muted">
+            {/* La guía original de una BO importada ("Fuente: https://...") como enlace; nofollow porque la escribe cualquiera. */}
+            {linkify(bo.description).map((part, i) =>
+              part.href ? (
+                <a key={i} href={part.href} target="_blank" rel="nofollow ugc noopener noreferrer" className="break-all text-amber hover:underline">
+                  {part.text}
+                </a>
+              ) : (
+                part.text
+              ),
+            )}
+          </p>
+        ) : null}
         {bo.tags.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5">
             {bo.tags.map((tag) => (
