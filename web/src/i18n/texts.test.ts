@@ -39,6 +39,22 @@ describe("los botones de la app, como se llaman en la app", () => {
   });
 });
 
+/**
+ * Lo que promete /privacidad tiene que ser cierto letra por letra. La BO del registro va sin autor ni código, pero sus
+ * pasos son los guardados en la cuenta de quien la armó (una privada solo la baja su dueño): que el texto no vuelva a
+ * decir que el registro no está atado a la cuenta.
+ */
+describe("la página de privacidad", () => {
+  it.each([
+    ["es", "no está atado a tu cuenta", /build order tuya.*relacionar el registro con tu cuenta/],
+    ["en", "isn't tied to your website account", /build order of your own.*link the record to your account/],
+  ] as const)("%s: una BO propia lleva a la cuenta", (locale, promise, ownBuildOrder) => {
+    const t = getDictionary(locale).privacy;
+    expect(t.shareText2).not.toContain(promise);
+    expect(t.shareText2).toMatch(ownBuildOrder);
+  });
+});
+
 /** Las funciones puras que arman texto, en inglés. En castellano las controlan los tests de cada una. */
 describe("los textos armados en inglés", () => {
   const bo = { name: "x", civ: "franks", author: "Ana", uploader: "Luz", description: null, feudal_click: 490, castle_click: null };
