@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { defaultPlan, newAssisted } from "./assisted";
-import { clearDraft, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, readDraft, warnBeforeUnload, writeDraft } from "./draft";
+import { clearDraft, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
 import { initialState, isDirty, reduce, type EditorState } from "./model";
 
 /** Un sessionStorage de mentira. */
@@ -156,15 +156,16 @@ describe("antes de salir de la página", () => {
     expect(losesWork(null, [draftKey()], false)).toBe(true);
   });
 
+  /** Lo que hace el navegador al cerrar la pestaña: si el aviso pide quedarse, pregunta. */
+  const asks = () => {
+    const event = { preventDefault: vi.fn(), returnValue: undefined as unknown };
+    warnBeforeUnload(event as unknown as BeforeUnloadEvent);
+    return event.preventDefault.mock.calls.length > 0 && event.returnValue === "";
+  };
+
   it("el aviso mira lo que marcó el editor y los borradores, no si el editor está a la vista; salir para volver vale una vez", () => {
     const storage = memoryStorage();
     const key = draftKey("k7m2qa");
-    /** Lo que hace el navegador al cerrar la pestaña: si el aviso pide quedarse, pregunta. */
-    const asks = () => {
-      const event = { preventDefault: vi.fn(), returnValue: undefined as unknown };
-      warnBeforeUnload(event as unknown as BeforeUnloadEvent);
-      return event.preventDefault.mock.calls.length > 0 && event.returnValue === "";
-    };
     vi.stubGlobal("window", { sessionStorage: storage });
     try {
       expect(asks()).toBe(false);
@@ -180,6 +181,31 @@ describe("antes de salir de la página", () => {
       expect(asks()).toBe(false);
     } finally {
       markUnsaved(key, false);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Chrome dispara beforeunload con un enlace bocoach:// y con location.href a ese esquema, aunque la página no se va: con
+  // Cancelar, "Abrir en la app" no abría la app y "Conectar la app" creaba un token que no le llegaba.
+  it("abrir la app no pregunta aunque haya algo sin guardar, porque la página se queda; vale solo para esa salida", () => {
+    const storage = memoryStorage();
+    const key = draftKey();
+    vi.stubGlobal("window", { sessionStorage: storage });
+    vi.useFakeTimers();
+    try {
+      // Ni siquiera quedó en el borrador: lo único que hay está en la página, y la página no se descarga.
+      markUnsaved(key, true);
+      expect(asks()).toBe(true);
+      openingApp();
+      expect(asks()).toBe(false);
+      expect(asks()).toBe(true);
+      // Si el navegador no dispara el aviso (no abrió nada, o lo abrió en otra pestaña), no queda prendido.
+      openingApp();
+      vi.runAllTimers();
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(key, false);
+      vi.useRealTimers();
       vi.unstubAllGlobals();
     }
   });

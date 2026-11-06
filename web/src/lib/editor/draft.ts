@@ -101,14 +101,28 @@ export function leaveAndComeBack(value = true) {
   comingBack = value;
 }
 
+let toApp = false;
+
+/**
+ * Lo que navega ahora abre la app (bocoach://) y la página se queda: no hay nada que perder. Chrome igual dispara
+ * beforeunload, con un enlace y con location.href a ese esquema, y con Cancelar en "¿Salir del sitio?" la app no se abre.
+ * Chrome lo dispara en el momento; vale para esta tarea, así no queda prendido si el navegador no lo dispara (no abrió
+ * nada, o lo abrió en otra pestaña).
+ */
+export function openingApp() {
+  toApp = true;
+  setTimeout(() => (toApp = false), 0);
+}
+
 /**
  * El aviso del navegador antes de salir. Es uno solo para toda la pestaña y no depende de que el editor esté a la vista:
  * con Cache Components, Next esconde /subir en `<Activity hidden>` al ir a otra página y React corre los cleanups, así
  * que un aviso atado al editor se iba y cerrar la pestaña desde la biblioteca perdía la BO sin preguntar.
  */
 export function warnBeforeUnload(event: BeforeUnloadEvent) {
-  const loses = losesWork(draftStorage(), unsaved, comingBack);
+  const loses = !toApp && losesWork(draftStorage(), unsaved, comingBack);
   comingBack = false;
+  toApp = false;
   if (!loses) return;
   event.preventDefault();
   event.returnValue = ""; // los navegadores viejos miran esto

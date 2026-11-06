@@ -4,6 +4,7 @@ import { useState } from "react";
 import { fill } from "@/i18n";
 import { useI18n } from "@/i18n/client";
 import { copyText } from "@/lib/clipboard";
+import { openingApp } from "@/lib/editor/draft";
 
 /**
  * Llevar la BO a la app: el enlace bocoach://import/<código> la abre directo (si la app registró el enlace), y si
@@ -45,7 +46,8 @@ export function OpenInApp({ code, fileName }: { code: string; fileName: string }
 
   return (
     <section className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel p-4">
-      <a href={`bocoach://import/${code}`} className="button-primary no-underline">
+      {/* La página se queda: el navegador no tiene que preguntar si se sale (con Cancelar, la app no se abre). */}
+      <a href={`bocoach://import/${code}`} onClick={openingApp} className="button-primary no-underline">
         {t.openInApp}
       </a>
       <button type="button" onClick={copy} className="button">

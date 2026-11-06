@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { createAppToken } from "@/app/actions";
 import { useI18n } from "@/i18n/client";
 import { copyText } from "@/lib/clipboard";
+import { openingApp } from "@/lib/editor/draft";
 import { safeAction } from "@/lib/safeAction";
 
 /**
@@ -27,6 +28,8 @@ export function ConnectAppButton() {
       }
       setError(null);
       setToken(result.value);
+      // La página se queda: el navegador no tiene que preguntar si se sale (con Cancelar, el token no le llega a la app).
+      openingApp();
       window.location.href = `bocoach://conectar/${result.value}`;
       router.refresh();
     });
