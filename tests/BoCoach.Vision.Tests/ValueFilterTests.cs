@@ -273,6 +273,9 @@ public class ValueFilterTests
     [InlineData(3900, -3600, 100, 20)]
     [InlineData(3900, -3600, 100, 60)]
     [InlineData(3900, -3600, 600, 20)]
+    // Un cuadro de una hora menos que dura 125 s a los 200 s del coach: mientras dura, lo aceptado sube más de 200 de reloj,
+    // y con UndoWithin = 200 el reloj quedaba clavado unos 46 minutos (revisión del arreglo, 2026-11-05).
+    [InlineData(3900, -3600, 400, 250)]
     public void Un_reemplazo_equivocado_se_deshace_cuando_vuelve_el_reloj_bueno(double start, double offset, int from, int bad)
     {
         var clock = ValueFilter.GameClock();
@@ -306,16 +309,19 @@ public class ValueFilterTests
     }
 
     // Volver es para lo que tapó un cuadro hace poco. Si la hora mala del arranque ("1:20:00" por "0:20:00") ya se
-    // corrigió y el mismo cuadro aparece minutos después, no la trae de vuelta. Si aparece antes de los dos minutos, la
-    // trae mientras dura, y con el reloj bueno vuelve a la hora real.
+    // corrigió y el mismo cuadro aparece más de 10 minutos de reloj después (UndoWithin = 600), no la trae de vuelta. Si
+    // aparece antes, la trae mientras dura, y con el reloj bueno vuelve a la hora real: es el costo aceptado de poder
+    // deshacer un reemplazo equivocado hacia abajo durante esos 10 minutos (con 200, un cuadro de una hora menos de más
+    // de 2 minutos dejaba el reloj congelado unos 46 minutos).
     [Theory]
     [InlineData(100, false)]
-    [InlineData(400, true)]
+    [InlineData(400, false)]
+    [InlineData(800, true)]
     public void Una_hora_mala_corregida_al_arrancar_no_queda_si_vuelve_el_mismo_cuadro(int again, bool late)
     {
         var clock = ValueFilter.GameClock();
 
-        for (var i = 0; i < 600; i++)
+        for (var i = 0; i < 1000; i++)
         {
             var t = i * 0.5;
             var truth = 1200 + Math.Floor(1.7 * t);

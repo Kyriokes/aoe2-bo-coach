@@ -61,7 +61,7 @@ public sealed class ValueFilter
     public static ValueFilter GameClock() => new()
     {
         Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600, ConfirmFirst = true,
-        LowerChainWinsOver = 3000, LowerChainWinsOverFor = 600, UndoWithin = 200,
+        LowerChainWinsOver = 3000, LowerChainWinsOverFor = 600, UndoWithin = 600,
     };
 
     /// <summary>
