@@ -67,6 +67,71 @@ public class GameStartTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Equal(0.0, builder.StartOffset);
     }
 
+    // Coach arrancado a mitad de partida (20:00, 20 aldeanos) con un cuadro tapando la hora en las primeras capturas: el
+    // reloj suavizado da "1:20:00" hasta que el bueno lo corrige (ValueFilter.ConfirmFirst), lo único que lo hace volver
+    // para atrás. El inicio se había fijado con la hora mala (1:12:55) y el tiempo quedaba en 0 hasta pasarla.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_del_arranque_el_tiempo_llega_al_bueno()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var moved = Start with { Food = 300, Wood = 180 };
+
+        foreach (var bad in new[] { 4800.0, 4801, 4802, 4803, 4803, 4804 })
+            Build(builder, bad, moved, 20);
+        for (var clock = 1206.0; clock < 1216; clock++)
+            Assert.Equal(clock, Build(builder, clock, moved, 20).Time);
+        Assert.Equal(0.0, builder.StartOffset);
+    }
+
+    // Lo mismo en la partida que arrancó tarde (36 minutos quieto): el inicio sale de los aldeanos con el reloj bueno.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_en_una_partida_que_arranco_tarde_el_inicio_sale_del_bueno()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var moved = Start with { Food = 230, Wood = 160 };
+
+        Assert.Equal(75.0, Build(builder, 2186 + 3600, moved, 6).Time, 1.0);
+        Build(builder, 2187 + 3600, moved, 6);
+
+        Assert.Equal(75.0, Build(builder, 2188, moved, 6).Time, 1.0);
+        Assert.Equal(2188.0 - 75, builder.StartOffset, 1.0);
+        Assert.Equal(85.0, Build(builder, 2198, moved, 6).Time, 1.0);
+    }
+
+    // Y si el coach lo vio quieto con la hora mala y empezó a jugar antes de que se corrigiera, el inicio pasa a la hora
+    // buena: si no, el tiempo quedaba en 0 una hora.
+    [Fact]
+    public void Si_el_reloj_corrige_una_hora_mala_despues_de_verlo_quieto_el_inicio_pasa_a_la_buena()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var queued = Start with { Food = 150 };
+
+        Assert.Equal(0.0, Build(builder, 2180 + 3600, Start, 3).Time);
+        Assert.Equal(0.0, Build(builder, 2186 + 3600, queued, 3).Time);
+        Build(builder, 2187 + 3600, queued, 3);
+
+        Build(builder, 2188, queued, 3);
+        Assert.InRange(builder.StartOffset, 2186, 2188);
+        Assert.Equal(7.0, Build(builder, 2195, queued, 3).Time, 2.0);
+    }
+
+    // Una hora mala que llega después de fijar el inicio con el reloj bueno (un lector nuevo al volver a calibrar) y se
+    // corrige no toca el inicio.
+    [Fact]
+    public void Una_hora_mala_despues_de_fijar_el_inicio_no_lo_mueve()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var queued = Start with { Food = 150 };
+        Build(builder, 1, Start, 3);
+        Build(builder, 2186, queued, 3);
+
+        Build(builder, 2190 + 3600, queued, 3);
+        Build(builder, 2191 + 3600, queued, 3);
+
+        Assert.Equal(9.0, Build(builder, 2195, queued, 3).Time);
+        Assert.Equal(2186.0, builder.StartOffset);
+    }
+
     [Fact]
     public void Una_partida_que_arranco_tarde_sigue_la_BO_con_los_mismos_tiempos()
     {

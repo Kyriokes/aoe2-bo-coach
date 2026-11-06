@@ -82,6 +82,39 @@ public class HudTests
         Assert.Equal(queue, second.ToReading().Queue);
     }
 
+    // De punta a punta, como en LiveCoach: el coach arranca a mitad de partida (20:00, 20 aldeanos) y unas capturas leen
+    // una hora de más ("1:20:00", un cuadro tapando el reloj). Si son las primeras, el tiempo del coach llega a la hora
+    // real a los pocos segundos de verla, aunque el cuadro dure (antes quedaba en 0 o clavado una hora); si el reloj bueno
+    // ya estaba, la racha mala no lo mueve.
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(0, 8)]
+    [InlineData(0, 40)]
+    [InlineData(2, 8)]
+    [InlineData(2, 40)]
+    public void Con_la_hora_tapada_al_arrancar_el_tiempo_del_coach_llega_al_real(int from, int bad)
+    {
+        var builder = new Core.Engine.SnapshotBuilder(GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "game_data")));
+        var tracker = new HudTracker();
+
+        for (var i = 0; i < 120; i++)
+        {
+            var t = i * 0.5;
+            var truth = 1200 + Math.Floor(1.7 * t);
+            var covered = i >= from && i < from + bad;
+            var state = tracker.Update(t, new HudReading(covered ? truth + 3600 : truth, 300, 180, 100, 200, 20, 0, []));
+            var time = builder.Build(state.ToReading())?.Time;
+            if (from == 0 && t >= bad * 0.5 + 5)
+                Assert.Equal(truth, time);
+            if (from > 0 && t > 0)
+            {
+                Assert.InRange(time!.Value, 0, truth);
+                if (!covered)
+                    Assert.Equal(truth, time);
+            }
+        }
+    }
+
     [Theory]
     [InlineData("Dark Age", Age.Dark)]
     [InlineData("Feudal Agc", Age.Feudal)]

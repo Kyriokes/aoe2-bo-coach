@@ -415,7 +415,7 @@ public sealed class LiveCoach : IDisposable
             {
                 _loadingDone = false;
                 // Un reloj que vuelve a empezar sin pantalla de carga leída: otra partida con la misma BO. Se mira
-                // la lectura cruda: el suavizado nunca deja que el reloj vuelva para atrás.
+                // la lectura cruda: el suavizado no deja que el reloj vuelva para atrás (solo para corregir una hora mala).
                 if (_newGame.Check(hud.ClockReading, hud.Clock))
                 {
                     StartGame(null);

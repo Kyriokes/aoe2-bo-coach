@@ -73,16 +73,22 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
     /// vio quieto, el inicio es esa captura; si la primera captura ya tiene acción (el coach arrancó a mitad de
     /// partida), se descuentan los aldeanos entrenados y lo demás se toma por idle solo si es casi todo el reloj.
     /// Menos de <see cref="IdleThreshold"/> no cuenta: en una partida normal se actúa en los primeros segundos.
+    /// Si después el reloj vuelve más de <see cref="ClockCorrection"/> por debajo de la hora con que se fijó, esa hora
+    /// era mala y se vuelve a calcular con la de ahora (ver <see cref="GameTime"/>).
     /// </summary>
     public double StartOffset { get; private set; }
 
     public const double IdleThreshold = 60;
+
+    /// <summary>Segundos que el reloj tiene que volver por debajo de la hora con que se fijó el inicio para calcularlo de nuevo.</summary>
+    public const double ClockCorrection = 5;
 
     /// <summary>A mitad de partida, parte del reloj que tiene que quedar sin explicar por los aldeanos para tomarla por idle.</summary>
     private const double MostlyIdle = 0.75;
 
     private bool _startKnown;
     private bool _sawIdle;
+    private double _startClock;
 
     public GameSnapshot? Build(ScreenReading reading)
     {
@@ -128,9 +134,16 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
         };
     }
 
-    /// <summary>El reloj llevado al tiempo de juego (ver <see cref="StartOffset"/>); 0 mientras el jugador no haya hecho nada.</summary>
+    /// <summary>
+    /// El reloj llevado al tiempo de juego (ver <see cref="StartOffset"/>); 0 mientras el jugador no haya hecho nada.
+    /// El reloj suavizado solo vuelve para atrás cuando corrige una hora mala que había aceptado (un cuadro tapando la
+    /// hora al arrancar, "1:20:00" por "0:20:00"). Si el inicio se fijó con esa hora, se fija de nuevo con la buena: si
+    /// no, el tiempo quedaba en 0 hasta que el reloj pasara la hora mala. Si la mala llegó después, el inicio sigue.
+    /// </summary>
     private double GameTime(double clock, ScreenReading reading)
     {
+        if (_startKnown && clock < _startClock - ClockCorrection)
+            _startKnown = false;
         if (!_startKnown)
         {
             var villagers = _belief.View.Villagers ?? _start.IdleVillagers;
@@ -143,7 +156,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
                 _sawIdle = true;
                 return 0;
             }
-            _startKnown = true;
+            (_startKnown, _startClock) = (true, clock);
             if (_sawIdle)
             {
                 StartOffset = clock >= IdleThreshold ? clock : 0;

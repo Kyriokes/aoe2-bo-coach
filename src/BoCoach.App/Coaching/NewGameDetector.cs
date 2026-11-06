@@ -27,7 +27,7 @@ public sealed class NewGameDetector
     {
         if (raw is not { } now || smoothed is not { } clock)
             return false;
-        // El suavizado nunca deja que el reloj vuelva para atrás: una partida nueva se ve en la lectura cruda.
+        // El suavizado no deja que el reloj vuelva para atrás (solo para corregir una hora mala): una partida nueva se ve en la lectura cruda.
         if (now < clock - BackSeconds && now <= NewGameSeconds)
         {
             if (++_backwards < BackReads)
