@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { columnsFor, parseBuildOrder } from "./buildOrder";
+import { columnsFor, parseBuildOrder, storedBytes } from "./buildOrder";
 
 /** Una BO mínima con un paso de aldeanos y lo que se quiera cambiar de ese paso. */
 const bo = (step: Record<string, unknown>) => ({
@@ -45,13 +45,22 @@ describe("ramas", () => {
   });
 });
 
+// Medido como la base (bytes del JSON como lo escribe jsonb): supabase/tests/topes.test.ts compara los dos lados.
 describe("tamaño de la BO", () => {
+  const full = (notes: string) => ({ ...bo({ notes }), civ: "any", tags: [] });
+
   it("rechaza una BO de más de 128 KB, como texto o como objeto", () => {
-    const sized = (chars: number) => bo({ notes: "x".repeat(chars - JSON.stringify(bo({ notes: "" })).length) });
+    const sized = (bytes: number) => full("x".repeat(bytes - storedBytes(full(""))));
+    expect(storedBytes(sized(128_000))).toBe(128_000);
     expect(errorOf(sized(128_000))).toBeNull();
     expect(errorOf(JSON.stringify(sized(128_000)))).toBeNull();
     expect(errorOf(sized(128_001))).toContain("128 KB");
     expect(errorOf(JSON.stringify(sized(128_001)))).toContain("128 KB");
+  });
+
+  it("cuenta bytes y no caracteres, y el espacio que la base pone después de ':' y ','", () => {
+    expect(storedBytes({ a: [1, 2], b: "ñ, :" })).toBe('{"a": [1, 2], "b": "ñ, :"}'.length + 1);
+    expect(errorOf(full("ñ".repeat(70_000)))).toContain("128 KB");
   });
 
   it("acepta una BO con notas largas pero razonables", () => {
