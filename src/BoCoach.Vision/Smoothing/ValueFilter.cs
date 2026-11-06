@@ -22,6 +22,12 @@ public sealed class ValueFilter
     private double? _chain;
     private double _chainTime;
     private int _chainCount;
+    private double? _risingSince;
+    private double? _replaced;
+    private double _replacedAt;
+    private double? _back;
+    private double _backTime;
+    private int _backCount;
 
     /// <summary>Cuántas lecturas aceptadas entran en la mediana.</summary>
     public int Window { get; init; } = 5;
@@ -54,7 +60,7 @@ public sealed class ValueFilter
     public static ValueFilter GameClock() => new()
     {
         Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600, ConfirmFirst = true,
-        LowerChainWinsOver = 3000,
+        LowerChainWinsOver = 3000, LowerChainWinsOverFor = 120, UndoWithin = 120,
     };
 
     /// <summary>
@@ -68,9 +74,10 @@ public sealed class ValueFilter
     /// Con el reloj, que nunca baja, una primera lectura mala ("09:06:10") quedaba clavada toda la partida.
     /// Igual, la misma lectura mala dos veces (en pausa, o con algo tapando el reloj al arrancar) se confirmaba: por eso,
     /// mientras el valor no subió <see cref="ConfirmJump"/> veces desde que se tomó, <see cref="ConfirmJump"/> lecturas
-    /// descartadas seguidas que suben entre sí y quedan por debajo lo reemplazan. Una racha más alta no, nunca: las
-    /// lecturas malas suman horas. Y después, una más baja solo si está más de <see cref="LowerChainWinsOver"/> por
-    /// debajo: a mitad de partida una racha mala que avanza (un cuadro tapando la hora) no mueve el reloj.
+    /// descartadas seguidas que suben entre sí y quedan por debajo lo reemplazan. Una racha más alta no, salvo que siga
+    /// desde lo que se acaba de reemplazar (<see cref="UndoWithin"/>): las lecturas malas suman horas. Y después, una más
+    /// baja solo si está más de <see cref="LowerChainWinsOver"/> por debajo, al arrancar: a mitad de partida una racha mala
+    /// que avanza (un cuadro tapando la hora) no mueve el reloj.
     /// </summary>
     public bool ConfirmFirst { get; init; }
 
@@ -81,6 +88,25 @@ public sealed class ValueFilter
     /// malas que siguen avanzando corroboran la hora mala, y el reloj quedaba clavado toda la partida.
     /// </summary>
     public double? LowerChainWinsOver { get; init; }
+
+    /// <summary>
+    /// Segundos, desde que lo aceptado subió por primera vez, en que vale <see cref="LowerChainWinsOver"/> (null = siempre).
+    /// Lo que arregla es un cuadro tapando la hora al arrancar; a mitad de una partida de más de 50 minutos, un cuadro que
+    /// leía la hora una menos ("0:05:00" por "1:05:00") bajaba el reloj una hora. Se cuenta desde que sube y no desde la
+    /// primera lectura para que un coach arrancado en pausa no gaste la ventana antes de que el juego corra.
+    /// </summary>
+    public double? LowerChainWinsOverFor { get; init; }
+
+    /// <summary>
+    /// Un reemplazo (un salto confirmado o una cadena que gana) se deshace si dentro de estos segundos desde la última vez
+    /// que se aceptó lo reemplazado llegan <see cref="ConfirmJump"/> lecturas descartadas seguidas que suben entre sí y
+    /// siguen desde ahí (plausibles desde lo reemplazado con el tiempo que pasó): es la hora real después de un cuadro
+    /// que leía otra (null = no se deshace). Sin esto, un reemplazo hacia abajo equivocado quedaba toda la partida, porque
+    /// las buenas eran una subida que no se confirma nunca. Deshacer también es un reemplazo, así que se puede volver
+    /// otra vez. Pasado ese tiempo no: si la hora mala del arranque ya se corrigió, el mismo cuadro minutos después no la
+    /// trae de vuelta.
+    /// </summary>
+    public double? UndoWithin { get; init; }
 
     /// <summary>Valor suavizado actual, o null si todavía no hubo ninguna lectura válida.</summary>
     public double? Value => _window.Count == 0 ? null : Median();
@@ -101,7 +127,9 @@ public sealed class ValueFilter
 
         if (_lastAccepted is { } last && !Plausible(value - last, dt))
         {
-            if (!LowerChainWins(value, time))
+            var lower = LowerChainWins(value, time);
+            var back = BackChainWins(value, time);
+            if (!lower && !back)
             {
                 if (MaxConfirmedJump is { } max && Math.Abs(value - last) > max + (MaxRisePerSecond ?? 0) * dt + Slack)
                     return Value;
@@ -114,12 +142,15 @@ public sealed class ValueFilter
             }
             _window.Clear(); // el salto era real: se arranca de nuevo desde el valor nuevo
             (_advances, _chain, _chainCount) = (0, null, 0);
+            // Lo reemplazado queda por si era lo bueno (ver UndoWithin).
+            (_replaced, _replacedAt, _back, _backCount) = (last, _lastAcceptedTime ?? time, null, 0);
         }
         else if (_lastAccepted is { } accepted && value > accepted)
         {
             // Sube desde lo aceptado: lo corrobora, y lo descartado hasta acá deja de ser una cadena.
+            _risingSince ??= time;
             _advances++;
-            (_chain, _chainCount) = (null, 0);
+            (_chain, _chainCount, _back, _backCount) = (null, 0, null, 0);
         }
 
         if (ResetOnDrop is { } drop && _lastAccepted is { } before && before - value > drop)
@@ -138,10 +169,10 @@ public sealed class ValueFilter
     /// Con <see cref="ConfirmFirst"/>, si las lecturas descartadas seguidas que quedan por debajo de lo aceptado forman
     /// una cadena que sube de a poco (cada una plausible desde la anterior) de <see cref="ConfirmJump"/> valores, lo
     /// aceptado era la lectura mala, siempre que todavía no esté corroborado o que la cadena quede más de
-    /// <see cref="LowerChainWinsOver"/> por debajo. Una igual a la anterior de la cadena no suma ni la corta (en pausa no
-    /// sube). Una por arriba de lo aceptado tampoco: las lecturas malas del reloj suman horas ("1:35:22" por "0:35:22",
-    /// "01:41:01" por "00:41:06"), y una racha más alta (un cuadro tapando la hora unos segundos) pisaba un reloj bueno
-    /// recién tomado.
+    /// <see cref="LowerChainWinsOver"/> por debajo (en los primeros <see cref="LowerChainWinsOverFor"/> segundos). Una
+    /// igual a la anterior de la cadena no suma ni la corta (en pausa no sube). Una por arriba de lo aceptado tampoco: las
+    /// lecturas malas del reloj suman horas ("1:35:22" por "0:35:22", "01:41:01" por "00:41:06"), y una racha más alta (un
+    /// cuadro tapando la hora unos segundos) pisaba un reloj bueno recién tomado.
     /// </summary>
     private bool LowerChainWins(double value, double time)
     {
@@ -156,8 +187,38 @@ public sealed class ValueFilter
         {
             (_chain, _chainTime, _chainCount) = (value, time, 1);
         }
+        var early = LowerChainWinsOverFor is not { } span || _risingSince is not { } since || time - since <= span;
         return _chainCount >= ConfirmJump
-            && (_advances < ConfirmJump || LowerChainWinsOver is { } gap && accepted - value > gap);
+            && (_advances < ConfirmJump || LowerChainWinsOver is { } gap && accepted - value > gap && early);
+    }
+
+    /// <summary>
+    /// Con <see cref="UndoWithin"/>, si las lecturas descartadas seguidas que siguen desde lo reemplazado (plausibles
+    /// desde ese valor con el tiempo que pasó) forman una cadena que sube de a poco de <see cref="ConfirmJump"/> valores,
+    /// el reemplazo fue el equivocado y se vuelve. Igual que en <see cref="LowerChainWins"/>, una igual a la anterior no
+    /// suma ni corta, y una que no sigue desde lo reemplazado tampoco corta.
+    /// </summary>
+    private bool BackChainWins(double value, double time)
+    {
+        if (UndoWithin is not { } within || _replaced is not { } replaced)
+            return false;
+        if (time - _replacedAt > within)
+        {
+            _replaced = null;
+            return false;
+        }
+        if (!Plausible(value - replaced, time - _replacedAt))
+            return false;
+        if (_back is { } previous && Plausible(value - previous, Math.Max(0, time - _backTime)))
+        {
+            if (value > previous)
+                (_back, _backTime, _backCount) = (value, time, _backCount + 1);
+        }
+        else
+        {
+            (_back, _backTime, _backCount) = (value, time, 1);
+        }
+        return _backCount >= ConfirmJump;
     }
 
     private bool Plausible(double change, double dt)

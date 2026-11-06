@@ -143,15 +143,17 @@ public class ValueFilterTests
 
     /// <summary>
     /// Una partida vista cada 0,5 s desde las 20:00 a velocidad normal (1,7), con las capturas de <paramref name="from"/>
-    /// a <paramref name="to"/> (sin incluir) leyendo una hora de más ("1:20:00" por "0:20:00", un cuadro tapando el reloj).
+    /// a <paramref name="to"/> (sin incluir) leyendo una hora de más ("1:20:00" por "0:20:00", un cuadro tapando el reloj),
+    /// o lo que diga <paramref name="offset"/>.
     /// </summary>
-    private static IEnumerable<(double Time, double Truth, double Read)> Game(int from, int to, double pausedUntil = 0, double start = 1200)
+    private static IEnumerable<(double Time, double Truth, double Read)> Game(
+        int from, int to, double pausedUntil = 0, double start = 1200, double offset = 3600, int length = 200)
     {
-        for (var i = 0; i < 200; i++)
+        for (var i = 0; i < length; i++)
         {
             var t = i * 0.5;
             var truth = start + Math.Floor(1.7 * Math.Max(0, t - pausedUntil));
-            yield return (t, truth, i >= from && i < to ? truth + 3600 : truth);
+            yield return (t, truth, i >= from && i < to ? truth + offset : truth);
         }
     }
 
@@ -188,6 +190,79 @@ public class ValueFilterTests
         for (var i = 0; i < 12; i++)
             Assert.Equal(2377, clock.Add(1178 + i, 4.5 + i * 0.5));
         Assert.Equal(2390, clock.Add(2390, 10.5));
+    }
+
+    // Ni a mitad de una partida de más de 50 minutos: un cuadro que lee la hora una menos ("0:05:00" por "1:05:00")
+    // mientras el juego sigue no mueve el reloj, dure lo que dure. La cadena de más de 50 minutos por debajo vale solo en
+    // los primeros dos minutos, que es cuando un cuadro tapa la hora al arrancar. Antes bajaba el reloj una hora y lo
+    // dejaba clavado ahí: las buenas eran una subida de una hora, que no se confirma nunca.
+    [Theory]
+    [InlineData(8)]
+    [InlineData(12)]
+    [InlineData(20)]
+    public void A_mitad_de_partida_una_hora_menos_no_mueve_el_reloj(int bad)
+    {
+        var clock = ValueFilter.GameClock();
+
+        foreach (var (time, truth, read) in Game(400, 400 + bad, start: 3900, offset: -3600, length: 600))
+        {
+            var value = clock.Add(read, time);
+            if (time > 0)
+                Assert.InRange(value!.Value, 0, truth);
+            if (read == truth && time > 0)
+                Assert.Equal(truth, value);
+        }
+    }
+
+    // Si igual un reemplazo hacia abajo fue el equivocado (al arrancar, con el reloj bueno recién tomado o ya corroborado,
+    // un cuadro que lee una hora o diez minutos menos mientras el juego sigue), las buenas que vuelven siguen desde lo
+    // reemplazado: el reloj vuelve a ellas a los pocos segundos. Antes quedaba atrás toda la partida, o 7 minutos con
+    // diez minutos de diferencia.
+    [Theory]
+    [InlineData(2122, -600, 2, 8)]
+    [InlineData(3900, -3600, 2, 8)]
+    [InlineData(3900, -3600, 2, 20)]
+    [InlineData(3900, -3600, 100, 8)]
+    [InlineData(3900, -3600, 100, 12)]
+    [InlineData(3900, -3600, 100, 20)]
+    [InlineData(3900, -3600, 100, 60)]
+    public void Un_reemplazo_equivocado_se_deshace_cuando_vuelve_el_reloj_bueno(double start, double offset, int from, int bad)
+    {
+        var clock = ValueFilter.GameClock();
+
+        foreach (var (time, truth, read) in Game(from, from + bad, start: start, offset: offset))
+        {
+            var value = clock.Add(read, time);
+            if (time > 0)
+                Assert.InRange(value!.Value, 0, truth);
+            if (time >= (from + bad) * 0.5 + 5)
+                Assert.Equal(truth, value);
+        }
+    }
+
+    // Volver es para lo que tapó un cuadro hace poco. Si la hora mala del arranque ("1:20:00" por "0:20:00") ya se
+    // corrigió y el mismo cuadro aparece minutos después, no la trae de vuelta. Si aparece antes de los dos minutos, la
+    // trae mientras dura, y con el reloj bueno vuelve a la hora real.
+    [Theory]
+    [InlineData(100, false)]
+    [InlineData(400, true)]
+    public void Una_hora_mala_corregida_al_arrancar_no_queda_si_vuelve_el_mismo_cuadro(int again, bool late)
+    {
+        var clock = ValueFilter.GameClock();
+
+        for (var i = 0; i < 600; i++)
+        {
+            var t = i * 0.5;
+            var truth = 1200 + Math.Floor(1.7 * t);
+            var covered = i < 8 || i >= again && i < again + 20;
+            var value = clock.Add(covered ? truth + 3600 : truth, t);
+            if (t < 9)
+                continue;
+            if (late)
+                Assert.InRange(value!.Value, 0, truth);
+            if (i < again || i >= again + 30)
+                Assert.Equal(truth, value);
+        }
     }
 
     // Y un reloj bueno no lo pisa una racha mala, sea cual sea su largo: ni recién tomado, ni con el coach arrancado en
