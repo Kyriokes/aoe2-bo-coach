@@ -54,6 +54,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private bool _lastInGame;
     private bool _lastWaiting;
     private Vision.Loading.LoadingReading? _lastLoading;
+
+    /// <summary>
+    /// En la última captura no se sabía si seguía la partida del coach: sin reloj (pudo terminar y no pasaron los 30 s, o
+    /// es el árbol de tecnologías), con el juego atrás (pudo terminar sin que se viera) o con el reloj para atrás (puede
+    /// ser otra partida y <see cref="NewGameDetector"/> todavía no lo decidió).
+    /// </summary>
+    private bool _lastUnsure;
     private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -592,11 +599,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// ella. Pasado el primer minuto de partida no se toca y vale para la siguiente, como el atajo de la sugerida
     /// (<see cref="BuildOrderPicker.CanSwitchAt"/>). Que no se vea el reloj no alcanza: 30 s sin reloj dan la partida por
     /// terminada, pero puede ser el árbol de tecnologías, y un coach nuevo empezaba la BO desde el paso 1 a los 15 minutos.
+    /// Mientras no se sabe si la partida sigue (<see cref="_lastUnsure"/>: se fue de una partida corta, alt-tab) la elegida
+    /// espera: entra con el reloj (la misma partida, con su pantalla de carga) o con el fin de partida (sin ella).
     /// Lo que se aceptó con el atajo de la sugerida no se deshace: recién cuenta si el jugador elige otra en la lista.
     /// </summary>
     private void FollowSelection()
     {
-        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || !BuildOrderPicker.CanSwitchAt(_lastGameTime)
+        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || !BuildOrderPicker.CanSwitchAt(_lastGameTime) || _lastUnsure
             || _selected() is not { } selected || selected.Id == _followedSelection)
             return;
         _followedSelection = selected.Id;
@@ -678,11 +687,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     /// <summary>
     /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida según el coach (la última captura), o
-    /// null si el coach está esperando la siguiente (terminó la partida). La de la anterior lo hacía correr con su civ, su
-    /// número y su rival, sin esperar ni leer la pantalla de carga que venía. No sale de <see cref="_loading"/>, que es la
-    /// última que se vio: una partida que empezó sin que se leyera la suya seguía con la de la anterior.
+    /// null si el coach está esperando la siguiente (terminó la partida) o no se sabe si la partida sigue
+    /// (<see cref="_lastUnsure"/>): el coach nuevo arranca como sin pantalla de carga. La de la anterior lo hacía correr con
+    /// su civ, su número y su rival, y como nunca veía el reloj de esa partida no llegaba al fin ni leía la pantalla de carga
+    /// que venía. No sale de <see cref="_loading"/>, que es la última que se vio: una partida que empezó sin que se leyera
+    /// la suya seguía con la de la anterior.
     /// </summary>
-    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting ? null : _lastLoading;
+    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting || _lastUnsure ? null : _lastLoading;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -1135,6 +1146,8 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _lastInGame = frame.InGame;
         _lastWaiting = frame.Waiting;
         _lastLoading = frame.Loading;
+        _lastUnsure = frame.InGame && (!frame.InFront || frame.SecondsWithoutClock > 0
+            || NewGameDetector.MayBeNew(frame.Hud?.ClockReading, frame.Hud?.Clock));
         GameTime = frame.View.Time;
         InGame = frame.InGame;
         GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;

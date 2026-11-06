@@ -1438,6 +1438,74 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Null(last.Loading);
     }
 
+    // Revisión de los arreglos: una partida corta (se va a los 0:23) y elige otra antes del fin de partida, con alt-tab (el
+    // juego minimizado no cuenta los 30 s) o en la ventana de la app (cuenta como juego al frente). El coach nuevo se armaba
+    // con la pantalla de carga de la 1, no llegaba nunca al fin de partida ni leía la de la 2, y la 2 corría con britanos.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_mano_elegir_otra_al_irse_de_una_partida_corta_no_arrastra_su_pantalla_de_carga(bool altTab)
+    {
+        if (OcrReader.TryCreate() is null)
+            return;
+        var screen = altTab
+            ? new Stretches((Stretch.Game, 5), (Stretch.Away, 20), (Stretch.Menu, 80), (Stretch.Loading, 12), (Stretch.Game, 20))
+            : new Stretches((Stretch.Game, 5), (Stretch.Menu, 100), (Stretch.Loading, 12), (Stretch.Game, 20));
+        var (session, last) = await PlayChoosingHuns(screen, chooseAt: altTab ? 11 : 15);
+        using var _ = session;
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.True(last.InGame);
+        Assert.Equal("japanese", session.LiveCoach.Civ);
+        Assert.Equal("japanese", last.Me?.Civ);
+    }
+
+    // La partida corta, alt-tab, y la 2 sin su pantalla de carga: las primeras lecturas de la 2 tienen el reloj a la vista
+    // pero para atrás, y hasta la tercera el coach no sabe que es otra partida. El coach nuevo se armaba en la primera con
+    // la pantalla de carga de la 1 y ya no podía darse cuenta.
+    [Fact]
+    public async Task A_mano_la_elegida_espera_a_que_el_coach_sepa_si_es_otra_partida()
+    {
+        if (OcrReader.TryCreate() is null)
+            return;
+        var (session, last) = await PlayChoosingHuns(new Stretches((Stretch.Game, 5), (Stretch.Away, 20), (Stretch.Game, 20)), chooseAt: 11);
+        using var _ = session;
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.True(last.InGame);
+        Assert.Equal("huns", session.LiveCoach.Civ);
+        Assert.Null(last.Loading);
+    }
+
+    // Sin reloj en el primer minuto no se sabe si la partida terminó (se fue) o sigue (el árbol de tecnologías): el atajo
+    // de la sugerida arranca el coach nuevo sin la pantalla de carga, como sin pantalla de carga, en vez de con una que
+    // puede ser de la partida anterior.
+    [Fact]
+    public async Task Aceptar_la_sugerida_sin_reloj_no_arrastra_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(23)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(23), withoutClock: 5) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Null(last?.Loading);
+        Assert.True(last?.Waiting);
+    }
+
     // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.
     [Fact]
     public async Task A_mano_la_sugerida_que_aceptaste_no_se_deshace_sola()
