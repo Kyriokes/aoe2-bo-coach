@@ -53,6 +53,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private double _lastGameTime;
     private bool _lastInGame;
     private bool _lastWaiting;
+    private Vision.Loading.LoadingReading? _lastLoading;
     private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -676,11 +677,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private Vision.Loading.LoadingReading? _restartedOn;
 
     /// <summary>
-    /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida, o null si el coach está esperando la
-    /// siguiente (terminó la partida). La de la anterior lo hacía correr con su civ, su número y su rival, sin esperar ni
-    /// leer la pantalla de carga que venía.
+    /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida según el coach (la última captura), o
+    /// null si el coach está esperando la siguiente (terminó la partida). La de la anterior lo hacía correr con su civ, su
+    /// número y su rival, sin esperar ni leer la pantalla de carga que venía. No sale de <see cref="_loading"/>, que es la
+    /// última que se vio: una partida que empezó sin que se leyera la suya seguía con la de la anterior.
     /// </summary>
-    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting ? null : _loading;
+    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting ? null : _lastLoading;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -1132,6 +1134,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _lastGameTime = frame.View.Time;
         _lastInGame = frame.InGame;
         _lastWaiting = frame.Waiting;
+        _lastLoading = frame.Loading;
         GameTime = frame.View.Time;
         InGame = frame.InGame;
         GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;

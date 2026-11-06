@@ -730,6 +730,37 @@ public sealed class LiveCoachTests : IDisposable
         Assert.True(finished[1].Length > 60, $"largo {finished[1].Length}");
     }
 
+    // Una partida que empieza sin que se lea su pantalla de carga sigue con la civ y el número de la anterior (misma BO y
+    // civ), pero esa pantalla no es la suya: la sesión se la pasaba a un coach reiniciado con otra BO, que corría la
+    // partida entera con la civ, el número y el rival de la anterior.
+    [Fact]
+    public async Task Despues_de_un_reloj_que_vuelve_a_empezar_la_pantalla_de_carga_anterior_no_es_de_esta_partida()
+    {
+        var reading = new LoadingReading(
+            [new LoadingPlayer(1, "Ana", "", "franks", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+        var frames = new GapFrames(RecordedSession.Load(Fixture), before: 13, gap: 0, gapInFront: true, restart: true);
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames, playerName: "Ana", loading: reading)
+        {
+            MinReportSeconds = 1,
+        };
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        Assert.Same(reading, last!.Loading);
+        Assert.Equal("Ana", last.Me?.Name);
+
+        // Como en Un_reloj_que_vuelve_a_empezar_es_otra_partida: a la cuarta lectura para atrás ya es otra partida.
+        for (var i = 0; i < 4; i++)
+            await live.StepAsync();
+
+        Assert.True(last!.View.Time < 60, $"tiempo {last.View.Time}");
+        Assert.Null(last.Loading);
+        Assert.Null(last.Me);
+        Assert.Equal("franks", live.Civ);
+    }
+
     private string? WarningOf(CoachFrame frame)
     {
         var overlay = new Overlay.OverlayViewModel(_data.GameData, "x");
