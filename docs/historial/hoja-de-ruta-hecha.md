@@ -1,6 +1,6 @@
-# Hoja de ruta: el detalle de cada Ã­tem
+# Hoja de ruta: el detalle de cada ítem
 
-Estado: histÃ³rico. Es la secciÃ³n 11 de `PLAN.md` hasta el 2026-11-05, tal cual: los pedidos del usuario, las decisiones, lo medido y lo aprendido de cada Ã­tem. Lo que estÃ¡ **hecho y lo que falta hoy** se lee en `PLAN.md`; acÃ¡ puede decir "falta" algo que despuÃ©s se hizo. Los Ã­tems 14 y 15 siguen abiertos: su estado tambiÃ©n estÃ¡ en `PLAN.md`.
+Estado: histórico. Es la sección 11 de `PLAN.md` hasta el 2026-11-05, tal cual: los pedidos del usuario, las decisiones, lo medido y lo aprendido de cada ítem. Lo que está **hecho y lo que falta hoy** se lee en `PLAN.md`; acá puede decir "falta" algo que después se hizo. Los ítems 14 y 15 siguen abiertos: su estado también está en `PLAN.md`.
 
 ## 11. Hoja de ruta (desde el 2026-10-19)
 

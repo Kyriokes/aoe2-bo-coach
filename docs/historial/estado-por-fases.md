@@ -1,6 +1,6 @@
-# CÃ³mo se fueron cerrando las fases
+# Cómo se fueron cerrando las fases
 
-Estado: histÃ³rico. Las fases 0 a 10 de `PLAN.md` estÃ¡n hechas: lo que dice "en curso" acÃ¡ se refiere a ese momento, y las ramas `fase-N` dejaron de usarse (todo se juntÃ³ en `fase-9-refinamiento`). Movido tal cual del `CLAUDE.md` viejo el 2026-11-05.
+Estado: histórico. Las fases 0 a 10 de `PLAN.md` están hechas: lo que dice "en curso" acá se refiere a ese momento, y las ramas `fase-N` dejaron de usarse (todo se juntó en `fase-9-refinamiento`). Movido tal cual del `CLAUDE.md` viejo el 2026-11-05.
 
 - **Editor de BO dentro de la app** (Fase 4) con vista previa simulada. **Web con biblioteca para compartir** en la última fase (Fase 10). App y web usan el mismo formato JSON con `schema_version`.
 - Fase 0 (setup) completa: CI en verde en GitHub.
