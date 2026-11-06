@@ -69,7 +69,6 @@ Antes de invitar a nadie. El mensaje y qué hacer con lo que llegue están en [`
 3. **Permiso de buildorderguide.com** (IN-05). La biblioteca publica 124 BO importadas de ahí, con autor y enlace. No encontré un permiso anotado ni pude leer sus términos. **Mi recomendación:** escribiles antes de abrir la beta.
 4. **Que la app avise si hay versión nueva** (IN-20). Hoy no avisa, así que un arreglo de seguridad no le llega a quien no la vuelva a bajar. Es un pedido a GitHub al abrir, sin datos tuyos, pero hay que decirlo en la privacidad. **Mi recomendación:** sí.
 5. **Etiquetas de la biblioteca** (BD-15). Para que no entre spam al sitemap, solo las de una lista fija (`KNOWN_TAGS` en `web/src/lib/filters.ts`) van al desplegable y se indexan. Una etiqueta nueva se puede usar, pero no aparece ahí hasta sumarla. ¿Te cierra?
-6. **Salir de `/subir` con cambios.** Con cambios sin guardar, el selector de idioma también dispara el "¿Salir del sitio?" del navegador. Al volver, el borrador se recupera bien. ¿Lo dejamos?
 
 ## 5. Cosas de cuentas y paneles
 
