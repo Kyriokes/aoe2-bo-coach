@@ -52,6 +52,23 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private CancellationTokenSource? _pick;
     private double _lastGameTime;
     private bool _lastInGame;
+    private bool _lastWaiting;
+    private Vision.Loading.LoadingReading? _lastLoading;
+
+    /// <summary>
+    /// En la última captura no se sabía si seguía la partida del coach: sin reloj (pudo terminar y no pasaron los 30 s, o
+    /// es el árbol de tecnologías), con el juego atrás (pudo terminar sin que se viera) o con el reloj para atrás (puede
+    /// ser otra partida y <see cref="NewGameDetector"/> todavía no lo decidió).
+    /// </summary>
+    private bool _lastUnsure;
+
+    /// <summary>
+    /// Como <see cref="_lastUnsure"/>, pero sin contar un hueco del reloj más corto que
+    /// <see cref="OverlayViewModel.ClockWarningSeconds"/>: lo usa <see cref="LoadingForRestart"/>. Irse de la partida tarda más
+    /// que eso, y con una sola captura sin reloj el atajo de la sugerida arrancaba el coach sin la pantalla de carga por toda
+    /// la partida (AP-20). <see cref="FollowSelection"/> sí espera con cualquier hueco: reintenta en la próxima captura.
+    /// </summary>
+    private bool _lastLoadingInDoubt;
     private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -587,18 +604,23 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     /// <summary>
     /// A mano, la elegida manda: si el coach está esperando la partida con otra (arrancó solo con el juego), se reinicia con
-    /// ella. En plena partida no se toca y vale para la siguiente. Lo que se aceptó con el atajo de la sugerida no se deshace:
-    /// recién cuenta si el jugador elige otra en la lista.
+    /// ella. Pasado el primer minuto de partida no se toca y vale para la siguiente, como el atajo de la sugerida
+    /// (<see cref="BuildOrderPicker.CanSwitchAt"/>). Que no se vea el reloj no alcanza: 30 s sin reloj dan la partida por
+    /// terminada, pero puede ser el árbol de tecnologías, y un coach nuevo empezaba la BO desde el paso 1 a los 15 minutos.
+    /// Mientras no se sabe si la partida sigue (<see cref="_lastUnsure"/>: se fue de una partida corta, alt-tab) la elegida
+    /// espera: entra con el reloj (la misma partida, con su pantalla de carga) o con el fin de partida (sin ella).
+    /// Lo que se aceptó con el atajo de la sugerida no se deshace: recién cuenta si el jugador elige otra en la lista.
     /// </summary>
     private void FollowSelection()
     {
-        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || _lastInGame || _selected() is not { } selected || selected.Id == _followedSelection)
+        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || !BuildOrderPicker.CanSwitchAt(_lastGameTime) || _lastUnsure
+            || _selected() is not { } selected || selected.Id == _followedSelection)
             return;
         _followedSelection = selected.Id;
         if (_coach?.BuildOrder.Id == selected.Id)
             return;
         _previousBuildOrder = null;
-        Start(selected, _liveFrames(), _startedAutomatically, _loading);
+        Start(selected, _liveFrames(), _startedAutomatically, LoadingForRestart);
     }
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
@@ -617,6 +639,11 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         // Reiniciar (otra BO en plena partida) no es detener: no avisa Stopped.
         StopCoach(notify: false);
+        // Sin pantalla de carga el coach nuevo no sigue la partida de la que salieron la sugerida, lo rechazado y el cruce
+        // (terminó, o no se sabe si sigue). La pantalla de carga siguiente no los olvidaba (_loading queda en null): el
+        // atajo usaba en la siguiente la sugerida de la anterior.
+        if (loading is null)
+            ForgetMatchChoices();
         IsLive = frames is not RecordedFrames;
         _startedAutomatically = automatic;
         // La civ de la partida manda sobre la de la BO: el Planner, la economía y la detección de clics usan sus costos.
@@ -670,6 +697,16 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     /// <summary>La pantalla de carga con que se reinició este coach (otra BO para la misma partida), o null.</summary>
     private Vision.Loading.LoadingReading? _restartedOn;
+
+    /// <summary>
+    /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida según el coach (la última captura), o
+    /// null si el coach está esperando la siguiente (terminó la partida) o no se sabe si la partida sigue
+    /// (<see cref="_lastLoadingInDoubt"/>): el coach nuevo arranca como sin pantalla de carga. La de la anterior lo hacía correr con
+    /// su civ, su número y su rival, y como nunca veía el reloj de esa partida no llegaba al fin ni leía la pantalla de carga
+    /// que venía. No sale de <see cref="_loading"/>, que es la última que se vio: una partida que empezó sin que se leyera
+    /// la suya seguía con la de la anterior.
+    /// </summary>
+    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting || _lastLoadingInDoubt ? null : _lastLoading;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -839,12 +876,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Overlay.BoSuggestion = Texts.Suggested(suggestion.Summary.Name, suggestion.Reason, Key("accept_suggestion"));
     }
 
+    /// <summary>Lo que salió de la pantalla de carga de una partida: la sugerida, lo rechazado y el cruce (también el del informe).</summary>
     private void ForgetMatchChoices()
     {
         _declined.Clear();
-        (_suggestion, _previousBuildOrder, _lastSwitchBest) = (null, null, null);
+        (_suggestion, _previousBuildOrder, _lastSwitchBest, _matchupQuery) = (null, null, null, null);
         if (Overlay is not null)
-            Overlay.BoSuggestion = null;
+            (Overlay.BoSuggestion, Overlay.MatchupLine, Overlay.MatchAdvice) = (null, null, null);
     }
 
     /// <summary>Baja la versión nueva de la BO que corre y vuelve a empezar el coach con ella (antes del primer minuto).</summary>
@@ -865,7 +903,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
-        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+        if (Start(bo, _liveFrames(), _startedAutomatically, LoadingForRestart))
             Status = Texts.NewVersionRunning(bo.Name);
     }
 
@@ -906,7 +944,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             }
             return;
         }
-        if (!Start(bo, _liveFrames(), automatic: true, _loading))
+        if (!Start(bo, _liveFrames(), automatic: true, LoadingForRestart))
         {
             // Con errores: el coach sigue con la que tiene y en esta partida no se vuelve a probar. Antes el coach moría,
             // volvía a arrancar solo, leía la pantalla de carga y se repetía todo.
@@ -965,7 +1003,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_lastSwitchBest is not null)
             _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
-        if (Start(previous, _liveFrames(), automatic: true, _loading))
+        if (Start(previous, _liveFrames(), automatic: true, LoadingForRestart))
             Status = Texts.BackToBuildOrder(previous.Name);
     }
 
@@ -985,7 +1023,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_coach != session)
             return;
-        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+        if (Start(bo, _liveFrames(), _startedAutomatically, LoadingForRestart))
             Status = Texts.SuggestedRunning(bo.Name);
     }
 
@@ -1120,6 +1158,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Live.Apply(frame);
         _lastGameTime = frame.View.Time;
         _lastInGame = frame.InGame;
+        _lastWaiting = frame.Waiting;
+        _lastLoading = frame.Loading;
+        // El juego atrás o un reloj que vuelve dudan siempre; un hueco sin reloj, para la pantalla de carga, solo si es largo.
+        var gameInDoubt = frame.InGame && (!frame.InFront || NewGameDetector.MayBeNew(frame.Hud?.ClockReading, frame.Hud?.Clock));
+        _lastUnsure = gameInDoubt || (frame.InGame && frame.SecondsWithoutClock > 0);
+        _lastLoadingInDoubt = gameInDoubt || (frame.InGame && frame.SecondsWithoutClock >= OverlayViewModel.ClockWarningSeconds);
         GameTime = frame.View.Time;
         InGame = frame.InGame;
         GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;
@@ -1140,6 +1184,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             if (loading != _restartedOn)
                 Status = LoadingNote(frame);
             Suggest(frame);
+        }
+        else if (frame.Loading is null && _loading is not null)
+        {
+            // La partida empezó sin que se leyera su pantalla de carga (el reloj volvió a empezar): lo que salió de la de la
+            // anterior no es de esta. El cruce de una partida corta (sin informe) terminaba en el informe de la siguiente.
+            ForgetMatchChoices();
+            _loading = null;
         }
         // La sugerencia, el aviso de que cambió de BO y el atajo que vuelve a la anterior valen durante la carga y el primer
         // minuto de partida.

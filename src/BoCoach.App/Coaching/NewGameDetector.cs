@@ -25,10 +25,7 @@ public sealed class NewGameDetector
     /// <param name="smoothed">El reloj suavizado.</param>
     public bool Check(double? raw, double? smoothed)
     {
-        if (raw is not { } now || smoothed is not { } clock)
-            return false;
-        // El suavizado nunca deja que el reloj vuelva para atrás: una partida nueva se ve en la lectura cruda.
-        if (now < clock - BackSeconds && now <= NewGameSeconds)
+        if (MayBeNew(raw, smoothed))
         {
             if (++_backwards < BackReads)
                 return false;
@@ -38,6 +35,14 @@ public sealed class NewGameDetector
         _backwards = 0;
         return false;
     }
+
+    /// <summary>
+    /// Esta lectura puede ser de otra partida: el reloj crudo volvió para atrás, cerca del cero. Hasta la lectura
+    /// <see cref="BackReads"/> no se sabe si es otra partida o una lectura mala.
+    /// </summary>
+    public static bool MayBeNew(double? raw, double? smoothed) =>
+        // El suavizado nunca deja que el reloj vuelva para atrás: una partida nueva se ve en la lectura cruda.
+        raw is { } now && smoothed is { } clock && now < clock - BackSeconds && now <= NewGameSeconds;
 
     public void Reset() => _backwards = 0;
 }

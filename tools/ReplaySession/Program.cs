@@ -770,17 +770,20 @@ static async Task<int> CoachReplay(string recording, string? boPath, string[] ar
     }
     var data = GameDataLoader.LoadLatest(Text(args, "--game-data", Path.Combine("data", "game_data")));
     var catalog = Catalog(args, data);
-    // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
     var bo = boPath is not null ? BuildOrderSerializer.Load(boPath) : recordedBo ?? BoCoach.Core.BuildOrders.BuildOrder.None;
-    bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
-    // Un registro puede venir de cualquiera y un count enorme agota la memoria al simularla: se valida antes, como en la app.
-    if (!bo.IsNone && new BuildOrderValidator(data).Validate(bo) is { IsValid: false } validation)
+    // Un registro puede venir de cualquiera y un count enorme agota la memoria al simularla: se valida antes, como en la app,
+    // con la civ propia de la BO y antes de ponerle la de la partida (jugar con otra civ una BO que pide algo que esa civ no
+    // tiene no frena al coach). La BO de un registro ya trae la civ de la partida y la suya se perdió: se valida con "any",
+    // que puede hacer todo, porque los topes que protegen la memoria (count, after) no dependen de la civ.
+    if (!bo.IsNone && new BuildOrderValidator(data).Validate(boPath is null ? bo with { Civ = "any" } : bo) is { IsValid: false } validation)
     {
         Console.Error.WriteLine($"La BO \"{bo.Name}\" no es válida:");
         foreach (var error in validation.Errors)
             Console.Error.WriteLine($"  {error.Message}");
         return 1;
     }
+    // --civ <clave>: la civ con que se jugó (manda sobre la de la BO, como el desplegable de la app).
+    bo = bo with { Civ = Text(args, "--civ", bo.Civ) };
     // --slot N: el número del jugador en el panel de puntajes (en vivo sale de la pantalla de carga; si no, se deduce).
     var builder = new SnapshotBuilder(data, data.Civ(bo.Civ)) { PlayerSlot = args.Contains("--slot") ? Option(args, "--slot", 0) : null };
     var allocator = Enum.Parse<BoCoach.Core.Economy.AllocatorKind>(Text(args, "--allocator", "exact"), ignoreCase: true);

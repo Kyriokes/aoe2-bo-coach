@@ -540,7 +540,8 @@ public sealed class CoachSessionTests : IDisposable
         session.Start(Scouts, new HiddenFrames());
         var reading = TwoPlayers("Ana", "japanese");
         session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
-        session.Apply(Frame(ViewAt(30)) with { InGame = true });
+        // Como el coach de verdad: cada captura de la partida trae su pantalla de carga.
+        session.Apply(Frame(ViewAt(30)) with { Loading = reading, Me = reading.Players[0], InGame = true });
 
         session.AcceptSuggestionCommand.Execute(null);
         Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
@@ -1229,9 +1230,367 @@ public sealed class CoachSessionTests : IDisposable
         session.Tick(gameRunning: true);
         Assert.Same(running, session.LiveCoach);
 
-        session.Apply(Frame(ViewAt(900)) with { InGame = false });
+        // 30 s sin reloj con el juego al frente da la partida por terminada, pero puede ser el árbol de tecnologías: si el
+        // reloj vuelve, el coach sigue donde estaba. Un coach nuevo empezaba la BO desde el paso 1 a los 15 minutos.
+        session.Apply(Frame(ViewAt(900)) with { InGame = false, Waiting = true });
+        session.Tick(gameRunning: true);
+        Assert.Same(running, session.LiveCoach);
+
+        var reading = TwoPlayers("Ana", "huns");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
         session.Tick(gameRunning: true);
         Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // La partida siguiente puede empezar sin que se lea su pantalla de carga (el reloj que vuelve a empezar): la elegida
+    // entra en su primer minuto, como el atajo de la sugerida, y sin la pantalla de carga de la anterior (el coach ya no
+    // la publica como de esta partida).
+    [Fact]
+    public void A_mano_la_elegida_para_la_siguiente_entra_aunque_no_se_lea_su_pantalla_de_carga()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Ana",
+        };
+        session.Tick(gameRunning: true);
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(300)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        session.Apply(Frame(ViewAt(900)) with { Loading = reading, Me = reading.Players[0], InGame = false, Waiting = true });
+        session.Tick(gameRunning: true);
+
+        session.Apply(Frame(ViewAt(3)) with { InGame = true });
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+        Assert.Equal("huns", session.LiveCoach!.Civ);
+    }
+
+    // Terminada la partida (antes del minuto: se rindió), la pantalla de carga que conoce la sesión es la de esa partida. El
+    // coach nuevo la tomaba como de esta: corría con la civ y el número de la anterior, sin esperar ni leer la siguiente.
+    [Fact]
+    public void A_mano_elegir_otra_entre_partidas_no_arrastra_la_pantalla_de_carga_de_la_anterior()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Ana",
+        };
+        session.Tick(gameRunning: true);
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(40)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(40)) with { Loading = reading, Me = reading.Players[0], Waiting = true });
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+        Assert.True(session.LiveCoach!.Waiting);
+        Assert.Equal("huns", session.LiveCoach.Civ);
+    }
+
+    // Elegida otra entre partidas, el coach nuevo arranca sin pantalla de carga y la siguiente es otra partida, pero la
+    // sesión se quedaba con la sugerida de la anterior: el atajo la usaba en la siguiente aunque ahí no se sugiriera nada.
+    [Fact]
+    public void Entre_partidas_la_sugerida_de_la_anterior_no_queda_para_la_siguiente()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Ana",
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Tick(gameRunning: true);
+        var first = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = first, Me = first.Players[0] });
+        Assert.StartsWith("Sugerida", session.Overlay!.BoSuggestion);
+        session.Apply(Frame(ViewAt(20)) with { Loading = first, Me = first.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(20)) with { Loading = first, Me = first.Players[0], Waiting = true });
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+
+        // La siguiente, sin tu nombre: no hay nada que sugerir.
+        var second = TwoPlayers("Beto", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = second, Me = null });
+        session.AcceptSuggestionCommand.Execute(null);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // Una partida corta (sin informe) y la siguiente sin su pantalla de carga: el cruce de la 1 quedaba en el overlay y
+    // terminaba en el informe de la 2.
+    [Fact]
+    public void El_cruce_de_la_partida_anterior_no_pasa_a_una_que_empieza_sin_leer_su_pantalla_de_carga()
+    {
+        var host = new FakeHost();
+        using var session = new CoachSessionViewModel(_data, host, () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "franks");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        Assert.StartsWith("Francos contra britanos en Arabia", session.Overlay!.MatchupLine);
+        session.Apply(Frame(ViewAt(23)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        // La 2: el coach ya no publica la pantalla de carga de la 1 como de esta partida.
+        session.Apply(Frame(ViewAt(5)) with { InGame = true });
+        Assert.Null(session.Overlay.MatchupLine);
+        Assert.Null(session.Overlay.MatchAdvice);
+        session.Finished(new Coach(Scouts, _data.GameData, _data.Events).Report() with { Length = 900 });
+
+        Assert.DoesNotContain(host.Report!.Value.Summary, line => line.StartsWith("El cruce", StringComparison.Ordinal));
+    }
+
+    private enum Stretch { Menu, Loading, Game, Away }
+
+    /// <summary>
+    /// La pantalla en vivo por tramos, la misma para todos los coaches de la sesión: el menú (nada que leer, el juego al
+    /// frente), la pantalla de carga de la partida rápida (Kyriokes con japoneses), la grabación de scouts desde el
+    /// principio, con su tiempo real, o el juego atrás (alt-tab: en pantalla completa queda minimizado).
+    /// </summary>
+    private sealed class Stretches(params (Stretch What, int Captures)[] stretches) : IFrameSource
+    {
+        private static readonly CapturedImage LoadingScreen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "carga-ia-en-1080p.png"));
+        private readonly RecordedSession _game = RecordedSession.Load(Fixture);
+        private int _served;
+        private double _time;
+        private double _offset;
+
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+
+        public Frame? Next()
+        {
+            var i = _served++;
+            foreach (var (what, captures) in stretches)
+            {
+                if (i >= captures)
+                {
+                    i -= captures;
+                    continue;
+                }
+                if (what != Stretch.Game)
+                {
+                    _time += 0.5;
+                    return what == Stretch.Away
+                        ? new Frame(_ => null, _time, Area, InFront: false)
+                        : new Frame(_ => null, _time, Area, what == Stretch.Loading ? LoadingScreen.Crop : null);
+                }
+                var frame = _game.Frames[i];
+                if (i == 0)
+                    _offset = _time + 0.5 - frame.TimeMs / 1000.0;
+                _time = _offset + frame.TimeMs / 1000.0;
+                return new Frame(region => _game.Has(frame.Index, region) ? _game.Image(frame.Index, region) : null, _time, Area);
+            }
+            return null;
+        }
+    }
+
+    // El caso entero por el camino de verdad: la partida 1 con britanos (reiniciada con su pantalla de carga), la BO de la
+    // siguiente elegida en plena partida, el fin, el menú y la pantalla de carga de la partida 2, con japoneses. La 2
+    // entera corría con britanos: el coach nuevo se armaba en el menú con la carga vieja y ya no leía la siguiente.
+    [Fact]
+    public async Task A_mano_la_partida_siguiente_corre_con_la_BO_elegida_y_su_propia_pantalla_de_carga()
+    {
+        if (OcrReader.TryCreate() is null)
+            return; // sin el OCR en inglés (puede pasar en CI)
+        var britons = new LoadingReading(
+            [new LoadingPlayer(1, "Kyriokes", "", "britons", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "franks", null, (0, 0, 0))], "Arabia");
+        var screen = new Stretches((Stretch.Game, 40), (Stretch.Menu, 80), (Stretch.Loading, 12), (Stretch.Game, 20));
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => screen)
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Kyriokes",
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+            RecordsFolder = Path.Combine(_library.FullName, "registros"),
+        };
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        Assert.True(session.Start(Scouts, screen, loading: britons));
+
+        // La ventana llama a Tick cada segundo: cada dos capturas.
+        var captures = 0;
+        async Task Play(int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                await session.LiveCoach!.StepAsync();
+                if (++captures % 2 == 0)
+                    session.Tick(gameRunning: true);
+            }
+        }
+
+        await Play(30);
+        Assert.Equal("britons", session.LiveCoach!.Civ);
+        Assert.True(last!.InGame);
+        chosen = RepoBuildOrders.Get("bog-huns");
+        await Play(10 + 80 + 12 + 20);
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.Equal("japanese", session.LiveCoach.Civ);
+        Assert.True(last!.InGame);
+        Assert.NotSame(britons, last.Loading);
+        Assert.Equal("japanese", last.Me?.Civ);
+    }
+
+    /// <summary>
+    /// La pantalla por tramos con el coach de verdad: la partida 1 con britanos (su pantalla de carga ya leída), la ventana
+    /// llama a Tick cada dos capturas y en la captura <paramref name="chooseAt"/> el jugador elige bog-huns en la lista.
+    /// Devuelve la sesión al final de la pantalla y la última captura.
+    /// </summary>
+    private async Task<(CoachSessionViewModel Session, CoachFrame Last)> PlayChoosingHuns(Stretches screen, int chooseAt)
+    {
+        var britons = new LoadingReading(
+            [new LoadingPlayer(1, "Kyriokes", "", "britons", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "franks", null, (0, 0, 0))], "Arabia");
+        var chosen = Scouts;
+        var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => screen)
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Kyriokes",
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+            RecordsFolder = Path.Combine(_library.FullName, "registros"),
+        };
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        Assert.True(session.Start(Scouts, screen, loading: britons));
+        for (var capture = 1; await session.LiveCoach!.StepAsync(); capture++)
+        {
+            if (capture == chooseAt)
+                chosen = RepoBuildOrders.Get("bog-huns");
+            if (capture % 2 == 0)
+                session.Tick(gameRunning: true);
+        }
+        return (session, last!);
+    }
+
+    // Revisión de los arreglos: la partida 1 duró más de un minuto y la BO de la siguiente se eligió en el menú, pero la
+    // partida 2 empezó sin que se leyera su pantalla de carga (alt-tab durante la carga): la detecta el reloj que vuelve a
+    // empezar. El coach nuevo se armaba con la pantalla de carga de la 1 y corría la 2 con britanos.
+    [Fact]
+    public async Task A_mano_la_elegida_no_toma_la_pantalla_de_carga_anterior_si_la_siguiente_empieza_sin_leer_la_suya()
+    {
+        if (OcrReader.TryCreate() is null)
+            return; // sin el OCR en inglés (puede pasar en CI)
+        var (session, last) = await PlayChoosingHuns(new Stretches((Stretch.Game, 40), (Stretch.Menu, 80), (Stretch.Game, 20)), chooseAt: 110);
+        using var _ = session;
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.True(last.InGame);
+        Assert.Equal("huns", session.LiveCoach.Civ);
+        Assert.Null(last.Loading);
+    }
+
+    // Revisión de los arreglos: una partida corta (se va a los 0:23) y elige otra antes del fin de partida, con alt-tab (el
+    // juego minimizado no cuenta los 30 s) o en la ventana de la app (cuenta como juego al frente). El coach nuevo se armaba
+    // con la pantalla de carga de la 1, no llegaba nunca al fin de partida ni leía la de la 2, y la 2 corría con britanos.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_mano_elegir_otra_al_irse_de_una_partida_corta_no_arrastra_su_pantalla_de_carga(bool altTab)
+    {
+        if (OcrReader.TryCreate() is null)
+            return;
+        var screen = altTab
+            ? new Stretches((Stretch.Game, 5), (Stretch.Away, 20), (Stretch.Menu, 80), (Stretch.Loading, 12), (Stretch.Game, 20))
+            : new Stretches((Stretch.Game, 5), (Stretch.Menu, 100), (Stretch.Loading, 12), (Stretch.Game, 20));
+        var (session, last) = await PlayChoosingHuns(screen, chooseAt: altTab ? 11 : 15);
+        using var _ = session;
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.True(last.InGame);
+        Assert.Equal("japanese", session.LiveCoach.Civ);
+        Assert.Equal("japanese", last.Me?.Civ);
+    }
+
+    // La partida corta, alt-tab, y la 2 sin su pantalla de carga: las primeras lecturas de la 2 tienen el reloj a la vista
+    // pero para atrás, y hasta la tercera el coach no sabe que es otra partida. El coach nuevo se armaba en la primera con
+    // la pantalla de carga de la 1 y ya no podía darse cuenta.
+    [Fact]
+    public async Task A_mano_la_elegida_espera_a_que_el_coach_sepa_si_es_otra_partida()
+    {
+        if (OcrReader.TryCreate() is null)
+            return;
+        var (session, last) = await PlayChoosingHuns(new Stretches((Stretch.Game, 5), (Stretch.Away, 20), (Stretch.Game, 20)), chooseAt: 11);
+        using var _ = session;
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.True(last.InGame);
+        Assert.Equal("huns", session.LiveCoach.Civ);
+        Assert.Null(last.Loading);
+    }
+
+    // Sin reloj en el primer minuto no se sabe si la partida terminó (se fue) o sigue (el árbol de tecnologías): el atajo
+    // de la sugerida arranca el coach nuevo sin la pantalla de carga, como sin pantalla de carga, en vez de con una que
+    // puede ser de la partida anterior.
+    [Fact]
+    public async Task Aceptar_la_sugerida_sin_reloj_no_arrastra_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(23)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(23), withoutClock: 5) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Null(last?.Loading);
+        Assert.True(last?.Waiting);
+    }
+
+    // Revisión de AP-20: una sola captura sin reloj (medio segundo) antes del atajo hacía que el coach nuevo arrancara sin
+    // la pantalla de carga toda la partida. Un hueco más corto que el aviso del overlay es ruido, no irse de la partida.
+    [Fact]
+    public async Task Aceptar_la_sugerida_tras_un_hueco_corto_sin_reloj_conserva_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(30)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(30), withoutClock: 0.5) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Equal(reading, last?.Loading);
+        Assert.Equal("japanese", last?.Civ);
+        Assert.NotNull(session.Overlay!.MatchupLine);
     }
 
     // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.

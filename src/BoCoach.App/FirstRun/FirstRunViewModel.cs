@@ -23,6 +23,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
     private readonly Func<GameLanguage> _language;
     private readonly Func<GameLanguage, OcrReader?> _createOcr;
     private readonly Func<bool> _autoCalibrate;
+    private readonly Func<bool> _smallDigits;
     private readonly Action<string> _savePlayerName;
     private LoadingScreenReader? _reader;
     private GameLanguage? _readerLanguage;
@@ -33,13 +34,15 @@ public sealed partial class FirstRunViewModel : ObservableObject
     /// <param name="autoCalibrate">La calibración sola: true si encontró el HUD del mod y guardó las regiones.</param>
     /// <param name="savePlayerName">Guarda "Tu nombre" en los ajustes.</param>
     /// <param name="createOcr">El OCR para un idioma (por defecto, el de Windows).</param>
+    /// <param name="smallDigits">Si la calibración sola vio los números del HUD muy chicos (VI-04, 768p o 720p).</param>
     public FirstRunViewModel(IScreenSource screen, GameData data, Func<GameLanguage> language, Func<bool> autoCalibrate,
-        Action<string> savePlayerName, string currentName = "", Func<GameLanguage, OcrReader?>? createOcr = null)
+        Action<string> savePlayerName, string currentName = "", Func<GameLanguage, OcrReader?>? createOcr = null, Func<bool>? smallDigits = null)
     {
         _screen = screen;
         _data = data;
         _language = language;
         _autoCalibrate = autoCalibrate;
+        _smallDigits = smallDigits ?? (() => false);
         _savePlayerName = savePlayerName;
         _createOcr = createOcr ?? (l => l.CreateOcr());
         PlayerName = currentName;
@@ -102,7 +105,8 @@ public sealed partial class FirstRunViewModel : ObservableObject
             if (!Calibrated && _autoCalibrate())
             {
                 Calibrated = true;
-                CalibrationStatus = Texts.HudCalibrated;
+                // A 768p o 720p el jugador nuevo tiene que saber que el coach puede leer mal (VI-04).
+                CalibrationStatus = Texts.HudCalibrated + (_smallDigits() ? " " + Texts.CalibratedSmallDigits : "");
             }
             if (Players.Count > 0 && Calibrated)
             {

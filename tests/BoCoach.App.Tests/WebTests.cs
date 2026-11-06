@@ -183,7 +183,8 @@ public sealed class WebTests : IDisposable
 
         Assert.Equal(2, result);
         Assert.Empty(web.Requests);
-        Assert.Contains("Cuenta de la web", output.ToString());
+        // Manda a donde se pega el token, con los nombres que tiene en la app: «Cuenta de la web…» ya no existía.
+        Assert.Contains($"{Texts.SettingsTitle} > {Texts.TabAdvanced} > \"{Texts.WebAccountButton}\"", output.ToString());
     }
 
     // AP-31: HttpClient borra Authorization al redirigir a otro host, pero no X-BoCoach-Secret. El cliente de la web no sigue

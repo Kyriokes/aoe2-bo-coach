@@ -93,12 +93,12 @@ public sealed class LiveCoachTests : IDisposable
     }
 
     /// <summary>El log a la vista con el reloj sin leerse (algo lo tapa): la calibración sola encuentra el HUD cada vez.</summary>
-    private sealed class CoveredClockFrames(CapturedImage log, HudLayout? hudAfterRecalibrating = null) : IFrameSource
+    private sealed class CoveredClockFrames(CapturedImage log, HudLayout? hudAfterRecalibrating = null, HudLayout? hudBefore = null) : IFrameSource
     {
         private int _served;
         public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
         public PixelRect Area => new(0, 0, 1920, 1080);
-        public HudLayout? Hud { get; private set; }
+        public HudLayout? Hud { get; private set; } = hudBefore;
         public Frame? Next() => new(region => region == RegionNames.EventLog ? log : null, ++_served * 0.5, Area);
 
         public bool Recalibrate()
@@ -145,6 +145,45 @@ public sealed class LiveCoachTests : IDisposable
         var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages, layout), ocr);
 
         Assert.Equal(2, events.Count(e => e == "house_built"));
+    }
+
+    // Los diseños del mod cambian de medidas sin cambiar de nombre (el mínimo, dos veces el 2026-11-01): el coach arrancaba
+    // en el menú con el de regions.json, la partida lo recalibraba con el nuevo y, como el nombre era el mismo, el lector
+    // seguía recortando cada campo con las medidas viejas toda la partida.
+    [Fact]
+    public async Task Volver_a_calibrar_con_el_mismo_nombre_y_otras_medidas_arma_otro_lector()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return;
+        var before = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", HudLayout.MinimalFileName));
+        var json = System.Text.Json.Nodes.JsonNode.Parse(before.ToJson())!;
+        json["cells"]!["wood"]!["fields"]!["stock"]!["y"] = 2;
+        var after = HudLayout.Parse(json.ToJsonString());
+        Assert.Equal(before.Name, after.Name);
+
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages, after, before), ocr);
+
+        Assert.Equal(2, events.Count(e => e == "house_built"));
+    }
+
+    // El mismo diseño leído otra vez (otra instancia, las mismas medidas, guardado y leído de regions.json) es el mismo lector.
+    [Fact]
+    public async Task Volver_a_calibrar_con_el_mismo_diseno_leido_otra_vez_no_cuenta_de_nuevo_el_log()
+    {
+        if (OcrReader.TryCreate() is not { } ocr)
+            return;
+        foreach (var name in new[] { HudLayout.FileName, HudLayout.MinimalFileName })
+        {
+            var layout = HudLayout.Load(Path.Combine(AppContext.BaseDirectory, "data", name));
+            Assert.Equal(layout.ToJson(), HudLayout.Parse(layout.ToJson()).ToJson());
+        }
+        var path = Path.Combine(AppContext.BaseDirectory, "data", HudLayout.MinimalFileName);
+        var saved = HudLayout.Parse(HudLayout.Load(path).ToJson());
+
+        var events = await EventsReadIn12Seconds(new CoveredClockFrames(LogWithFiveMessages, saved, HudLayout.Load(path)), ocr);
+
+        Assert.Contains("house_built", events);
+        Assert.Equal(events.Distinct(), events);
     }
 
     /// <summary>
@@ -689,6 +728,37 @@ public sealed class LiveCoachTests : IDisposable
         live.Stop();
         Assert.Equal(["nueva", "detenido"], finished.Select(f => f.Reason));
         Assert.True(finished[1].Length > 60, $"largo {finished[1].Length}");
+    }
+
+    // Una partida que empieza sin que se lea su pantalla de carga sigue con la civ y el número de la anterior (misma BO y
+    // civ), pero esa pantalla no es la suya: la sesión se la pasaba a un coach reiniciado con otra BO, que corría la
+    // partida entera con la civ, el número y el rival de la anterior.
+    [Fact]
+    public async Task Despues_de_un_reloj_que_vuelve_a_empezar_la_pantalla_de_carga_anterior_no_es_de_esta_partida()
+    {
+        var reading = new LoadingReading(
+            [new LoadingPlayer(1, "Ana", "", "franks", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "britons", null, (0, 0, 0))], "Arabia");
+        var frames = new GapFrames(RecordedSession.Load(Fixture), before: 13, gap: 0, gapInFront: true, restart: true);
+        using var live = new LiveCoach(Scouts, _data.GameData, _data.Events, _data.Fonts, ocr: null, frames, playerName: "Ana", loading: reading)
+        {
+            MinReportSeconds = 1,
+        };
+        CoachFrame? last = null;
+        live.Updated += frame => last = frame;
+
+        for (var i = 0; i < 13; i++)
+            await live.StepAsync();
+        Assert.Same(reading, last!.Loading);
+        Assert.Equal("Ana", last.Me?.Name);
+
+        // Como en Un_reloj_que_vuelve_a_empezar_es_otra_partida: a la cuarta lectura para atrás ya es otra partida.
+        for (var i = 0; i < 4; i++)
+            await live.StepAsync();
+
+        Assert.True(last!.View.Time < 60, $"tiempo {last.View.Time}");
+        Assert.Null(last.Loading);
+        Assert.Null(last.Me);
+        Assert.Equal("franks", live.Civ);
     }
 
     private string? WarningOf(CoachFrame frame)

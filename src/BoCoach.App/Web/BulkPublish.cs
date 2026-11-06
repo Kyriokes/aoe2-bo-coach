@@ -5,8 +5,8 @@ using BoCoach.Core.Web;
 namespace BoCoach.App.Web;
 
 /// <summary>
-/// <c>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run]</c>: publica en la web, con la cuenta de "Cuenta de la
-/// web…", cada BO de la carpeta, o la reemplaza si ya se publicó desde esta PC (otra corrida no las duplica). Sirve
+/// <c>BoCoach.exe --publish &lt;carpeta o .json&gt; [--dry-run]</c>: publica en la web, con la cuenta de Ajustes &gt;
+/// Avanzado &gt; "Dirección y token…", cada BO de la carpeta, o la reemplaza si ya se publicó desde esta PC (otra corrida no las duplica). Sirve
 /// para subir de una vez las BO por civ (build_orders/civs). Con <c>--dry-run</c> solo dice qué publicaría. Escribe
 /// un renglón por BO en la salida estándar (la app no tiene consola: se ve si se la redirige, por ejemplo con
 /// <c>| Write-Output</c> en PowerShell).
@@ -26,7 +26,8 @@ public static class BulkPublish
         }
         if (!dryRun && !account.Settings.HasToken)
         {
-            output.WriteLine("No hay cuenta de la web: pegá el token de \"Mi cuenta\" en \"Cuenta de la web…\" de la app.");
+            // Con los nombres de la app (Texts), así no queda mandando a un botón que ya no existe.
+            output.WriteLine($"No hay cuenta de la web: pegá el token de \"Mi cuenta\" en {Texts.SettingsTitle} > {Texts.TabAdvanced} > \"{Texts.WebAccountButton}\" de la app.");
             return 2;
         }
 

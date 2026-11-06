@@ -77,10 +77,11 @@
                 <StackPanel>
                     <TextBlock Text="{x:Static app:Texts.FirstRunMatchTitle}" Style="{StaticResource StepTitle}" />
                     <TextBlock Text="{x:Static app:Texts.FirstRunMatchBody}" Style="{StaticResource Body}" Margin="0,3,0,8" />
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="{Binding WatchButtonText}" Command="{Binding ToggleWatchingCommand}" />
-                        <TextBlock Text="{Binding CalibrationStatus}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    </StackPanel>
+                    <!-- DockPanel y no StackPanel: el aviso de números chicos (VI-04) es largo y tiene que partirse en renglones. -->
+                    <DockPanel>
+                        <Button Content="{Binding WatchButtonText}" Command="{Binding ToggleWatchingCommand}" VerticalAlignment="Top" />
+                        <TextBlock Text="{Binding CalibrationStatus}" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="8,0,0,0" />
+                    </DockPanel>
                     <TextBlock Text="{Binding WatchStatus}" Style="{StaticResource Body}" Margin="0,6,0,0"
                                Visibility="{Binding WatchStatus, Converter={StaticResource NotEmptyToVisibility}}" />
                 </StackPanel>

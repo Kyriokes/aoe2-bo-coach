@@ -85,8 +85,11 @@ public sealed class UsageMeter
 /// <param name="StartOffset">Segundos del reloj del juego antes de que el jugador empezara a jugar (ver <see cref="SnapshotBuilder.StartOffset"/>).</param>
 /// <param name="HudScale">Tamaño del HUD respecto de 1080p: las franjas de <see cref="HudState.ModBands"/> están medidas a 1080p.</param>
 /// <param name="Regions">Las cajas con que se leyó la captura (<see cref="IFrameSource.Regions"/>), o null.</param>
-/// <param name="Loading">Lo leído en la última pantalla de carga (la de esta partida), o null.</param>
-/// <param name="Me">El jugador de la pantalla de carga con el nombre puesto en la app, o null.</param>
+/// <param name="Loading">
+/// Lo leído en la pantalla de carga de esta partida, o null. También null si la partida empezó sin que se leyera la suya (el
+/// reloj volvió a empezar), aunque el coach siga con la civ y el número de la anterior.
+/// </param>
+/// <param name="Me">El jugador de <paramref name="Loading"/> con el nombre puesto en la app, o null.</param>
 /// <param name="Civ">La civ con que corre el coach (clave de game_data, o "any").</param>
 /// <param name="InFront">False mientras el juego está abierto pero no al frente (alt-tab): no se lee nada y el overlay se esconde.</param>
 /// <param name="Waiting">Esperando una partida: antes de la primera pantalla de carga o del primer reloj, y después de un fin de partida.</param>
@@ -189,6 +192,14 @@ public sealed class LiveCoach : IDisposable
     private double? _lastInGameRecalibrate;
     private bool _loadingDone;
     private LoadingReading? _loadingReading;
+
+    /// <summary>
+    /// <see cref="_loadingReading"/> es la pantalla de carga de la partida en curso. Una partida que empezó sin que se leyera
+    /// la suya (el reloj volvió a empezar) sigue con la civ y el número de la anterior, pero no se publica como de esta
+    /// partida: la sesión se la pasaba a un coach reiniciado con otra BO, que corría la partida entera con la civ, el
+    /// número y el rival de la anterior.
+    /// </summary>
+    private bool _loadingOfThisGame;
     private LoadingPlayer? _me;
     private bool _inFront = true;
     private bool _waiting = true;
@@ -221,7 +232,7 @@ public sealed class LiveCoach : IDisposable
         if (loading is not null)
         {
             KnowPlayers(_coach, _builder, me, loading);
-            (_loadingReading, _me, _loadingDone, _waiting) = (loading, me, true, false);
+            (_loadingReading, _me, _loadingDone, _waiting, _loadingOfThisGame) = (loading, me, true, false, true);
         }
     }
 
@@ -486,12 +497,15 @@ public sealed class LiveCoach : IDisposable
 
     /// <summary>
     /// Vuelve a calibrar. El lector sigue igual si el diseño del HUD no cambió: uno nuevo da por nuevos todos los renglones
-    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj.
+    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj. Se
+    /// compara el diseño entero y no el nombre: el lector recorta cada campo según sus medidas, y un diseño del mod cambia de
+    /// medidas sin cambiar de nombre (el mínimo, dos veces el 2026-11-01). Con el de regions.json de la versión anterior,
+    /// la partida entera se leía con las medidas viejas.
     /// </summary>
     private void Recalibrate()
     {
-        var before = Frames.Hud?.Name;
-        if (Frames.Recalibrate() && Frames.Hud?.Name != before)
+        var before = Frames.Hud?.ToJson();
+        if (Frames.Recalibrate() && Frames.Hud?.ToJson() != before)
             _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
     }
 
@@ -537,7 +551,7 @@ public sealed class LiveCoach : IDisposable
         lock (_gate)
         {
             (_coach, _builder, _reader) = (coach, builder, reader);
-            (_loadingReading, _me, Civ) = (loading, me, bo.Civ);
+            (_loadingReading, _me, Civ, _loadingOfThisGame) = (loading, me, bo.Civ, reading is not null);
             _hud = null;
         }
         _loadingDone = reading is not null;
@@ -728,8 +742,9 @@ public sealed class LiveCoach : IDisposable
         lock (_gate)
             view = _coach.View;
         var withoutClock = _lastClockAt is { } at ? _now - at : _now;
+        var (loading, me) = _loadingOfThisGame ? (_loadingReading, _me) : (null, null);
         Updated?.Invoke(new CoachFrame(view, _hud, withoutClock, _frameMs, _usage.Sample(), Paused, _ended, _error, _area, _builder.StartOffset,
-            Frames.HudScale, _loadingReading, _me, Civ, _inFront, _waiting, FlagNotice ?? FontNotice ?? _recordNotice, _clockSeenInGame, Frames.Regions));
+            Frames.HudScale, loading, me, Civ, _inFront, _waiting, FlagNotice ?? FontNotice ?? _recordNotice, _clockSeenInGame, Frames.Regions));
     }
 
     private string? FlagNotice => _now < _flagNoticeUntil ? Texts.FlagNoticed : null;
