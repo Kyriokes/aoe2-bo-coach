@@ -52,6 +52,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     private CancellationTokenSource? _pick;
     private double _lastGameTime;
     private bool _lastInGame;
+    private bool _lastWaiting;
     private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -601,7 +602,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_coach?.BuildOrder.Id == selected.Id)
             return;
         _previousBuildOrder = null;
-        Start(selected, _liveFrames(), _startedAutomatically, _loading);
+        Start(selected, _liveFrames(), _startedAutomatically, LoadingForRestart);
     }
 
     /// <param name="automatic">Arrancó solo (D6): se detiene al cerrarse el juego y cambia a la BO sugerida si puntúa más.</param>
@@ -673,6 +674,13 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     /// <summary>La pantalla de carga con que se reinició este coach (otra BO para la misma partida), o null.</summary>
     private Vision.Loading.LoadingReading? _restartedOn;
+
+    /// <summary>
+    /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida, o null si el coach está esperando la
+    /// siguiente (terminó la partida). La de la anterior lo hacía correr con su civ, su número y su rival, sin esperar ni
+    /// leer la pantalla de carga que venía.
+    /// </summary>
+    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting ? null : _loading;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -868,7 +876,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             return;
         if (_coach != session || session is null || !BuildOrderPicker.CanSwitch(_lastInGame, _lastGameTime))
             return;
-        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+        if (Start(bo, _liveFrames(), _startedAutomatically, LoadingForRestart))
             Status = Texts.NewVersionRunning(bo.Name);
     }
 
@@ -909,7 +917,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
             }
             return;
         }
-        if (!Start(bo, _liveFrames(), automatic: true, _loading))
+        if (!Start(bo, _liveFrames(), automatic: true, LoadingForRestart))
         {
             // Con errores: el coach sigue con la que tiene y en esta partida no se vuelve a probar. Antes el coach moría,
             // volvía a arrancar solo, leía la pantalla de carga y se repetía todo.
@@ -968,7 +976,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         if (_lastSwitchBest is not null)
             _declined.Add(_lastSwitchBest);
         _previousBuildOrder = null;
-        if (Start(previous, _liveFrames(), automatic: true, _loading))
+        if (Start(previous, _liveFrames(), automatic: true, LoadingForRestart))
             Status = Texts.BackToBuildOrder(previous.Name);
     }
 
@@ -988,7 +996,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         }
         if (_coach != session)
             return;
-        if (Start(bo, _liveFrames(), _startedAutomatically, _loading))
+        if (Start(bo, _liveFrames(), _startedAutomatically, LoadingForRestart))
             Status = Texts.SuggestedRunning(bo.Name);
     }
 
@@ -1123,6 +1131,7 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         Live.Apply(frame);
         _lastGameTime = frame.View.Time;
         _lastInGame = frame.InGame;
+        _lastWaiting = frame.Waiting;
         GameTime = frame.View.Time;
         InGame = frame.InGame;
         GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;

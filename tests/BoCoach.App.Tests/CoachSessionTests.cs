@@ -1261,6 +1261,124 @@ public sealed class CoachSessionTests : IDisposable
         Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
     }
 
+    // Terminada la partida (antes del minuto: se rindió), la pantalla de carga que conoce la sesión es la de esa partida. El
+    // coach nuevo la tomaba como de esta: corría con la civ y el número de la anterior, sin esperar ni leer la siguiente.
+    [Fact]
+    public void A_mano_elegir_otra_entre_partidas_no_arrastra_la_pantalla_de_carga_de_la_anterior()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Ana",
+        };
+        session.Tick(gameRunning: true);
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(40)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(40)) with { Loading = reading, Me = reading.Players[0], Waiting = true });
+
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+        Assert.True(session.LiveCoach!.Waiting);
+        Assert.Equal("huns", session.LiveCoach.Civ);
+    }
+
+    private enum Stretch { Menu, Loading, Game }
+
+    /// <summary>
+    /// La pantalla en vivo por tramos, la misma para todos los coaches de la sesión: el menú (nada que leer, el juego al
+    /// frente), la pantalla de carga de la partida rápida (Kyriokes con japoneses) o la grabación de scouts desde el
+    /// principio, con su tiempo real.
+    /// </summary>
+    private sealed class Stretches(params (Stretch What, int Captures)[] stretches) : IFrameSource
+    {
+        private static readonly CapturedImage LoadingScreen = Png.Read(Path.Combine(AppContext.BaseDirectory, "fixtures", "screens", "carga-ia-en-1080p.png"));
+        private readonly RecordedSession _game = RecordedSession.Load(Fixture);
+        private int _served;
+        private double _time;
+        private double _offset;
+
+        public TimeSpan Interval => TimeSpan.FromMilliseconds(500);
+        public PixelRect Area => new(0, 0, 1920, 1080);
+
+        public Frame? Next()
+        {
+            var i = _served++;
+            foreach (var (what, captures) in stretches)
+            {
+                if (i >= captures)
+                {
+                    i -= captures;
+                    continue;
+                }
+                if (what != Stretch.Game)
+                {
+                    _time += 0.5;
+                    return new Frame(_ => null, _time, Area, what == Stretch.Loading ? LoadingScreen.Crop : null);
+                }
+                var frame = _game.Frames[i];
+                if (i == 0)
+                    _offset = _time + 0.5 - frame.TimeMs / 1000.0;
+                _time = _offset + frame.TimeMs / 1000.0;
+                return new Frame(region => _game.Has(frame.Index, region) ? _game.Image(frame.Index, region) : null, _time, Area);
+            }
+            return null;
+        }
+    }
+
+    // El caso entero por el camino de verdad: la partida 1 con britanos (reiniciada con su pantalla de carga), la BO de la
+    // siguiente elegida en plena partida, el fin, el menú y la pantalla de carga de la partida 2, con japoneses. La 2
+    // entera corría con britanos: el coach nuevo se armaba en el menú con la carga vieja y ya no leía la siguiente.
+    [Fact]
+    public async Task A_mano_la_partida_siguiente_corre_con_la_BO_elegida_y_su_propia_pantalla_de_carga()
+    {
+        if (OcrReader.TryCreate() is null)
+            return; // sin el OCR en inglés (puede pasar en CI)
+        var britons = new LoadingReading(
+            [new LoadingPlayer(1, "Kyriokes", "", "britons", null, (0, 0, 0)), new LoadingPlayer(2, "Rival", "", "franks", null, (0, 0, 0))], "Arabia");
+        var screen = new Stretches((Stretch.Game, 40), (Stretch.Menu, 80), (Stretch.Loading, 12), (Stretch.Game, 20));
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => screen)
+        {
+            ManualSteps = true,
+            BoMode = BuildOrderMode.Manual,
+            PlayerName = "Kyriokes",
+            ReportsFolder = Path.Combine(_library.FullName, "informes"),
+            RecordsFolder = Path.Combine(_library.FullName, "registros"),
+        };
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        Assert.True(session.Start(Scouts, screen, loading: britons));
+
+        // La ventana llama a Tick cada segundo: cada dos capturas.
+        var captures = 0;
+        async Task Play(int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                await session.LiveCoach!.StepAsync();
+                if (++captures % 2 == 0)
+                    session.Tick(gameRunning: true);
+            }
+        }
+
+        await Play(30);
+        Assert.Equal("britons", session.LiveCoach!.Civ);
+        Assert.True(last!.InGame);
+        chosen = RepoBuildOrders.Get("bog-huns");
+        await Play(10 + 80 + 12 + 20);
+
+        Assert.Equal("bog-huns", session.LiveCoach!.BuildOrder.Id);
+        Assert.Equal("japanese", session.LiveCoach.Civ);
+        Assert.True(last!.InGame);
+        Assert.NotSame(britons, last.Loading);
+        Assert.Equal("japanese", last.Me?.Civ);
+    }
+
     // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.
     [Fact]
     public async Task A_mano_la_sugerida_que_aceptaste_no_se_deshace_sola()
