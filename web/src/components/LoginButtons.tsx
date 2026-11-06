@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/i18n/client";
+import { leaveAndComeBack } from "@/lib/editor/draft";
 import { browserClient } from "@/lib/supabase/browser";
 
 const PROVIDERS = ["discord", "google"] as const;
@@ -12,8 +13,13 @@ export function LoginButtons({ next }: { next: string }) {
 
   async function signIn(provider: (typeof PROVIDERS)[number]) {
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    // Se sale del sitio y se vuelve a esta pestaña: el borrador del editor sobrevive, el navegador no tiene que preguntar.
+    leaveAndComeBack();
     const { error } = await browserClient().auth.signInWithOAuth({ provider, options: { redirectTo } });
-    if (error) setError(error.message);
+    if (error) {
+      leaveAndComeBack(false);
+      setError(error.message);
+    }
   }
 
   return (

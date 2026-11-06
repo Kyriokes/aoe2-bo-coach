@@ -63,14 +63,17 @@ export interface EditorState {
   /** Sube con cada edición; cuando supera a `analyzedRevision`, hay que volver a analizar. */
   revision: number;
   analyzedRevision: number;
-  /** La revisión de lo último que se cargó, se empezó o se guardó: si `revision` es otra, hay cambios sin guardar. */
+  /** La revisión de lo último que mandó la página, se empezó o se guardó: si `revision` es otra, hay cambios sin guardar. */
   cleanRevision: number;
   loadError: string | null;
 }
 
 export type EditorAction =
-  /** `restored`: es un borrador recuperado, que sigue teniendo cambios sin guardar. */
-  | { type: "load"; analysis: Analysis; restored?: boolean }
+  /**
+   * `from`: de dónde viene. Solo lo que manda la página (la BO que se edita) está guardado en la web; un borrador
+   * recuperado y lo que carga el usuario (un ejemplo, un archivo, una guía pegada) siguen con cambios sin guardar.
+   */
+  | { type: "load"; analysis: Analysis; from: "page" | "draft" | "user" }
   /** `name`: el nombre en el idioma de la página. */
   | { type: "new"; id: string; name?: string }
   /** Lo que hay quedó guardado en la web. */
@@ -315,7 +318,7 @@ export function reduce(state: EditorState, action: EditorAction): EditorState {
     case "load": {
       const { bo, steps } = fromAnalysis(action.analysis);
       const revision = state.revision + 1;
-      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, cleanRevision: action.restored ? state.cleanRevision : revision, loadError: null };
+      return { ...state, bo, steps, selected: null, analysis: action.analysis, revision, analyzedRevision: revision, cleanRevision: action.from === "page" ? revision : state.cleanRevision, loadError: null };
     }
     case "new":
       // Una BO nueva arranca con la apertura de siempre: los 3 iniciales hacen 2 casas y van a las ovejas (si no,

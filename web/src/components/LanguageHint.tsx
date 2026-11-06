@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useI18n } from "@/i18n/client";
 import { LOCALE_COOKIE, type Locale } from "@/i18n/locales";
+import { comeBackOnClick } from "@/lib/editor/draft";
 
 const noSubscribe = () => () => {};
 
@@ -40,6 +41,8 @@ export function LanguageHint() {
         onClick={(e) => {
           const { pathname, search, hash } = window.location;
           e.currentTarget.href = `/idioma/${other}?volver=${encodeURIComponent(pathname + search + hash)}`;
+          // Vuelve a esta pestaña y el borrador de una BO sin guardar se recupera: el navegador no tiene que preguntar.
+          comeBackOnClick(e);
         }}
       >
         {t.layout.hintSwitch}

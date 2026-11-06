@@ -164,11 +164,11 @@ describe("una BO nueva arranca", () => {
 
 describe("un borrador vuelve como estaba", () => {
   it("una BO manual: los mismos pasos, con cambios sin guardar", () => {
-    const loaded = reduce(initialState(), { type: "load", analysis: analyze(readFileSync(join(repoDir, "build_orders", "scouts_22p.json"), "utf8")) });
+    const loaded = reduce(initialState(), { type: "load", analysis: analyze(readFileSync(join(repoDir, "build_orders", "scouts_22p.json"), "utf8")), from: "page" });
     const edited = reduce(loaded, { type: "setCount", id: "s2", count: 7 });
     expect(isDirty(edited)).toBe(true);
 
-    const restored = reduce(initialState(), { type: "load", analysis: analyze(draftJson(edited)), restored: true });
+    const restored = reduce(initialState(), { type: "load", analysis: analyze(draftJson(edited)), from: "draft" });
 
     expect(restored.steps).toEqual(edited.steps);
     expect(restored.bo).toEqual(edited.bo);
@@ -179,7 +179,7 @@ describe("un borrador vuelve como estaba", () => {
     const state = { ...reduce(initialState(), { type: "new", id: "n1" }), steps: [{ id: "x", do: "research" as const, what: "castle_age", count: 1, after: [], withPrevious: false }] };
     const analysis = analyze(draftJson(state));
     expect(analysis.valid).toBe(false);
-    expect(reduce(initialState(), { type: "load", analysis, restored: true }).steps.map((s) => s.what)).toEqual(["castle_age"]);
+    expect(reduce(initialState(), { type: "load", analysis, from: "draft" }).steps.map((s) => s.what)).toEqual(["castle_age"]);
   });
 
   it("una BO asistida: sus objetivos, los pasos generados de nuevo y sin avisar que se recalculó", () => {
@@ -188,7 +188,7 @@ describe("un borrador vuelve como estaba", () => {
     const edited = reduce(fresh, { type: "setAssisted", assisted: plan });
 
     const analysis = analyze(draftJson(edited));
-    const restored = reduce(initialState(), { type: "load", analysis, restored: true });
+    const restored = reduce(initialState(), { type: "load", analysis, from: "draft" });
 
     expect(analysis.assisted?.regenerated).toBe(false);
     expect(planFromJson(restored.bo.assisted)).toEqual(plan);

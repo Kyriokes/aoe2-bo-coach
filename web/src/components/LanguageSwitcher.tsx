@@ -2,6 +2,7 @@
 
 import { useI18n } from "@/i18n/client";
 import { LOCALE_NAME, LOCALES } from "@/i18n/locales";
+import { comeBackOnClick } from "@/lib/editor/draft";
 
 /**
  * La misma página en otro idioma: pasa por /idioma/<idioma>, que guarda la elección en una cookie y vuelve. La página
@@ -29,6 +30,8 @@ export function LanguageSwitcher() {
               onClick={(e) => {
                 const { pathname, search, hash } = window.location;
                 e.currentTarget.href = `/idioma/${other}?volver=${encodeURIComponent(pathname + search + hash)}`;
+                // Vuelve a esta pestaña y el borrador de una BO sin guardar se recupera: el navegador no tiene que preguntar.
+                comeBackOnClick(e);
               }}
             >
               {LOCALE_NAME[other]}

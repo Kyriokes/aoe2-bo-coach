@@ -1,12 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defaultPlan, newAssisted } from "./assisted";
-import { clearDraft, draftJson, draftKey, readDraft, writeDraft } from "./draft";
+import { clearDraft, comeBackOnClick, comeBackOnSubmit, draftJson, draftKey, leaveAndComeBack, losesWork, markUnsaved, openingApp, readDraft, warnBeforeUnload, writeDraft } from "./draft";
 import { initialState, isDirty, reduce, type EditorState } from "./model";
 
 /** Un sessionStorage de mentira. */
 function memoryStorage() {
   const items = new Map<string, string>();
   return {
+    get length() {
+      return items.size;
+    },
+    key: (index: number) => [...items.keys()][index] ?? null,
     getItem: (key: string) => items.get(key) ?? null,
     setItem: (key: string, value: string) => void items.set(key, value),
     removeItem: (key: string) => void items.delete(key),
@@ -15,6 +19,12 @@ function memoryStorage() {
 
 /** Un sessionStorage que el navegador no deja usar (modo privado, sin lugar). */
 const brokenStorage = {
+  get length(): number {
+    throw new Error("SecurityError");
+  },
+  key: () => {
+    throw new Error("SecurityError");
+  },
   getItem: () => {
     throw new Error("SecurityError");
   },
@@ -78,12 +88,19 @@ describe("si hay cambios sin guardar", () => {
   const empty = initialState();
   const fresh = newAssisted(empty, "n1");
 
-  it("al abrir, con una BO nueva o recién cargada, no hay", () => {
+  it("al abrir, con una BO nueva o con la que manda la página, no hay", () => {
     expect(isDirty(empty)).toBe(false);
     expect(isDirty(fresh)).toBe(false);
     expect(isDirty(reduce(empty, { type: "new", id: "n1" }))).toBe(false);
     const edited = reduce(fresh, { type: "setField", field: "name", value: "Mía" });
-    expect(isDirty(reduce(edited, { type: "load", analysis: analysis() }))).toBe(false);
+    expect(isDirty(reduce(edited, { type: "load", analysis: analysis(), from: "page" }))).toBe(false);
+  });
+
+  // Antes quedaba "sin cambios": sin borrador ni aviso, e iniciar sesión para publicarla volvía a "Nueva build order".
+  it("lo que carga el usuario (un ejemplo, un archivo, una guía pegada) no está guardado en la web: los hay hasta guardar", () => {
+    const loaded = reduce(fresh, { type: "load", analysis: analysis(), from: "user" });
+    expect(isDirty(loaded)).toBe(true);
+    expect(isDirty(reduce(loaded, { type: "saved" }))).toBe(false);
   });
 
   it("cualquier edición los hace, elegir una caja o que llegue un análisis no", () => {
@@ -97,9 +114,185 @@ describe("si hay cambios sin guardar", () => {
   });
 
   it("un borrador recuperado sigue con cambios, y guardar los limpia", () => {
-    const restored = reduce(fresh, { type: "load", analysis: analysis(), restored: true });
+    const restored = reduce(fresh, { type: "load", analysis: analysis(), from: "draft" });
     expect(isDirty(restored)).toBe(true);
     expect(isDirty(reduce(restored, { type: "saved" }))).toBe(false);
+  });
+});
+
+// Next esconde /subir en <Activity hidden> al ir a otra página del sitio y React corre los cleanups: un aviso atado a la
+// vista se iba, y cerrar la pestaña desde la biblioteca perdía la BO sin preguntar.
+describe("antes de salir de la página", () => {
+  const json = { json: "{}", visibility: "private" as const };
+
+  it("cerrar la pestaña pierde lo que no se guardó, esté o no el editor a la vista: los borradores se van con ella", () => {
+    const storage = memoryStorage();
+    expect(losesWork(storage, [], false)).toBe(false);
+
+    writeDraft(storage, draftKey("k7m2qa"), json);
+    expect(losesWork(storage, [draftKey("k7m2qa")], false)).toBe(true);
+    // El editor ya no está (otra ruta, o se desmontó), pero el borrador sí.
+    expect(losesWork(storage, [], false)).toBe(true);
+  });
+
+  it("salir para volver a esta pestaña (el login) no pregunta si lo que no se guardó quedó en el borrador", () => {
+    const storage = memoryStorage();
+    writeDraft(storage, draftKey(), json);
+    expect(losesWork(storage, [draftKey()], true)).toBe(false);
+    expect(losesWork(storage, [], true)).toBe(false);
+    // Si el navegador no dejó escribirlo, lo único que hay es lo de la página: pregunta igual.
+    expect(losesWork(storage, [draftKey("otra")], true)).toBe(true);
+    expect(losesWork(brokenStorage, [draftKey()], true)).toBe(true);
+    expect(losesWork(null, [draftKey()], true)).toBe(true);
+  });
+
+  it("lo que no es un borrador del editor no cuenta, y sin almacenamiento solo cuenta lo que marcó el editor", () => {
+    const storage = memoryStorage();
+    storage.setItem("otra.cosa", "x");
+    storage.setItem(draftKey("rota"), "{ roto");
+    expect(losesWork(storage, [], false)).toBe(false);
+    expect(losesWork(brokenStorage, [], false)).toBe(false);
+    expect(losesWork(null, [], false)).toBe(false);
+    expect(losesWork(null, [draftKey()], false)).toBe(true);
+  });
+
+  /** Lo que hace el navegador al cerrar la pestaña: si el aviso pide quedarse, pregunta. */
+  const asks = () => {
+    const event = { preventDefault: vi.fn(), returnValue: undefined as unknown };
+    warnBeforeUnload(event as unknown as BeforeUnloadEvent);
+    return event.preventDefault.mock.calls.length > 0 && event.returnValue === "";
+  };
+
+  it("el aviso mira lo que marcó el editor y los borradores, no si el editor está a la vista; salir para volver vale una vez", () => {
+    const storage = memoryStorage();
+    const key = draftKey("k7m2qa");
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      expect(asks()).toBe(false);
+      markUnsaved(key, true);
+      expect(asks()).toBe(true);
+      writeDraft(storage, key, json);
+      expect(asks()).toBe(true);
+      leaveAndComeBack();
+      expect(asks()).toBe(false);
+      expect(asks()).toBe(true);
+      markUnsaved(key, false);
+      clearDraft(storage, key);
+      expect(asks()).toBe(false);
+    } finally {
+      markUnsaved(key, false);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Chrome dispara beforeunload con un enlace bocoach:// y con location.href a ese esquema, aunque la página no se va: con
+  // Cancelar, "Abrir en la app" no abría la app y "Conectar la app" creaba un token que no le llegaba.
+  it("abrir la app no pregunta aunque haya algo sin guardar, porque la página se queda; vale solo para esa salida", () => {
+    const storage = memoryStorage();
+    const key = draftKey();
+    vi.stubGlobal("window", { sessionStorage: storage });
+    vi.useFakeTimers();
+    try {
+      // Ni siquiera quedó en el borrador: lo único que hay está en la página, y la página no se descarga.
+      markUnsaved(key, true);
+      expect(asks()).toBe(true);
+      openingApp();
+      expect(asks()).toBe(false);
+      expect(asks()).toBe(true);
+      // Si el navegador no dispara el aviso (no abrió nada, o lo abrió en otra pestaña), no queda prendido.
+      openingApp();
+      vi.runAllTimers();
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(key, false);
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // /idioma guarda la elección y vuelve a esta pestaña, en la misma página: el borrador se recupera solo.
+  it("cambiar de idioma no pregunta, desde el editor o desde otra página; abrir el enlace en otra pestaña no sale de esta", () => {
+    const storage = memoryStorage();
+    const key = draftKey();
+    const click = { button: 0, ctrlKey: false, metaKey: false, shiftKey: false, altKey: false };
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      writeDraft(storage, key, json);
+      expect(asks()).toBe(true);
+      comeBackOnClick(click);
+      expect(asks()).toBe(false);
+
+      markUnsaved(key, true);
+      comeBackOnClick(click);
+      expect(asks()).toBe(false);
+
+      // Con Ctrl, Mayús, Cmd o Alt el navegador lo abre en otra pestaña o ventana (o lo descarga): esta se queda, y cerrarla
+      // después tiene que preguntar.
+      for (const modifier of ["ctrlKey", "metaKey", "shiftKey", "altKey"] as const) {
+        comeBackOnClick({ ...click, [modifier]: true });
+        expect(asks()).toBe(true);
+      }
+      comeBackOnClick({ ...click, button: 1 });
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(key, false);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Buscar en la biblioteca y "Ver cruce" son formularios GET nativos: recargan la página en esta pestaña, con el borrador
+  // intacto, y preguntaban en cada envío mientras quedara un borrador (alcanzaba con haber probado un ejemplo).
+  it("mandar un formulario que recarga esta pestaña en el mismo sitio no pregunta; a otra pestaña, a otro sitio, por POST o si la página lo maneja, sí", () => {
+    const storage = memoryStorage();
+    const here = "https://aoe2-bo-coach.vercel.app/biblioteca?q=scouts";
+    const element = (attributes: Record<string, string>) => ({ getAttribute: (name: string) => attributes[name] ?? null });
+    const submit = (form: Record<string, string>, submitter?: Record<string, string>, defaultPrevented = false) =>
+      comeBackOnSubmit({ defaultPrevented, form: element(form), submitter: submitter ? element(submitter) : null }, here);
+    vi.stubGlobal("window", { sessionStorage: storage });
+    try {
+      writeDraft(storage, draftKey(), json);
+      expect(asks()).toBe(true);
+
+      // La biblioteca: sin action ni method, va a la misma página.
+      submit({ role: "search" });
+      expect(asks()).toBe(false);
+      // "Ver cruce": /cruces/ir redirige al cruce, en el mismo sitio.
+      submit({ action: "/en/cruces/ir", method: "get" });
+      expect(asks()).toBe(false);
+      submit({ action: "https://aoe2-bo-coach.vercel.app/cruces/ir", method: "GET", target: "_SELF" });
+      expect(asks()).toBe(false);
+      // Un botón puede cambiar a dónde va un formulario que sale.
+      submit({ action: "https://github.com/x", method: "post" }, { formaction: "/cruces/ir", formmethod: "get" });
+      expect(asks()).toBe(false);
+
+      // Esta pestaña se queda (otra pestaña o ventana, un diálogo), sale del sitio o hace algo que no es solo mirar.
+      const leaving: [Record<string, string>, Record<string, string>?][] = [
+        [{ method: "post" }],
+        [{ method: "dialog" }],
+        [{ target: "_blank" }],
+        [{ target: "otra" }],
+        [{ action: "https://github.com/search" }],
+        [{ action: "javascript:void(0)" }],
+        [{}, { formmethod: "post" }],
+        [{}, { formtarget: "_blank" }],
+        [{}, { formaction: "https://github.com/search" }],
+      ];
+      for (const [form, submitter] of leaving) {
+        submit(form, submitter);
+        expect(asks(), JSON.stringify([form, submitter])).toBe(true);
+      }
+      // Lo manejó la página (una acción del servidor, un onSubmit): no se va.
+      submit({}, undefined, true);
+      expect(asks()).toBe(true);
+
+      // Lo que no llegó al borrador se pierde igual.
+      markUnsaved(draftKey("otra"), true);
+      submit({});
+      expect(asks()).toBe(true);
+    } finally {
+      markUnsaved(draftKey("otra"), false);
+      vi.unstubAllGlobals();
+    }
   });
 });
 

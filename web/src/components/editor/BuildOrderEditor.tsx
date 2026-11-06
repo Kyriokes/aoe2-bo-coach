@@ -13,7 +13,7 @@ import { analyzeAsync } from "@/lib/coach/worker";
 import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, isStaleRun, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
-import { clearDraft, draftJson, draftKey, draftStorage, readDraft, writeDraft } from "@/lib/editor/draft";
+import { clearDraft, draftJson, draftKey, draftStorage, markUnsaved, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { holdFocus } from "@/lib/editor/input";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
@@ -193,7 +193,7 @@ export function BuildOrderEditor({
       }
       const result = runtime.analyze(initialJson, locale);
       if (result.ok) {
-        const next = reduce(stateRef.current, { type: "load", analysis: result });
+        const next = reduce(stateRef.current, { type: "load", analysis: result, from: "page" });
         stateRef.current = next;
         setState(next);
         if (result.assisted?.regenerated) showNotice(t.regenerated);
@@ -216,7 +216,7 @@ export function BuildOrderEditor({
         if (what === "nothing") return;
         const fromDraft = what === "draft" && draft ? runtime.analyze(draft.json, locale) : null;
         if (draft && fromDraft?.ok) {
-          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, restored: true });
+          const next = reduce(stateRef.current, { type: "load", analysis: fromDraft, from: "draft" });
           stateRef.current = next;
           setState(next);
           setVisibility(draft.visibility);
@@ -233,24 +233,15 @@ export function BuildOrderEditor({
   }, [draftName, initialJson, loadInitial, locale]);
 
   // Lo que no se guardó queda en el borrador de esta pestaña: sobrevive a recargar, a iniciar sesión y a cambiar de idioma.
-  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar.
+  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar. Cerrar la pestaña sí se lo lleva: el
+  // aviso del navegador lo pone `LeaveWarning` en el layout, para cualquier página del sitio, y mira lo marcado acá.
   const dirty = isDirty(state);
   useEffect(() => {
+    markUnsaved(draftName, dirty);
     if (loadedJson.current === null) return;
     if (dirty) writeDraft(draftStorage(), draftName, { json: draftJson({ bo: state.bo, steps: state.steps }), visibility });
     else clearDraft(draftStorage(), draftName);
   }, [dirty, draftName, state.bo, state.steps, visibility]);
-
-  // Cerrar la pestaña sí se lleva el borrador: el navegador pregunta antes.
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = ""; // los navegadores viejos miran esto
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
 
   /** Antes de reemplazar lo que se está armando: si hay cambios sin guardar, pregunta. */
   const canReplace = useCallback(() => !isDirty(stateRef.current) || window.confirm(t.replaceConfirm), [t.replaceConfirm]);
@@ -304,7 +295,8 @@ export function BuildOrderEditor({
       setStrip(null);
       lastPlanRef.current = null;
       setRestored(false);
-      dispatch({ type: "load", analysis: result });
+      // No está guardado en la web: va al borrador, así sobrevive a iniciar sesión para publicarla.
+      dispatch({ type: "load", analysis: result, from: "user" });
       if (result.assisted?.regenerated) showNotice(t.regenerated);
       return true;
     },
