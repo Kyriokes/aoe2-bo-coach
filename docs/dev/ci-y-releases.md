@@ -17,3 +17,4 @@ Estado: notas vigentes. Notas en el orden en que se escribieron, movidas tal cua
 - **`OcrDisponibleTests` falla sin OCR si `GITHUB_ACTIONS` es true:** si no, los tests de log y carga pasaban sin probar nada.
 - **Para revisar un workflow sin correrlo:** `actionlint-py` en un venv temporal.
 - **Lo que le toca al dueño:** los checks requeridos en GitHub y los Deployment Checks en Vercel (`docs/pendientes-usuario.md`), porque Vercel corre solo `npm run build` y la release solo los tests de .NET.
+- **El .zip con nombre fijo (v0.9.95).** `publish` sube el mismo .zip dos veces: `BoCoach-vN.N.N-win-x64.zip` (con su `.sha256`) y `BoCoach-win-x64.zip`. La web (`DOWNLOAD_URL` en `web/src/lib/site.ts`), el README y el aviso de la app enlazan `releases/latest/download/BoCoach-win-x64.zip`, que baja directo la última. Las releases hasta la 0.9.94 no lo tienen: el enlace anda desde que se publica la 0.9.95.
