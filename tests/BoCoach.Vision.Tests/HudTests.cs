@@ -115,6 +115,35 @@ public class HudTests
         }
     }
 
+    // De punta a punta también: el coach arranca a las 35:22 con 20 aldeanos (inicio estimado a las 28:17, tiempo 7:05) y
+    // un cuadro hace leer la hora 10 minutos menos mientras el juego sigue. El reloj baja (un reemplazo) y, cuando vuelve
+    // la hora buena, se deshace: el tiempo del coach vuelve al de antes, con el inicio de antes, y las dos correcciones
+    // quedan marcadas en el snapshot. Antes el inicio quedaba recalculado con la hora baja (0) y el tiempo en 35:35 en vez
+    // de 7:18, y la subida no se marcaba (la BO quedaba abandonada por el salto).
+    [Fact]
+    public void Si_el_reloj_deshace_un_reemplazo_equivocado_el_tiempo_del_coach_vuelve_al_de_antes()
+    {
+        var builder = new Core.Engine.SnapshotBuilder(GameDataLoader.LoadLatest(Path.Combine(AppContext.BaseDirectory, "game_data")));
+        var tracker = new HudTracker();
+        var corrections = 0;
+
+        for (var i = 0; i < 120; i++)
+        {
+            var t = i * 0.5;
+            var truth = 2122 + Math.Floor(1.7 * t);
+            var covered = i >= 2 && i < 10;
+            var state = tracker.Update(t, new HudReading(covered ? truth - 600 : truth, 300, 180, 100, 200, 20, 0, []));
+            if (builder.Build(state.ToReading()) is not { } snapshot)
+                continue;
+            if (snapshot.ClockCorrected)
+                corrections++;
+            if (t >= 10)
+                Assert.Equal(truth - 1697, snapshot.Time);
+        }
+        Assert.Equal(1697.0, builder.StartOffset);
+        Assert.Equal(2, corrections);
+    }
+
     [Theory]
     [InlineData("Dark Age", Age.Dark)]
     [InlineData("Feudal Agc", Age.Feudal)]

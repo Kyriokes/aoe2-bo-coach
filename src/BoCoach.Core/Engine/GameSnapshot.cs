@@ -49,8 +49,10 @@ public sealed record GameSnapshot(
     public BeliefView? Belief { get; init; }
 
     /// <summary>
-    /// El reloj volvió para atrás en esta captura: corrigió una hora mala que había aceptado ("1:20:00" por "0:20:00", un
-    /// cuadro tapando la hora). El tiempo no sigue al del snapshot anterior (ver <see cref="SnapshotBuilder.ClockCorrection"/>).
+    /// El reloj se corrigió en esta captura: volvió para atrás porque corrigió una hora mala que había aceptado ("1:20:00"
+    /// por "0:20:00", un cuadro tapando la hora), o saltó para adelante porque deshizo una corrección equivocada o confirmó
+    /// un salto (<see cref="ScreenReading.ClockChange"/>). El tiempo no sigue al del snapshot anterior (ver
+    /// <see cref="SnapshotBuilder.ClockCorrection"/>).
     /// </summary>
     public bool ClockCorrected { get; init; }
 }

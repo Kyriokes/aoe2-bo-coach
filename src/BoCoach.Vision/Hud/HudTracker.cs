@@ -45,6 +45,12 @@ public sealed record HudState(
     /// <summary>El panel de puntajes, si se leyó en esta captura (cada 2 s), o null.</summary>
     public IReadOnlyList<Core.Engine.PlayerScore>? Scores { get; init; }
 
+    /// <summary>
+    /// Si el suavizado del reloj cambió en esta captura la hora que venía siguiendo (<see cref="ValueFilter.Replaced"/> y
+    /// <see cref="ValueFilter.Undone"/>): el motor marca la corrección y, al deshacer, vuelve al inicio de antes.
+    /// </summary>
+    public Core.Engine.ClockChange ClockChange { get; init; }
+
     /// <summary>Stock completo si se leyeron los cuatro recursos.</summary>
     public ResourceAmounts? Stock => Food is { } f && Wood is { } w && Gold is { } g && Stone is { } s
         ? new ResourceAmounts(f, w, s, g)
@@ -97,9 +103,10 @@ public sealed class HudTracker
         }
         var population = (int?)_population.Add(reading.Population, realTime);
         var cap = (int?)_cap.Add(reading.PopulationCap, realTime);
+        var clock = _clock.Add(reading.Clock, realTime);
         return new HudState(
             realTime,
-            _clock.Add(reading.Clock, realTime),
+            clock,
             _food.Add(reading.Food, realTime),
             _wood.Add(reading.Wood, realTime),
             _gold.Add(reading.Gold, realTime),
@@ -115,7 +122,12 @@ public sealed class HudTracker
             villagersOn.Count > 0 ? villagersOn : null,
             reading.ModBands,
             reading.Clock,
-            reading.LayoutName);
+            reading.LayoutName)
+        {
+            ClockChange = _clock.Undone ? Core.Engine.ClockChange.Undone
+                : _clock.Replaced ? Core.Engine.ClockChange.Replaced
+                : Core.Engine.ClockChange.None,
+        };
     }
 
     private void UpdateAge(Age? read)

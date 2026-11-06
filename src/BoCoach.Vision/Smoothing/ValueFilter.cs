@@ -117,8 +117,18 @@ public sealed class ValueFilter
     /// <summary>Valor suavizado actual, o null si todavía no hubo ninguna lectura válida.</summary>
     public double? Value => _window.Count == 0 ? null : Median();
 
+    /// <summary>
+    /// Si la última lectura cambió lo aceptado por otro valor en vez de seguirlo: un salto confirmado, una cadena que gana
+    /// o un deshacer (ver <see cref="Undone"/>). Con el reloj, el motor no tiene que tomar ese salto por tiempo de partida.
+    /// </summary>
+    public bool Replaced { get; private set; }
+
+    /// <summary>Si ese reemplazo deshizo el anterior, que fue el equivocado (<see cref="UndoWithin"/>): volvió a lo de antes.</summary>
+    public bool Undone { get; private set; }
+
     public double? Add(double? reading, double time)
     {
+        (Replaced, Undone) = (false, false);
         // Desde la última lectura aceptada, no desde la captura anterior: si se descartaron o no se leyeron
         // capturas, el margen crece, y un valor que sigue avanzando (el reloj después de un tirón) se destraba.
         var dt = _lastAcceptedTime is { } previous ? Math.Max(0, time - previous) : 0;
@@ -150,6 +160,7 @@ public sealed class ValueFilter
             (_advances, _chain, _chainCount) = (0, null, 0);
             // Lo reemplazado queda por si era lo bueno (ver UndoWithin).
             (_replaced, _replacedAt, _replacedRisen, _back, _backCount) = (last, _lastAcceptedTime ?? time, _risen, null, 0);
+            (Replaced, Undone) = (true, back);
         }
         else if (_lastAccepted is { } accepted && value > accepted)
         {

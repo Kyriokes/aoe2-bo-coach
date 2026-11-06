@@ -152,6 +152,33 @@ public class GameStartTests(Xunit.Abstractions.ITestOutputHelper output)
         Assert.Null(coach.Abandonment.Reason);
     }
 
+    // El coach arranca a las 35:22 con 20 aldeanos (inicio estimado a las 28:17, tiempo 7:05) y un cuadro hace leer la hora
+    // 10 minutos menos 8 capturas mientras el juego sigue. El reloj suavizado baja (un reemplazo) y, cuando vuelve la hora
+    // buena, lo deshace (ValueFilter.UndoWithin): estas son sus horas captura por captura. El inicio se recalculaba con la
+    // hora baja (0) y no volvía: el tiempo del coach quedaba en 35:35 en vez de 7:18, y como la subida no se marcaba, la
+    // BO quedaba abandonada, "hace 10:07 que no avanza ningún paso".
+    [Fact]
+    public void Si_el_reloj_deshace_una_correccion_equivocada_vuelve_el_inicio_de_antes()
+    {
+        var scouts = BuildOrderSerializer.Load(Path.Combine(TestData.BuildOrdersDir, "scouts_feudal.json"));
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(scouts, TestData.GameData, TestData.Events);
+        var moved = Start with { Food = 300, Wood = 180 };
+        var clocks = Enumerable.Repeat((Clock: 2122.0, Change: ClockChange.None), 7)
+            .Append((1528, ClockChange.Replaced))
+            .Concat(Enumerable.Repeat((1529.0, ClockChange.None), 7))
+            .Append((2135, ClockChange.Undone));
+
+        foreach (var (clock, change) in clocks)
+            coach.Update(builder.Build(Reading(clock, moved, 20) with { ClockChange = change })!);
+
+        Assert.Equal(Clock("7:18"), coach.State.Time);
+        Assert.Equal(1697.0, builder.StartOffset);
+        Assert.Null(coach.Abandonment.Reason);
+        coach.Update(Build(builder, 2136, moved, 20));
+        Assert.Equal(Clock("7:19"), coach.State.Time);
+    }
+
     [Fact]
     public void Una_partida_que_arranco_tarde_sigue_la_BO_con_los_mismos_tiempos()
     {

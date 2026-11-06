@@ -287,6 +287,24 @@ public class ValueFilterTests
         }
     }
 
+    // El filtro dice cuándo reemplazó y cuándo deshizo, para que el motor no tome esos saltos por tiempo de partida y, al
+    // deshacer, vuelva al inicio de antes.
+    [Fact]
+    public void Dice_cuando_reemplaza_y_cuando_deshace()
+    {
+        var clock = ValueFilter.GameClock();
+        var changes = new List<(double Time, bool Undone)>();
+
+        foreach (var (time, _, read) in Game(2, 10, start: 2122, offset: -600))
+        {
+            clock.Add(read, time);
+            Assert.True(clock.Replaced || !clock.Undone);
+            if (clock.Replaced)
+                changes.Add((time, clock.Undone));
+        }
+        Assert.Equal([(4.0, false), (8.0, true)], changes);
+    }
+
     // Volver es para lo que tapó un cuadro hace poco. Si la hora mala del arranque ("1:20:00" por "0:20:00") ya se
     // corrigió y el mismo cuadro aparece minutos después, no la trae de vuelta. Si aparece antes de los dos minutos, la
     // trae mientras dura, y con el reloj bueno vuelve a la hora real.

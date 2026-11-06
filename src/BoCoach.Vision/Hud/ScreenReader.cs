@@ -125,5 +125,6 @@ public static class HudStateExtensions
             : null,
         state.Clock is null ? null : state.Queue,
         state.Scores,
-        state.IdleVillagers);
+        state.IdleVillagers,
+        state.ClockChange);
 }
