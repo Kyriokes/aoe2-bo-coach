@@ -1229,8 +1229,35 @@ public sealed class CoachSessionTests : IDisposable
         session.Tick(gameRunning: true);
         Assert.Same(running, session.LiveCoach);
 
-        session.Apply(Frame(ViewAt(900)) with { InGame = false });
+        // 30 s sin reloj con el juego al frente da la partida por terminada, pero puede ser el árbol de tecnologías: si el
+        // reloj vuelve, el coach sigue donde estaba. Un coach nuevo empezaba la BO desde el paso 1 a los 15 minutos.
+        session.Apply(Frame(ViewAt(900)) with { InGame = false, Waiting = true });
         session.Tick(gameRunning: true);
+        Assert.Same(running, session.LiveCoach);
+
+        var reading = TwoPlayers("Ana", "huns");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Tick(gameRunning: true);
+        Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
+    }
+
+    // La partida siguiente puede empezar sin que se lea su pantalla de carga (el reloj que vuelve a empezar): la elegida
+    // entra en su primer minuto, como el atajo de la sugerida.
+    [Fact]
+    public void A_mano_la_elegida_para_la_siguiente_entra_aunque_no_se_lea_su_pantalla_de_carga()
+    {
+        var chosen = Scouts;
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => chosen, () => new HiddenFrames()) { ManualSteps = true, BoMode = BuildOrderMode.Manual };
+        session.Tick(gameRunning: true);
+        session.Apply(Frame(ViewAt(300)) with { InGame = true });
+        chosen = RepoBuildOrders.Get("bog-huns");
+        session.Tick(gameRunning: true);
+        session.Apply(Frame(ViewAt(900)) with { InGame = false, Waiting = true });
+        session.Tick(gameRunning: true);
+
+        session.Apply(Frame(ViewAt(3)) with { InGame = true });
+        session.Tick(gameRunning: true);
+
         Assert.Equal("bog-huns", session.LiveCoach?.BuildOrder.Id);
     }
 

@@ -587,12 +587,15 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
 
     /// <summary>
     /// A mano, la elegida manda: si el coach está esperando la partida con otra (arrancó solo con el juego), se reinicia con
-    /// ella. En plena partida no se toca y vale para la siguiente. Lo que se aceptó con el atajo de la sugerida no se deshace:
-    /// recién cuenta si el jugador elige otra en la lista.
+    /// ella. Pasado el primer minuto de partida no se toca y vale para la siguiente, como el atajo de la sugerida
+    /// (<see cref="BuildOrderPicker.CanSwitchAt"/>). Que no se vea el reloj no alcanza: 30 s sin reloj dan la partida por
+    /// terminada, pero puede ser el árbol de tecnologías, y un coach nuevo empezaba la BO desde el paso 1 a los 15 minutos.
+    /// Lo que se aceptó con el atajo de la sugerida no se deshace: recién cuenta si el jugador elige otra en la lista.
     /// </summary>
     private void FollowSelection()
     {
-        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || _lastInGame || _selected() is not { } selected || selected.Id == _followedSelection)
+        if (BoMode != BuildOrderMode.Manual || !IsRunning || !IsLive || !BuildOrderPicker.CanSwitchAt(_lastGameTime)
+            || _selected() is not { } selected || selected.Id == _followedSelection)
             return;
         _followedSelection = selected.Id;
         if (_coach?.BuildOrder.Id == selected.Id)
