@@ -127,6 +127,60 @@ public class ValueFilterTests
         Assert.Equal(390, clock.Add(390, 10.5));
     }
 
+    // Al revés: el reloj bueno recién tomado, todavía sin corroborar (el coach arrancado a mitad de partida), y un cuadro
+    // que tapa la hora y lee "1:01:12" por "0:06:12" mientras el juego sigue. Las lecturas malas del reloj suman horas:
+    // una racha más alta no reemplaza lo aceptado, tampoco al arrancar.
+    [Fact]
+    public void Un_reloj_recien_tomado_no_lo_pisa_una_racha_mala_mas_alta()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(371, Feed(clock, 370, 371));
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(371, clock.Add(3972 + i, 1.0 + i * 0.5));
+        Assert.Equal(383, clock.Add(383, 7.0));
+    }
+
+    /// <summary>
+    /// Una partida vista cada 0,5 s desde las 20:00 a velocidad normal (1,7), con las capturas de <paramref name="from"/>
+    /// a <paramref name="to"/> (sin incluir) leyendo una hora de más ("1:20:00" por "0:20:00", un cuadro tapando el reloj).
+    /// </summary>
+    private static IEnumerable<(double Time, double Truth, double Read)> Game(int from, int to, double pausedUntil = 0, double start = 1200)
+    {
+        for (var i = 0; i < 200; i++)
+        {
+            var t = i * 0.5;
+            var truth = start + Math.Floor(1.7 * Math.Max(0, t - pausedUntil));
+            yield return (t, truth, i >= from && i < to ? truth + 3600 : truth);
+        }
+    }
+
+    // Y un reloj bueno no lo pisa una racha mala, sea cual sea su largo: ni recién tomado, ni con el coach arrancado en
+    // pausa (lo aceptado queda sin corroborar hasta despausar), ni en una partida nueva desde 0:00. Mientras dura la racha
+    // el reloj espera, y vuelve con la primera buena.
+    [Theory]
+    [InlineData(6, 0, 1200)]
+    [InlineData(8, 0, 1200)]
+    [InlineData(20, 0, 1200)]
+    [InlineData(60, 0, 1200)]
+    [InlineData(30, 60, 1200)]
+    [InlineData(8, 0, 0)]
+    [InlineData(20, 0, 0)]
+    public void Un_reloj_bueno_no_lo_pisa_una_racha_mala(int bad, double pausedUntil, double start)
+    {
+        var clock = ValueFilter.GameClock();
+        var from = pausedUntil > 0 ? (int)(pausedUntil / 0.5) : 2;
+
+        foreach (var (time, truth, read) in Game(from, from + bad, pausedUntil, start))
+        {
+            var value = clock.Add(read, time);
+            if (time > 0)
+                Assert.InRange(value!.Value, 0, truth);
+            if (read == truth && time > 0)
+                Assert.Equal(truth, value);
+        }
+    }
+
     // Una lectura descartada suelta entre las buenas no arma una cadena: hacen falta varias seguidas.
     [Fact]
     public void Lecturas_malas_sueltas_al_arrancar_no_reemplazan_el_reloj()

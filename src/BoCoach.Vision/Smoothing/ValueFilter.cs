@@ -67,8 +67,9 @@ public sealed class ValueFilter
     /// Con el reloj, que nunca baja, una primera lectura mala ("09:06:10") quedaba clavada toda la partida.
     /// Igual, la misma lectura mala dos veces (en pausa, o con algo tapando el reloj al arrancar) se confirmaba: por eso,
     /// mientras el valor no subió <see cref="ConfirmJump"/> veces desde que se tomó, <see cref="ConfirmJump"/> lecturas
-    /// descartadas seguidas que suben entre sí lo reemplazan. Después ya no: a mitad de partida una racha mala que
-    /// avanza (un cuadro tapando la hora) no mueve el reloj.
+    /// descartadas seguidas que suben entre sí y quedan por debajo lo reemplazan. Una racha más alta no, nunca: las
+    /// lecturas malas suman horas. Y después tampoco una más baja: a mitad de partida una racha mala que avanza (un
+    /// cuadro tapando la hora) no mueve el reloj.
     /// </summary>
     public bool ConfirmFirst { get; init; }
 
@@ -126,12 +127,15 @@ public sealed class ValueFilter
 
     /// <summary>
     /// Con <see cref="ConfirmFirst"/>, si lo aceptado todavía no está corroborado y las lecturas descartadas seguidas
-    /// forman una cadena que sube de a poco (cada una plausible desde la anterior) de <see cref="ConfirmJump"/> valores,
-    /// lo aceptado era la lectura mala. Una igual a la anterior de la cadena no suma ni la corta (en pausa no sube).
+    /// que quedan por debajo forman una cadena que sube de a poco (cada una plausible desde la anterior) de
+    /// <see cref="ConfirmJump"/> valores, lo aceptado era la lectura mala. Una igual a la anterior de la cadena no suma ni
+    /// la corta (en pausa no sube). Una por arriba de lo aceptado tampoco: las lecturas malas del reloj suman horas
+    /// ("1:35:22" por "0:35:22", "01:41:01" por "00:41:06"), y una racha más alta (un cuadro tapando la hora unos
+    /// segundos) pisaba un reloj bueno recién tomado.
     /// </summary>
     private bool Unconfirmed(double value, double time)
     {
-        if (!ConfirmFirst || _advances >= ConfirmJump)
+        if (!ConfirmFirst || _advances >= ConfirmJump || _lastAccepted is not { } accepted || value >= accepted)
             return false;
         if (_chain is { } previous && Plausible(value - previous, Math.Max(0, time - _chainTime)))
         {
