@@ -259,21 +259,22 @@ export const en: Dictionary = {
       "the game messages it recognized in the log, always as the phrase from the game's catalog and never as the text it read, and what it believed, predicted and showed you;",
       "your civ, your player number in the game, the civ of the opponent facing you, the map (only if it's one the coach knows) and the game language;",
       "the build order you used, with its steps, name and notes, without its author or code;",
-      "the day the game was played (in UTC, without the time), the app version and the game data version.",
+      "the day the game was played, in UTC and without the time (the time the file arrives is kept on the website, as explained below), the app version and the game data version.",
     ],
     shareText2:
-      "Your name, other players' names, the chat (anything in the log not recognized as a game message isn't saved) and screenshots are never sent. If you flag during the game that something went wrong, the moment is recorded; if you say in the match report what happened, that note is uploaded too: do not include personal data. The record isn't tied to your website account: it is identified by a random number for that app installation, and the game by another. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly. Besides the file, the database keeps those two numbers, its size, the app version and the dates.",
+      "Your name, other players' names, the chat (anything in the log not recognized as a game message isn't saved) and screenshots are never sent. If you flag during the game that something went wrong, the moment is recorded; if you say in the match report what happened, that note is uploaded too: do not include personal data. The record doesn't carry your website account: it is identified by a random number for that app installation, and the game by another. Even so, whoever runs the site can link it to your account. Through the build order: the one in the record is one from your list, your own or one you added to your coach, and the database knows what each account's list holds (with few players that's enough, and a private one leads straight to you). And through the connection: the connected app uses your account to fetch your list from the same internet connection it uploads the records from, sometimes in the same second, and the same goes if you sign in to the website from that connection. It is stored in Supabase, in a non-public location, and used only to find what the coach reads or advises wrongly. Besides the file, the database keeps those two numbers, a fingerprint of the installation's key, its size, the app version and the date and time of each request: when the space was reserved, when the file arrived and when you asked to delete it. Storage also notes the time each file arrives. Since the app uploads it as soon as the game ends, that time usually tells when the game ended and, with how long it lasted, when it started. With the day, the civs, the map and the length, an online game could be found in the game's public match lists, where the names do appear.",
     webTitle: "The website",
-    webText1: "You don't need an account to browse the library and try build orders, and nothing about you is stored.",
+    webText1:
+      "You don't need an account to browse the library and try build orders, and the site stores nothing about you (the servers do log each request, as explained below).",
     webText2: "If you sign in with Discord or Google, we store:",
     webItems: [
       "your email and your account identifier, so you can sign back in;",
       "your name and profile picture, shown as the author of your public build orders (with none public, nobody else sees them);",
-      "the build orders you publish, your votes and the ones you add to your coach (only each BO's vote total is shown, and nobody else sees what you add);",
+      "the build orders you publish, your votes and the ones you add to your coach (only each BO's vote total is shown, and what you add isn't shown to any other user);",
       "the tokens you create for the app (only a fingerprint, not the token).",
     ],
     webText3:
-      "They aren't used for advertising, sold or shared with anyone. They're stored in Supabase (the database) and the site runs on Vercel. The cookies the site uses are the session ones, to keep you signed in, and the language one, if you pick a language.",
+      "They aren't used for advertising, sold or shared with anyone. They're stored in Supabase (the database) and the site runs on Vercel. Like any server, Vercel and Supabase log on their own the requests they receive, the app's included, with the IP address and the time, and Supabase keeps the IP and browser of each signed-in session. The cookies the site uses are the session ones, to keep you signed in, and the language one, if you pick a language.",
     deleteTitle: "Deleting your data",
     deleteText:
       "Records your PC uploaded are deleted with \"Delete what I shared…\" in the app's settings: the files are deleted and the database keeps only the data above, so the same game isn't uploaded again. You can delete each of your build orders from its page, and tokens from <em>My account</em>. To delete your whole account, ask on <github>GitHub</github> and it gets deleted along with everything of yours.",

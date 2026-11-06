@@ -26,9 +26,13 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
     public double ForecastHorizon { get; init; } = 60;
 
     /// <summary>
-    /// La BO tal como se jugó, sin el autor (es un nombre) ni el código: una BO privada lleva a una sola cuenta. Va adentro
-    /// del registro porque sin ella la partida no se puede reproducir: otro jugador puede tenerla privada, y una publicada
-    /// se puede republicar distinta (partida 20261102-212823).
+    /// La BO tal como se jugó, sin el autor (es un nombre) ni el código. Igual lleva a la cuenta: la app solo juega BO de
+    /// la lista de la cuenta conectada, las propias (una privada solo la baja su dueño) y las sumadas (la base guarda quién
+    /// sumó cada una), así que quien lee los registros puede buscar los pasos en la base y dar con la cuenta. Sacarle el
+    /// nombre o las notas no cambia eso. Tampoco hace falta la BO: la app pide la lista con el token desde la misma
+    /// conexión con que sube los registros. La página de privacidad dice los dos caminos. Va adentro del registro porque
+    /// sin ella la partida no se puede reproducir: otro jugador puede tenerla privada, y una publicada se puede republicar
+    /// distinta (partida 20261102-212823).
     /// </summary>
     private static JsonNode? PlayedBuildOrder(BuildOrder? bo)
     {
@@ -40,10 +44,16 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
         return json;
     }
 
-    /// <summary>El día, en UTC: alcanza para ordenar los registros, sin decir a qué hora se juega ni en qué huso se vive.</summary>
+    /// <summary>
+    /// El día, en UTC: alcanza para ordenar los registros sin que el archivo diga a qué hora se juega ni en qué huso se vive.
+    /// La web igual sabe a qué hora llega cada registro (se sube al terminar la partida), y la página de privacidad lo dice.
+    /// </summary>
     public static string Day(DateTimeOffset when) => when.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    /// <summary>La línea <c>meta</c> de una partida: lo que hace falta para reproducirla, y nada que la ate a una cuenta.</summary>
+    /// <summary>
+    /// La línea <c>meta</c> de una partida: lo que hace falta para reproducirla, sin nombres ni la cuenta (la BO jugada, y
+    /// la conexión con que se sube, sí pueden llevar a ella: ver <see cref="PlayedBuildOrder"/>).
+    /// </summary>
     /// <param name="map">La clave del mapa en data/maps.json, o null: lo que lee el OCR es texto libre y no va tal cual.</param>
     /// <param name="buildOrder">La BO con que se jugó.</param>
     public static JsonObject Meta(string gameId, DateTimeOffset started, string app, string gameData, string? hud, double hudScale, string civ,
