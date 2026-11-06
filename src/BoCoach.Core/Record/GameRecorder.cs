@@ -42,7 +42,10 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
         return json;
     }
 
-    /// <summary>El día, en UTC: alcanza para ordenar los registros, sin decir a qué hora se juega ni en qué huso se vive.</summary>
+    /// <summary>
+    /// El día, en UTC: alcanza para ordenar los registros sin que el archivo diga a qué hora se juega ni en qué huso se vive.
+    /// La web igual sabe a qué hora llega cada registro (se sube al terminar la partida), y la página de privacidad lo dice.
+    /// </summary>
     public static string Day(DateTimeOffset when) => when.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     /// <summary>

@@ -53,6 +53,19 @@ describe("la página de privacidad", () => {
     expect(t.shareText2).not.toContain(promise);
     expect(t.shareText2).toMatch(ownBuildOrder);
   });
+
+  // El archivo trae solo el día (AP-27), pero la base (reserved_at, uploaded_at) y Storage anotan la hora en que llega, y
+  // la app lo sube al terminar la partida. Vercel y Supabase anotan cada pedido con la IP.
+  it.each([
+    ["es", /la fecha y la hora de cada pedido/, /la hora en que llega cada archivo/, /listas públicas de partidas/],
+    ["en", /the date and time of each request/, /the time each file arrives/, /public match lists/],
+  ] as const)("%s: la web sabe a qué hora llega cada registro", (locale, database, storage, publicLists) => {
+    const t = getDictionary(locale).privacy;
+    expect(t.shareText2).toMatch(database);
+    expect(t.shareText2).toMatch(storage);
+    expect(t.shareText2).toMatch(publicLists);
+    expect(t.webText3).toContain("IP");
+  });
 });
 
 /** Las funciones puras que arman texto, en inglés. En castellano las controlan los tests de cada una. */

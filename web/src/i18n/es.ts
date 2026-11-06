@@ -261,12 +261,13 @@ export const es = {
       "los mensajes del juego que reconoció en el log, siempre como la frase del catálogo del juego y nunca como el texto leído, y lo que creyó, pronosticó y te mostró;",
       "tu civ, tu número de jugador en la partida, la civ del rival de enfrente, el mapa (solo si es uno de los que conoce el coach) y el idioma del juego;",
       "la build order que usaste, con sus pasos, su nombre y sus notas, sin el autor ni el código;",
-      "el día en que se jugó (en UTC, sin la hora), la versión de la app y la de los datos del juego.",
+      "el día en que se jugó, en UTC y sin la hora (la hora en que llega el archivo sí queda en la web, como se cuenta abajo), la versión de la app y la de los datos del juego.",
     ],
     shareText2:
-      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego no se guarda), ni capturas de pantalla. Si marcás que algo anduvo mal durante la partida, queda en qué momento fue; si en el informe contás qué pasó, esa nota se sube también: no pongas datos personales. El registro no lleva tu cuenta de la web: lo identifica un número al azar de esa instalación de la app, y a la partida, otro. Pero si jugás con una build order tuya de la web, sobre todo si es privada, quien administra el sitio puede relacionar el registro con tu cuenta, porque la BO del registro es la misma que tenés guardada. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal. Además del archivo, la base guarda esos dos números, lo que pesa, la versión de la app y las fechas.",
+      "No viaja tu nombre, ni el de los otros jugadores, ni el chat (lo que el log no reconoce como un mensaje del juego no se guarda), ni capturas de pantalla. Si marcás que algo anduvo mal durante la partida, queda en qué momento fue; si en el informe contás qué pasó, esa nota se sube también: no pongas datos personales. El registro no lleva tu cuenta de la web: lo identifica un número al azar de esa instalación de la app, y a la partida, otro. Pero si jugás con una build order tuya de la web, sobre todo si es privada, quien administra el sitio puede relacionar el registro con tu cuenta, porque la BO del registro es la misma que tenés guardada. Se guarda en Supabase, en un lugar que no es público, y se usa solo para encontrar lo que el coach lee o aconseja mal. Además del archivo, la base guarda esos dos números, una huella de la clave de la instalación, lo que pesa, la versión de la app y la fecha y la hora de cada pedido: cuándo se reservó el lugar, cuándo llegó el archivo y cuándo pediste borrarlo. Storage también anota la hora en que llega cada archivo. Como la app lo sube apenas termina la partida, esa hora suele decir cuándo terminó y, con lo que duró, cuándo empezó. Con el día, las civs, el mapa y lo que duró, una partida en línea se podría encontrar en las listas públicas de partidas del juego, donde sí están los nombres.",
     webTitle: "La web",
-    webText1: "Para mirar la biblioteca y probar las build orders no hace falta cuenta y no se guarda nada tuyo.",
+    webText1:
+      "Para mirar la biblioteca y probar las build orders no hace falta cuenta, y el sitio no guarda nada tuyo (los servidores sí anotan cada pedido, como se cuenta más abajo).",
     webText2: "Si iniciás sesión con Discord o con Google, se guarda:",
     webItems: [
       "tu mail y el identificador de tu cuenta, para que puedas volver a entrar;",
@@ -275,7 +276,7 @@ export const es = {
       "los tokens que crees para la app (solo una huella, no el token).",
     ],
     webText3:
-      "No se usan para publicidad, no se venden ni se comparten con nadie. Se guardan en Supabase (la base de datos) y el sitio corre en Vercel. Las cookies que usa el sitio son las de la sesión, para que sigas conectado, y la del idioma, si lo elegís.",
+      "No se usan para publicidad, no se venden ni se comparten con nadie. Se guardan en Supabase (la base de datos) y el sitio corre en Vercel. Como cualquier servidor, Vercel y Supabase anotan por su cuenta los pedidos que les llegan, también los de la app, con la dirección IP y la hora, y Supabase guarda la IP y el navegador de cada sesión iniciada. Las cookies que usa el sitio son las de la sesión, para que sigas conectado, y la del idioma, si lo elegís.",
     deleteTitle: "Borrar tus datos",
     deleteText:
       "Los registros que subió tu PC se borran con \"Borrar lo compartido…\" en los ajustes de la app: se borran los archivos y en la base quedan solo los datos de arriba, para que la misma partida no se vuelva a subir. Cada build order tuya la podés borrar desde su página, y los tokens desde <em>Mi cuenta</em>. Para borrar la cuenta entera, pedilo en <github>GitHub</github> y se borra junto con todo lo tuyo.",
