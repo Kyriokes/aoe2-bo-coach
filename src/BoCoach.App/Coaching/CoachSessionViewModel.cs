@@ -61,6 +61,14 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// ser otra partida y <see cref="NewGameDetector"/> todavía no lo decidió).
     /// </summary>
     private bool _lastUnsure;
+
+    /// <summary>
+    /// Como <see cref="_lastUnsure"/>, pero sin contar un hueco del reloj más corto que
+    /// <see cref="OverlayViewModel.ClockWarningSeconds"/>: lo usa <see cref="LoadingForRestart"/>. Irse de la partida tarda más
+    /// que eso, y con una sola captura sin reloj el atajo de la sugerida arrancaba el coach sin la pantalla de carga por toda
+    /// la partida (AP-20). <see cref="FollowSelection"/> sí espera con cualquier hueco: reintenta en la próxima captura.
+    /// </summary>
+    private bool _lastLoadingInDoubt;
     private string? _lastSwitchBest;
     private PixelRect _placedOver;
     private bool _overlayVisible = true;
@@ -693,12 +701,12 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
     /// <summary>
     /// La pantalla de carga para un coach reiniciado con otra BO: la de esta partida según el coach (la última captura), o
     /// null si el coach está esperando la siguiente (terminó la partida) o no se sabe si la partida sigue
-    /// (<see cref="_lastUnsure"/>): el coach nuevo arranca como sin pantalla de carga. La de la anterior lo hacía correr con
+    /// (<see cref="_lastLoadingInDoubt"/>): el coach nuevo arranca como sin pantalla de carga. La de la anterior lo hacía correr con
     /// su civ, su número y su rival, y como nunca veía el reloj de esa partida no llegaba al fin ni leía la pantalla de carga
     /// que venía. No sale de <see cref="_loading"/>, que es la última que se vio: una partida que empezó sin que se leyera
     /// la suya seguía con la de la anterior.
     /// </summary>
-    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting || _lastUnsure ? null : _lastLoading;
+    private Vision.Loading.LoadingReading? LoadingForRestart => _lastWaiting || _lastLoadingInDoubt ? null : _lastLoading;
 
     /// <summary>Dónde se guardan los registros de partida si no se dice otra cosa; los tests lo cambian a una carpeta temporal.</summary>
     internal static string DefaultRecordsFolder { get; set; } = Path.Combine(
@@ -1152,8 +1160,10 @@ public sealed partial class CoachSessionViewModel : ObservableObject, IDisposabl
         _lastInGame = frame.InGame;
         _lastWaiting = frame.Waiting;
         _lastLoading = frame.Loading;
-        _lastUnsure = frame.InGame && (!frame.InFront || frame.SecondsWithoutClock > 0
-            || NewGameDetector.MayBeNew(frame.Hud?.ClockReading, frame.Hud?.Clock));
+        // El juego atrás o un reloj que vuelve dudan siempre; un hueco sin reloj, para la pantalla de carga, solo si es largo.
+        var gameInDoubt = frame.InGame && (!frame.InFront || NewGameDetector.MayBeNew(frame.Hud?.ClockReading, frame.Hud?.Clock));
+        _lastUnsure = gameInDoubt || (frame.InGame && frame.SecondsWithoutClock > 0);
+        _lastLoadingInDoubt = gameInDoubt || (frame.InGame && frame.SecondsWithoutClock >= OverlayViewModel.ClockWarningSeconds);
         GameTime = frame.View.Time;
         InGame = frame.InGame;
         GameCivName = frame.Civ is { Length: > 0 } civ && _data.GameData.IsKnownCiv(civ) ? CivName(civ) : null;

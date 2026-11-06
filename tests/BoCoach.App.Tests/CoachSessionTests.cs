@@ -1564,6 +1564,35 @@ public sealed class CoachSessionTests : IDisposable
         Assert.True(last?.Waiting);
     }
 
+    // Revisión de AP-20: una sola captura sin reloj (medio segundo) antes del atajo hacía que el coach nuevo arrancara sin
+    // la pantalla de carga toda la partida. Un hueco más corto que el aviso del overlay es ruido, no irse de la partida.
+    [Fact]
+    public async Task Aceptar_la_sugerida_tras_un_hueco_corto_sin_reloj_conserva_la_pantalla_de_carga()
+    {
+        using var session = new CoachSessionViewModel(_data, new FakeHost(), () => null, () => new HiddenFrames())
+        {
+            ManualSteps = true,
+            PlayerName = "Ana",
+            BoMode = BuildOrderMode.Manual,
+            Picker = new BuildOrderPicker(new RepoBuildOrders(), _data.CivStyles),
+        };
+        session.Start(Scouts, new HiddenFrames());
+        var reading = TwoPlayers("Ana", "japanese");
+        session.Apply(Frame(ViewAt(0)) with { Loading = reading, Me = reading.Players[0] });
+        session.Apply(Frame(ViewAt(30)) with { Loading = reading, Me = reading.Players[0], InGame = true });
+        session.Apply(Frame(ViewAt(30), withoutClock: 0.5) with { Loading = reading, Me = reading.Players[0], InGame = true });
+
+        session.AcceptSuggestionCommand.Execute(null);
+        Assert.NotEqual(Scouts.Id, session.LiveCoach?.BuildOrder.Id);
+        CoachFrame? last = null;
+        session.FrameApplied += frame => last = frame;
+        await session.LiveCoach!.StepAsync();
+
+        Assert.Equal(reading, last?.Loading);
+        Assert.Equal("japanese", last?.Civ);
+        Assert.NotNull(session.Overlay!.MatchupLine);
+    }
+
     // Lo que se eligió con el atajo de la sugerida no se deshace solo porque en la lista siga marcada otra.
     [Fact]
     public async Task A_mano_la_sugerida_que_aceptaste_no_se_deshace_sola()
