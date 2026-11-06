@@ -486,12 +486,15 @@ public sealed class LiveCoach : IDisposable
 
     /// <summary>
     /// Vuelve a calibrar. El lector sigue igual si el diseño del HUD no cambió: uno nuevo da por nuevos todos los renglones
-    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj.
+    /// que el log tiene a la vista (se sumaban otra vez edificios y unidades) y arranca de cero el suavizado del reloj. Se
+    /// compara el diseño entero y no el nombre: el lector recorta cada campo según sus medidas, y un diseño del mod cambia de
+    /// medidas sin cambiar de nombre (el mínimo, dos veces el 2026-11-01). Con el de regions.json de la versión anterior,
+    /// la partida entera se leía con las medidas viejas.
     /// </summary>
     private void Recalibrate()
     {
-        var before = Frames.Hud?.Name;
-        if (Frames.Recalibrate() && Frames.Hud?.Name != before)
+        var before = Frames.Hud?.ToJson();
+        if (Frames.Recalibrate() && Frames.Hud?.ToJson() != before)
             _reader = new ScreenReader(_fonts, _ocr, Events, Frames.Hud, Frames.CaptureIntervalMs);
     }
 
