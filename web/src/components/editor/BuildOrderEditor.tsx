@@ -13,7 +13,7 @@ import { analyzeAsync } from "@/lib/coach/worker";
 import { DEBOUNCE_MS, debouncer, defaultPlan, diffGoals, fieldChangeLabel, goalLabel, isStaleRun, newAssisted, planFromJson, TEXT_DEBOUNCE_MS, toManual, type AssistedPlan, type ChangeStrip } from "@/lib/editor/assisted";
 import type { CoachRuntime } from "@/lib/coach/runtime";
 import { allowedRange, canMake, snapDownTo, snapUp } from "@/lib/editor/constraints";
-import { clearDraft, draftJson, draftKey, draftStorage, markUnsaved, readDraft, warnBeforeUnload, writeDraft } from "@/lib/editor/draft";
+import { clearDraft, draftJson, draftKey, draftStorage, markUnsaved, readDraft, writeDraft } from "@/lib/editor/draft";
 import { brokenBy, isGuarded } from "@/lib/editor/guard";
 import { holdFocus } from "@/lib/editor/input";
 import { loadGameData, loadMaps, type GameDataFile, type MapInfo, type PaletteItem } from "@/lib/editor/gameData";
@@ -233,7 +233,8 @@ export function BuildOrderEditor({
   }, [draftName, initialJson, loadInitial, locale]);
 
   // Lo que no se guardó queda en el borrador de esta pestaña: sobrevive a recargar, a iniciar sesión y a cambiar de idioma.
-  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar.
+  // Hasta que se cargó lo inicial no se toca: puede haber un borrador para recuperar. Cerrar la pestaña sí se lo lleva: el
+  // aviso del navegador lo pone `LeaveWarning` en el layout, para cualquier página del sitio, y mira lo marcado acá.
   const dirty = isDirty(state);
   useEffect(() => {
     markUnsaved(draftName, dirty);
@@ -241,12 +242,6 @@ export function BuildOrderEditor({
     if (dirty) writeDraft(draftStorage(), draftName, { json: draftJson({ bo: state.bo, steps: state.steps }), visibility });
     else clearDraft(draftStorage(), draftName);
   }, [dirty, draftName, state.bo, state.steps, visibility]);
-
-  // Cerrar la pestaña sí se lleva el borrador: el navegador pregunta antes, también desde otra página del sitio. Por eso el
-  // aviso no se saca al esconder o desmontar el editor: es siempre la misma función (no se duplica) y mira lo marcado.
-  useEffect(() => {
-    window.addEventListener("beforeunload", warnBeforeUnload);
-  }, []);
 
   /** Antes de reemplazar lo que se está armando: si hay cambios sin guardar, pregunta. */
   const canReplace = useCallback(() => !isDirty(stateRef.current) || window.confirm(t.replaceConfirm), [t.replaceConfirm]);

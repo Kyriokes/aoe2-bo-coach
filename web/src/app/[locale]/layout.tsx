@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
 import { LanguageHint } from "@/components/LanguageHint";
+import { LeaveWarning } from "@/components/LeaveWarning";
 import { SupportLinks } from "@/components/SupportSection";
 import { fill, getDictionary, rich } from "@/i18n";
 import { I18nProvider } from "@/i18n/client";
@@ -58,6 +59,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[lo
           </a>
           <Header />
           <LanguageHint />
+          <LeaveWarning />
           <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 focus:outline-none">
             {children}
           </main>
