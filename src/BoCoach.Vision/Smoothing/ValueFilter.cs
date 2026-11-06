@@ -46,14 +46,15 @@ public sealed class ValueFilter
 
     /// <summary>
     /// El reloj de la partida: sube a lo sumo 3 s de juego por segundo real (velocidad del juego con margen), nunca baja
-    /// (una partida nueva la ve <c>LiveCoach</c> con la lectura cruda; la única baja es corregir una primera lectura mala,
-    /// ver <see cref="ConfirmFirst"/>) y un salto se acepta si se repite 6 veces.
+    /// (una partida nueva la ve <c>LiveCoach</c> con la lectura cruda; la única baja es corregir una hora mala que quedó
+    /// aceptada, ver <see cref="ConfirmFirst"/>) y un salto se acepta si se repite 6 veces.
     /// </summary>
     /// En la partida 20261031-140712 la letra leyó "09:06:10" por "00:06:10" y, en pausa, la lectura se repitió: un
     /// salto de más de 10 minutos no se confirma nunca.
     public static ValueFilter GameClock() => new()
     {
         Window = 1, MaxRisePerSecond = 3, MaxDropPerSecond = 0, Slack = 1.5, ConfirmJump = 6, MaxConfirmedJump = 600, ConfirmFirst = true,
+        LowerChainWinsOver = 3000,
     };
 
     /// <summary>
@@ -68,10 +69,18 @@ public sealed class ValueFilter
     /// Igual, la misma lectura mala dos veces (en pausa, o con algo tapando el reloj al arrancar) se confirmaba: por eso,
     /// mientras el valor no subió <see cref="ConfirmJump"/> veces desde que se tomó, <see cref="ConfirmJump"/> lecturas
     /// descartadas seguidas que suben entre sí y quedan por debajo lo reemplazan. Una racha más alta no, nunca: las
-    /// lecturas malas suman horas. Y después tampoco una más baja: a mitad de partida una racha mala que avanza (un
-    /// cuadro tapando la hora) no mueve el reloj.
+    /// lecturas malas suman horas. Y después, una más baja solo si está más de <see cref="LowerChainWinsOver"/> por
+    /// debajo: a mitad de partida una racha mala que avanza (un cuadro tapando la hora) no mueve el reloj.
     /// </summary>
     public bool ConfirmFirst { get; init; }
+
+    /// <summary>
+    /// Con <see cref="ConfirmFirst"/>, una cadena de lecturas que avanza más de esto por debajo de lo aceptado lo reemplaza
+    /// aunque ya esté corroborado (null = nunca). Con el reloj, 50 minutos: en la práctica solo una hora mal leída da tanta
+    /// diferencia (un dígito de los minutos, como mucho 50), y las lecturas malas suman horas. Si el cuadro que tapa la hora al arrancar dura más de unos 3,5 s, las lecturas
+    /// malas que siguen avanzando corroboran la hora mala, y el reloj quedaba clavado toda la partida.
+    /// </summary>
+    public double? LowerChainWinsOver { get; init; }
 
     /// <summary>Valor suavizado actual, o null si todavía no hubo ninguna lectura válida.</summary>
     public double? Value => _window.Count == 0 ? null : Median();
@@ -92,7 +101,7 @@ public sealed class ValueFilter
 
         if (_lastAccepted is { } last && !Plausible(value - last, dt))
         {
-            if (!Unconfirmed(value, time))
+            if (!LowerChainWins(value, time))
             {
                 if (MaxConfirmedJump is { } max && Math.Abs(value - last) > max + (MaxRisePerSecond ?? 0) * dt + Slack)
                     return Value;
@@ -126,16 +135,17 @@ public sealed class ValueFilter
     }
 
     /// <summary>
-    /// Con <see cref="ConfirmFirst"/>, si lo aceptado todavía no está corroborado y las lecturas descartadas seguidas
-    /// que quedan por debajo forman una cadena que sube de a poco (cada una plausible desde la anterior) de
-    /// <see cref="ConfirmJump"/> valores, lo aceptado era la lectura mala. Una igual a la anterior de la cadena no suma ni
-    /// la corta (en pausa no sube). Una por arriba de lo aceptado tampoco: las lecturas malas del reloj suman horas
-    /// ("1:35:22" por "0:35:22", "01:41:01" por "00:41:06"), y una racha más alta (un cuadro tapando la hora unos
-    /// segundos) pisaba un reloj bueno recién tomado.
+    /// Con <see cref="ConfirmFirst"/>, si las lecturas descartadas seguidas que quedan por debajo de lo aceptado forman
+    /// una cadena que sube de a poco (cada una plausible desde la anterior) de <see cref="ConfirmJump"/> valores, lo
+    /// aceptado era la lectura mala, siempre que todavía no esté corroborado o que la cadena quede más de
+    /// <see cref="LowerChainWinsOver"/> por debajo. Una igual a la anterior de la cadena no suma ni la corta (en pausa no
+    /// sube). Una por arriba de lo aceptado tampoco: las lecturas malas del reloj suman horas ("1:35:22" por "0:35:22",
+    /// "01:41:01" por "00:41:06"), y una racha más alta (un cuadro tapando la hora unos segundos) pisaba un reloj bueno
+    /// recién tomado.
     /// </summary>
-    private bool Unconfirmed(double value, double time)
+    private bool LowerChainWins(double value, double time)
     {
-        if (!ConfirmFirst || _advances >= ConfirmJump || _lastAccepted is not { } accepted || value >= accepted)
+        if (!ConfirmFirst || _lastAccepted is not { } accepted || value >= accepted)
             return false;
         if (_chain is { } previous && Plausible(value - previous, Math.Max(0, time - _chainTime)))
         {
@@ -146,7 +156,8 @@ public sealed class ValueFilter
         {
             (_chain, _chainTime, _chainCount) = (value, time, 1);
         }
-        return _chainCount >= ConfirmJump;
+        return _chainCount >= ConfirmJump
+            && (_advances < ConfirmJump || LowerChainWinsOver is { } gap && accepted - value > gap);
     }
 
     private bool Plausible(double change, double dt)

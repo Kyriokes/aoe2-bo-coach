@@ -155,6 +155,41 @@ public class ValueFilterTests
         }
     }
 
+    // Arrancando a mitad de partida con una o varias lecturas malas al principio, el reloj llega al bueno a los pocos
+    // segundos de verlo, y desde ahí no se mueve. Tapado 30 s también: más de 7 capturas malas al arrancar corroboraban
+    // la hora mala y el reloj quedaba clavado toda la partida.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(8)]
+    [InlineData(20)]
+    [InlineData(60)]
+    public void Con_lecturas_malas_al_arrancar_el_reloj_llega_al_bueno_en_pocos_segundos(int bad)
+    {
+        var clock = ValueFilter.GameClock();
+
+        foreach (var (time, truth, read) in Game(0, bad))
+        {
+            var value = clock.Add(read, time);
+            if (time >= bad * 0.5 + 5)
+                Assert.Equal(truth, value);
+        }
+    }
+
+    // Lo de arriba no abre la puerta a mitad de partida: con el reloj ya corroborado, una racha más baja que no llega a
+    // una hora de diferencia (un dígito de los minutos mal leído) no lo mueve.
+    [Fact]
+    public void Con_el_reloj_ya_corroborado_una_racha_mas_baja_por_minutos_no_lo_mueve()
+    {
+        var clock = ValueFilter.GameClock();
+
+        Assert.Equal(2377, Feed(clock, 2369, 2370, 2371, 2372, 2373, 2374, 2375, 2376, 2377));
+        for (var i = 0; i < 12; i++)
+            Assert.Equal(2377, clock.Add(1178 + i, 4.5 + i * 0.5));
+        Assert.Equal(2390, clock.Add(2390, 10.5));
+    }
+
     // Y un reloj bueno no lo pisa una racha mala, sea cual sea su largo: ni recién tomado, ni con el coach arrancado en
     // pausa (lo aceptado queda sin corroborar hasta despausar), ni en una partida nueva desde 0:00. Mientras dura la racha
     // el reloj espera, y vuelve con la primera buena.
