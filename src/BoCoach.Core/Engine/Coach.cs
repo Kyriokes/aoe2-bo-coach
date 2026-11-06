@@ -501,6 +501,9 @@ public sealed class Coach
     /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
     /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue. El clic de
     /// una edad a la que ya se llegó (el log no leyó el aviso, pero hay algo de esa edad) tampoco vence: no se puede volver a pedir.
+    /// <para>El de una edad vence solo si la cola se leyó desde el clic: sin ella nada lo desmiente, y su costo casi nunca
+    /// coincide por casualidad. En la revisión del 2026-11-05, la Feudal sin cola ni aviso del log vencía antes de que
+    /// llegara algo de Feudal, y después nada cerraba el paso: "Hacé clic en Edad Feudal" toda la partida.</para>
     /// </summary>
     private bool ExpireClicks(GameSnapshot snapshot)
     {
@@ -511,7 +514,7 @@ public sealed class Coach
         {
             if (step.Step.What is not { } tech || !_data.TryGet(tech, out var entity) || step.StartedAt is not { } clicked
                 || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true
-                || BuildOrderValidator.AgeOf(tech) <= age)
+                || BuildOrderValidator.AgeOf(tech) is { } clickedAge && (clickedAge <= age || !QueueReadSince(clicked)))
                 continue;
             if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
             {
@@ -521,6 +524,9 @@ public sealed class Coach
         }
         return expired;
     }
+
+    /// <summary>La cola se está leyendo y se leyó sin cortes desde ese momento: lo que se investiga desde entonces se vio en ella.</summary>
+    private bool QueueReadSince(double time) => FreshQueue is not null && _queueFirstSeenAt <= time;
 
     /// <summary>
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores

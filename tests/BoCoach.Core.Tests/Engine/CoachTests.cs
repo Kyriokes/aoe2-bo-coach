@@ -774,6 +774,24 @@ public class CoachTests
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
     }
 
+    // Revisión del 2026-11-05: sin la cola ni el aviso del log, el clic de Feudal vencía a los 210 s; la galería
+    // después daba la Feudal, pero nada cerraba el paso y el coach pedía "Hacé clic en Edad Feudal" toda la partida.
+    [Fact]
+    public void Un_clic_de_edad_no_vence_si_la_cola_no_se_lee()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+
+        var feudal = TestData.GameData.Get("feudal_age").Time;
+        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        var view = coach.Update(At(700, 600, 20, "archery_range_built"));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
     [Fact]
     public void Un_clic_que_vencio_no_queda_en_el_informe()
     {
@@ -788,12 +806,16 @@ public class CoachTests
             ],
         };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
-        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
-        coach.Update(At(301, 200, 20)); // bajan 500 de comida: cinco aldeanos... o la Feudal
+        // La cola se lee todo el tiempo y la Feudal nunca aparece: el clic de una edad vence solo si algo lo desmiente.
+        GameSnapshot WithVillagersQueued(GameSnapshot snapshot) => snapshot with { Queue = [new QueueItem("villager")] };
+        coach.Update(WithVillagersQueued(At(300, 700, 20, "lumber_camp_built", "mill_built")));
+        coach.Update(WithVillagersQueued(At(301, 200, 20))); // bajan 500 de comida: diez aldeanos... o la Feudal
         Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
 
-        var feudal = TestData.GameData.Get("feudal_age").Time;
-        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+        var expires = 301 + TestData.GameData.Get("feudal_age").Time * 1.5 + 15;
+        for (var time = 304.0; time < expires; time += 3)
+            coach.Update(WithVillagersQueued(At(time, 200, 20)));
+        coach.Update(WithVillagersQueued(At(expires, 200, 20)));
 
         Assert.Null(coach.Report().AgeClicks.Single().Click);
     }
