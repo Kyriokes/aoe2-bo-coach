@@ -2,47 +2,23 @@
 
 Lista viva: cada sesión agrega lo nuevo y saca lo hecho. Va ordenada por lo que más destraba. La lista vieja, con las instrucciones de cada prueba, está en [`historial/pendientes-hasta-2026-11-05.md`](historial/pendientes-hasta-2026-11-05.md).
 
-## 1. Para publicar la revisión del 5/11, en este orden
+## 1. Después de publicar la revisión del 5/11
 
-La revisión de punta a punta ([`auditorias/2026-11-05.md`](auditorias/2026-11-05.md)) está commiteada en `fase-9-refinamiento`, solo en esta PC. Producción no cambió.
+**Hecho el 6/11:** `safe.directory`, la sesión de GitHub en esta PC, la migración `20261105000000_revision.sql` (comprobado desde afuera: la base ya tiene las funciones nuevas) y el push a `main`. El CI y la release dieron verde, la v0.9.94 está en Releases con su `.zip` y su `.sha256`, y la web nueva está en producción. Si la consulta de control de la migración dio alguna fila, pasame cuál.
 
-1. **Dejá que git use el repo.** La carpeta quedó a nombre del usuario del Windows anterior. Abrí una terminal y corré esto una sola vez:
-
-   ```bash
-   git config --global --add safe.directory F:/aoe2-bo-coach
-   ```
-
-2. **Iniciá sesión en GitHub desde esta PC.** Windows se reinstaló, así que no hay credenciales. Corré esto en la misma terminal: se abre el navegador para iniciar sesión. Si ya no pregunta nada, ya estaba.
-
-   ```bash
-   git -C F:/aoe2-bo-coach fetch
-   ```
-
-3. **Corré la migración nueva en Supabase, antes del push.** (1) Entrá a supabase.com, al proyecto `muhyzwhpakxydqzrrbyq`, y abrí el **SQL Editor** (menú de la izquierda). (2) Tocá **New query**. (3) Abrí en la PC `web/supabase/migrations/20261105000000_revision.sql`, copiá todo, pegalo y tocá **Run**: abajo tiene que decir "Success. No rows returned". (4) En otra consulta nueva, corré esta línea, que también está al principio del archivo. Tiene que dar **cero filas**:
-
-   ```sql
-   select code, name, octet_length(body::text) from public.build_orders where not public.build_order_body_ok(body);
-   ```
-
-   Si da alguna fila, pasame cuál: esa BO vieja no entra en los topes nuevos y no se la va a poder votar hasta editarla. Si Supabase te muestra otro error, copiame el mensaje.
-
-4. **Pedime el push** ("pusheá a main"). Eso publica la web en Vercel y arma la release de la versión nueva.
-
-5. **Mirá que la release salga bien.** El archivo que la arma cambió entero y no se puede probar sin publicar. A los 5 o 10 minutos, en <https://github.com/Kyriokes/aoe2-bo-coach/releases> tiene que estar la versión nueva con dos archivos: el `.zip` y su `.sha256`. Si no aparece, pestaña **Actions**, corrida **Release**, y pasame qué paso quedó en rojo.
-
-6. **Volvé a publicar las BO de chinos y mayas.** La simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
+1. **Volvé a publicar las BO de chinos y mayas.** La simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
 
    ```bash
    src\BoCoach.App\bin\Release\net10.0-windows10.0.19041.0\BoCoach.exe --publish build_orders\civs --dry-run
-   ```n
+   ```
+
    Si la lista se ve bien, corrélo de nuevo sin `--dry-run`. Reemplaza las publicadas con los mismos códigos y, como cambia el cuerpo de pocas, las apps solo vuelven a bajar esas.
 
-7. **Probá lo que PGlite no puede probar** (hace falta Supabase de verdad). Si algo no da como dice acá, contame:
+2. **Probá lo que PGlite no puede probar** (hace falta Supabase de verdad). Si algo no da como dice acá, contame:
    - **Subir una partida:** jugá una partida de más de un minuto con "Compartir mis partidas" prendido. En Ajustes, pestaña Partida, tiene que decir "Registro de la partida enviado. ¡Gracias!". Si no, los registros quedan en cola en tu PC y no se pierden.
    - **Borrar:** tocá "Borrar lo compartido…" y aceptá. En Supabase, **Storage** → `registros`, ese archivo tiene que desaparecer.
    - **Votar:** votá una BO. El contador sube y la fecha "actualizada" no cambia.
    - **Autores:** en la biblioteca cada BO sigue diciendo de quién es.
-
 ## 2. Después de reinstalar Windows
 
 En esta PC se perdieron `%APPDATA%\BoCoach` y `%LOCALAPPDATA%\BoCoach`: tus ajustes, tu cuenta en la app, las grabaciones y los informes.
