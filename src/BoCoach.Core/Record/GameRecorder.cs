@@ -26,11 +26,13 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
     public double ForecastHorizon { get; init; } = 60;
 
     /// <summary>
-    /// La BO tal como se jugó, sin el autor (es un nombre) ni el código. Igual, si es del jugador, sus pasos son los que la
-    /// base tiene en su cuenta (una privada solo la baja su dueño): quien lee los registros los puede relacionar, y la
-    /// página de privacidad lo dice. Sacarle el nombre o las notas no cambia eso. Va adentro del registro porque sin ella la
-    /// partida no se puede reproducir: otro jugador puede tenerla privada, y una publicada se puede republicar distinta
-    /// (partida 20261102-212823).
+    /// La BO tal como se jugó, sin el autor (es un nombre) ni el código. Igual lleva a la cuenta: la app solo juega BO de
+    /// la lista de la cuenta conectada, las propias (una privada solo la baja su dueño) y las sumadas (la base guarda quién
+    /// sumó cada una), así que quien lee los registros puede buscar los pasos en la base y dar con la cuenta. Sacarle el
+    /// nombre o las notas no cambia eso. Tampoco hace falta la BO: la app pide la lista con el token desde la misma
+    /// conexión con que sube los registros. La página de privacidad dice los dos caminos. Va adentro del registro porque
+    /// sin ella la partida no se puede reproducir: otro jugador puede tenerla privada, y una publicada se puede republicar
+    /// distinta (partida 20261102-212823).
     /// </summary>
     private static JsonNode? PlayedBuildOrder(BuildOrder? bo)
     {
@@ -49,8 +51,8 @@ public sealed class GameRecorder(GameRecordWriter writer, GameData data)
     public static string Day(DateTimeOffset when) => when.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// La línea <c>meta</c> de una partida: lo que hace falta para reproducirla, sin nombres ni la cuenta (la BO jugada sí
-    /// puede llevar a ella: ver <see cref="PlayedBuildOrder"/>).
+    /// La línea <c>meta</c> de una partida: lo que hace falta para reproducirla, sin nombres ni la cuenta (la BO jugada, y
+    /// la conexión con que se sube, sí pueden llevar a ella: ver <see cref="PlayedBuildOrder"/>).
     /// </summary>
     /// <param name="map">La clave del mapa en data/maps.json, o null: lo que lee el OCR es texto libre y no va tal cual.</param>
     /// <param name="buildOrder">La BO con que se jugó.</param>

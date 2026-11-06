@@ -40,18 +40,29 @@ describe("los botones de la app, como se llaman en la app", () => {
 });
 
 /**
- * Lo que promete /privacidad tiene que ser cierto letra por letra. La BO del registro va sin autor ni código, pero sus
- * pasos son los guardados en la cuenta de quien la armó (una privada solo la baja su dueño): que el texto no vuelva a
- * decir que el registro no está atado a la cuenta.
+ * Lo que promete /privacidad tiene que ser cierto letra por letra. La BO del registro va sin autor ni código, pero la app
+ * solo juega BO de la lista de la cuenta: las propias (una privada solo la baja su dueño) y las sumadas (la tabla
+ * subscriptions). Y la app conectada pide esa lista con el token desde la misma conexión con que sube los registros, a
+ * veces en el mismo segundo (MainWindow, al abrir). Que el texto nombre cada camino y no vuelva a decir que el registro
+ * no está atado a la cuenta, ni que lo sumado no lo ve nadie.
  */
 describe("la página de privacidad", () => {
   it.each([
-    ["es", "no está atado a tu cuenta", /build order tuya.*relacionar el registro con tu cuenta/],
-    ["en", "isn't tied to your website account", /build order of your own.*link the record to your account/],
-  ] as const)("%s: una BO propia lleva a la cuenta", (locale, promise, ownBuildOrder) => {
+    [
+      "es",
+      ["no está atado a tu cuenta", "lo que sumás no lo ve nadie más"],
+      [/relacionarlo con tu cuenta/, /tuya o sumada a tu coach/, /una privada lleva directo a vos/, /misma conexión a internet/, /entrás a la web con tu cuenta/],
+    ],
+    [
+      "en",
+      ["isn't tied to your website account", "nobody else sees what you add"],
+      [/link it to your account/, /your own or one you added to your coach/, /a private one leads straight to you/, /same internet connection/, /sign in to the website/],
+    ],
+  ] as const)("%s: cada camino por el que el registro lleva a la cuenta", (locale, promises, paths) => {
     const t = getDictionary(locale).privacy;
-    expect(t.shareText2).not.toContain(promise);
-    expect(t.shareText2).toMatch(ownBuildOrder);
+    const page = [t.shareText2, ...t.webItems].join(" ");
+    for (const promise of promises) expect(page).not.toContain(promise);
+    for (const path of paths) expect(t.shareText2).toMatch(path);
   });
 
   // El archivo trae solo el día (AP-27), pero la base (reserved_at, uploaded_at) y Storage anotan la hora en que llega, y
