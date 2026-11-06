@@ -244,7 +244,7 @@ public sealed class Coach
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
         Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
-        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot);
+        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot) | ReviveAgeClicks();
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
         {
@@ -504,8 +504,8 @@ public sealed class Coach
     /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
     /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue. El clic de
     /// una edad a la que ya se llegó (el log no leyó el aviso, pero hay algo de esa edad) tampoco vence: no se puede volver a pedir.
-    /// <para>El de una edad vence solo si la cola se leyó desde el clic: sin ella nada lo desmiente, y su costo casi nunca
-    /// coincide por casualidad. En la revisión del 2026-11-05, la Feudal sin cola ni aviso del log vencía antes de que
+    /// <para>El de una edad que vence sin que la cola se haya leído desde el clic se guarda (<see cref="ReviveAgeClicks"/>):
+    /// sin ella nada lo desmiente. En la revisión del 2026-11-05, la Feudal sin cola ni aviso del log vencía antes de que
     /// llegara algo de Feudal, y después nada cerraba el paso: "Hacé clic en Edad Feudal" toda la partida.</para>
     /// </summary>
     private bool ExpireClicks(GameSnapshot snapshot)
@@ -517,10 +517,12 @@ public sealed class Coach
         {
             if (step.Step.What is not { } tech || !_data.TryGet(tech, out var entity) || step.StartedAt is not { } clicked
                 || snapshot.Belief?.InProgress(tech) == true || snapshot.Belief?.Done(tech) == true
-                || BuildOrderValidator.AgeOf(tech) is { } clickedAge && (clickedAge <= age || !QueueReadSince(clicked)))
+                || BuildOrderValidator.AgeOf(tech) <= age)
                 continue;
             if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
             {
+                if (BuildOrderValidator.AgeOf(tech) is not null && !QueueReadSince(clicked))
+                    _expiredAgeClicks[step.Index] = clicked;
                 Tracker.ClearStarted(step.Index);
                 expired = true;
             }
@@ -530,6 +532,34 @@ public sealed class Coach
 
     /// <summary>La cola se está leyendo y se leyó sin cortes desde ese momento: lo que se investiga desde entonces se vio en ella.</summary>
     private bool QueueReadSince(double time) => FreshQueue is not null && _queueFirstSeenAt <= time;
+
+    /// <summary>
+    /// El clic de una edad que venció sin la cola vuelve a estar en curso, con su hora, cuando algo más dice que se llegó
+    /// a esa edad (una galería es de Feudal). En curso y no hecho: la edad sale de cualquier evento leído, y uno mal
+    /// leído no puede cerrar el paso. Lo descarta que el paso deje de estar pendiente (otro clic, hecho, salteado).
+    /// </summary>
+    private bool ReviveAgeClicks()
+    {
+        var revived = false;
+        foreach (var (index, clicked) in _expiredAgeClicks.ToList())
+        {
+            var step = Tracker.Steps[index];
+            if (step.State is not (StepState.Pending or StepState.Ready))
+            {
+                _expiredAgeClicks.Remove(index);
+            }
+            else if (BuildOrderValidator.AgeOf(step.Step.What!) <= Tracker.Age)
+            {
+                _expiredAgeClicks.Remove(index);
+                Tracker.MarkStarted(index, clicked);
+                revived = true;
+            }
+        }
+        return revived;
+    }
+
+    /// <summary>Los clics de edad que vencieron sin la cola, con su hora (ver <see cref="ReviveAgeClicks"/>).</summary>
+    private readonly Dictionary<int, double> _expiredAgeClicks = [];
 
     /// <summary>
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores

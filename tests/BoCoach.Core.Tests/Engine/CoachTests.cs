@@ -774,22 +774,67 @@ public class CoachTests
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
     }
 
+    /// <summary>Lo que un clic en la Feudal tarda en vencer si nadie lo confirma.</summary>
+    private static double FeudalExpires => TestData.GameData.Get("feudal_age").Time * 1.5 + 15;
+
     // Revisión del 2026-11-05: sin la cola ni el aviso del log, el clic de Feudal vencía a los 210 s; la galería
     // después daba la Feudal, pero nada cerraba el paso y el coach pedía "Hacé clic en Edad Feudal" toda la partida.
+    // Sigue venciendo (diez aldeanos encolados de golpe también son 500 de comida), pero se guarda.
     [Fact]
-    public void Un_clic_de_edad_no_vence_si_la_cola_no_se_lee()
+    public void Un_clic_de_edad_que_vencio_sin_la_cola_vuelve_a_estar_en_curso_al_llegar_a_esa_edad()
     {
         var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
         coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
         coach.Update(At(301, 200, 20));
 
-        var feudal = TestData.GameData.Get("feudal_age").Time;
-        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        var view = coach.Update(At(600, 600, 20, "archery_range_built"));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State); // en curso, no hecho: nada leyó el final
+        Assert.Equal(301, coach.Tracker.Steps[2].StartedAt);
+        Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
+        Assert.Null(view.Abandoned);
+        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
+    [Fact]
+    public void El_clic_de_edad_que_vuelve_es_el_ultimo_que_vencio()
+    {
+        // El falso de las 301 venció y el clic de verdad de las 701 se ve en el stock: es el que cuenta, aunque también venza.
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+
+        coach.Update(At(600, 450, 20));
+        coach.Update(At(700, 700, 20));
+        coach.Update(At(701, 200, 20));
+        Assert.Equal(701, coach.Tracker.Steps[2].StartedAt);
+
+        coach.Update(At(701 + FeudalExpires, 200, 20));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+        coach.Update(At(950, 600, 20, "archery_range_built"));
+
+        Assert.Equal(701, coach.Tracker.Steps[2].StartedAt);
+        Assert.Equal(701, coach.Report().AgeClicks.Single().Click);
+    }
+
+    [Fact]
+    public void Atras_sobre_un_clic_de_edad_que_volvio_no_se_deshace_en_la_captura_siguiente()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+        coach.Update(At(600, 600, 20, "archery_range_built"));
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
 
-        var view = coach.Update(At(700, 600, 20, "archery_range_built"));
-        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
-        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+        Assert.Null(coach.Back().Abandoned);
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+        coach.Update(At(601, 600, 20));
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
     }
 
     // Revisión del 2026-11-05: sin la cola ni el aviso del log, una suba de comida justo del costo de la Feudal en plena
@@ -842,17 +887,33 @@ public class CoachTests
             ],
         };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
-        // La cola se lee todo el tiempo y la Feudal nunca aparece: el clic de una edad vence solo si algo lo desmiente.
-        GameSnapshot WithVillagersQueued(GameSnapshot snapshot) => snapshot with { Queue = [new QueueItem("villager")] };
-        coach.Update(WithVillagersQueued(At(300, 700, 20, "lumber_camp_built", "mill_built")));
-        coach.Update(WithVillagersQueued(At(301, 200, 20))); // bajan 500 de comida: diez aldeanos... o la Feudal
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20)); // bajan 500 de comida: diez aldeanos... o la Feudal
         Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
 
-        var expires = 301 + TestData.GameData.Get("feudal_age").Time * 1.5 + 15;
+        var feudal = TestData.GameData.Get("feudal_age").Time;
+        coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
+
+        Assert.Null(coach.Report().AgeClicks.Single().Click);
+    }
+
+    [Fact]
+    public void Con_la_cola_leida_desde_el_clic_un_clic_de_edad_que_no_aparece_vence()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        // La cola se lee todo el tiempo y la Feudal nunca aparece: lo desmiente.
+        GameSnapshot WithVillagersQueued(GameSnapshot snapshot) => snapshot with { Queue = [new QueueItem("villager")] };
+        coach.Update(WithVillagersQueued(At(300, 700, 20, "lumber_camp_built", "mill_built")));
+        coach.Update(WithVillagersQueued(At(301, 200, 20)));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        var expires = 301 + FeudalExpires;
         for (var time = 304.0; time < expires; time += 3)
             coach.Update(WithVillagersQueued(At(time, 200, 20)));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
         coach.Update(WithVillagersQueued(At(expires, 200, 20)));
 
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
         Assert.Null(coach.Report().AgeClicks.Single().Click);
     }
 
