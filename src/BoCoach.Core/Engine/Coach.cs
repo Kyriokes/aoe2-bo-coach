@@ -244,7 +244,7 @@ public sealed class Coach
         _alert = snapshot.Events.LastOrDefault(e => AlertEvents.Contains(e.EventId)) ?? _alert;
         Tracker.Update(State);
         Abandonment.Update(State, Tracker.Steps, !Tracker.HasOpenSteps, Tracker.Current is { } current ? MissingFor(current).Total : 0);
-        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot);
+        var clicked = DetectResearchClick(snapshot) | ResearchInQueue(snapshot) | ExpireClicks(snapshot) | ReviveAgeClicks();
         // El clic propio en una edad: su renglón del panel de puntajes cae a la vez (así no se toma por el del rival).
         foreach (var step in Tracker.InProgress.Where(s => s.Step.What is { } w && BuildOrderValidator.AgeOf(w) is not null && s.StartedAt is not null))
         {
@@ -384,6 +384,11 @@ public sealed class Coach
     /// <summary>
     /// Marca como en curso la primera investigación pendiente cuyo costo coincide con lo que bajó el stock, o
     /// desmarca una en curso si el stock subió justo su costo (se canceló).
+    /// <para>Si la cola de esa captura la sigue mostrando, lo que volvió es otra cosa: al cancelarla de verdad, el ícono
+    /// se va en el mismo cuadro en que vuelve el stock. En la revisión del 2026-11-05, sacar 9 aldeanos de la cola para
+    /// que arrancara la Feudal devolvía 450 de comida, desmarcaba la Feudal en espera y el coach pedía el clic de nuevo.</para>
+    /// <para>Una edad a la que ya se llegó (como en <see cref="ExpireClicks"/>) tampoco se cancela: sin la cola ni el aviso
+    /// del log, comprar 500 de comida en el mercado en plena Feudal la desmarcaba y volvía "Hacé clic en Edad Feudal".</para>
     /// </summary>
     private bool DetectResearchClick(GameSnapshot snapshot)
     {
@@ -402,8 +407,10 @@ public sealed class Coach
         {
             if (step.State is StepState.Done or StepState.Skipped || step.Step.What is not { } tech || !_data.TryGet(tech, out var entity))
                 continue;
-            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)))
+            if (step.State == StepState.InProgress && Matches(spent * -1, civ.Cost(entity, age)) && snapshot.Queue?.Any(i => i.Key == tech) != true
+                && !(BuildOrderValidator.AgeOf(tech) is { } stepAge && stepAge <= Tracker.Age))
             {
+                _canceledByStock[step.Index] = step.StartedAt!.Value;
                 Tracker.ClearStarted(step.Index);
                 return true;
             }
@@ -440,9 +447,13 @@ public sealed class Coach
     /// <para>Solo al aparecer en la cola: si no, la cancelación y "Atrás" se deshacían en la captura siguiente. Y si se
     /// va de la cola sin terminar, lo que solo la cola había dicho se deshace: era un ícono mal leído o se canceló. Lo
     /// que también se vio en el stock lo decide <see cref="ExpireClicks"/>.</para>
+    /// <para>Lo que el stock dio por cancelado mientras la creencia lo tiene en curso vuelve a estar en curso, desde su
+    /// clic, si la cola lo muestra en dos lecturas seguidas: en la captura de la devolución, el ícono en espera pudo salir "?".</para>
     /// </summary>
     private bool ResearchInQueue(GameSnapshot snapshot)
     {
+        var previousRaw = _rawQueue;
+        _rawQueue = snapshot.Queue?.Select(i => i.Key).ToHashSet() ?? [];
         if (snapshot.Belief is not { } belief)
             return false;
         var changed = false;
@@ -462,6 +473,18 @@ public sealed class Coach
                 Tracker.ClearStarted(step.Index);
                 changed = true;
             }
+            else if (_canceledByStock.TryGetValue(step.Index, out var clicked) && inQueue.Contains(tech)
+                && step.State is StepState.Pending or StepState.Ready && _rawQueue.Contains(tech) && previousRaw.Contains(tech))
+            {
+                Tracker.MarkStarted(step.Index, clicked);
+                changed = true;
+            }
+        }
+        // Lo que ya no está pendiente, o que la creencia dejó de tener en curso, sigue por el camino de siempre.
+        foreach (var index in _canceledByStock.Keys.ToList())
+        {
+            if (Tracker.Steps[index] is not { State: StepState.Pending or StepState.Ready, Step.What: { } tech } || !inQueue.Contains(tech))
+                _canceledByStock.Remove(index);
         }
         _researchInQueue = inQueue;
         return changed;
@@ -470,11 +493,20 @@ public sealed class Coach
     private HashSet<string> _researchInQueue = [];
     private readonly HashSet<int> _startedByQueue = [];
 
+    /// <summary>Las investigaciones que el stock dio por canceladas, con la hora de su clic (ver <see cref="ResearchInQueue"/>).</summary>
+    private readonly Dictionary<int, double> _canceledByStock = [];
+
+    /// <summary>Lo que mostró la cola en la última captura, tal cual se leyó (vacío si no se leyó).</summary>
+    private HashSet<string> _rawQueue = [];
+
     /// <summary>
     /// Un clic visto en el stock que ni el log ni la cola confirman vence, igual que en <see cref="TechReminders"/>: dos
     /// aldeanos encolados son 100 de comida, lo mismo que la armadura acolchada, y un arquero (45 de oro) pasa por el telar.
     /// Sin esto quedaba en curso hasta el final y el coach no la pedía más. Mientras la cola la muestre, sigue. El clic de
     /// una edad a la que ya se llegó (el log no leyó el aviso, pero hay algo de esa edad) tampoco vence: no se puede volver a pedir.
+    /// <para>El de una edad que vence sin que la cola se haya leído desde el clic se guarda (<see cref="ReviveAgeClicks"/>):
+    /// sin ella nada lo desmiente. En la revisión del 2026-11-05, la Feudal sin cola ni aviso del log vencía antes de que
+    /// llegara algo de Feudal, y después nada cerraba el paso: "Hacé clic en Edad Feudal" toda la partida.</para>
     /// </summary>
     private bool ExpireClicks(GameSnapshot snapshot)
     {
@@ -489,12 +521,45 @@ public sealed class Coach
                 continue;
             if (snapshot.Time >= clicked + TechReminders.Pause(civ, entity, age))
             {
+                if (BuildOrderValidator.AgeOf(tech) is not null && !QueueReadSince(clicked))
+                    _expiredAgeClicks[step.Index] = clicked;
                 Tracker.ClearStarted(step.Index);
                 expired = true;
             }
         }
         return expired;
     }
+
+    /// <summary>La cola se está leyendo y se leyó sin cortes desde ese momento: lo que se investiga desde entonces se vio en ella.</summary>
+    private bool QueueReadSince(double time) => FreshQueue is not null && _queueFirstSeenAt <= time;
+
+    /// <summary>
+    /// El clic de una edad que venció sin la cola vuelve a estar en curso, con su hora, cuando algo más dice que se llegó
+    /// a esa edad (una galería es de Feudal). En curso y no hecho: la edad sale de cualquier evento leído, y uno mal
+    /// leído no puede cerrar el paso. Lo descarta que el paso deje de estar pendiente (otro clic, hecho, salteado).
+    /// </summary>
+    private bool ReviveAgeClicks()
+    {
+        var revived = false;
+        foreach (var (index, clicked) in _expiredAgeClicks.ToList())
+        {
+            var step = Tracker.Steps[index];
+            if (step.State is not (StepState.Pending or StepState.Ready))
+            {
+                _expiredAgeClicks.Remove(index);
+            }
+            else if (BuildOrderValidator.AgeOf(step.Step.What!) <= Tracker.Age)
+            {
+                _expiredAgeClicks.Remove(index);
+                Tracker.MarkStarted(index, clicked);
+                revived = true;
+            }
+        }
+        return revived;
+    }
+
+    /// <summary>Los clics de edad que vencieron sin la cola, con su hora (ver <see cref="ReviveAgeClicks"/>).</summary>
+    private readonly Dictionary<int, double> _expiredAgeClicks = [];
 
     /// <summary>
     /// El cambio coincide con el costo en cada recurso que se paga (y hay alguno). Margen: un poco menos por errores

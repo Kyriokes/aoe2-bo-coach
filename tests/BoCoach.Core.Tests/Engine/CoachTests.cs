@@ -590,6 +590,78 @@ public class CoachTests
         Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[1].State);
     }
 
+    // Revisión del 2026-11-05: para que la Feudal arranque, el jugador saca aldeanos de la cola y vuelven 450 de comida de
+    // golpe. Eso parecía la cancelación de la Feudal y la cola, que la seguía mostrando, ya no la volvía a marcar: el coach
+    // pedía "Hacé clic en Edad Feudal" con la Feudal en curso.
+    private static readonly BuildOrder FeudalAfterCampAndMill = new()
+    {
+        Name = "t",
+        Steps =
+        [
+            new Step { Id = "camp", Do = StepAction.Build, What = "lumber_camp", Assign = GatherSource.Wood },
+            new Step { Id = "mill", Do = StepAction.Build, What = "mill", Assign = GatherSource.Wood },
+            new Step { Id = "feudal", Do = StepAction.Research, What = "feudal_age" },
+        ],
+    };
+
+    private static readonly QueueItem Villagers = new("villager");
+    private static readonly QueueItem FeudalWaiting = new("feudal_age", Waiting: true);
+
+    /// <summary>La Feudal pagada a las 300,5 con aldeanos en cola, y vista en la cola en dos lecturas.</summary>
+    private static (Coach Coach, Action<double, double, QueueItem[]> See) FeudalClickedBehindVillagers()
+    {
+        var builder = new SnapshotBuilder(TestData.GameData);
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        void See(double clock, double food, QueueItem[] queue) =>
+            coach.Update(builder.Build(new ScreenReading(clock, food, 200, 100, 200, 20, null, null, [], Queue: queue))!);
+        coach.Update(builder.Build(new ScreenReading(300, 600, 200, 100, 200, 20, null, null, ["lumber_camp_built", "mill_built"], Queue: [Villagers]))!);
+        See(300.5, 100, [Villagers, FeudalWaiting]); // el clic: bajan 500 de comida
+        See(301, 100, [Villagers, FeudalWaiting]);
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        return (coach, See);
+    }
+
+    [Fact]
+    public void Una_devolucion_de_comida_con_la_investigacion_en_la_cola_no_la_cancela()
+    {
+        var (coach, see) = FeudalClickedBehindVillagers();
+
+        see(302.5, 550, [Villagers, FeudalWaiting]); // saca 9 aldeanos: vuelven 450 de comida
+        see(303, 550, [Villagers, FeudalWaiting]);
+        see(330, 560, [new QueueItem("feudal_age")]);
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.Equal(300.5, coach.Tracker.Steps[2].StartedAt);
+        Assert.Equal(300.5, coach.Report().AgeClicks.Single().Click);
+    }
+
+    [Fact]
+    public void Una_devolucion_con_la_investigacion_mal_leida_en_la_cola_se_corrige_si_la_cola_la_sigue_mostrando()
+    {
+        // Justo en la captura de la devolución, el ícono en espera sale "?": parece la cancelación, pero la cola la sigue mostrando.
+        var (coach, see) = FeudalClickedBehindVillagers();
+
+        see(302.5, 550, [Villagers, new QueueItem(QueueItem.Unknown, Waiting: true)]);
+        see(303, 550, [Villagers, FeudalWaiting]);
+        see(303.5, 550, [Villagers, FeudalWaiting]);
+
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.Equal(300.5, coach.Tracker.Steps[2].StartedAt);
+    }
+
+    [Fact]
+    public void Una_cancelacion_por_el_stock_no_se_deshace_sin_que_la_cola_la_muestre()
+    {
+        // Cancelada de verdad: el ícono se fue, y la creencia la tiene en curso unos segundos más (QueueFacts.Left).
+        var (coach, see) = FeudalClickedBehindVillagers();
+
+        see(302.5, 600, [Villagers]);
+        see(303, 600, [Villagers]);
+        see(310, 600, [Villagers]);
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+    }
+
     [Fact]
     public void Una_investigacion_que_se_vuelve_a_ver_en_la_cola_vuelve_a_estar_en_curso()
     {
@@ -702,6 +774,105 @@ public class CoachTests
         Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
     }
 
+    /// <summary>Lo que un clic en la Feudal tarda en vencer si nadie lo confirma.</summary>
+    private static double FeudalExpires => TestData.GameData.Get("feudal_age").Time * 1.5 + 15;
+
+    // Revisión del 2026-11-05: sin la cola ni el aviso del log, el clic de Feudal vencía a los 210 s; la galería
+    // después daba la Feudal, pero nada cerraba el paso y el coach pedía "Hacé clic en Edad Feudal" toda la partida.
+    // Sigue venciendo (diez aldeanos encolados de golpe también son 500 de comida), pero se guarda.
+    [Fact]
+    public void Un_clic_de_edad_que_vencio_sin_la_cola_vuelve_a_estar_en_curso_al_llegar_a_esa_edad()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        var view = coach.Update(At(600, 600, 20, "archery_range_built"));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State); // en curso, no hecho: nada leyó el final
+        Assert.Equal(301, coach.Tracker.Steps[2].StartedAt);
+        Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
+        Assert.Null(view.Abandoned);
+        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
+    [Fact]
+    public void El_clic_de_edad_que_vuelve_es_el_ultimo_que_vencio()
+    {
+        // El falso de las 301 venció y el clic de verdad de las 701 se ve en el stock: es el que cuenta, aunque también venza.
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+
+        coach.Update(At(600, 450, 20));
+        coach.Update(At(700, 700, 20));
+        coach.Update(At(701, 200, 20));
+        Assert.Equal(701, coach.Tracker.Steps[2].StartedAt);
+
+        coach.Update(At(701 + FeudalExpires, 200, 20));
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+        coach.Update(At(950, 600, 20, "archery_range_built"));
+
+        Assert.Equal(701, coach.Tracker.Steps[2].StartedAt);
+        Assert.Equal(701, coach.Report().AgeClicks.Single().Click);
+    }
+
+    [Fact]
+    public void Atras_sobre_un_clic_de_edad_que_volvio_no_se_deshace_en_la_captura_siguiente()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20));
+        coach.Update(At(301 + FeudalExpires, 200, 20));
+        coach.Update(At(600, 600, 20, "archery_range_built"));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        Assert.Null(coach.Back().Abandoned);
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+        coach.Update(At(601, 600, 20));
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
+    }
+
+    // Revisión del 2026-11-05: sin la cola ni el aviso del log, una suba de comida justo del costo de la Feudal en plena
+    // Feudal (comprar 500 con shift+clic en el mercado, un tributo, sacar 9 aldeanos de la cola) la daba por cancelada y
+    // volvía "Hacé clic en Edad Feudal" toda la partida. A una edad a la que ya se llegó no se la puede cancelar.
+    [Theory]
+    [InlineData(500)] // el mercado, con shift+clic
+    [InlineData(450)] // 9 aldeanos sacados de la cola
+    public void Una_suba_de_comida_en_plena_Feudal_no_cancela_el_clic_de_Feudal(double refund)
+    {
+        var bo = new BuildOrder
+        {
+            Name = "t",
+            Steps =
+            [
+                .. FeudalAfterCampAndMill.Steps,
+                new Step { Id = "range", Do = StepAction.Build, What = "archery_range", Assign = GatherSource.Wood },
+                new Step { Id = "smith", Do = StepAction.Build, What = "blacksmith", Assign = GatherSource.Wood },
+                new Step { Id = "castle", Do = StepAction.Research, What = "castle_age" },
+            ],
+        };
+        static GameSnapshot WithGold(GameSnapshot snapshot, double gold) => snapshot with { Stock = snapshot.Stock with { Gold = gold } };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
+        coach.Update(At(301, 200, 20)); // el clic en Feudal
+        coach.Update(At(700, 700, 20, "archery_range_built"));
+        coach.Update(WithGold(At(750, 900, 20, "blacksmith_built"), 300));
+        coach.Update(At(800, 100, 20)); // el clic en Castillos
+        coach.Update(At(849.5, 120, 20));
+        coach.Update(At(850, 120 + refund, 20));
+        var view = coach.Update(At(900, 120 + refund, 20));
+
+        Assert.Equal(Age.Feudal, coach.Tracker.Age);
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        Assert.Equal(301, coach.Report().AgeClicks.First().Click);
+        Assert.NotEqual("Hacé clic en Edad Feudal", CoachText.Lines(view, TestData.GameData).Critical);
+    }
+
     [Fact]
     public void Un_clic_que_vencio_no_queda_en_el_informe()
     {
@@ -717,12 +888,32 @@ public class CoachTests
         };
         var coach = new Coach(bo, TestData.GameData, TestData.Events);
         coach.Update(At(300, 700, 20, "lumber_camp_built", "mill_built"));
-        coach.Update(At(301, 200, 20)); // bajan 500 de comida: cinco aldeanos... o la Feudal
+        coach.Update(At(301, 200, 20)); // bajan 500 de comida: diez aldeanos... o la Feudal
         Assert.Equal(301, coach.Report().AgeClicks.Single().Click);
 
         var feudal = TestData.GameData.Get("feudal_age").Time;
         coach.Update(At(301 + feudal * 1.5 + 15, 200, 20));
 
+        Assert.Null(coach.Report().AgeClicks.Single().Click);
+    }
+
+    [Fact]
+    public void Con_la_cola_leida_desde_el_clic_un_clic_de_edad_que_no_aparece_vence()
+    {
+        var coach = new Coach(FeudalAfterCampAndMill, TestData.GameData, TestData.Events);
+        // La cola se lee todo el tiempo y la Feudal nunca aparece: lo desmiente.
+        GameSnapshot WithVillagersQueued(GameSnapshot snapshot) => snapshot with { Queue = [new QueueItem("villager")] };
+        coach.Update(WithVillagersQueued(At(300, 700, 20, "lumber_camp_built", "mill_built")));
+        coach.Update(WithVillagersQueued(At(301, 200, 20)));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+
+        var expires = 301 + FeudalExpires;
+        for (var time = 304.0; time < expires; time += 3)
+            coach.Update(WithVillagersQueued(At(time, 200, 20)));
+        Assert.Equal(StepState.InProgress, coach.Tracker.Steps[2].State);
+        coach.Update(WithVillagersQueued(At(expires, 200, 20)));
+
+        Assert.NotEqual(StepState.InProgress, coach.Tracker.Steps[2].State);
         Assert.Null(coach.Report().AgeClicks.Single().Click);
     }
 
