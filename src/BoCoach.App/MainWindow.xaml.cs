@@ -159,7 +159,7 @@ public partial class MainWindow : Window, IBuildOrderDialogs, ICaptureHost, ICoa
             return;
         }
         var tutorial = new FirstRunViewModel(_screen, _data.GameData, () => Coach.Language, Tools.TryAutoCalibrate,
-            name => Coach.PlayerName = name, Coach.PlayerName);
+            name => Coach.PlayerName = name, Coach.PlayerName, smallDigits: () => Tools.SmallDigits);
         _firstRun = new FirstRunWindow(tutorial, Coach, Tools.InstallModCommand, BuildOrders) { Owner = this };
         _firstRun.Closed += (_, _) =>
         {

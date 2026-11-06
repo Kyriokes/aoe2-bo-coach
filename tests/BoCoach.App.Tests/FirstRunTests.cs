@@ -68,8 +68,27 @@ public sealed class FirstRunTests : IDisposable
         Assert.Equal(8, tutorial.Players.Count);
     }
 
-    private FirstRunViewModel Tutorial(IScreenSource screen, Func<bool>? calibrate = null, Action<string>? save = null, string current = "") =>
-        new(screen, _data.GameData, () => GameLanguage.English, calibrate ?? (() => false), save ?? (_ => { }), current);
+    private FirstRunViewModel Tutorial(IScreenSource screen, Func<bool>? calibrate = null, Action<string>? save = null, string current = "",
+        Func<bool>? smallDigits = null) =>
+        new(screen, _data.GameData, () => GameLanguage.English, calibrate ?? (() => false), save ?? (_ => { }), current, smallDigits: smallDigits);
+
+    // VI-04: a 768p o 720p los números del HUD salen muy chicos y el coach lee peor. La calibración de Ajustes lo avisaba,
+    // pero Primeros pasos escribía su propio texto, y es justo por donde pasa un jugador nuevo.
+    [Fact]
+    public async Task Calibrada_con_los_numeros_muy_chicos_avisa_que_puede_leer_mal()
+    {
+        var small = Tutorial(new StillScreen(null), () => true, smallDigits: () => true);
+        var fine = Tutorial(new StillScreen(null), () => true, smallDigits: () => false);
+        small.ToggleWatchingCommand.Execute(null);
+        fine.ToggleWatchingCommand.Execute(null);
+
+        await small.TickAsync();
+        await fine.TickAsync();
+
+        Assert.True(small.Calibrated);
+        Assert.Contains(Texts.CalibratedSmallDigits, small.CalibrationStatus);
+        Assert.Equal(Texts.HudCalibrated, fine.CalibrationStatus);
+    }
 
     [Fact]
     public async Task En_la_pantalla_de_carga_lista_los_jugadores_y_propone_al_jugador_1()

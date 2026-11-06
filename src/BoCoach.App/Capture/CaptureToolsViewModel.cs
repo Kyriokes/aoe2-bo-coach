@@ -92,6 +92,9 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
 
     public bool IsCalibrated => File.Exists(_regionsPath);
 
+    /// <summary>La última calibración sola que encontró el HUD lo vio con los números muy chicos (VI-04): el coach puede leer mal.</summary>
+    public bool SmallDigits { get; private set; }
+
     /// <summary>
     /// Las regiones guardadas, o las de siempre. Un regions.json roto no puede impedir abrir la app: se aparta en
     /// <see cref="BrokenRegionsPath"/> y hay que volver a calibrar. Si solo no se puede leer ahora (lo tiene abierto otro
@@ -314,6 +317,7 @@ public sealed partial class CaptureToolsViewModel : ObservableObject, IRecording
             CalibrationStatus = Texts.CalibrateNotSaved(e.Message);
             return false;
         }
+        SmallDigits = found.SmallDigits;
         // Con el HUD a otra escala, las capturas se llevan a 1080p antes de leerlas (ScreenFrames): es solo información.
         CalibrationStatus = (found.Hud is { } hud
                 ? Texts.CalibratedWithLayout(hud.Name, area.Width, area.Height, found.Squares.Count)

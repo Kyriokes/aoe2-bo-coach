@@ -141,6 +141,7 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.InRange(tools.Layout.HudScale, 1.05, 1.15);
         Assert.Contains("escala 1", tools.CalibrationStatus);
         Assert.DoesNotContain("leer mal", tools.CalibrationStatus);
+        Assert.False(tools.SmallDigits);
     }
 
     /// <summary>La misma captura del amigo, achicada: el HUD queda como a 720p.</summary>
@@ -162,6 +163,7 @@ public sealed class CaptureToolsTests : IDisposable
         Assert.True(tools.TryAutoCalibrate());
 
         Assert.Contains("muy chicos", tools.CalibrationStatus);
+        Assert.True(tools.SmallDigits); // Primeros pasos lo muestra con su propio texto
     }
 
     // 4.3 del traspaso del 2026-10-20: las capturas de los amigos llegaban comprimidas y sin saber qué vio la app.
