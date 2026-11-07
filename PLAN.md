@@ -424,7 +424,7 @@ Lo vigente. Cada ítem tiene su criterio de salida, y cada cambio se hace con un
    - **C1:** probar la release en otra PC. Tarea del usuario.
    - **C2:** capturas y video para la portada y el portfolio. Tarea del usuario.
    - **C5:** ejecutable de un solo archivo con `data/` adentro. El `.exe` ya sale en un solo archivo; `data/` va al lado a propósito (`ExcludeFromSingleFile`), y es lo último del bloque.
-7. **Lo que dejó abierto la auditoría del 2026-11-05** (`docs/auditorias/2026-11-05.md`): avisar en la app que hay una versión nueva (IN-20, es un pedido de red más al abrir: decisión del usuario), y probar si la portable anda sin extraer DLL a `%TEMP%` (AP-32).
+7. **Lo que dejó abierto la auditoría del 2026-11-05** (`docs/auditorias/2026-11-05.md`): probar si la portable anda sin extraer DLL a `%TEMP%` (AP-32).
 
 ### Terminado
 
