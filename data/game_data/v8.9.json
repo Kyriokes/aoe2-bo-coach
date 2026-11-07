@@ -2234,7 +2234,10 @@
         "mule_cart",
         "settlement",
         "steppe_lancer"
-      ]
+      ],
+      "ages": {
+        "parthian_tactics": "castle"
+      }
     },
     "saracens": {
       "dat_name": "Saracens",
@@ -4674,6 +4677,7 @@
         "stone_wall"
       ],
       "ages": {
+        "battering_ram": "feudal",
         "siege_workshop": "feudal",
         "town_center": "feudal"
       }
@@ -4994,7 +4998,21 @@
         "settlement",
         "steppe_lancer",
         "thumb_ring"
-      ]
+      ],
+      "ages": {
+        "bow_saw": "feudal",
+        "crop_rotation": "castle",
+        "double_bit_axe": "dark",
+        "gold_mining": "dark",
+        "gold_shaft_mining": "feudal",
+        "hand_cart": "feudal",
+        "heavy_plow": "feudal",
+        "horse_collar": "dark",
+        "stone_mining": "dark",
+        "stone_shaft_mining": "feudal",
+        "two_man_saw": "castle",
+        "wheelbarrow": "dark"
+      }
     },
     "sicilians": {
       "dat_name": "Sicilians",
@@ -5255,7 +5273,10 @@
         "settlement",
         "steppe_lancer",
         "thumb_ring"
-      ]
+      ],
+      "ages": {
+        "hand_cannoneer": "castle"
+      }
     },
     "dravidians": {
       "dat_name": "Dravidians",
@@ -5560,7 +5581,10 @@
         "stone_shaft_mining",
         "thumb_ring",
         "two_man_saw"
-      ]
+      ],
+      "ages": {
+        "spearman": "dark"
+      }
     },
     "georgians": {
       "dat_name": "Georgians",

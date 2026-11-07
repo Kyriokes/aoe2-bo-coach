@@ -354,26 +354,32 @@ def no_disponibles_por_civ(faltan: dict[str, set[tuple[str, int]]], civs: dict) 
     return resultado
 
 
-def cargar_edades_de_edificios(carpeta: Path) -> dict[str, dict[int, str]]:
-    """Por el civ_id del árbol, la edad de cada edificio que la civ tiene ("Age ID": 1 Oscura a 4 Imperial)."""
-    resultado: dict[str, dict[int, str]] = {}
+def cargar_edades_por_civ(carpeta: Path) -> dict[str, dict[tuple[str, int], str]]:
+    """Por el civ_id del árbol, la edad de cada edificio, unidad y tecnología que la civ tiene ("Age ID": 1 Oscura a 4
+    Imperial), por el par (tipo, id del .dat) como en cargar_no_disponibles."""
+    resultado: dict[str, dict[tuple[str, int], str]] = {}
     for archivo in sorted(carpeta.glob("*.json")):
         arbol = json.loads(archivo.read_text(encoding="utf-8"))
         edades = resultado.setdefault(str(arbol.get("civ_id", archivo.stem)).upper(), {})
-        for nodo in arbol.get("civ_techs_buildings", []):
-            if nodo.get("Use Type") == "Building" and nodo.get("Node Status") != "NotAvailable" and nodo.get("Age ID") in (1, 2, 3, 4):
-                edades[nodo["Node ID"]] = _edad_por_nivel(nodo["Age ID"] - 1)
+        for nodos in arbol.values():
+            if not isinstance(nodos, list):
+                continue
+            for nodo in nodos:
+                tipo = TIPO_DE_NODO.get(nodo.get("Use Type"))
+                if tipo and nodo.get("Node Status") != "NotAvailable" and nodo.get("Age ID") in (1, 2, 3, 4):
+                    edades[(tipo, nodo["Node ID"])] = _edad_por_nivel(nodo["Age ID"] - 1)
     return resultado
 
 
-def edades_propias_por_civ(edades: dict[str, dict[int, str]], entidades: dict, civs: dict) -> dict[str, dict[str, str]]:
-    """Clave de civ -> {edificio: edad} de los que esa civ hace en otra edad que la de game_data: el centro urbano de los
-    cumanos es de Feudal (en las demás, de Castillos). Solo las civs que tienen alguno."""
+def edades_propias_por_civ(edades: dict[str, dict[tuple[str, int], str]], entidades: dict, civs: dict) -> dict[str, dict[str, str]]:
+    """Clave de civ -> {clave: edad} de lo que esa civ hace en otra edad que la de game_data: los cumanos, el centro
+    urbano, el taller de asedio y el ariete en Feudal; los borgoñones, las mejoras económicas una edad antes. Solo las
+    civs que tienen alguno."""
     resultado = {}
     for clave, civ in civs.items():
         arbol = arbol_de_civ(clave, civ, edades) or {}
-        propias = {k: arbol[dat_id] for k, (tipo, dat_id) in ENTIDADES.items()
-                   if tipo == "building" and k in entidades and dat_id in arbol and arbol[dat_id] != entidades[k]["age"]}
+        propias = {k: arbol[par] for k, par in ENTIDADES.items()
+                   if k in entidades and par in arbol and arbol[par] != entidades[k]["age"]}
         if propias:
             resultado[clave] = dict(sorted(propias.items()))
     return resultado
@@ -1095,7 +1101,7 @@ def main() -> int:
             datos["civs"][clave]["no_requires"] = claves
     for clave, claves in no_disponibles_por_civ(cargar_no_disponibles(args.dat.parent / "CivTechTrees"), datos["civs"]).items():
         datos["civs"][clave]["unavailable"] = claves
-    edades = cargar_edades_de_edificios(args.dat.parent / "CivTechTrees")
+    edades = cargar_edades_por_civ(args.dat.parent / "CivTechTrees")
     for clave, propias in edades_propias_por_civ(edades, datos["entities"], datos["civs"]).items():
         datos["civs"][clave]["ages"] = propias
 
