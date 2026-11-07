@@ -9,10 +9,10 @@ Lista viva: cada sesión agrega lo nuevo y saca lo hecho. Va ordenada por lo que
 1. **Volvé a publicar las BO de chinos y mayas.** La simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
 
    ```bash
-   src\BoCoach.App\bin\Release\net10.0-windows10.0.19041.0\BoCoach.exe --publish build_orders\civs --dry-run
+   ./src/BoCoach.App/bin/Release/net10.0-windows10.0.19041.0/BoCoach.exe --publish build_orders/civs --dry-run
    ```
 
-   Si la lista se ve bien, corrélo de nuevo sin `--dry-run`. Reemplaza las publicadas con los mismos códigos y, como cambia el cuerpo de pocas, las apps solo vuelven a bajar esas.
+   (Con barras `/`: en la terminal de Git Bash las `\` se pierden.) Cada renglón tiene que decir **"reemplazaría <código>"**. Si dice "se publicaría nueva", no sigas: es que falta el token o es de otra cuenta, y publicar duplicaría la biblioteca. Si la lista se ve bien, corrélo de nuevo sin `--dry-run`. Reemplaza las publicadas con los mismos códigos (las reconoce por civ y nombre en tu lista de la web, porque los códigos guardados se perdieron al reinstalar) y, como cambia el cuerpo de pocas, las apps solo vuelven a bajar esas.
 
 2. **Probá lo que PGlite no puede probar** (hace falta Supabase de verdad). Si algo no da como dice acá, contame:
    - **Subir una partida:** jugá una partida de más de un minuto con "Compartir mis partidas" prendido. En Ajustes, pestaña Partida, tiene que decir "Registro de la partida enviado. ¡Gracias!". Si no, los registros quedan en cola en tu PC y no se pierden.
