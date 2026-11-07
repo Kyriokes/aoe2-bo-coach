@@ -135,6 +135,25 @@ public class StateBeliefTests
         Assert.True(belief.Queue![2].Waiting);
     }
 
+    // Misma partida: "Edad Feudal" leída a las 0:44 (dos capturas) y otra vez a las 2:31 se sumaba como una sola
+    // investigación vista de las 0:44 a las 2:33, y Feudal quedaba hecha a las 2:42 en la Edad Oscura.
+    [Fact]
+    public void Una_tecnologia_que_se_fue_sin_terminar_y_vuelve_no_suma_lo_visto_antes()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(44, ("feudal_age", false)), 44);
+        belief.Observe(Queue(45, ("feudal_age", false)), 45);
+        for (var t = 46; t < 151; t++)
+            belief.Observe(Queue(t, ("villager", false)), t);
+        for (var t = 151; t <= 153; t++)
+            belief.Observe(Queue(t, ("feudal_age", false)), t);
+        for (var t = 154; t <= 300; t++)
+            belief.Observe(Queue(t, ("villager", false)), t);
+
+        Assert.False(belief.View.Done("feudal_age"));
+        Assert.Equal(Age.Dark, belief.View.Age);
+    }
+
     [Fact]
     public void Dos_aldeanos_avanzando_en_la_Edad_Oscura_no_son_un_segundo_centro_urbano()
     {
@@ -155,6 +174,24 @@ public class StateBeliefTests
         belief.Observe(Queue(1001, ("cavalier", false)), 1001);
 
         Assert.Equal(["cavalier"], belief.Queue!.Select(i => i.Key));
+    }
+
+    [Fact]
+    public void Una_investigacion_larga_que_la_cola_pierde_un_rato_igual_termina()
+    {
+        // Castillos (160 s) vista 50 s, 35 s sin leerla bien y vista hasta el final.
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Reading(500, "feudal_age_researched"), 500);
+        for (var t = 600; t <= 650; t++)
+            belief.Observe(Queue(t, ("castle_age", false)), t);
+        for (var t = 651; t < 686; t++)
+            belief.Observe(Queue(t, ("villager", false)), t);
+        for (var t = 686; t <= 760; t++)
+            belief.Observe(Queue(t, ("castle_age", false)), t);
+        for (var t = 761; t <= 775; t++)
+            belief.Observe(Queue(t, ("villager", false)), t);
+
+        Assert.True(belief.View.Done("castle_age"));
     }
 
     [Fact]

@@ -42,6 +42,13 @@ internal sealed class QueueSource(GameData data, CivBonuses civ)
     /// <summary>Segundos que una tecnología en curso tiene que faltar de la cola para creer que se fue sin terminar.</summary>
     public const double LeftSeconds = 15;
 
+    /// <summary>
+    /// Segundos sin verla (y más de lo que se la vio) después de los que una tecnología que vuelve a la cola cuenta desde cero. Más que
+    /// <see cref="LeftSeconds"/>: una que se fue unos segundos antes de su tiempo igual terminó (la armadura de cuero de la
+    /// 20261105-183834, que faltó de 24:45 a 25:04).
+    /// </summary>
+    public const double RestartSeconds = 2 * LeftSeconds;
+
     private Dictionary<string, int> _previousCounts = [];
     private HashSet<string> _previousKeys = [];
     private readonly Dictionary<string, (double First, double Last)> _seen = [];
@@ -119,8 +126,11 @@ internal sealed class QueueSource(GameData data, CivBonuses civ)
             if (data.TryGet(key, out var entity) && entity.Kind == EntityKind.Tech && _previousKeys.Contains(key))
             {
                 inProgress.Add(key);
+                // Si vuelve después de mucho sin verse, y faltó más de lo que se la había visto, lo de antes fue una lectura
+                // mala y cuenta desde cero: si no, se sumaba (partida del 2026-11-07: Feudal leída a las 0:44 y a las 2:31
+                // quedaba hecha a las 2:42, en la Edad Oscura). Una investigación larga vista un buen rato sigue.
                 if (advancing.Contains(key))
-                    _seen[key] = (_seen.TryGetValue(key, out var seen) ? seen.First : now, now);
+                    _seen[key] = (_seen.TryGetValue(key, out var seen) && !(now - seen.Last >= RestartSeconds && now - seen.Last > seen.Last - seen.First) ? seen.First : now, now);
             }
         }
         foreach (var (tech, seen) in _seen.ToList())
