@@ -31,6 +31,25 @@ public static class BulkPublish
             return 2;
         }
 
+        // Los códigos de lo publicado desde esta PC viven en web.json, que se pierde al reinstalar: sin la lista de la web,
+        // otra corrida publicaba todo de nuevo y duplicaba la biblioteca. Las propias se reconocen por civ y nombre.
+        ILookup<(string Civ, string Name), string> own = Array.Empty<WebBuildOrderEntry>().ToLookup(e => (e.Civ, e.Name), e => e.Code);
+        if (account.Settings.HasToken)
+        {
+            try
+            {
+                var list = await account.Client.MyBuildOrdersAsync(account.Settings.Token);
+                own = list.Items.Where(e => e.Own).ToLookup(e => (e.Civ, e.Name.Trim()), e => e.Code);
+            }
+            catch (WebLibraryException e)
+            {
+                output.WriteLine($"No se pudo pedir la lista de tus BO a la web ({e.Message}): sin ella se duplicarían las ya publicadas.");
+                return 2;
+            }
+        }
+        else
+            output.WriteLine("Sin cuenta no se sabe cuáles ya están publicadas: \"se publicaría nueva\" puede ser una que ya está.");
+
         var (published, replaced, failed) = (0, 0, 0);
         foreach (var file in files)
         {
@@ -54,6 +73,19 @@ public static class BulkPublish
             }
 
             var code = account.Settings.Published.GetValueOrDefault(bo.Id);
+            if (code is null)
+            {
+                var matches = own[(bo.Civ, bo.Name.Trim())].ToList();
+                if (matches.Count > 1)
+                {
+                    output.WriteLine($"✗ {name}: hay {matches.Count} publicadas tuyas con la misma civ y el nombre \"{bo.Name}\" ({string.Join(", ", matches)}): borrá las de más en la web y probá de nuevo.");
+                    failed++;
+                    continue;
+                }
+                code = matches.SingleOrDefault();
+                if (code is not null && !dryRun)
+                    account.RememberPublished(bo.Id, code);
+            }
             if (dryRun)
             {
                 output.WriteLine($"· {name}: \"{bo.Name}\" {(code is null ? "se publicaría nueva" : $"reemplazaría {code}")}");

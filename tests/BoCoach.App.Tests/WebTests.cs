@@ -165,11 +165,57 @@ public sealed class WebTests : IDisposable
         Assert.Equal(1, await BulkPublish.RunAsync(_data, new WebAccount(new HttpClient(web), SettingsPath), folder, dryRun: false, second));
 
         Assert.Equal([(HttpMethod.Post, "/api/bo"), (HttpMethod.Post, "/api/bo"), (HttpMethod.Put, "/api/bo/aaaaaa"), (HttpMethod.Put, "/api/bo/bbbbbb")],
-            web.Requests.Select(r => (r.Method, r.Path)));
+            web.Requests.Where(r => r.Method != HttpMethod.Get).Select(r => (r.Method, r.Path)));
         Assert.Equal("aaaaaa", account.Settings.Published["bog-a"]);
         Assert.Contains("✗ rota.json: tiene errores", first.ToString());
         Assert.Contains("2 nuevas, 0 reemplazadas, 1 con problemas.", first.ToString());
         Assert.Contains("0 nuevas, 2 reemplazadas, 1 con problemas.", second.ToString());
+    }
+
+    // Después de reinstalar Windows se pierde web.json con los códigos: sin esto, volver a publicar duplicaba las 124.
+    [Fact]
+    public async Task Publicar_sin_los_codigos_guardados_reconoce_las_propias_por_civ_y_nombre()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_dir.FullName, "civs")).FullName;
+        var scouts = BuildOrderSerializer.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build_orders", "scouts_22p.json")));
+        File.WriteAllText(Path.Combine(folder, "a.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-a", Name = "A" }));
+        File.WriteAllText(Path.Combine(folder, "b.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-b", Name = "B" }));
+        File.WriteAllText(Path.Combine(folder, "c.json"), BuildOrderSerializer.Serialize(scouts with { Id = "bog-c", Name = "C" }));
+        static string Item(string code, string name, string civ, bool own) =>
+            $$"""{ "code": "{{code}}", "name": "{{name}}", "civ": "{{civ}}", "tags": [], "author": "Yo", "guide_author": "Yo", "own": {{(own ? "true" : "false")}}, "visibility": "public", "updated_at": "2026-11-01T00:00:00Z" }""";
+        var list = $$"""
+            { "account": "Yo", "items": [
+              {{Item("aaaaaa", "A", scouts.Civ, own: true)}},
+              {{Item("zzzzzz", "A", "otra-civ", own: true)}},
+              {{Item("bbbbbc", "B", scouts.Civ, own: true)}},
+              {{Item("bbbbbd", "B", scouts.Civ, own: true)}},
+              {{Item("cccccc", "C", scouts.Civ, own: false)}}
+            ] }
+            """;
+        var web = new FakeWeb();
+        web.Respond = r => r.Method == HttpMethod.Get
+            ? (HttpStatusCode.OK, list)
+            : r.Method == HttpMethod.Post
+                ? (HttpStatusCode.Created, """{ "code": "nuevac", "url": "https://bo.example/bo/nuevac" }""")
+                : (HttpStatusCode.OK, $$"""{ "code": "{{r.RequestUri!.Segments[^1]}}", "url": "https://bo.example/bo/{{r.RequestUri!.Segments[^1]}}" }""");
+        var account = new WebAccount(new HttpClient(web), SettingsPath);
+        account.Save(new WebSettings { WebUrl = "https://bo.example", Token = Token });
+
+        var dry = new StringWriter();
+        await BulkPublish.RunAsync(_data, account, folder, dryRun: true, dry);
+        Assert.Contains("a.json: \"A\" reemplazaría aaaaaa", dry.ToString());
+        Assert.Contains("✗ b.json: hay 2 publicadas tuyas", dry.ToString());
+        // Una suscripta de otro no es tuya: se publica nueva.
+        Assert.Contains("c.json: \"C\" se publicaría nueva", dry.ToString());
+        Assert.DoesNotContain(web.Requests, r => r.Method != HttpMethod.Get);
+
+        var output = new StringWriter();
+        Assert.Equal(1, await BulkPublish.RunAsync(_data, account, folder, dryRun: false, output));
+
+        Assert.Equal([(HttpMethod.Put, "/api/bo/aaaaaa"), (HttpMethod.Post, "/api/bo")],
+            web.Requests.Where(r => r.Method != HttpMethod.Get).Select(r => (r.Method, r.Path)));
+        Assert.Equal("aaaaaa", account.Settings.Published["bog-a"]);
+        Assert.Contains("1 nuevas, 1 reemplazadas, 1 con problemas.", output.ToString());
     }
 
     [Fact]
