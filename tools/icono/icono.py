@@ -1,4 +1,4 @@
-"""Arma el ícono de la app (src/BoCoach.App/BoCoach.ico): una torre de castillo dorada sobre el fondo oscuro, con los
+"""Arma el ícono de la app (src/BoCoach.App/BoCoach.ico) y el de la web (web/src/app/favicon.ico): una torre de castillo dorada sobre el fondo oscuro, con los
 colores de la web (--panel y --amber en web/src/app/globals.css). Se dibuja grande y se achica a cada tamaño, así los
 bordes salen suaves; el de 16 px se dibuja aparte, sin la puerta, porque achicada no se distingue.
 
@@ -16,6 +16,7 @@ BORDE = "#5c5046"
 DORADO = "#e8c26a"
 LADO = 1024
 TAMANIOS = [16, 24, 32, 48, 64, 128, 256]
+TAMANIOS_WEB = [16, 32, 48, 256]
 
 
 def dibujar(con_puerta: bool = True) -> Image.Image:
@@ -40,6 +41,11 @@ def main() -> None:
     salida = REPO / "src" / "BoCoach.App" / "BoCoach.ico"
     imagenes[-1].save(salida, format="ICO", sizes=[(n, n) for n in TAMANIOS], append_images=imagenes[:-1])
     print(f"{salida} ({', '.join(map(str, TAMANIOS))} px)")
+    # El de la pestaña del navegador. Solo favicon.ico: el proxy de idiomas (web/src/proxy.ts) deja pasar ese y nada más.
+    web = [im for n, im in zip(TAMANIOS, imagenes) if n in TAMANIOS_WEB]
+    favicon = REPO / "web" / "src" / "app" / "favicon.ico"
+    web[-1].save(favicon, format="ICO", sizes=[(n, n) for n in TAMANIOS_WEB], append_images=web[:-1])
+    print(f"{favicon} ({', '.join(map(str, TAMANIOS_WEB))} px)")
     if len(sys.argv) > 1:
         carpeta = Path(sys.argv[1])
         carpeta.mkdir(parents=True, exist_ok=True)
