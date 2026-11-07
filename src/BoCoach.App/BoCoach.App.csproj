@@ -11,7 +11,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- El ícono del .exe, de la barra de tareas y de las ventanas: lo arma tools/icono/icono.py -->
     <ApplicationIcon>BoCoach.ico</ApplicationIcon>
-    <Version>0.9.98</Version>
+    <Version>0.9.99</Version>
   </PropertyGroup>
 
   <!-- Cuándo se compiló, para mostrarlo junto a la versión y el commit (AppVersion) -->
