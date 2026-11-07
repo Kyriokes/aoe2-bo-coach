@@ -435,4 +435,14 @@ public class BuildOrderValidatorTests
 
         Assert.DoesNotContain(Validator.Validate(bo).Warnings, w => w.Message.Contains("2 edificios"));
     }
+
+    // D7: el árbol de los cumanos tiene el centro urbano en Feudal (en las demás civs es de Castillos).
+    [Fact]
+    public void Los_cumanos_hacen_el_centro_urbano_en_Feudal()
+    {
+        var bo = Bo(Research("f", "feudal_age"), Build("t", "town_center"));
+
+        Assert.DoesNotContain(Validator.Validate(bo with { Civ = "cumans" }).Issues, i => i.StepId == "t" && i.Severity == Severity.Error);
+        Assert.Contains(Validator.Validate(bo with { Civ = "britons" }).Issues, i => i.StepId == "t" && i.Severity == Severity.Error);
+    }
 }

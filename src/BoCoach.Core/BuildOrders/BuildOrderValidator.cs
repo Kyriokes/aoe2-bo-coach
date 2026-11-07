@@ -316,8 +316,9 @@ public sealed class BuildOrderValidator(GameData gameData, EventCatalog? events 
             return;
         }
 
-        if (entity.Age > age)
-            error(id, L($"'{step.What}' recién está en {AgeName(entity.Age)}, y en este paso todavía estás en {AgeName(age)}.", $"'{step.What}' needs {AgeName(entity.Age)}, and at this step you're still in {AgeName(age)}."));
+        var needs = (civ ?? CivBonuses.None).AgeOf(entity);
+        if (needs > age)
+            error(id, L($"'{step.What}' recién está en {AgeName(needs)}, y en este paso todavía estás en {AgeName(age)}.", $"'{step.What}' needs {AgeName(needs)}, and at this step you're still in {AgeName(age)}."));
 
         if (entity.MadeIn is { } place && !built.Contains(place))
             warn(id, L($"'{step.What}' se hace en '{place}', y la BO no lo construye antes de este paso.", $"'{step.What}' is made in '{place}', and the BO doesn't build it before this step."));

@@ -680,8 +680,8 @@ public sealed class Tracker
             }
             if (action == StepAction.Research && BuildOrderValidator.AgeOf(what) is { } clicked && clicked > age)
                 age = clicked;
-            else if (_data.TryGet(what, out var entity) && entity.Age > age)
-                age = entity.Age;
+            else if (_data.TryGet(what, out var entity) && civ.AgeOf(entity) > age)
+                age = civ.AgeOf(entity);
         }
         foreach (var e in _state.Events)
         {
@@ -714,7 +714,7 @@ public sealed class Tracker
             if (step.What is null || !_data.TryGet(step.What, out var entity))
                 return true;
             // La edad de game_data ya es la de antes para un clic de edad (feudal_age es de la Edad Oscura).
-            if (entity.Age > age)
+            if (civ.AgeOf(entity) > age)
                 return false;
             if (step.Do is StepAction.Train or StepAction.Research && entity.MadeIn is { } producer && !_built.Contains(producer))
                 return false;

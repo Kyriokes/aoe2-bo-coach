@@ -138,15 +138,15 @@ internal sealed class GoalState(GameData data, CivBonuses civ, AssistedPlan plan
                 {
                     keys.Add(building);
                     // El centro urbano del arranque ya está (el que se construye es de Castillos).
-                    needs = building == BuildOrderValidator.StartingBuilding ? Age.Dark : made.Age;
+                    needs = building == BuildOrderValidator.StartingBuilding ? Age.Dark : Civ.AgeOf(made);
                 }
                 keys.Add(key);
-                needs = entity.Age > needs ? entity.Age : needs;
+                needs = Civ.AgeOf(entity) > needs ? Civ.AgeOf(entity) : needs;
             }
             else if (goal.TownCenters is not null)
             {
                 keys.Add("town_center");
-                needs = Data.Get("town_center").Age;
+                needs = Civ.AgeOf(Data.Get("town_center"));
             }
             if (keys.FirstOrDefault(k => !Data.CanMake(Civ.Key, k)) is { } missing)
                 skipped[i] = $"Los {civName} no tienen {StepText.Name(missing, missing == goal.Unit ? 2 : 1)}.";

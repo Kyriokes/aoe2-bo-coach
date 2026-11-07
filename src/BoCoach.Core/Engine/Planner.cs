@@ -696,9 +696,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
                 }
                 if (_busyProducers.GetValueOrDefault(producer) >= _buildings[producer])
                     return; // el edificio está ocupado con el trabajo anterior: no es un bloqueo del paso
-                if (entity.Age > _age)
+                if (_civ.AgeOf(entity) > _age)
                 {
-                    Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
+                    Block(item, BlockReason.Age, expected: AgeComing(_civ.AgeOf(entity)));
                     return;
                 }
                 if (!_civ.NoAgeBuildings && BuildOrderValidator.AgeUpRequirement(entity.Key) is { } ageUp
@@ -761,9 +761,9 @@ public sealed class Planner(GameData data, PlannerSettings? settings = null)
         {
             if (item.Entity is not { } entity || item.Remaining == 0)
                 return;
-            if (entity.Age > _age)
+            if (_civ.AgeOf(entity) > _age)
             {
-                Block(item, BlockReason.Age, expected: AgeComing(entity.Age));
+                Block(item, BlockReason.Age, expected: AgeComing(_civ.AgeOf(entity)));
                 return;
             }
             if (_civ.Requires(entity) is { } required && _buildings.GetValueOrDefault(required) == 0)

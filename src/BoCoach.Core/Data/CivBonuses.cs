@@ -87,6 +87,15 @@ public sealed class CivBonuses
     /// <summary>Si sube de edad sin los 2 edificios que pide cada edad (los jemeres; en el .dat, la tech 638).</summary>
     public bool NoAgeBuildings { get; init; }
 
+    /// <summary>
+    /// D7: lo que la civ hace en otra edad que la de <see cref="Entity.Age"/>, según su árbol: los cumanos, el centro
+    /// urbano y el taller de asedio en Feudal.
+    /// </summary>
+    public IReadOnlyDictionary<string, Age> Ages { get; init; } = new Dictionary<string, Age>();
+
+    /// <summary>La edad desde la que esta civ puede hacer <paramref name="entity"/>.</summary>
+    public Age AgeOf(Entity entity) => Ages.TryGetValue(entity.Key, out var age) ? age : entity.Age;
+
     /// <summary>El edificio que tiene que estar terminado antes de construir <paramref name="entity"/> con esta civ (null = ninguno).</summary>
     public string? Requires(Entity entity) => NoRequires.Contains(entity.Key) ? null : entity.Requires;
 

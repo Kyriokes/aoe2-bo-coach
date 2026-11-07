@@ -200,9 +200,9 @@ public sealed class StateBelief
             if (clicked > _age)
                 _age = clicked;
         }
-        else if (_data.TryGet(what, out var entity) && entity.Age > _age)
+        else if (_data.TryGet(what, out var entity) && _civ.AgeOf(entity) > _age)
         {
-            _age = entity.Age;
+            _age = _civ.AgeOf(entity);
         }
     }
 

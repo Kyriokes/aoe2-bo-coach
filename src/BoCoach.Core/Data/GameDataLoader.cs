@@ -207,6 +207,7 @@ public static partial class GameDataLoader
             Unavailable = (dto.Unavailable ?? []).ToHashSet(),
             NoRequires = (dto.NoRequires ?? []).Select(k => Known(k, "no_requires")).ToHashSet(),
             NoAgeBuildings = dto.NoAgeBuildings ?? false,
+            Ages = (dto.Ages ?? []).ToDictionary(a => Known(a.Key, "ages"), a => a.Value),
             FoodYields = foodYield,
             FarmUpgradeFoods = dto.FarmUpgradeFood is { } upgrades ? Ages(upgrades, "farm_upgrade_food") : null,
             FarmExtras = dto.FarmExtra is { } extra ? Ages(extra, "farm_extra") : null,
@@ -287,7 +288,8 @@ public static partial class GameDataLoader
         bool? NoAgeBuildings,
         Dictionary<string, double[]>? FoodYield,
         double[]? FarmUpgradeFood,
-        double[]? FarmExtra);
+        double[]? FarmExtra,
+        Dictionary<string, Age>? Ages = null);
 
     internal sealed record CivStartDto(int Food, int Wood, int Stone, int Gold, int Villagers, bool NoHouses);
 

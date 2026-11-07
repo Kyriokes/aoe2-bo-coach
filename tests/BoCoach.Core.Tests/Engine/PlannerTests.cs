@@ -642,4 +642,24 @@ public class PlannerTests
 
         Assert.Equal(seconds, plan.For("m")!.End!.Value, 0);
     }
+
+    // D7: con los cumanos el centro urbano no espera Castillos.
+    [Fact]
+    public void Los_cumanos_construyen_el_centro_urbano_en_Feudal()
+    {
+        var tc = new Step { Id = "t", Do = StepAction.Build, What = "town_center", From = GatherSource.Wood, Assign = GatherSource.Wood };
+        var start = InFeudal() with { Stock = new ResourceAmounts(Food: 1000, Wood: 1000, Stone: 1000, Gold: 1000) };
+
+        Assert.NotNull(Planner.Simulate([new PlanItem(tc, 1)], start, TestData.GameData.Civ("cumans")).For("t")!.End);
+        Assert.Null(Planner.Simulate([new PlanItem(tc, 1)], start, TestData.GameData.Civ("britons")).For("t")!.End);
+    }
+
+    [Fact]
+    public void La_edad_de_un_edificio_depende_de_la_civ()
+    {
+        var tc = TestData.GameData.Get("town_center");
+
+        Assert.Equal(Age.Feudal, TestData.GameData.Civ("cumans").AgeOf(tc));
+        Assert.Equal(Age.Castle, TestData.GameData.Civ("britons").AgeOf(tc));
+    }
 }
