@@ -4672,7 +4672,11 @@
         "settlement",
         "stone_shaft_mining",
         "stone_wall"
-      ]
+      ],
+      "ages": {
+        "siege_workshop": "feudal",
+        "town_center": "feudal"
+      }
     },
     "lithuanians": {
       "dat_name": "Lithuanians",

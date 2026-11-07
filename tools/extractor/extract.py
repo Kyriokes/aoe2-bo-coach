@@ -331,21 +331,51 @@ def cargar_no_disponibles(carpeta: Path) -> dict[str, set[tuple[str, int]]]:
     return faltan
 
 
-def no_disponibles_por_civ(faltan: dict[str, set[tuple[str, int]]], civs: dict) -> dict[str, list[str]]:
-    """Clave de civ -> claves de game_data que su árbol marca como no disponibles. El árbol se identifica por la clave o
-    el nombre en inglés de la civ, sin la "s" del plural ("MAYANS" es "mayan"), o por los nombres viejos del .dat
+def arbol_de_civ(clave: str, civ: dict, por_arbol: dict):
+    """Lo de por_arbol (indexado por el civ_id del árbol) que es de esa civ, o None. El árbol se identifica por la clave
+    o el nombre en inglés de la civ, sin la "s" del plural ("MAYANS" es "mayan"), o por los nombres viejos del .dat
     ("INDIANS" son los hindustanis)."""
     def plano(texto: str) -> str:
         return re.sub(r"[^a-z]", "", texto.lower()).rstrip("s")
 
+    nombres = {plano(clave), plano(civ.get("dat_name", ""))} | {plano(n) for n in civ.get("names", {}).values()}
+    return next((valor for civ_id, valor in por_arbol.items()
+                 if plano(civ_id) in nombres or clave_de_civ(civ_id.title()) == clave), None)
+
+
+def no_disponibles_por_civ(faltan: dict[str, set[tuple[str, int]]], civs: dict) -> dict[str, list[str]]:
+    """Clave de civ -> claves de game_data que su árbol marca como no disponibles."""
     resultado = {}
     for clave, civ in civs.items():
-        nombres = {plano(clave), plano(civ.get("dat_name", ""))} | {plano(n) for n in civ.get("names", {}).values()}
-        arbol = next((ids for civ_id, ids in faltan.items()
-                      if plano(civ_id) in nombres or clave_de_civ(civ_id.title()) == clave), None)
+        arbol = arbol_de_civ(clave, civ, faltan)
         if arbol is None:
             continue
         resultado[clave] = sorted(k for k, (tipo, dat_id) in ENTIDADES.items() if (tipo, dat_id) in arbol)
+    return resultado
+
+
+def cargar_edades_de_edificios(carpeta: Path) -> dict[str, dict[int, str]]:
+    """Por el civ_id del árbol, la edad de cada edificio que la civ tiene ("Age ID": 1 Oscura a 4 Imperial)."""
+    resultado: dict[str, dict[int, str]] = {}
+    for archivo in sorted(carpeta.glob("*.json")):
+        arbol = json.loads(archivo.read_text(encoding="utf-8"))
+        edades = resultado.setdefault(str(arbol.get("civ_id", archivo.stem)).upper(), {})
+        for nodo in arbol.get("civ_techs_buildings", []):
+            if nodo.get("Use Type") == "Building" and nodo.get("Node Status") != "NotAvailable" and nodo.get("Age ID") in (1, 2, 3, 4):
+                edades[nodo["Node ID"]] = _edad_por_nivel(nodo["Age ID"] - 1)
+    return resultado
+
+
+def edades_propias_por_civ(edades: dict[str, dict[int, str]], entidades: dict, civs: dict) -> dict[str, dict[str, str]]:
+    """Clave de civ -> {edificio: edad} de los que esa civ hace en otra edad que la de game_data: el centro urbano de los
+    cumanos es de Feudal (en las demás, de Castillos). Solo las civs que tienen alguno."""
+    resultado = {}
+    for clave, civ in civs.items():
+        arbol = arbol_de_civ(clave, civ, edades) or {}
+        propias = {k: arbol[dat_id] for k, (tipo, dat_id) in ENTIDADES.items()
+                   if tipo == "building" and k in entidades and dat_id in arbol and arbol[dat_id] != entidades[k]["age"]}
+        if propias:
+            resultado[clave] = dict(sorted(propias.items()))
     return resultado
 
 
@@ -1065,6 +1095,9 @@ def main() -> int:
             datos["civs"][clave]["no_requires"] = claves
     for clave, claves in no_disponibles_por_civ(cargar_no_disponibles(args.dat.parent / "CivTechTrees"), datos["civs"]).items():
         datos["civs"][clave]["unavailable"] = claves
+    edades = cargar_edades_de_edificios(args.dat.parent / "CivTechTrees")
+    for clave, propias in edades_propias_por_civ(edades, datos["entities"], datos["civs"]).items():
+        datos["civs"][clave]["ages"] = propias
 
     eventos, conflictos = extractor.eventos(textos, disponibles)
     escribir_eventos(eventos, args.eventos)
