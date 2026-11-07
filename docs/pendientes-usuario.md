@@ -19,6 +19,8 @@ Lista viva: cada sesión agrega lo nuevo y saca lo hecho. Va ordenada por lo que
    - **Borrar:** tocá "Borrar lo compartido…" y aceptá. En Supabase, **Storage** → `registros`, ese archivo tiene que desaparecer.
    - **Votar:** votá una BO. El contador sube y la fecha "actualizada" no cambia.
    - **Autores:** en la biblioteca cada BO sigue diciendo de quién es.
+3. **Grabá una partida en amarillo** (partida del 7/11 con cumanos, tu nota del centro urbano junto al mouse). Jugaste de jugador 4, en amarillo, y en un ciclo de aldeano de cada dos la cola de producción no reconoció al aldeano: lo leía vacío o como mandoble o arquero a caballo. Creo que es la aldeana (el juego alterna hombre y mujer y el ícono cambia), pero esa partida no se grabó: el registro no guarda imágenes y no puedo enseñarle el ícono a la biblioteca sin verlo. La v0.9.99 ya no se deja engañar (ver la nota en `docs/dev/vision-y-hud.md`), pero falta arreglar la lectura en sí. (1) Prendé el modo desarrollador: 5 clics sobre la versión, arriba a la izquierda. (2) En Ajustes, pestaña Desarrollador, fijate que esté prendido "Grabar cada partida sola". (3) Jugá unos 5 minutos sacando aldeanos sin parar, con un telar en el medio, en amarillo (jugador 4 en la sala). (4) Avisame y la reviso con `revisar-grabacion`.
+
 ## 2. Después de reinstalar Windows
 
 En esta PC se perdieron `%APPDATA%\BoCoach` y `%LOCALAPPDATA%\BoCoach`: tus ajustes, tu cuenta en la app, las grabaciones y los informes.
