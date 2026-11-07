@@ -50,7 +50,7 @@ export interface EntityLite {
 /** Lo que el editor necesita de game_data.json. */
 export interface GameDataLite {
   entities: Record<string, EntityLite>;
-  civs?: Record<string, { unavailable?: string[]; no_requires?: string[] }>;
+  civs?: Record<string, { unavailable?: string[]; no_requires?: string[]; no_age_buildings?: boolean; ages?: Record<string, Age> }>;
 }
 
 /** Índices de inserción entre los demás pasos donde puede caer la caja; `lo > hi` si no puede ir a ningún lado. */
@@ -76,6 +76,16 @@ export function canMake(data: GameDataLite, civ: string, key: string) {
 export function requiresOf(data: GameDataLite, civ: string, key: string) {
   const requires = data.entities[key]?.requires;
   return requires && !data.civs?.[civ.toLowerCase()]?.no_requires?.includes(key) ? requires : undefined;
+}
+
+/** La edad desde la que la civ hace `key` (como CivBonuses.AgeOf): los cumanos, el centro urbano en Feudal. */
+export function ageOf(data: GameDataLite, civ: string, key: string): Age | undefined {
+  return data.civs?.[civ.toLowerCase()]?.ages?.[key] ?? data.entities[key]?.age;
+}
+
+/** Si la civ sube de edad sin los 2 edificios (como CivBonuses.NoAgeBuildings): los jemeres. */
+export function skipsAgeBuildings(data: GameDataLite, civ: string) {
+  return data.civs?.[civ.toLowerCase()]?.no_age_buildings === true;
 }
 
 /** Lo que construye un paso de construir: el edificio y lo que vale por otros (asentamiento, carro de mulas). */
@@ -108,11 +118,13 @@ const defaultLabel = (step: EditorStep, locale: Locale) => {
  * o una cadena de "junto con el anterior"), con el motivo del límite de cada lado. `label` es el texto de un paso
  * para los motivos ("Antes de Entrenar 5 exploradores").
  */
-export function allowedRange(others: EditorStep[], block: EditorStep[], data: GameDataLite, labelOf?: (step: EditorStep) => string, locale: Locale = "es"): Range {
+export function allowedRange(others: EditorStep[], block: EditorStep[], data: GameDataLite, labelOf?: (step: EditorStep) => string, locale: Locale = "es", civ = "any"): Range {
   const t = getDictionary(locale).editor.rules;
   const label = labelOf ?? ((step: EditorStep) => defaultLabel(step, locale));
   const name = (key: string) => entityName(key, 1, locale);
   const n = others.length;
+  const civAge = (key: string) => ageOf(data, civ, key);
+  const freeAgeUp = skipsAgeBuildings(data, civ);
   let lo = 0;
   let hi = n;
   let loReason: string | null = null;
@@ -152,15 +164,16 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
     const entity = member.what ? data.entities[member.what] : undefined;
 
     // (a) Una entidad va después del clic de su edad.
-    if (entity && member.do !== "move" && ageIndex(entity.age) > 0 && ageIndex(blockAge) < ageIndex(entity.age)) {
-      const p = firstAgeIndexAtLeast(entity.age);
-      raise(p < 0 ? n + 1 : p, fill(t.afterClick, { age: ageLabel(entity.age, locale) }));
+    const entityAge = member.what ? civAge(member.what) : undefined;
+    if (entity && entityAge && member.do !== "move" && ageIndex(entityAge) > 0 && ageIndex(blockAge) < ageIndex(entityAge)) {
+      const p = firstAgeIndexAtLeast(entityAge);
+      raise(p < 0 ? n + 1 : p, fill(t.afterClick, { age: ageLabel(entityAge, locale) }));
     }
 
     // (b) Un clic de edad va antes del primer paso que necesita esa edad.
     if (member.do === "research" && member.what && AGE_OF_TECH[member.what]) {
       const reached = AGE_OF_TECH[member.what];
-      const j = others.findIndex((s) => s.do !== "move" && s.what && ageIndex(data.entities[s.what]?.age) >= ageIndex(reached));
+      const j = others.findIndex((s) => s.do !== "move" && s.what && ageIndex(civAge(s.what)) >= ageIndex(reached));
       if (j >= 0) lower(j, fill(t.beforeNeeds, { step: label(others[j]), age: ageLabel(reached, locale) }));
     }
 
@@ -189,7 +202,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
     }
 
     // (e) El clic de edad va después del segundo edificio que califica.
-    const req = member.do === "research" && member.what ? AGE_UP_REQ[member.what] : undefined;
+    const req = member.do === "research" && member.what && !freeAgeUp ? AGE_UP_REQ[member.what] : undefined;
     if (req) {
       const fromBlock = req.buildings.filter((b) => blockBuilt.has(b));
       const p = built.findIndex((set) => ageUpCount(req, new Set([...req.buildings.filter((b) => set.has(b)), ...fromBlock])) >= 2);
@@ -203,7 +216,7 @@ export function allowedRange(others: EditorStep[], block: EditorStep[], data: Ga
     }
 
     // (e) Un edificio que califica no pasa después del clic si lo deja con menos de 2.
-    for (const key of provides(member, data)) {
+    for (const key of freeAgeUp ? [] : provides(member, data)) {
       for (const [tech, r] of Object.entries(AGE_UP_REQ)) {
         if (!r.buildings.includes(key)) continue;
         others.forEach((s, j) => {

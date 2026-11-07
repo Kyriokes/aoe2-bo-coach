@@ -1,7 +1,7 @@
 import { fill, getDictionary } from "@/i18n";
 import type { Locale } from "@/i18n/locales";
 import { entityName } from "../stepText";
-import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, requiresOf, STARTING_BUILDING, type GameDataLite } from "./constraints";
+import { AGE_OF_TECH, AGE_ORDER, AGE_UP_REQ, ageUpCount, allowedRange, provides, requiresOf, skipsAgeBuildings, STARTING_BUILDING, type GameDataLite } from "./constraints";
 import { paletteItems, type MapInfo, type PaletteItem } from "./gameData";
 import { withArticle } from "./guard";
 import type { EditorStep } from "./model";
@@ -115,7 +115,7 @@ export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: n
   const { palette: t, noPlace } = getDictionary(locale).editor;
   const step: EditorStep = { ...item.step, id: "\u0000paleta", after: [], withPrevious: false };
   if (step.do === "research" && steps.some((s) => s.do === "research" && s.what === step.what)) return t.already;
-  const range = allowedRange(steps, [step], data, undefined, locale);
+  const range = allowedRange(steps, [step], data, undefined, locale, civ);
   if (range.lo > range.hi) return range.loReason ?? range.hiReason ?? noPlace;
   if (index < range.lo) return range.loReason;
   if (index > range.hi) return range.hiReason;
@@ -127,7 +127,7 @@ export function unavailableHere(item: PaletteItem, steps: EditorStep[], index: n
   if (step.do !== "build" && producer && !has(producer)) return fill(t.missingBuilding, { building: withArticle(producer, locale) });
   const required = step.do === "build" && step.what ? requiresOf(data, civ, step.what) : undefined;
   if (required && !has(required)) return fill(t.missingBuilding, { building: withArticle(required, locale) });
-  const req = step.do === "research" && step.what ? AGE_UP_REQ[step.what] : undefined;
+  const req = step.do === "research" && step.what && !skipsAgeBuildings(data, civ) ? AGE_UP_REQ[step.what] : undefined;
   if (req && ageUpCount(req, new Set(req.buildings.filter(has))) < 2) {
     return fill(t.missingTwo, { age: ageLabel(req.requires, locale), buildings: req.buildings.map((b) => entityName(b, 1, locale)).join(", ") });
   }

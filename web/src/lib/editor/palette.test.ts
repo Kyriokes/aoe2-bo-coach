@@ -70,6 +70,12 @@ describe("paleta como en el juego", () => {
     expect(here.bar.producers.map((t) => t.key)).toContain("town_center");
   });
 
+  it("los jemeres suben a Castillos sin edificios de Feudal y los cumanos hacen el centro urbano en Feudal", () => {
+    expect(unavailableHere(item("castle_age"), BO, BO.length, data, "khmer")).toBeNull();
+    expect(unavailableHere(item("town_center"), BO, BO.length, data, "cumans")).toBeNull();
+    expect(unavailableHere(item("town_center"), BO, BO.length, data, "britons")).toBe("Recién después del clic en Castillos");
+  });
+
   it("al final de la BO muestra lo de Feudal y dice por qué falta lo demás", () => {
     expect(unavailableHere(item("archer"), BO, BO.length, data)).toBeNull();
     expect(unavailableHere(item("man_at_arms"), BO, BO.length, data)).toBeNull();

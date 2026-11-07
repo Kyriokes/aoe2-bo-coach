@@ -127,6 +127,30 @@ describe("allowedRange", () => {
     expect(range.loReason).toBe("Faltan 2 edificios de Feudal en la BO (galería de tiro, establo, herrería, mercado)");
   });
 
+  // Pendiente de D12: los jemeres suben de edad sin edificios (game_data no_age_buildings), como el Planner y el validador.
+  it("(e) los jemeres hacen el clic de edad sin los 2 edificios", () => {
+    const civs = { ...data, civs: { ...data.civs, khmer: { no_age_buildings: true } } };
+    const onlyRange = [research("f", "feudal_age"), build("b", "barracks"), build("a", "archery_range")];
+    const range = allowedRange(onlyRange, [research("c", "castle_age")], civs, label, "es", "khmer");
+    expect(range.lo).toBe(1);
+    expect(range.hi).toBe(3);
+    expect(allowedRange(onlyRange, [research("c", "castle_age")], civs, label, "es", "britons").lo).toBeGreaterThan(3);
+  });
+
+  // D7: los cumanos tienen el centro urbano en Feudal (game_data civs.cumans.ages); las demás civs, en Castillos.
+  it("(a) la edad de un edificio depende de la civ", () => {
+    const civs: GameDataLite = {
+      entities: { ...data.entities, town_center: { kind: "building", age: "castle" } },
+      civs: { cumans: { ages: { town_center: "feudal" } } },
+    };
+    const feudal = [research("f", "feudal_age"), build("b", "barracks"), build("s", "stable")];
+    expect(allowedRange(feudal, [build("t", "town_center")], civs, label, "es", "cumans").lo).toBe(1);
+    expect(allowedRange(feudal, [build("t", "town_center")], civs, label, "es", "britons").lo).toBeGreaterThan(feudal.length);
+    // Y el clic en Feudal va antes del centro urbano de los cumanos.
+    const after = [build("b", "barracks"), build("m", "mill"), build("t", "town_center")];
+    expect(allowedRange(after, [research("f", "feudal_age")], civs, label, "es", "cumans").hi).toBe(2);
+  });
+
   it("(f) los límites caen en bordes de cadena", () => {
     const range = allowedRange(without("s2"), [bo[2]], data, label);
     // s4+s5 van juntos (índices 3 y 4 de los demás): el índice 4 no es un borde.

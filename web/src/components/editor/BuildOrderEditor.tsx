@@ -416,7 +416,7 @@ export function BuildOrderEditor({
   const insertAt = useCallback(
     (step: EditorStep, index: number) => {
       if (!data) return;
-      const range = allowedRange(state.steps, [step], data, label, locale);
+      const range = allowedRange(state.steps, [step], data, label, locale, state.bo.civ);
       if (range.lo > range.hi) {
         showNotice(fill(t.noCan, { reason: range.loReason ?? range.hiReason ?? t.noPlace }));
         return;
@@ -425,7 +425,7 @@ export function BuildOrderEditor({
       const inserted = insertNew(state.steps, step, at);
       if (dispatch({ type: "setSteps", steps: inserted.steps, selected: inserted.selectId })) tellInserted(inserted);
     },
-    [data, dispatch, insertNew, label, locale, showNotice, state.steps, t.noCan, t.noPlace, tellInserted],
+    [data, dispatch, insertNew, label, locale, showNotice, state.bo.civ, state.steps, t.noCan, t.noPlace, tellInserted],
   );
   /** Borrar: un edificio que hace el próximo aldeano se lleva a su aldeano (que vuelve a su tanda si la hay). */
   const removeStep = useCallback(
@@ -496,7 +496,7 @@ export function BuildOrderEditor({
       const chain = blockOf(state.steps, id);
       if (!chain) return;
       const { others, block } = splitBlock(state.steps, chain.from, chain.to);
-      const range = allowedRange(others, block, data, label, locale);
+      const range = allowedRange(others, block, data, label, locale, state.bo.civ);
       const target = direction < 0 ? snapDownTo(others, chain.from - 1) : snapUp(others, chain.from + 1);
       if (target === chain.from) return;
       if (target < range.lo) {
@@ -509,7 +509,7 @@ export function BuildOrderEditor({
       }
       dispatch({ type: "move", blockFrom: chain.from, blockTo: chain.to, index: target });
     },
-    [data, state.steps, label, locale, showNotice, dispatch, t.noEarlier, t.noLater],
+    [data, state.bo.civ, state.steps, label, locale, showNotice, dispatch, t.noEarlier, t.noLater],
   );
 
   const [sheetOpen, setSheetOpen] = useState(false);
