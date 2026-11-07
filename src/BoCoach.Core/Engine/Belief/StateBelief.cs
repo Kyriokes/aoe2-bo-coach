@@ -62,6 +62,9 @@ public sealed class StateBelief
 
     public BeliefView View { get; private set; }
 
+    /// <summary>La cola de la última captura, con lo que no puede estar a esta edad como "?" (ver <see cref="QueueSource.Plausible"/>).</summary>
+    public IReadOnlyList<QueueItem>? Queue { get; private set; }
+
     /// <summary>Hay completaciones que todavía nadie tomó con <see cref="TakeNew"/>.</summary>
     public bool HasNew => _new.Count > 0;
 
@@ -80,7 +83,8 @@ public sealed class StateBelief
             for (var houses = _cap.HousesFrom(cap, now); houses > 0; houses--)
                 Add("house_built", EvidenceSource.PopulationCap, Strength.Observed, now, CreditSeconds);
         }
-        if (reading.Queue is { } queue)
+        Queue = reading.Queue is { } read ? _queue.Plausible(read, _age) : null;
+        if (Queue is { } queue)
             FromQueue(queue, now);
         _score.Logged(_new.Skip(before).Select(c => c.EventId).ToList(), now);
         if (reading.Scores is { } scores)

@@ -112,6 +112,51 @@ public class StateBeliefTests
         Assert.Equal(1, belief.View.Count("archery_range"));
     }
 
+    // Partida del 2026-11-07 (cumanos, jugador amarillo): la aldeana a medio entrenar se leía mandoble a las 0:39 y daba un
+    // cuartel. El mandoble no está en game_data y su unidad base, la milicia, es de la Edad Oscura.
+    [Fact]
+    public void Una_mejora_de_unidad_en_una_edad_anterior_a_la_suya_no_cuenta()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(39, ("two_handed_swordsman", false)), 39);
+        belief.Observe(Queue(39.5, ("two_handed_swordsman", false)), 39.5);
+
+        Assert.Equal(0, belief.View.Count("barracks"));
+    }
+
+    // Misma partida: lo imposible para la edad pasa a "?", que puede ser del centro urbano (ver Coach.TrackTownCenter).
+    [Fact]
+    public void Lo_que_no_puede_estar_en_la_cola_a_esta_edad_queda_sin_reconocer()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(40, ("cavalry_archer", false), ("villager", false), ("loom", true)), 40);
+
+        Assert.Equal([QueueItem.Unknown, "villager", "loom"], belief.Queue!.Select(i => i.Key));
+        Assert.True(belief.Queue![2].Waiting);
+    }
+
+    [Fact]
+    public void Dos_aldeanos_avanzando_en_la_Edad_Oscura_no_son_un_segundo_centro_urbano()
+    {
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Queue(100, ("villager", false), ("villager", false)), 100);
+        belief.Observe(Queue(100.5, ("villager", false), ("villager", false)), 100.5);
+
+        Assert.Equal(1, belief.View.Count("town_center"));
+        Assert.Equal(Age.Dark, belief.View.Age);
+    }
+
+    [Fact]
+    public void Una_mejora_que_una_civ_tiene_antes_sigue_en_la_cola()
+    {
+        // El caballero mejorado de los borgoñones es de Castillos; game_data no tiene las mejoras.
+        var belief = new StateBelief(TestData.GameData);
+        belief.Observe(Reading(1000, "castle_age_researched"), 1000);
+        belief.Observe(Queue(1001, ("cavalier", false)), 1001);
+
+        Assert.Equal(["cavalier"], belief.Queue!.Select(i => i.Key));
+    }
+
     [Fact]
     public void Un_icono_desconocido_o_sin_poblacion_no_dice_nada()
     {

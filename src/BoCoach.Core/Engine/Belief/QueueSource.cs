@@ -49,6 +49,44 @@ internal sealed class QueueSource(GameData data, CivBonuses civ)
     /// <summary>Las tecnologías en curso y la última vez que se las vio en la cola.</summary>
     private readonly Dictionary<string, double> _running = [];
 
+    /// <summary>
+    /// La edad desde la que algo puede estar en la cola (la suya y la del edificio que lo hace), o null si no se sabe.
+    /// Una mejora que no está en game_data (el mandoble, el arbalestero) no es de la Edad Oscura, aunque su base (la
+    /// milicia) sí: ninguna mejora de unidad lo es. No se sube más que eso porque hay civs que las tienen antes (el
+    /// caballero mejorado de los borgoñones en Castillos) y game_data no las tiene.
+    /// </summary>
+    public Age? MinAge(string key)
+    {
+        Age own;
+        Entity entity;
+        if (data.TryGet(key, out var found))
+        {
+            (entity, own) = (found, civ.AgeOf(found));
+        }
+        else if (UnitLines.Base(key) is var unit && unit != key && data.TryGet(unit, out var baseUnit))
+        {
+            (entity, own) = (baseUnit, civ.AgeOf(baseUnit) > Age.Feudal ? civ.AgeOf(baseUnit) : Age.Feudal);
+        }
+        else
+        {
+            return null;
+        }
+        // El centro urbano con que se empieza no espera a su edad de construcción (Castillos, Feudal con los cumanos).
+        return entity.MadeIn is { } building && building != BuildOrders.BuildOrderValidator.StartingBuilding && data.TryGet(building, out var producer) && civ.AgeOf(producer) > own
+            ? civ.AgeOf(producer)
+            : own;
+    }
+
+    /// <summary>
+    /// La cola con lo que no puede estar a esta edad como "?": es una lectura mala de otro ícono, que puede ser del centro
+    /// urbano (partida del 2026-11-07, jugador amarillo: la aldeana a medio entrenar salía mandoble o arquero a caballo
+    /// en la Edad Oscura).
+    /// </summary>
+    public IReadOnlyList<QueueItem> Plausible(IReadOnlyList<QueueItem> queue, Age age) =>
+        queue.Any(i => MinAge(i.Key) > age)
+            ? queue.Select(i => MinAge(i.Key) > age ? i with { Key = QueueItem.Unknown } : i).ToList()
+            : queue;
+
     /// <param name="age">La edad alcanzada: lo de una edad mayor es una lectura mala.</param>
     /// <param name="researchTime">Tiempo de investigación de una tecnología (con la civ).</param>
     public QueueFacts Update(IReadOnlyList<QueueItem> queue, double now, Age age, Func<Entity, double> researchTime)
@@ -59,7 +97,9 @@ internal sealed class QueueSource(GameData data, CivBonuses civ)
             // Una mejora sale del mismo edificio que su unidad: el arbalestero, que la biblioteca ya reconoce, cuenta como arquero.
             if (!(data.TryGet(group.Key, out var entity) || data.TryGet(UnitLines.Base(group.Key), out entity)) || entity.MadeIn is not { } building || !data.TryGet(building, out var producer))
                 continue;
-            if (civ.AgeOf(entity) > age || civ.AgeOf(producer) > age)
+            // Acá sí cuenta la edad del edificio, también la del centro urbano: dos aldeanos avanzando en la Edad Oscura no
+            // son un segundo centro urbano (lo es en Feudal con los cumanos).
+            if (MinAge(group.Key) > age || civ.AgeOf(producer) > age)
                 continue;
             counts[building] = Math.Max(counts.GetValueOrDefault(building), group.Count());
         }

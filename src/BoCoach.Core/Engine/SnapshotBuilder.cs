@@ -158,7 +158,7 @@ public sealed class SnapshotBuilder(GameData data, CivBonuses? civ = null)
         {
             Villagers = readVillagers,
             VillagersOn = reading.VillagersOn,
-            Queue = reading.Queue,
+            Queue = _belief.Queue,
             Scores = reading.Scores,
             IdleVillagers = reading.IdleVillagers,
             Belief = belief,
