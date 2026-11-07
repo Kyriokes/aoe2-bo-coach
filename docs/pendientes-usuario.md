@@ -6,7 +6,7 @@ Lista viva: cada sesión agrega lo nuevo y saca lo hecho. Va ordenada por lo que
 
 **Hecho el 6/11:** `safe.directory`, la sesión de GitHub en esta PC, la migración `20261105000000_revision.sql` (comprobado desde afuera: la base ya tiene las funciones nuevas) y el push a `main`. El CI y la release dieron verde, la v0.9.94 está en Releases con su `.zip` y su `.sha256`, y la web nueva está en producción. Si la consulta de control de la migración dio alguna fila, pasame cuál.
 
-1. **Volvé a publicar las BO de chinos y mayas.** La simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
+1. ~~**Volvé a publicar las BO de chinos y mayas.**~~ **Hecho el 6/11:** 124 reemplazadas, ninguna duplicada. Queda por si hay que repetirlo: la simulación cambió para las civs que arrancan con aldeanos de más, y la biblioteca muestra los horarios de Feudal y Castillos que se calcularon al publicarlas. Con la app cerrada, en una terminal en F:\aoe2-bo-coach, y con un token creado en **Mi cuenta** → **Crear token** (el de "Conectar la app" no publica) pegado en Ajustes → Avanzado → **Dirección y token…**:
 
    ```bash
    ./src/BoCoach.App/bin/Release/net10.0-windows10.0.19041.0/BoCoach.exe --publish build_orders/civs --dry-run

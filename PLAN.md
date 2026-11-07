@@ -415,10 +415,10 @@ Lo vigente. Cada ítem tiene su criterio de salida, y cada cambio se hace con un
    - **B2:** ver la pantalla de carga en castellano y en multijugador, y verificar el mapa, que el overlay puede tapar.
    - **D3:** leer el aviso de ataque, que sale del color del atacante (hace falta una grabación con un ataque).
    - **D4:** la "mejor estrategia estándar" contra la combinación de civs aliadas y enemigas (hoy cuenta sobre todo el rival de enfrente).
-   - **D7:** el bono de los cumanos (centro urbano en Feudal), que el validador no conoce.
+   - **D7, lo que falta:** el ariete de los cumanos en Feudal (el centro urbano y el taller de asedio en Feudal ya andan desde el 2026-11-06); las unidades que una civ entrena en otra edad todavía no salen de los árboles.
    - **D12:** el editor manual de la web no sabe que los jemeres suben de edad sin edificios.
    - **Ítem 13:** el Planner sigue la BO en orden (los aldeanos en paralelo, lo demás no); hacer que construir e investigar también vayan en paralelo cambia los horarios de todas las BO, la web y el modo asistido, y queda para cuando el usuario lo pida.
-4. **Mantenimiento (B6).** Cada partida nueva se revisa con la skill `revisar-grabacion`; cada parche del juego, extractor y `game_data` nuevo (el parche del 2026-10-27 trajo una civ nueva, "danes", y `game_data` sigue en v8.9).
+4. **Mantenimiento (B6).** Cada partida nueva se revisa con la skill `revisar-grabacion`; cada parche del juego, extractor y `game_data` nuevo (el parche del 2026-10-27 trajo los daneses; `game_data` v8.9 ya los tiene, porque el `.dat` de ese parche sigue siendo la versión 8.9).
 5. **Estadísticas de cruces (D10), paso (e).** El recolector propio, cuando la fuente de hoy deje de alcanzar (`matchup_stats.json` termina el 3 de julio).
 6. **Presentación (bloque C).**
    - **C1:** probar la release en otra PC. Tarea del usuario.
