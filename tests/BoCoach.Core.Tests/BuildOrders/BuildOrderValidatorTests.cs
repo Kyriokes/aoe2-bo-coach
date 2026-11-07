@@ -445,4 +445,24 @@ public class BuildOrderValidatorTests
         Assert.DoesNotContain(Validator.Validate(bo with { Civ = "cumans" }).Issues, i => i.StepId == "t" && i.Severity == Severity.Error);
         Assert.Contains(Validator.Validate(bo with { Civ = "britons" }).Issues, i => i.StepId == "t" && i.Severity == Severity.Error);
     }
+
+    // D7: las unidades y tecnologías también cambian de edad según la civ (los árboles del juego).
+    [Fact]
+    public void Los_cumanos_hacen_arietes_en_Feudal()
+    {
+        var ram = new Step { Id = "r", Do = StepAction.Train, What = "battering_ram" };
+        var bo = Bo(Research("f", "feudal_age"), Build("w", "siege_workshop"), ram);
+
+        Assert.DoesNotContain(Validator.Validate(bo with { Civ = "cumans" }).Issues, i => i.StepId == "r" && i.Severity == Severity.Error);
+        Assert.Contains(Validator.Validate(bo with { Civ = "celts" }).Issues, i => i.StepId == "r" && i.Severity == Severity.Error);
+    }
+
+    [Fact]
+    public void Los_borgonones_investigan_la_carretilla_en_la_Edad_Oscura()
+    {
+        var bo = Bo(Research("c", "wheelbarrow"));
+
+        Assert.DoesNotContain(Validator.Validate(bo with { Civ = "burgundians" }).Issues, i => i.StepId == "c" && i.Severity == Severity.Error);
+        Assert.Contains(Validator.Validate(bo with { Civ = "britons" }).Issues, i => i.StepId == "c" && i.Severity == Severity.Error);
+    }
 }

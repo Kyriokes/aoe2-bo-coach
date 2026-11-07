@@ -31,7 +31,7 @@ internal sealed record QueueFacts(IReadOnlyDictionary<string, int> Producers, IR
 /// ícono mal leído dos veces). Si no, quedaba en curso toda la partida. Lo que dura menos es un error de lectura.</item>
 /// </list>
 /// </summary>
-internal sealed class QueueSource(GameData data)
+internal sealed class QueueSource(GameData data, CivBonuses civ)
 {
     /// <summary>Parte del tiempo de investigación que tiene que pasar para dar por terminada una tecnología que se fue de la cola.</summary>
     public const double FinishedShare = 0.9;
@@ -59,7 +59,7 @@ internal sealed class QueueSource(GameData data)
             // Una mejora sale del mismo edificio que su unidad: el arbalestero, que la biblioteca ya reconoce, cuenta como arquero.
             if (!(data.TryGet(group.Key, out var entity) || data.TryGet(UnitLines.Base(group.Key), out entity)) || entity.MadeIn is not { } building || !data.TryGet(building, out var producer))
                 continue;
-            if (entity.Age > age || producer.Age > age)
+            if (civ.AgeOf(entity) > age || civ.AgeOf(producer) > age)
                 continue;
             counts[building] = Math.Max(counts.GetValueOrDefault(building), group.Count());
         }

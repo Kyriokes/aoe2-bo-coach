@@ -43,7 +43,7 @@ internal sealed class EcoRule : IGoalRule
         var villagers = view.Villagers.Values.Sum() + view.IdleVillagers + view.Builders;
         foreach (var candidate in Candidates)
         {
-            if (!state.Data.TryGet(candidate.Tech, out var entity) || !state.Data.CanMake(state.Civ.Key, candidate.Tech) || entity.Age > view.Age
+            if (!state.Data.TryGet(candidate.Tech, out var entity) || !state.Data.CanMake(state.Civ.Key, candidate.Tech) || state.Civ.AgeOf(entity) > view.Age
                 || view.Researched.Contains(candidate.Tech) || state.Pending(view).Any(s => s.Do == StepAction.Research && s.What == candidate.Tech))
                 continue;
             var cost = state.Civ.Cost(entity, view.Age);

@@ -49,7 +49,7 @@ public sealed class StateBelief
     {
         _data = data;
         _civ = civ ?? CivBonuses.None;
-        _queue = new QueueSource(data);
+        _queue = new QueueSource(data, _civ);
         _cap = new CapSource(data, _civ);
         _units = new UnitSource(data);
         _score = new ScoreSource(data);
@@ -108,7 +108,7 @@ public sealed class StateBelief
         _freeTechsAge = _age;
         foreach (var (key, entity) in _data.Entities)
         {
-            if (entity.Kind != EntityKind.Tech || entity.Age > _age || BuildOrderValidator.AgeOf(key) is not null)
+            if (entity.Kind != EntityKind.Tech || _civ.AgeOf(entity) > _age || BuildOrderValidator.AgeOf(key) is not null)
                 continue;
             if (entity.Cost == ResourceAmounts.Zero || _civ.Cost(entity, _age) != ResourceAmounts.Zero)
                 continue;

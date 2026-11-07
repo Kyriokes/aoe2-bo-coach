@@ -112,7 +112,7 @@ public sealed class TechReminders(GameData data, string civ, IReadOnlyList<strin
 
     private bool Wanted(Candidate candidate, ResourceAmounts stock, Age age, ResourceAmounts? villagersOn, Func<string, bool> built)
     {
-        if (!data.TryGet(candidate.Tech, out var entity) || entity.MadeIn is not { } building || entity.Age > age
+        if (!data.TryGet(candidate.Tech, out var entity) || entity.MadeIn is not { } building || _civ.AgeOf(entity) > age
             || !data.CanMake(civ, candidate.Tech))
             return false;
         var cost = _civ.Cost(entity, age);

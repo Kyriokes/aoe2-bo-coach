@@ -81,9 +81,9 @@ public static class Posture
     /// jugador saca ahí (<see cref="PostureCoach"/>).
     /// </summary>
     public static string? DefaultUnit(GameData data, string? civ, string building, Age age) => data.Entities
-        .Where(e => e.Value.Kind == EntityKind.Unit && e.Value.MadeIn == building && e.Value.Age <= age
+        .Where(e => e.Value.Kind == EntityKind.Unit && e.Value.MadeIn == building && data.Civ(civ).AgeOf(e.Value) <= age
                     && !NonMilitary.Contains(e.Key) && data.CanMake(civ, e.Key))
-        .OrderBy(e => e.Value.Age).Select(e => e.Key).FirstOrDefault();
+        .OrderBy(e => data.Civ(civ).AgeOf(e.Value)).Select(e => e.Key).FirstOrDefault();
 
     /// <summary>Las unidades que no cuentan como producción de la postura (las que no abandonan la BO, y los monjes).</summary>
     private static readonly HashSet<string> NonMilitary = ["villager", "fishing_ship", "trade_cart", "transport_ship", "monk"];
