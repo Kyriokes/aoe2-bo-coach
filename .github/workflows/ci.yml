@@ -108,9 +108,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: tools/stats/requirements.txt
+          cache-dependency-path: |
+            tools/stats/requirements.txt
+            tools/extractor/requirements.txt
 
-      - run: pip install -r requirements.txt
+      # Las del extractor también: sus tests importan extract.py, que importa genieutils (no necesitan el juego).
+      - run: pip install -r requirements.txt -r ../extractor/requirements.txt
       - run: python -m pytest -q
-      # La búsqueda de la carpeta del juego del extractor (no necesita sus dependencias ni el juego).
+      # La búsqueda de la carpeta del juego y la lectura de los árboles de tecnologías del extractor.
       - run: python -m pytest -q ../extractor
