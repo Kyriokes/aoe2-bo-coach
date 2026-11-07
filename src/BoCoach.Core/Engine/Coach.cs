@@ -579,6 +579,10 @@ public sealed class Coach
     {
         if (snapshot.Villagers is { } villagers)
         {
+            // Solo una suba sobre lo más alto visto: una lectura que baja y vuelve (15, 14, 15) no es un aldeano nuevo.
+            if (villagers > _mostVillagers && _mostVillagers > 0 && QueueMissedVillager(snapshot.Time))
+                QueueMissesVillagers = true;
+            _mostVillagers = Math.Max(_mostVillagers, villagers);
             if (_villagers is null || villagers > _villagers)
                 _lastVillagerAt = snapshot.Time;
             _villagers = villagers;
@@ -642,19 +646,51 @@ public sealed class Coach
         var pending = Tracker.Steps.Any(s => s.Step is { Do: StepAction.Train, What: "villager" } && s.State is not (StepState.Done or StepState.Skipped));
         if (!pending && villagers >= _economySettings.MaxVillagers)
             return null;
-        if (State.Time - _queueSeenAt <= QueueStaleSeconds && _queueUnknownAt < _queueSeenAt)
+        if (State.Time - _queueSeenAt <= QueueStaleSeconds && _queueUnknownAt < _queueSeenAt && !QueueMissesVillagers)
         {
             // Desde la última vez que la cola tuvo algo del centro urbano o algo sin reconocer (o desde que se empezó a leer).
             var idleFor = State.Time - Math.Max(Math.Max(_townCenterQueuedAt, _queueUnknownAt), _queueFirstSeenAt);
             return idleFor >= QueueIdleGrace ? idleFor : null;
         }
-        var civ = _data.Civ(Tracker.BuildOrder.Civ);
-        var age = LivePlan.Start(Tracker).Age;
-        var train = civ.Time(villager, age) / civ.WorkRate("town_center", age);
         // Lo del centro urbano que se vio en la cola también cuenta: con un "?" al lado, sigue estando ocupado.
-        var idle = Math.Min(State.Time - Math.Max(_lastVillagerAt, _townCenterBusyAt) - train, State.Time - _townCenterQueuedAt);
+        var idle = Math.Min(State.Time - Math.Max(_lastVillagerAt, _townCenterBusyAt) - VillagerTrainTime(villager), State.Time - _townCenterQueuedAt);
         return idle >= TownCenterIdleGrace ? idle : null;
     }
+
+    private double VillagerTrainTime(Entity villager)
+    {
+        var civ = _data.Civ(Tracker.BuildOrder.Civ);
+        var age = LivePlan.Start(Tracker).Age;
+        return civ.Time(villager, age) / civ.WorkRate("town_center", age);
+    }
+
+    /// <summary>
+    /// La cola no ve los aldeanos de este jugador: salió uno sin que, mientras se entrenaba, la cola (leída todo ese
+    /// tiempo) mostrara nada del centro urbano. Desde ahí el centro urbano parado se deduce por los aldeanos. Partida del
+    /// 2026-11-07 (cumanos, jugador amarillo): en un ciclo de cada dos la cola leía vacía o mandoble y arquero a caballo,
+    /// y el aviso salía de 5 a 24 s con el centro urbano sacando un aldeano cada 25 s. Con uno alcanza: pidiendo dos se
+    /// daba cuenta a las 6:38 en vez de a la 1:40, con tres avisos falsos más. Lo que podría engañarlo (un monje que
+    /// convierte un aldeano con el centro urbano parado) solo lo pasa a deducir por los aldeanos, como sin cola.
+    /// </summary>
+    private bool QueueMissesVillagers { get; set; }
+
+    /// <summary>Lo más alto que se leyó el total de aldeanos.</summary>
+    private int _mostVillagers;
+
+    private bool QueueMissedVillager(double now)
+    {
+        if (!_queueTrusted || !_data.TryGet("villager", out var villager))
+            return false;
+        // Desde el aldeano anterior (su ícono se lee hasta la captura en que sale, de ahí el segundo de más), y con todo
+        // un entrenamiento en el medio: con dos centros urbanos salen más seguido y no se puede decir cuál se vio.
+        var previous = _lastVillagerAt;
+        return now - previous >= MissedVillagerShare * VillagerTrainTime(villager)
+            && _queueFirstSeenAt <= previous && now - _queueSeenAt <= QueueStaleSeconds
+            && _townCenterQueuedAt <= previous + 1;
+    }
+
+    /// <summary>Parte del tiempo de un aldeano que tiene que haber pasado desde el anterior para decir que la cola no lo vio.</summary>
+    private const double MissedVillagerShare = 0.8;
 
     private (int Current, int Target)? SourceVillagers(StepProgress? current)
     {

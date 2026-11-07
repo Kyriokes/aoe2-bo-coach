@@ -981,6 +981,59 @@ public class CoachTests
         Assert.NotNull(coach.Update(Queue(1107, 14)).TownCenterIdle);
     }
 
+    // Partida del 2026-11-07 (cumanos, jugador amarillo, nota del usuario: "el centro urbano junto al mouse no fue
+    // confiable en toda la partida"): salía un aldeano cada 25 s, pero en un ciclo de cada dos la cola no lo veía (vacía
+    // o con otra cosa) y el aviso salía de 5 a 24 s en cada uno. Un aldeano que sale sin que la cola haya mostrado nada
+    // del centro urbano mientras se entrenaba dice que la cola no ve los de este jugador: desde ahí, por los aldeanos.
+    [Fact]
+    public void Si_la_cola_no_vio_un_aldeano_que_salio_se_deduce_por_los_aldeanos()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, int villagers, params string[] queue) =>
+            At(time, 200, villagers) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
+
+        // 1000 a 1024 la cola lo ve; el siguiente no (y ahí el aviso no se puede evitar).
+        for (var t = 1000; t < 1025; t++)
+            coach.Update(Queue(t, 10, "villager"));
+        for (var t = 1025; t < 1050; t++)
+            coach.Update(Queue(t, 11));
+        for (var t = 1050; t < 1075; t++)
+            coach.Update(Queue(t, 12));
+
+        // Salieron dos sin que la cola los mostrara: los ciclos siguientes, con la cola vacía, no está parado.
+        for (var t = 1075; t < 1100; t++)
+            Assert.Null(coach.Update(Queue(t, 13)).TownCenterIdle);
+        for (var t = 1100; t <= 1125; t++)
+            Assert.Null(coach.Update(Queue(t, 14)).TownCenterIdle);
+
+        // Parado de verdad: sin aldeanos nuevos pasado lo que tarda uno y el margen.
+        Assert.NotNull(coach.Update(Queue(1135, 14)).TownCenterIdle);
+    }
+
+    [Fact]
+    public void Una_lectura_del_total_de_aldeanos_que_baja_y_vuelve_no_dice_que_la_cola_no_los_ve()
+    {
+        var bo = new BuildOrder { Name = "t", Steps = [new Step { Id = "s1", Do = StepAction.Train, What = "villager", Count = 40, Assign = GatherSource.Wood }] };
+        var coach = new Coach(bo, TestData.GameData, TestData.Events);
+        GameSnapshot Queue(double time, int villagers, params string[] queue) =>
+            At(time, 200, villagers) with { Queue = queue.Select(k => new QueueItem(k)).ToList() };
+
+        coach.Update(Queue(1000, 15, "villager"));
+        coach.Update(Queue(1001, 15));
+        // Parado de verdad, y el total parpadea dos veces: 15, 14, 15.
+        foreach (var t in new[] { 1030, 1060 })
+        {
+            coach.Update(Queue(t, 14));
+            coach.Update(Queue(t + 1, 15));
+        }
+
+        // Con la cola: 6 s sin nada del centro urbano es parado (por los aldeanos, recién a los 33 s).
+        coach.Update(Queue(1100, 15, "villager"));
+        Assert.Null(coach.Update(Queue(1103, 15)).TownCenterIdle);
+        Assert.NotNull(coach.Update(Queue(1107, 15)).TownCenterIdle);
+    }
+
     [Fact]
     public void Una_investigacion_en_la_cola_queda_en_curso()
     {
